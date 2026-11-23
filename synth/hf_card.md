@@ -86,7 +86,14 @@ train = load_dataset("{repo_id}", split="train")
 - Scripts: median {med_tokens} tokens ({min_tokens} to {max_tokens}), median {med_lines} lines; {sum_tokens} tokens in all.
 - Scenes: median {med_objects} objects ({min_objects} to {max_objects}), {med_materials} materials and {med_lights} lights.
 - The first version ran without error for {first_ok} of {n_all} scenes; {revised_0} scripts were kept as first written.
-- The writers' ratings of their own pictures: {rating_1} at 1, {rating_2} at 2, {rating_3} at 3, {rating_4} at 4, {rating_5} at 5.
+
+Each writing agent also rated its own final picture (the view through the script's camera) against the request, from
+1 to 5. These are the model's ratings of its own work, not human scores. Scenes rated 2 pass every check and are kept;
+filter on `writer_rating` to drop them.
+
+| Writer's rating | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Scenes | {rating_1} | {rating_2} | {rating_3} | {rating_4} | {rating_5} |
 
 ## What fine-tuning on it did
 

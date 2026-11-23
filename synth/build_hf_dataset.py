@@ -100,6 +100,7 @@ fill = {
     "revised_0": sum(r["revisions"] == 0 for r in allrows),
     "framing_repaired": sum(bool(r["framing_repair"]) for r in allrows),
 }
+fill = {k: (f"{v:,}" if isinstance(v, int) else v) for k, v in fill.items()}   # every count with thousands separators
 card = open("synth/hf_card.md").read().format(**fill)
 open(os.path.join(a.out, "README.md"), "w").write(card)
 json.dump(fill, open(os.path.join(a.out, "card_numbers.json"), "w"), indent=1)
