@@ -91,9 +91,13 @@ Each writing agent also rated its own final picture (the view through the script
 1 to 5. These are the model's ratings of its own work, not human scores. Scenes rated 2 pass every check and are kept;
 filter on `writer_rating` to drop them.
 
-| Writer's rating | 1 | 2 | 3 | 4 | 5 |
-|---|---|---|---|---|---|
-| Scenes | {rating_1} | {rating_2} | {rating_3} | {rating_4} | {rating_5} |
+| Writer's rating (1 to 5) | Number of scenes |
+|---|---|
+| 1 | {rating_1} |
+| 2 | {rating_2} |
+| 3 | {rating_3} |
+| 4 | {rating_4} |
+| 5 | {rating_5} |
 
 ## What fine-tuning on it did
 
