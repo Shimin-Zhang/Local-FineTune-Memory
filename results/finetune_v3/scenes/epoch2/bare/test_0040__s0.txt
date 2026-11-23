@@ -1,0 +1,101 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(671)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def surf(rgb, glow=0):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .9
+    if glow: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    return m
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def block(at, s, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, (0, 0, rz))
+def post(at, r, h, n, m, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at)
+def gable(at, w, d, h, m):
+    bm = bmesh.new(); a = [bm.verts.new(p) for p in ((-w, -d, 0), (w, -d, 0), (w, d, 0), (-w, d, 0), (0, -d, h), (0, d, h))]
+    for f in ((0, 1, 2, 3), (0, 1, 4), (2, 3, 5), (1, 2, 5, 4), (3, 0, 4, 5)): bm.faces.new([a[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return mk(bm, m, at)
+def rock(at, r, m, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(.8, 1.2), v.co.y * random.uniform(.8, 1.2), v.co.z * sq * random.uniform(.8, 1.2)))
+    return mk(bm, m, at)
+def flame(at, w, c=(1, .5, .12)):
+    L = bpy.data.lights.new("f", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("f", L); o.location = at; sc.collection.objects.link(o)
+granite, granite2, moss, earth = surf((.2, .19, .2)), surf((.14, .14, .16)), surf((.1, .2, .08)), surf((.12, .08, .05))
+wall, wall2, tile, tile2 = surf((.33, .3, .28)), surf((.22, .2, .2)), surf((.12, .13, .17)), surf((.2, .08, .07))
+red, gold, wood, paper = surf((.5, .07, .05)), surf((.7, .5, .1)), surf((.25, .13, .07)), surf((.6, .1, .08))
+maple, gold2, flame, ember = surf((.7, .2, .04)), surf((.75, .5, .05)), surf((1, .45, .08), 14), surf((.9, .2, .05), 6)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=11, radius1=7, radius2=14, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.2, .2)
+    v.co.z -= 2
+mk(bm, moss)
+# the ridge: a curved wall following the whole back, with bastions at the ends
+def ridge(x): return 7.5 - .05 * x * x
+for i in range(22):
+    x = -11 + i * 1.0; y = ridge(x)
+    block((x, y, 0), (1.2, 1.2, 1.9 + (i % 3) * .15), wall if i % 2 else wall2, rz=.05 * x)
+    if i % 3 == 0: block((x, y, 2.0), (1.5, 1.5, .5), wall2)
+for x in (-11, 11):
+    block((x, ridge(x), 0), (2.2, 2.2, 3.4), wall); block((x, ridge(x), 3.4), (2.6, 2.6, .4), wall2)
+# south gate pavilion: a gatehouse at the foot of the ridge, with a double roof and glowing doors
+gx, gy = 0, 4.2
+for s in (-1, 1):
+    block((gx + s * 2.6, gy, 0), (1.6, 1.6, 3.0), wall); block((gx + s * 2.6, gy, 3.0), (2.0, 2.0, .3), wall2)
+block((gx, gy, 2.0), (3.4, 1.6, 1.0), wall); block((gx, gy, 0), (3.4, 1.6, 1.6), wall2)
+block((gx, gy - .85, 0), (2.0, .15, 1.5), flame)
+gable((gx, gy, 3.3), 3.2, 1.6, 1.0, tile); gable((gx, gy, 4.2), 2.2, 1.2, .9, tile2)
+block((gx, gy - 1.6, 3.2), (6.4, .3, .25), red)
+for s in (-1, 1): block((gx + s * 1.7, gy - 1.7, 0), (.5, .5, 2.6), red)
+flame((gx, gy - 1.8, 1.0), 700)
+# signal fire station on the left flank: a stone tower with a basket of fire on top
+sx, sy = -8.0, 2.5
+post((sx, sy, 0), 1.6, 3.8, 8, wall, 1.3); post((sx, sy, 3.8), 1.9, .4, 8, wall2)
+for k in range(5): post((sx + .6 * math.cos(k * 1.26), sy + .6 * math.sin(k * 1.26), 4.2), .12, 1.4, 4, wood)
+post((sx, sy, 4.2), .7, .2, 7, ember); post((sx, sy, 4.4), .55, 1.6, 6, flame, .05)
+flame((sx, sy, 5.6), 1600)
+# small temple on the right flank: platform, red columns, glowing hall, hip roof
+tx, ty = 7.5, 2.0
+block((tx, ty, 0), (6.4, 5.0, .5), wall2); block((tx, ty, .5), (5.4, 4.0, .3), wall)
+block((tx, ty, .8), (4.2, 3.0, 1.8), paper); block((tx, ty - 1.55, 1.0), (1.4, .1, 1.3), flame)
+for i in range(4): post((tx - 2.1 + i * 1.4, ty - 2.0, .8), .16, 2.0, 6, red)
+gable((tx, ty, 2.6), 3.4, 2.6, 1.4, tile2); gable((tx, ty, 3.9), 2.0, 1.6, 1.0, tile)
+post((tx, ty, 4.9), .12, .8, 5, gold); flame((tx, ty - 2.4, 1.5), 450)
+# a stepped path up from the gate to the ridge, flanked by lantern posts
+for i in range(9):
+    block((0, -8 + i * .75, 0), (2.0, .8, .12 + i * .1), wall2)
+for i in range(4):
+    for s in (-1, 1):
+        y = -6 + i * 2.6; post((s * 1.6, y, 0), .1, 1.4, 5, wood); post((s * 1.6, y, 1.4), .25, .35, 6, flame); flame((s * 1.6, y, 1.8), 60)
+# autumn trees and boulders
+for i in range(18):
+    x, y = random.uniform(-12, 12), random.uniform(-11, 10)
+    if abs(x) < 3 and y < 5 or (x - tx) ** 2 + (y - ty) ** 2 < 20 or (x - sx) ** 2 + (y - sy) ** 2 < 9 or abs(x) < 1.6 and y > -9: continue
+    h = random.uniform(1.6, 2.8); post((x, y, 0), .2, h, 5, wood)
+    for k in range(2): rock((x, y, h + k * .7), random.uniform(.8, 1.2), random.choice((maple, gold2, maple)), .9)
+for i in range(8): rock((random.uniform(-12, 12), random.uniform(-11, -4), 0), random.uniform(.5, 1.0), granite2, .7)
+# light: low orange sun from the right, cool rim from the left behind
+for col, e, p in (((1, .6, .25), 5.5, (30, -16, 9)), ((.4, .55, 1), 2.2, (-26, 20, 12))):
+    L = bpy.data.lights.new("sun", "SUN"); L.color = col; L.energy = e
+    o = bpy.data.objects.new("sun", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("autumn"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.5)); co.location = t + Vector((-12, -62, 40))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

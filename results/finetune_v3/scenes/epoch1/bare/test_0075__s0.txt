@@ -1,0 +1,99 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1324)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tone(rgb, em=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+grass, grass2, spoil, slate = tone((.07, .14, .08)), tone((.1, .18, .09)), tone((.16, .16, .18)), tone((.1, .12, .16))
+wall, stone, timber, wool = tone((.28, .27, .24)), tone((.2, .2, .22)), tone((.14, .09, .06)), tone((.55, .5, .42))
+face, drizzle, lamp, hedge = tone((.05, .05, .05)), tone((.6, .75, .9), .6), tone((1, .6, .2), 14), tone((.05, .12, .06))
+def build(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("b"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("b", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(x, y, z, w, d, h, m, rot=(0, 0, 0), top=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return build(bm, m, (x, y, z), rot)
+def cone(x, y, z, r, h, n, m, r2=0.0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return build(bm, m, (x, y, z))
+def blob(x, y, z, r, m, sq=1.0, sx=1.0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sx, v.co.y, v.co.z * sq)) * random.uniform(.85, 1.15)
+    return build(bm, m, (x, y, z))
+def gable(x, y, z, w, d, h, m):
+    bm = bmesh.new()
+    p = [bm.verts.new(v) for v in ((-w / 2, -d / 2, 0), (w / 2, -d / 2, 0), (w / 2, d / 2, 0), (-w / 2, d / 2, 0), (-w / 2, 0, h), (w / 2, 0, h))]
+    for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 3, 2, 1)): bm.faces.new([p[i] for i in f])
+    return build(bm, m, (x, y, z))
+def glow(x, y, z, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = (1, .6, .2), w
+    o = bpy.data.objects.new("g", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# hillside: grass base, rough underside, spoil heap rising behind
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=13, depth=4)
+for v in bm.verts:
+    v.co.z -= 2
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .5)))
+    else: v.co.z += random.uniform(-.1, .1)
+build(bm, grass)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=11, radius2=11, depth=.3)
+for v in bm.verts: v.co.z += random.uniform(-.1, .1); v.co.x += random.uniform(-.5, .5)
+build(bm, grass2, (0, 0, 0))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=8.5, radius2=2.5, depth=7)
+for v in bm.verts: v.co += Vector((random.uniform(-.7, .7), random.uniform(-.7, .7), random.uniform(-.3, .3)))
+build(bm, spoil, (0, 9.5, -.5))
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(1, 8)
+    blob(r * math.cos(a), 9.5 + r * math.sin(a) * .8, 2 + random.uniform(0, 2), random.uniform(.4, .9), spoil, .6)
+# the cottage: stone walls, slate gable roof, chimney, door, glowing windows, porch lamp
+cube(-4, 0, 0, 7, 5, 2.8, wall)
+gable(-4, 0, 2.8, 7.8, 5.8, 2.4, slate)
+cube(-1.5, 1.2, 2.6, 1.1, 1.1, 3.2, stone)
+cube(-1.5, 1.2, 5.7, 1.4, 1.4, .3, stone)
+cube(-4, -2.55, 0, 1.1, .2, 1.8, timber)
+for wx in (-6.2, -1.8):
+    cube(wx, -2.55, .9, 1.2, .15, 1.0, lamp)
+glow(-4, -3.6, 1.4, 450)
+cube(-4, -3.1, 1.9, .5, .5, .5, lamp)
+glow(-4, -3.6, 2.1, 200)
+# walled yard: four low dry-stone walls with a gap for the gate
+for x, y, w, d in ((-4, -5.8, 13, .6), (-10.5, -2, .6, 7.6), (2.5, -2, .6, 7.6), (-4, 1.2, 13, .6)):
+    cube(x, y, 0, w, d, 1.2, stone, top=.95)
+for s in (-1, 1): cube(-10.5 + s * 1.0, -2, 0, .5, .8, 2.0, stone)
+cube(-10.5, -2, 1.9, 2.6, .5, .4, stone)
+cube(-10.5, -2.4, 0, 1.4, .15, 1.9, timber, top=.8)
+# ewe and lamb by the gate
+for x, y, s, m in ((-8.5, -3.2, 1.0, wool), (-7.4, -3.9, .55, wool)):
+    blob(x, y, .9 * s + .1, .8 * s, m, .8, 1.4)
+    blob(x + 1.1 * s, y, 1.2 * s + .1, .38 * s, face)
+    for dx in (-.4, .4):
+        for dy in (-.25, .25): cube(x + dx * s, y + dy, 0, .12, .12, .8 * s, m)
+# hedgerow, fence, drizzle streaks
+for i in range(8): blob(-11 + i * 1.7, 3.8, .5, .9, hedge, .8)
+for i in range(6): cube(5 + i * .9, -4.5, 0, .12, .12, 1.0, timber)
+cube(7.3, -4.5, .6, 4.6, .1, .1, timber)
+for i in range(90):
+    x, y, z = random.uniform(-11, 11), random.uniform(-9, 9), random.uniform(2, 10)
+    cube(x, y, z, .03, .03, 1.2, drizzle, (0, .2, 0))
+# drizzle: cold blue key, pale slate rim, wet dark green-grey
+for col, w, p in (((.55, .7, .9), 4.5, (-24, -14, 9)), ((.7, .75, .85), 2.0, (22, 20, 12))):
+    s = bpy.data.lights.new("sun", "SUN"); s.color, s.energy = col, w
+    o = bpy.data.objects.new("sun", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("drizzle"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .02, .028, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+tg = Vector((-2, 2, 1.5)); co.location = tg + Vector((12, -48, 30))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

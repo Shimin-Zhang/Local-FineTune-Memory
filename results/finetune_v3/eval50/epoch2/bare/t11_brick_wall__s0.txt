@@ -1,0 +1,73 @@
+```python
+import bpy, bmesh, random
+from mathutils import Vector
+random.seed(1843)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def brick(c, e=0, r=.9):
+    m = bpy.data.materials.new("b"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = n.inputs["Emission Color"].default_value = (*c, 1)
+    n.inputs["Roughness"].default_value = r; n.inputs["Emission Strength"].default_value = e
+    return m
+red, red2, red3, mortar, stone, oak, pane, moss, leaf = (brick((.38, .1, .07)), brick((.3, .07, .06)), brick((.45, .16, .09)), brick((.32, .28, .24)), brick((.3, .29, .3)),
+    brick((.16, .09, .05)), brick((1, .62, .22), 5), brick((.12, .22, .08)), brick((.3, .12, .06)))
+def make(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("w"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("w", me); o.location, o.rotation_euler = p, r
+    o.data.materials.append(m); sc.collection.objects.link(o); return o
+def slab(m, x, y, z, w, d, h, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return make(bm, m, (x, y, z), (0, 0, rz))
+def stem(m, x, y, z, r, h, n=5, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, (x, y, z))
+def lamp(kind, c, e, p, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = e
+    o = bpy.data.objects.new("l", L); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=10, depth=2.4)
+for v in bm.verts:
+    v.co.x *= 1.25
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .2)))
+    v.co.z -= 1.2
+make(bm, moss)
+# the wall: 11 courses of 12 bricks each, laid in a running bond, with a 4 x 5 brick window opening
+for c in range(11):
+    for i in range(12):
+        x = -6.6 + i * 1.1 + (.55 if c % 2 else 0)
+        if 2.2 < x < 4.4 and 2.2 < c < 7: continue
+        if random.random() < .04: continue
+        slab((red, red2, red3)[(i + c * 3) % 3], x, 0, c * .5, 1.04, .8, .46)
+slab(mortar, 0, -.42, 0, 13.2, .12, .12)
+# stone window frame, sill, lintel and a glowing pane behind the opening
+slab(stone, 3.3, -.5, 3.5, 2.6, .5, .3); slab(stone, 3.3, -.45, 2.0, 2.6, .5, .25); slab(stone, 3.3, -.45, 3.5, 2.6, .5, .25)
+slab(stone, 2.0, -.45, 2.2, .3, .5, 1.4); slab(stone, 4.6, -.45, 2.2, .3, .5, 1.4); slab(stone, 3.3, -.45, 3.5, 3.0, .5, .4)
+slab(pane, 3.3, .1, 2.2, 2.0, .12, 1.3); slab(oak, 3.3, -.2, 2.2, .1, .1, 1.3); slab(oak, 3.3, -.2, 2.85, 2.0, .1, .1)
+lamp("POINT", (1, .6, .2), 700, (3.3, -1.6, 2.9))
+# coping stones along the top, a mossy stump, a stone step, and a few fallen bricks
+for i in range(9): slab(stone, -5.5 + i * 1.4, 0, 5.5, 1.5, 1.0, .22, random.uniform(-.05, .05))
+slab(stone, 3.3, -1.4, 0, 2.4, 1.4, .35); slab(stone, 3.3, -2.4, 0, 2.0, 1.0, .2)
+for i in range(5): slab((red, red2, red3)[i % 3], random.uniform(-3, 1), random.uniform(-4, -2), 0, .9, .5, .4, random.uniform(0, 3))
+# a leaning plank and a lantern post beside the wall
+slab(oak, -5.2, -1.6, 0, .35, 3.6, .12, .15).rotation_euler.x = .12
+stem(stone, -2.0, -2.2, 0, .12, 2.6, 5); slab(pane, -2.0, -2.2, 2.6, .5, .5, .6); slab(oak, -2.0, -2.2, 3.2, .8, .8, .12, 0, .5)
+lamp("POINT", (1, .6, .2), 300, (-2.0, -2.2, 2.9))
+# a gnarled tree and a few tufts of grass
+stem(oak, 7.5, 3.5, 0, .45, 3.2, 6, .25); stem(oak, 7.5, 3.5, 3.0, .22, 1.6, 5, .12)
+for i in range(5):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.9, 1.3))
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15)
+    make(bm, leaf, (7.5 + random.uniform(-1.5, 1.5), 3.5 + random.uniform(-1.5, 1.5), 4.8 + random.uniform(-.3, .8)))
+lamp("SUN", (1, .5, .22), 5, (-26, -12, 9), (0, 0, 2)); lamp("SUN", (.35, .5, .9), 2, (22, 24, 12), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.025, .015, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.6)); co.location = t + Vector((8, -42, 23))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

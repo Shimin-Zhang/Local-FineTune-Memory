@@ -1,0 +1,437 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: bpy_struct: item.attr = val: enum \"NISHITA\" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')",
+ "error_line": "sky.sky_type = 'NISHITA'",
+ "n_renderable_objects": 306,
+ "object_types": {
+  "LIGHT": 6,
+  "MESH": 306
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Ground",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.18,
+    0.14,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Concrete",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.55,
+    0.53,
+    0.5
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Brick",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.45,
+    0.18,
+    0.12
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Brick2",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.52,
+    0.22,
+    0.14
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Glass",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.85,
+    0.9,
+    0.95
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Scaffold",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.55,
+    0.55,
+    0.58
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Pallet",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.5,
+    0.38,
+    0.22
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Hut",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.75,
+    0.72,
+    0.68
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "HutRoof",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.2,
+    0.2,
+    0.22
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Steel",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.35,
+    0.35,
+    0.38
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Lamp",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    1.0,
+    0.9,
+    0.6
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Crane",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.85,
+    0.55,
+    0.05
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Cable",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.1,
+    0.1,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Beacon",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    1.0,
+    0.1,
+    0.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 200.0,
+   "color": [
+    1.0,
+    0.8,
+    0.5
+   ],
+   "location": [
+    6.0,
+    -8.0,
+    5.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 200.0,
+   "color": [
+    1.0,
+    0.8,
+    0.5
+   ],
+   "location": [
+    14.0,
+    0.0,
+    4.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 200.0,
+   "color": [
+    1.0,
+    0.8,
+    0.5
+   ],
+   "location": [
+    -14.0,
+    2.0,
+    4.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 200.0,
+   "color": [
+    1.0,
+    0.8,
+    0.5
+   ],
+   "location": [
+    0.0,
+    14.0,
+    4.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 200.0,
+   "color": [
+    1.0,
+    0.8,
+    0.5
+   ],
+   "location": [
+    -12.0,
+    -12.0,
+    4.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 50.0,
+   "color": [
+    1.0,
+    0.2,
+    0.1
+   ],
+   "location": [
+    -2.0,
+    8.0,
+    25.5
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  40.0,
+  40.0,
+  26.212
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  12.2312
+ ],
+ "scene_radius": 31.1733,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 6.5,
+ "image": true
+}

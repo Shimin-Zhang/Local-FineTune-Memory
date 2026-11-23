@@ -1,0 +1,475 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 127,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 6,
+  "MESH": 127
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "water",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.07,
+    0.12,
+    0.14
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "quay",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.28,
+    0.27,
+    0.25
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "iron2",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.16,
+    0.17,
+    0.19
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "iron",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.1,
+    0.11,
+    0.13
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "hullred",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.3,
+    0.08,
+    0.06
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "deck",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.35,
+    0.22,
+    0.12
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "lamp",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    1.0,
+    0.75,
+    0.35
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "black",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.03,
+    0.03,
+    0.035
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "smoke",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.25,
+    0.26,
+    0.28
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "flag",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.1,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "coal",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.02,
+    0.02,
+    0.02
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "rope",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.4,
+    0.3,
+    0.2
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "brick",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.3,
+    0.14,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "fire",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    1.0,
+    0.45,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "fog",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.2,
+    0.25,
+    0.28
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 150.0,
+   "color": [
+    1.0,
+    0.2,
+    0.15
+   ],
+   "location": [
+    -10.0,
+    -0.5,
+    11.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 200.0,
+   "color": [
+    1.0,
+    0.7,
+    0.3
+   ],
+   "location": [
+    6.0,
+    9.0,
+    3.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 250.0,
+   "color": [
+    1.0,
+    0.75,
+    0.35
+   ],
+   "location": [
+    -6.0,
+    9.2,
+    4.8
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 250.0,
+   "color": [
+    1.0,
+    0.45,
+    0.1
+   ],
+   "location": [
+    6.0,
+    -5.5,
+    2.4
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "SUN",
+   "energy": 4.5,
+   "color": [
+    0.65,
+    0.75,
+    0.85
+   ],
+   "location": [
+    -26.0,
+    -20.0,
+    10.0
+   ],
+   "direction": [
+    0.7701,
+    0.5923,
+    -0.2369
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "SUN",
+   "energy": 2.0,
+   "color": [
+    0.5,
+    0.6,
+    0.75
+   ],
+   "location": [
+    22.0,
+    26.0,
+    14.0
+   ],
+   "direction": [
+    -0.6092,
+    -0.72,
+    -0.3323
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   16.0,
+   -61.0,
+   41.0
+  ],
+  "direction": [
+   -0.2149,
+   0.8327,
+   -0.5104
+  ],
+  "up": [
+   -0.1275,
+   0.4942,
+   0.86
+  ],
+  "angle": 0.4174
+ },
+ "bbox_size": [
+  30.434,
+  27.2,
+  17.939
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  3.7434
+ ],
+ "scene_radius": 22.2928,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 5.1,
+ "image": true
+}

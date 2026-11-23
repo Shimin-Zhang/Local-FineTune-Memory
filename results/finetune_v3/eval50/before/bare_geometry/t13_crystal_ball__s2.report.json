@@ -1,0 +1,171 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 5,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 3,
+  "MESH": 5
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Stand_Material",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.15,
+    0.1,
+    0.08
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Crystal_Glass",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 4,
+   "principled_base_color": null,
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_GLASS",
+    "EMISSION",
+    "MIX_SHADER",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Swirling_Mist",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 6,
+   "principled_base_color": null,
+   "base_color_linked": false,
+   "node_types": [
+    "EMISSION",
+    "MAPPING",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 100.0,
+   "color": [
+    1.0,
+    0.95,
+    0.9
+   ],
+   "location": [
+    1.5,
+    1.5,
+    2.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 50.0,
+   "color": [
+    0.8,
+    0.85,
+    1.0
+   ],
+   "location": [
+    -1.5,
+    -1.5,
+    1.5
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 80.0,
+   "color": [
+    0.5,
+    0.7,
+    1.0
+   ],
+   "location": [
+    0.0,
+    -2.0,
+    1.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   0.0,
+   -2.5,
+   1.2
+  ],
+  "direction": [
+   0.0,
+   0.9889,
+   -0.1483
+  ],
+  "up": [
+   0.0,
+   0.1483,
+   0.9889
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  1.061,
+  1.061,
+  1.225
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.6125
+ ],
+ "scene_radius": 0.9688,
+ "process": "exit 0",
+ "seconds": 1.5,
+ "image": false
+}

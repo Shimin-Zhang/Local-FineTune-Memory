@@ -1,0 +1,132 @@
+```python
+import bpy, math, random
+from mathutils import Vector
+
+def cm(name, col, met=0, rgh=0.5, em=0, ecol=(0,0,0,1)):
+    m = bpy.data.materials.get(name)
+    if m: return m
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    n = m.node_tree.nodes; l = m.node_tree.links; n.clear()
+    b = n.new('ShaderNodeBsdfPrincipled'); o = n.new('ShaderNodeOutputMaterial')
+    o.location=(300,0); b.location=(0,0)
+    b.inputs['Base Color'].default_value = col
+    b.inputs['Metallic'].default_value = met
+    b.inputs['Roughness'].default_value = rgh
+    if em > 0:
+        b.inputs['Emission Color'].default_value = ecol
+        b.inputs['Emission Strength'].default_value = em
+    l.new(b.outputs['BSDF'], o.inputs['Surface'])
+    return m
+
+# The camera is looking at a dark wall/building. The issue is the camera is too close
+# to the left sidewalk/buildings. Let's place it in the middle of the street, elevated.
+
+cam = bpy.data.objects.get("MainCam")
+if cam:
+    # Place camera in the middle of the street, elevated, looking at the character
+    cam.location = (0, 3, 5)
+    # Look at the character at (2.5, 3.5, 0)
+    target = Vector((2.5, 3.5, 1))
+    direction = target - cam.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam.rotation_euler = rot_quat.to_euler()
+    cam.data.lens = 28
+    cam.data.sensor_width = 36
+    cam.data.clip_start = 0.1
+    cam.data.clip_end = 500
+
+# The scene is too dark. Let's boost all lights significantly.
+for obj in bpy.data.objects:
+    if obj.type == 'LIGHT':
+        if obj.name.startswith("LampLight"):
+            obj.data.energy = 3000
+        elif obj.name.startswith("LampL"):
+            obj.data.energy = 1000
+        elif obj.name.startswith("StoreL"):
+            obj.data.energy = 500
+        elif obj.name.startswith("StoreInt"):
+            obj.data.energy = 300
+        elif obj.name.startswith("NeonL"):
+            obj.data.energy = 400
+        elif obj.name == "FillSun":
+            obj.data.energy = 5.0
+        elif obj.name == "RimLight":
+            obj.data.energy = 1000
+        elif obj.name.startswith("Bounce"):
+            obj.data.energy = 300
+        elif obj.name == "SkyFill":
+            obj.data.energy = 1000
+        elif obj.name == "TopFill":
+            obj.data.energy = 800
+        elif obj.name == "BlueRim":
+            obj.data.energy = 500
+        elif obj.name == "CharFront":
+            obj.data.energy = 500
+
+# Boost exposure
+bpy.context.scene.view_settings.exposure = 1.5
+
+# Make the world background slightly brighter
+w = bpy.context.scene.world
+if w and w.use_nodes:
+    bg = w.node_tree.nodes.get("Background")
+    if bg:
+        bg.inputs[0].default_value = (0.01, 0.015, 0.03, 1)
+        bg.inputs[1].default_value = 1.0
+
+# Make buildings lighter so they're visible
+for bname in ["Brick1", "Brick2", "Brick3"]:
+    mb = bpy.data.materials.get(bname)
+    if mb and mb.use_nodes:
+        bsdf = mb.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            if bname == "Brick1":
+                bsdf.inputs['Base Color'].default_value = (0.25, 0.08, 0.05, 1)
+            elif bname == "Brick2":
+                bsdf.inputs['Base Color'].default_value = (0.35, 0.12, 0.08, 1)
+            elif bname == "Brick3":
+                bsdf.inputs['Base Color'].default_value = (0.18, 0.10, 0.06, 1)
+
+# Make the road lighter
+mA = bpy.data.materials.get("WetAsphalt")
+if mA and mA.use_nodes:
+    bsdf = mA.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.05, 0.05, 0.06, 1)
+        bsdf.inputs['Metallic'].default_value = 0.3
+        bsdf.inputs['Roughness'].default_value = 0.15
+
+# Boost window emission
+mWL = bpy.data.materials.get("WinLit")
+if mWL and mWL.use_nodes:
+    bsdf = mWL.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Emission Strength'].default_value = 5.0
+
+# Boost storefront glass
+mSG = bpy.data.materials.get("StoreGlass")
+if mSG and mSG.use_nodes:
+    bsdf = mSG.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Emission Strength'].default_value = 4.0
+
+# Boost lamp glass
+mLG = bpy.data.materials.get("LampGlass")
+if mLG and mLG.use_nodes:
+    bsdf = mLG.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Emission Strength'].default_value = 8.0
+
+# Set render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'
+bpy.context.scene.view_settings.exposure = 1.5
+bpy.context.scene.cycles.max_bounces = 8
+bpy.context.scene.cycles.glossy_bounces = 4
+
+print("Fixed: camera in street elevated, lights massively boosted, buildings lighter, road lighter, emission boosted, exposure increased")
+```

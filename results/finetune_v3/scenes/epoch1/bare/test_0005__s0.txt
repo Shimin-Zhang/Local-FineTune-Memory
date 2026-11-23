@@ -1,0 +1,75 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1510)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tone(rgb, em=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .8
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+sea, snow, rock, pine, plank, red, hull, glass, pump, white, steel = (tone((.04, .13, .2)), tone((.55, .6, .7)), tone((.17, .18, .22)), tone((.05, .17, .12)), tone((.3, .2, .12)), tone((.5, .07, .05)), tone((.7, .68, .6)), tone((1, .75, .35), 7), tone((.6, .08, .06)), tone((.75, .75, .72)), tone((.3, .32, .35)))
+def shape(kind, m, at, size, rot=(0, 0, 0), n=6):
+    bm = bmesh.new()
+    if kind == "box": bmesh.ops.create_cube(bm, size=1)
+    elif kind == "cyl": bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=.5, radius2=.5, depth=1)
+    else: bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.5)
+    for v in bm.verts:
+        if kind != "ico": v.co.z += .5
+        v.co += Vector((random.uniform(-.03, .03), random.uniform(-.03, .03), random.uniform(-.03, .03)))
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location = at; o.scale = size; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def ridge(m, at, r, h, sq=.8):
+    o = shape("cyl", m, at, (r, r, h), n=5)
+    for v in o.data.vertices: v.co.z = max(v.co.z - h / 2, 0) * sq
+    return o
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# the sea slab, a cold blue-green water, with a rough keel
+shape("box", sea, (0, 0, -1.0), (25, 20, 2.0))
+shape("cyl", rock, (0, 0, -3.6), (22, 17, 3.2), rot=(math.pi, 0, 0), n=7)
+# the shore: a snow-and-rock headland at the back with pines
+shape("box", snow, (0, 7.4, .3), (24, 5.2, .6)); shape("box", rock, (0, 5.2, .2), (24, .8, .4))
+for i in range(10):
+    x = -10 + i * 2.2 + random.uniform(-.5, .5); y = 6.5 + random.uniform(-1, 1.2)
+    for k in range(3): shape("cyl", pine, (x, y, .6 + k * .8), (1.8 - k * .5, 1.8 - k * .5, 1.0), n=6)
+    shape("cyl", plank, (x, y, .6), (.2, .2, .6), n=5)
+# cold blue mountains behind, snow-capped
+for x, y, r, h in ((-8, 10.2, 4.2, 8), (-2, 10.8, 4.6, 10.5), (4, 10.5, 4.4, 9), (9.5, 10, 3.6, 6.5)):
+    ridge(rock, (x, y, 0), r, h); ridge(snow, (x, y, h * .72), r * .45, h * .28, 1.0)
+# the floating dock: a plank deck on pontoons with a ramp down to the water
+for i in range(7): shape("box", plank, (-7 + i * 2.4, -1.5, .35), (2.3, 2.2, .25))
+for i in range(7):
+    for s in (-1, 1): shape("box", hull, (-7 + i * 2.4, -1.5 + s * 1.1, -.1), (1.6, .5, .5))
+shape("box", plank, (-10.5, -1.5, .15), (4, 2.2, .2), rot=(0, .25, 0))
+for i in range(4): shape("cyl", steel, (-7 + i * 3.4, -.3, .6), (.15, .15, 1.2), n=5)
+for i in range(3): shape("box", red, (-5.5 + i * 3.4, -.3, 1.8), (.3, .1, .3))
+# the boathouse: red walls, gabled roof, a lit window and a door
+shape("box", red, (8.5, 3.5, .6), (5, 4, 2.4)); shape("box", plank, (8.5, 3.5, 3.0), (5.6, 4.6, .3), rot=(0, 0, 0))
+shape("box", snow, (8.5, 3.5, 3.3), (5.2, 4.2, .3), rot=(0, 0, 0))
+shape("box", glass, (6.0, 3.5, 1.3), (.1, 1.2, .9)); shape("box", plank, (8.5, 1.45, .6), (1.2, .1, 1.6))
+lamp("POINT", (1, .7, .3), 350, (6.0, 3.5, 1.5))
+# the plane on a cradle: fuselage, wings, tail, float and a nose light
+shape("box", steel, (1.5, -4.2, .3), (3.6, 1.6, .3)); shape("box", steel, (1.5, -4.2, .6), (.3, 1.4, .4))
+shape("cyl", hull, (1.5, -4.2, 1.1), (1.0, 1.4, 3.6), rot=(0, math.pi / 2, 0), n=7)
+shape("box", hull, (1.5, -4.2, 1.9), (1.0, 6.2, .15)); shape("box", hull, (3.2, -4.2, 1.9), (.15, 2.4, .12)); shape("box", hull, (3.2, -4.2, 2.0), (.15, .8, .7))
+shape("box", hull, (1.5, -4.2, .75), (3.2, 1.2, .3)); shape("ico", glass, (-.4, -4.2, 1.5), (.5, .5, .5)); shape("cyl", steel, (3.5, -4.2, 1.2), (.15, .15, .6), rot=(0, math.pi / 2, 0), n=5)
+# the gas pump: a red body, a glowing dial, a hose and a canopy pole
+shape("box", pump, (4.5, -6.2, .6), (1.0, .7, 1.8)); shape("box", glass, (4.5, -6.6, 1.8), (.6, .06, .4)); shape("box", white, (4.5, -6.6, 1.2), (.8, .06, .12))
+shape("box", pump, (5.5, -6.2, 1.0), (.15, .15, .15)); shape("box", steel, (5.5, -6.2, .8), (.1, .1, .8)); shape("cyl", steel, (6.5, -6.2, .6), (.12, .12, 3.2), n=5)
+shape("box", steel, (5.5, -6.2, 3.4), (2.4, .12, .12)); shape("box", glass, (5.5, -6.2, 3.5), (2.2, .5, .12)); lamp("POINT", (1, .7, .3), 150, (4.5, -7.0, 2.0))
+# a small red buoy with a light, and a rope line
+shape("cyl", red, (-11, 2, .1), (.8, .8, 1.2), n=6); shape("ico", glass, (-11, 2, 1.5), (.4, .4, .4)); lamp("POINT", (1, .8, .4), 150, (-11, 2, 1.6))
+lamp("SUN", (.5, .65, 1), 5, (-26, -14, 10), (0, 0, 1)); lamp("SUN", (.9, .5, .45), 2.2, (24, 22, 9), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 2.5)); co.location = t + Vector((14, -62, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

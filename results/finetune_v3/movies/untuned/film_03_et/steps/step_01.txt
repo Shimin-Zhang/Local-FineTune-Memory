@@ -1,0 +1,527 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Set up world
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+world_node_tree = world.node_tree
+for node in world_node_tree.nodes:
+    world_node_tree.nodes.remove(node)
+
+# Create sky gradient
+sky_bg = world_node_tree.nodes.new('ShaderNodeBackground')
+sky_bg.inputs[0].default_value = (0.02, 0.05, 0.15, 1.0)
+sky_bg.inputs[1].default_value = 1.0
+out_node = world_node_tree.nodes.new('ShaderNodeOutputWorld')
+world_node_tree.links.new(sky_bg.outputs[0], out_node.inputs[0])
+
+# Set render settings
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+
+# Camera setup
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 50
+cam = bpy.data.objects.new("Camera", cam_data)
+scene.collection.objects.link(cam)
+cam.location = (0, -15, 2)
+cam.rotation_euler = (math.radians(90), 0, 0)
+scene.camera = cam
+
+# Lighting
+# Moon light (main key light)
+sun_data = bpy.data.lights.new("MoonLight", type='SUN')
+sun_data.energy = 0.5
+sun_data.color = (0.8, 0.85, 1.0)
+sun = bpy.data.objects.new("MoonLight", sun_data)
+scene.collection.objects.link(sun)
+sun.location = (10, -5, 20)
+sun.rotation_euler = (math.radians(-60), 0, math.radians(30))
+
+# Fill light
+fill_data = bpy.data.lights.new("FillLight", type='SUN')
+fill_data.energy = 0.1
+fill_data.color = (0.5, 0.5, 0.7)
+fill = bpy.data.objects.new("FillLight", fill_data)
+scene.collection.objects.link(fill)
+fill.location = (-10, -5, 10)
+fill.rotation_euler = (math.radians(-45), 0, math.radians(-30))
+
+# Rim light for the moon glow
+rim_data = bpy.data.lights.new("RimLight", type='SUN')
+rim_data.energy = 0.3
+rim_data.color = (0.7, 0.75, 1.0)
+rim = bpy.data.objects.new("RimLight", rim_data)
+scene.collection.objects.link(rim)
+rim.location = (0, 5, 15)
+rim.rotation_euler = (math.radians(60), 0, 0)
+
+# Create materials
+def create_material(name, color, roughness=0.5, metallic=0.0, emission=0.0, emission_color=None):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    
+    bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf.location = (0, 0)
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Roughness'].default_value = roughness
+    bsdf.inputs['Metallic'].default_value = metallic
+    if emission > 0:
+        bsdf.inputs['Emission Color'].default_value = emission_color if emission_color else color
+        bsdf.inputs['Emission Strength'].default_value = emission
+    
+    output = nodes.new('ShaderNodeOutputMaterial')
+    output.location = (300, 0)
+    links.new(bsdf.outputs[0], output.inputs[0])
+    return mat
+
+# Materials
+mat_moon = create_material("MoonMat", (0.9, 0.9, 0.85), roughness=0.8, emission=2.0, emission_color=(0.9, 0.9, 0.85))
+mat_bike_frame = create_material("BikeFrame", (0.8, 0.1, 0.1), roughness=0.3, metallic=0.7)
+mat_bike_tire = create_material("BikeTire", (0.05, 0.05, 0.05), roughness=0.9)
+mat_bike_handle = create_material("BikeHandle", (0.2, 0.2, 0.2), roughness=0.4, metallic=0.8)
+mat_bike_seat = create_material("BikeSeat", (0.1, 0.1, 0.1), roughness=0.8)
+mat_bike_chain = create_material("BikeChain", (0.3, 0.3, 0.3), roughness=0.2, metallic=0.9)
+mat_bike_saddle = create_material("BikeSaddle", (0.15, 0.15, 0.15), roughness=0.7)
+mat_bike_pedal = create_material("BikePedal", (0.2, 0.2, 0.2), roughness=0.3, metallic=0.8)
+mat_bike_wheel_rim = create_material("WheelRim", (0.7, 0.7, 0.7), roughness=0.2, metallic=0.9)
+mat_bike_spoke = create_material("Spoke", (0.6, 0.6, 0.6), roughness=0.3, metallic=0.8)
+mat_bike_fork = create_material("BikeFork", (0.7, 0.1, 0.1), roughness=0.3, metallic=0.7)
+mat_bike_seatpost = create_material("SeatPost", (0.2, 0.2, 0.2), roughness=0.3, metallic=0.8)
+mat_bike_chainring = create_material("Chainring", (0.4, 0.4, 0.4), roughness=0.2, metallic=0.9)
+mat_bike_crank = create_material("Crank", (0.3, 0.3, 0.3), roughness=0.3, metallic=0.8)
+mat_bike_kickstand = create_material("Kickstand", (0.2, 0.2, 0.2), roughness=0.4, metallic=0.7)
+mat_bike_basket = create_material("Basket", (0.4, 0.3, 0.2), roughness=0.9)
+mat_bike_basket_wire = create_material("BasketWire", (0.5, 0.4, 0.3), roughness=0.5, metallic=0.3)
+mat_et_body = create_material("ETBody", (0.3, 0.5, 0.6), roughness=0.6)
+mat_et_head = create_material("ETHead", (0.35, 0.55, 0.65), roughness=0.5)
+mat_et_eye = create_material("ETEye", (0.1, 0.15, 0.2), roughness=0.3)
+mat_et_nose = create_material("ETNose", (0.3, 0.5, 0.6), roughness=0.6)
+mat_et_hand = create_material("ETHand", (0.3, 0.5, 0.6), roughness=0.6)
+mat_et_foot = create_material("ETFoot", (0.3, 0.5, 0.6), roughness=0.6)
+mat_forest_tree = create_material("ForestTree", (0.05, 0.15, 0.05), roughness=0.9)
+mat_forest_trunk = create_material("ForestTrunk", (0.15, 0.1, 0.05), roughness=0.9)
+mat_ground = create_material("Ground", (0.05, 0.1, 0.05), roughness=0.9)
+mat_star = create_material("Star", (1.0, 1.0, 1.0), roughness=0.5, emission=5.0, emission_color=(1.0, 1.0, 1.0))
+
+# Create the moon
+bpy.ops.mesh.primitive_uv_sphere_add(radius=5, location=(0, 10, 8), segments=64, ring_count=32)
+moon = bpy.context.active_object
+moon.name = "Moon"
+moon.data.materials.append(mat_moon)
+# Scale to make it slightly elliptical
+moon.scale = (1, 1, 1)
+
+# Add moon craters (small darker spheres on surface)
+random.seed(42)
+for i in range(15):
+    angle = random.uniform(0, 2*math.pi)
+    elev = random.uniform(-0.5, 0.5)
+    r = 0.3 + random.uniform(0, 0.5)
+    x = 5 * math.cos(angle) * math.cos(elev)
+    y = 10 + 5 * math.sin(angle) * math.cos(elev)
+    z = 8 + 5 * math.sin(elev)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(x, y, z), segments=16, ring_count=8)
+    crater = bpy.context.active_object
+    crater.name = f"Crater_{i}"
+    crater_mat = create_material(f"CraterMat_{i}", (0.7, 0.7, 0.65), roughness=0.9)
+    crater.data.materials.append(crater_mat)
+    crater.scale = (1, 1, 0.3)  # Flatten craters
+
+# Create stars
+for i in range(200):
+    x = random.uniform(-30, 30)
+    y = random.uniform(15, 40)
+    z = random.uniform(-10, 25)
+    size = random.uniform(0.02, 0.08)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z), segments=8, ring_count=4)
+    star = bpy.context.active_object
+    star.name = f"Star_{i}"
+    star.data.materials.append(mat_star)
+
+# Create the bicycle
+bike_center = Vector((0, -2, 0))
+
+# Function to create a cylinder between two points
+def create_cylinder_between(p1, p2, radius, material, name="Cyl"):
+    p1 = Vector(p1)
+    p2 = Vector(p2)
+    direction = p2 - p1
+    length = direction.length
+    if length == 0:
+        return None
+    direction.normalize()
+    
+    # Create cylinder
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=length, location=(p1 + p2) / 2, vertices=16)
+    cyl = bpy.context.active_object
+    cyl.name = name
+    
+    # Rotate to align with direction
+    rot = direction.to_track_quat('Z', 'Y')
+    cyl.rotation_euler = rot.to_euler()
+    
+    if material:
+        cyl.data.materials.append(material)
+    return cyl
+
+# Bicycle dimensions (in meters, scaled up for visibility)
+wheel_radius = 0.35
+wheel_width = 0.03
+frame_height = 0.7
+frame_length = 1.0
+handlebar_height = 0.75
+seat_height = 0.65
+
+# Wheel positions
+rear_wheel_center = bike_center + Vector((-0.4, 0, 0))
+front_wheel_center = bike_center + Vector((0.4, 0, 0))
+
+# Create rear wheel
+bpy.ops.mesh.primitive_torus_add(major_radius=wheel_radius, minor_radius=wheel_width/2, 
+                                  major_segments=32, minor_segments=8,
+                                  location=rear_wheel_center)
+rear_wheel = bpy.context.active_object
+rear_wheel.name = "RearWheel"
+rear_wheel.data.materials.append(mat_bike_tire)
+rear_wheel.rotation_euler = (0, math.radians(90), 0)
+
+# Rear wheel rim
+bpy.ops.mesh.primitive_torus_add(major_radius=wheel_radius - wheel_width/2, minor_radius=0.01,
+                                  major_segments=32, minor_segments=8,
+                                  location=rear_wheel_center)
+rear_rim = bpy.context.active_object
+rear_rim.name = "RearRim"
+rear_rim.data.materials.append(mat_bike_wheel_rim)
+rear_rim.rotation_euler = (0, math.radians(90), 0)
+
+# Rear wheel spokes
+for i in range(12):
+    angle = i * math.pi / 6
+    spoke_end = rear_wheel_center + Vector((wheel_radius * math.cos(angle), wheel_radius * math.sin(angle), 0))
+    create_cylinder_between(rear_wheel_center, spoke_end, 0.005, mat_bike_spoke, f"RearSpoke_{i}")
+
+# Create front wheel
+bpy.ops.mesh.primitive_torus_add(major_radius=wheel_radius, minor_radius=wheel_width/2,
+                                  major_segments=32, minor_segments=8,
+                                  location=front_wheel_center)
+front_wheel = bpy.context.active_object
+front_wheel.name = "FrontWheel"
+front_wheel.data.materials.append(mat_bike_tire)
+front_wheel.rotation_euler = (0, math.radians(90), 0)
+
+# Front wheel rim
+bpy.ops.mesh.primitive_torus_add(major_radius=wheel_radius - wheel_width/2, minor_radius=0.01,
+                                  major_segments=32, minor_segments=8,
+                                  location=front_wheel_center)
+front_rim = bpy.context.active_object
+front_rim.name = "FrontRim"
+front_rim.data.materials.append(mat_bike_wheel_rim)
+front_rim.rotation_euler = (0, math.radians(90), 0)
+
+# Front wheel spokes
+for i in range(12):
+    angle = i * math.pi / 6
+    spoke_end = front_wheel_center + Vector((wheel_radius * math.cos(angle), wheel_radius * math.sin(angle), 0))
+    create_cylinder_between(front_wheel_center, spoke_end, 0.005, mat_bike_spoke, f"FrontSpoke_{i}")
+
+# Frame
+# Bottom bracket (where pedals attach)
+bb_center = bike_center + Vector((0, 0, 0.15))
+
+# Seat tube (from bottom bracket to seat)
+seat_top = bike_center + Vector((-0.1, 0, seat_height))
+create_cylinder_between(bb_center, seat_top, 0.015, mat_bike_frame, "SeatTube")
+
+# Down tube (from bottom bracket to head tube)
+head_tube_bottom = bike_center + Vector((0.35, 0, 0.5))
+create_cylinder_between(bb_center, head_tube_bottom, 0.015, mat_bike_frame, "DownTube")
+
+# Top tube (from seat to head tube)
+head_tube_top = bike_center + Vector((0.35, 0, 0.65))
+create_cylinder_between(seat_top, head_tube_top, 0.015, mat_bike_frame, "TopTube")
+
+# Seat stay (from seat to rear wheel hub)
+rear_hub = rear_wheel_center
+create_cylinder_between(seat_top, rear_hub, 0.01, mat_bike_frame, "SeatStay")
+
+# Chain stay (from bottom bracket to rear wheel hub)
+create_cylinder_between(bb_center, rear_hub, 0.01, mat_bike_frame, "ChainStay")
+
+# Fork (from head tube to front wheel hub)
+front_hub = front_wheel_center
+create_cylinder_between(head_tube_bottom, front_hub, 0.012, mat_bike_fork, "ForkLeft")
+create_cylinder_between(head_tube_top, front_hub, 0.012, mat_bike_fork, "ForkRight")
+
+# Handlebar stem
+stem_top = bike_center + Vector((0.35, 0, 0.7))
+create_cylinder_between(head_tube_top, stem_top, 0.01, mat_bike_handle, "Stem")
+
+# Handlebars
+handlebar_left = stem_top + Vector((0, -0.15, 0))
+handlebar_right = stem_top + Vector((0, 0.15, 0))
+create_cylinder_between(handlebar_left, handlebar_right, 0.01, mat_bike_handle, "Handlebar")
+
+# Seat
+bpy.ops.mesh.primitive_cube_add(size=1, location=seat_top + Vector((0, 0, 0.02)))
+seat = bpy.context.active_object
+seat.name = "Seat"
+seat.scale = (0.12, 0.08, 0.02)
+seat.data.materials.append(mat_bike_seat)
+
+# Seat post
+create_cylinder_between(seat_top - Vector((0, 0, 0.02)), seat_top + Vector((0, 0, 0.05)), 0.008, mat_bike_seatpost, "SeatPost")
+
+# Crank and pedals
+crank_length = 0.12
+pedal_left = bb_center + Vector((crank_length * math.cos(math.pi/4), crank_length * math.sin(math.pi/4), 0))
+pedal_right = bb_center + Vector((crank_length * math.cos(-math.pi/4), crank_length * math.sin(-math.pi/4), 0))
+create_cylinder_between(bb_center, pedal_left, 0.008, mat_bike_crank, "CrankLeft")
+create_cylinder_between(bb_center, pedal_right, 0.008, mat_bike_crank, "CrankRight")
+
+# Pedals
+bpy.ops.mesh.primitive_cube_add(size=1, location=pedal_left)
+pedal_l = bpy.context.active_object
+pedal_l.name = "PedalLeft"
+pedal_l.scale = (0.05, 0.08, 0.01)
+pedal_l.data.materials.append(mat_bike_pedal)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=pedal_right)
+pedal_r = bpy.context.active_object
+pedal_r.name = "PedalRight"
+pedal_r.scale = (0.05, 0.08, 0.01)
+pedal_r.data.materials.append(mat_bike_pedal)
+
+# Chainring
+bpy.ops.mesh.primitive_torus_add(major_radius=0.08, minor_radius=0.008,
+                                  major_segments=24, minor_segments=6,
+                                  location=bb_center + Vector((0, 0.02, 0)))
+chainring = bpy.context.active_object
+chainring.name = "Chainring"
+chainring.data.materials.append(mat_bike_chainring)
+chainring.rotation_euler = (math.radians(90), 0, 0)
+
+# Chain (simplified as a loop)
+chain_points = [
+    bb_center + Vector((0.08, 0.02, 0)),
+    rear_wheel_center + Vector((0.08, 0, 0)),
+    rear_wheel_center + Vector((0.08, 0, -0.05)),
+    bb_center + Vector((0.08, 0.02, -0.05)),
+]
+for i in range(len(chain_points)):
+    p1 = chain_points[i]
+    p2 = chain_points[(i+1) % len(chain_points)]
+    create_cylinder_between(p1, p2, 0.003, mat_bike_chain, f"Chain_{i}")
+
+# Basket (woven look - simplified as a box with wire frame)
+basket_center = bike_center + Vector((0.35, 0, 0.55))
+bpy.ops.mesh.primitive_cube_add(size=1, location=basket_center)
+basket = bpy.context.active_object
+basket.name = "Basket"
+basket.scale = (0.15, 0.12, 0.1)
+basket.data.materials.append(mat_bike_basket)
+
+# Basket wires (vertical)
+for i in range(5):
+    x_offset = -0.06 + i * 0.03
+    create_cylinder_between(
+        basket_center + Vector((x_offset, -0.06, -0.05)),
+        basket_center + Vector((x_offset, -0.06, 0.05)),
+        0.003, mat_bike_basket_wire, f"BasketWireV_{i}"
+    )
+    create_cylinder_between(
+        basket_center + Vector((x_offset, 0.06, -0.05)),
+        basket_center + Vector((x_offset, 0.06, 0.05)),
+        0.003, mat_bike_basket_wire, f"BasketWireV2_{i}"
+    )
+
+# Basket wires (horizontal)
+for i in range(4):
+    y_offset = -0.04 + i * 0.027
+    create_cylinder_between(
+        basket_center + Vector((-0.075, y_offset, -0.05)),
+        basket_center + Vector((0.075, y_offset, -0.05)),
+        0.003, mat_bike_basket_wire, f"BasketWireH_{i}"
+    )
+    create_cylinder_between(
+        basket_center + Vector((-0.075, y_offset, 0.05)),
+        basket_center + Vector((0.075, y_offset, 0.05)),
+        0.003, mat_bike_basket_wire, f"BasketWireH2_{i}"
+    )
+
+# E.T. in the basket
+et_center = basket_center + Vector((0, 0, 0.05))
+
+# E.T. body (elongated sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.06, location=et_center, segments=32, ring_count=16)
+et_body = bpy.context.active_object
+et_body.name = "ET_Body"
+et_body.scale = (1, 0.8, 1.2)
+et_body.data.materials.append(mat_et_body)
+
+# E.T. head
+head_center = et_center + Vector((0, 0, 0.08))
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=head_center, segments=32, ring_count=16)
+et_head = bpy.context.active_object
+et_head.name = "ET_Head"
+et_head.scale = (1, 0.9, 1.1)
+et_head.data.materials.append(mat_et_head)
+
+# E.T. eyes
+eye_left = head_center + Vector((-0.02, 0.04, 0.01))
+eye_right = head_center + Vector((0.02, 0.04, 0.01))
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.012, location=eye_left, segments=16, ring_count=8)
+et_eye_l = bpy.context.active_object
+et_eye_l.name = "ET_EyeLeft"
+et_eye_l.data.materials.append(mat_et_eye)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.012, location=eye_right, segments=16, ring_count=8)
+et_eye_r = bpy.context.active_object
+et_eye_r.name = "ET_EyeRight"
+et_eye_r.data.materials.append(mat_et_eye)
+
+# E.T. nose (long, bulbous)
+nose_center = head_center + Vector((0, 0.05, -0.01))
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.015, location=nose_center, segments=16, ring_count=8)
+et_nose = bpy.context.active_object
+et_nose.name = "ET_Nose"
+et_nose.scale = (1, 1.5, 0.8)
+et_nose.data.materials.append(mat_et_nose)
+
+# E.T. hands (long fingers)
+hand_left_center = et_center + Vector((-0.05, 0.03, -0.02))
+hand_right_center = et_center + Vector((0.05, 0.03, -0.02))
+
+# Left hand
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.015, location=hand_left_center, segments=16, ring_count=8)
+et_hand_l = bpy.context.active_object
+et_hand_l.name = "ET_HandLeft"
+et_hand_l.scale = (0.8, 1.2, 1.5)
+et_hand_l.data.materials.append(mat_et_hand)
+
+# Right hand
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.015, location=hand_right_center, segments=16, ring_count=8)
+et_hand_r = bpy.context.active_object
+et_hand_r.name = "ET_HandRight"
+et_hand_r.scale = (0.8, 1.2, 1.5)
+et_hand_r.data.materials.append(mat_et_hand)
+
+# E.T. feet
+foot_left_center = et_center + Vector((-0.03, 0.02, -0.08))
+foot_right_center = et_center + Vector((0.03, 0.02, -0.08))
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.015, location=foot_left_center, segments=16, ring_count=8)
+et_foot_l = bpy.context.active_object
+et_foot_l.name = "ET_FootLeft"
+et_foot_l.scale = (0.8, 1.2, 1.0)
+et_foot_l.data.materials.append(mat_et_foot)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.015, location=foot_right_center, segments=16, ring_count=8)
+et_foot_r = bpy.context.active_object
+et_foot_r.name = "ET_FootRight"
+et_foot_r.scale = (0.8, 1.2, 1.0)
+et_foot_r.data.materials.append(mat_et_foot)
+
+# E.T. long neck
+neck_center = et_center + Vector((0, 0, 0.05))
+create_cylinder_between(et_center + Vector((0, 0, 0.03)), head_center - Vector((0, 0, 0.03)), 0.015, mat_et_body, "ET_Neck")
+
+# Forest (trees in the background)
+random.seed(123)
+for i in range(30):
+    x = random.uniform(-15, 15)
+    z = random.uniform(-8, -3)
+    height = random.uniform(2, 5)
+    trunk_radius = random.uniform(0.1, 0.2)
+    
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=trunk_radius, depth=height, 
+                                         location=(x, 0, z + height/2), vertices=8)
+    trunk = bpy.context.active_object
+    trunk.name = f"Trunk_{i}"
+    trunk.data.materials.append(mat_forest_trunk)
+    
+    # Canopy (cone shape for pine trees)
+    canopy_height = height * 0.7
+    canopy_radius = random.uniform(0.5, 1.0)
+    bpy.ops.mesh.primitive_cone_add(radius1=canopy_radius, radius2=0, depth=canopy_height,
+                                     location=(x, 0, z + height + canopy_height/2), vertices=8)
+    canopy = bpy.context.active_object
+    canopy.name = f"Canopy_{i}"
+    canopy.data.materials.append(mat_forest_tree)
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(size=50, location=(0, 0, -0.5))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(mat_ground)
+
+# Add some grass tufts
+for i in range(50):
+    x = random.uniform(-10, 10)
+    z = random.uniform(-5, -1)
+    bpy.ops.mesh.primitive_cone_add(radius1=0.05, radius2=0, depth=0.15,
+                                     location=(x, 0, z + 0.075), vertices=6)
+    grass = bpy.context.active_object
+    grass.name = f"Grass_{i}"
+    grass.data.materials.append(mat_forest_tree)
+    grass.rotation_euler = (random.uniform(-0.3, 0.3), random.uniform(-0.3, 0.3), 0)
+
+# Position the bicycle and E.T. for the flying scene
+# Tilt the bicycle slightly for dynamic flying pose
+bike_objects = [obj for obj in bpy.data.objects if obj.name.startswith(("Rear", "Front", "Seat", "Down", "Top", "Chain", "Fork", "Stem", "Handlebar", "SeatPost", "Crank", "Pedal", "Chainring", "Basket", "ET_"))]
+for obj in bike_objects:
+    obj.rotation_euler = (math.radians(-10), math.radians(5), math.radians(-5))
+
+# Move the entire bike assembly up and forward
+for obj in bike_objects:
+    obj.location += Vector((0, -2, 1.5))
+
+# Add a subtle glow around E.T.
+glow_data = bpy.data.lights.new("ETGlow", type='POINT')
+glow_data.energy = 5
+glow_data.color = (0.5, 0.7, 1.0)
+glow_data.shadow_soft_size = 0.5
+glow = bpy.data.objects.new("ETGlow", glow_data)
+scene.collection.objects.link(glow)
+glow.location = et_center + Vector((0, 0, 0.1))
+
+# Add moon glow
+moon_glow_data = bpy.data.lights.new("MoonGlow", type='POINT')
+moon_glow_data.energy = 50
+moon_glow_data.color = (0.8, 0.85, 1.0)
+moon_glow_data.shadow_soft_size = 2.0
+moon_glow = bpy.data.objects.new("MoonGlow", moon_glow_data)
+scene.collection.objects.link(moon_glow)
+moon_glow.location = (0, 10, 8)
+
+# Set up render settings for better quality
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.cycles.max_bounces = 8
+scene.cycles.caustics_reflective = True
+scene.cycles.caustics_refractive = True
+
+# Set film exposure
+scene.view_settings.exposure = 0.5
+scene.view_settings.look = 'Medium High Contrast'
+
+print("Scene built successfully!")
+```

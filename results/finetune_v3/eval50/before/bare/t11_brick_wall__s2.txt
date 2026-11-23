@@ -1,0 +1,159 @@
+```python
+import bpy
+import math
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Wall parameters
+wall_length = 8.0   # X
+wall_height = 4.0   # Z
+wall_thickness = 0.4 # Y
+
+brick_w = 0.25      # width (X)
+brick_h = 0.10      # height (Z)
+brick_d = 0.20      # depth (Y)
+mortar = 0.01       # gap between bricks
+
+# Window opening parameters
+win_w = 1.5         # width (X)
+win_h = 1.2         # height (Z)
+win_center_x = 0.0
+win_center_z = 2.2  # center height from base
+
+# Create wall base mesh
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, wall_height / 2))
+wall = bpy.context.active_object
+wall.scale = (wall_length / 2, wall_thickness / 2, wall_height / 2)
+bpy.ops.object.transform_apply(scale=True)
+wall.name = "BrickWall"
+
+# Create window opening by boolean
+bpy.ops.mesh.primitive_cube_add(size=1, location=(win_center_x, 0, win_center_z))
+cutter = bpy.context.active_object
+cutter.scale = (win_w / 2, wall_thickness, win_h / 2)
+bpy.ops.object.transform_apply(scale=True)
+cutter.name = "WindowCutter"
+
+# Boolean modifier
+mod = wall.modifiers.new("WindowCut", 'BOOLEAN')
+mod.operation = 'DIFFERENCE'
+mod.object = cutter
+mod.solver = 'EXACT'
+
+bpy.context.view_layer.objects.active = wall
+bpy.ops.object.modifier_apply(modifier="WindowCut")
+
+# Delete cutter
+bpy.data.objects.remove(cutter, do_unlink=True)
+
+# --- Create individual bricks on the wall face (front face at y = wall_thickness/2) ---
+# We'll place bricks on the front face only for visual brick pattern
+# Skip bricks that fall within the window opening
+
+front_y = wall_thickness / 2
+
+bricks = []
+row = 0
+z = 0.0
+while z + brick_h <= wall_height:
+    offset = 0.0 if row % 2 == 0 else (brick_w + mortar) / 2.0
+    x = -wall_length / 2 - offset
+    while x + brick_w <= wall_length / 2:
+        # Check if brick overlaps window
+        brick_min_x = x
+        brick_max_x = x + brick_w
+        brick_min_z = z
+        brick_max_z = z + brick_h
+
+        # Window bounds
+        win_min_x = win_center_x - win_w / 2
+        win_max_x = win_center_x + win_w / 2
+        win_min_z = win_center_z - win_h / 2
+        win_max_z = win_center_z + win_h / 2
+
+        # Check overlap
+        overlaps = (
+            brick_max_x > win_min_x and
+            brick_min_x < win_max_x and
+            brick_max_z > win_min_z and
+            brick_min_z < win_max_z
+        )
+
+        if not overlaps:
+            brick = bpy.data.meshes.new(f"Brick_{row}_{int(x*100)}")
+            verts = [
+                (brick_min_x, front_y, brick_min_z),
+                (brick_max_x, front_y, brick_min_z),
+                (brick_max_x, front_y, brick_max_z),
+                (brick_min_x, front_y, brick_max_z),
+            ]
+            faces = [(0, 1, 2, 3)]
+            brick.from_pydata(verts, [], faces)
+            brick_obj = bpy.data.objects.new(f"Brick_{row}_{int(x*100)}", brick)
+            bpy.context.collection.objects.link(brick_obj)
+            bricks.append(brick_obj)
+
+        x += brick_w + mortar
+    z += brick_h + mortar
+    row += 1
+
+# Join all bricks into one object
+if bricks:
+    bpy.ops.object.select_all(action='DESELECT')
+    for b in bricks:
+        b.select_set(True)
+    bpy.context.view_layer.objects.active = bricks[0]
+    bpy.ops.object.join()
+    bpy.context.active_object.name = "BrickPattern"
+
+# --- Materials ---
+# Brick material
+mat_brick = bpy.data.materials.new("BrickMat")
+mat_brick.use_nodes = True
+nodes = mat_brick.node_tree.nodes
+links = mat_brick.node_tree.links
+nodes.clear()
+
+out = nodes.new('ShaderNodeOutputMaterial')
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.55, 0.15, 0.1, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.8
+links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+
+# Wall material
+mat_wall = bpy.data.materials.new("WallMat")
+mat_wall.use_nodes = True
+nodes = mat_wall.node_tree.nodes
+links = mat_wall.node_tree.links
+nodes.clear()
+
+out = nodes.new('ShaderNodeOutputMaterial')
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.4, 0.4, 0.4, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.9
+links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+
+# Assign materials
+wall.data.materials.clear()
+wall.data.materials.append(mat_wall)
+
+brick_pattern = bpy.data.objects.get("BrickPattern")
+if brick_pattern:
+    brick_pattern.data.materials.clear()
+    brick_pattern.data.materials.append(mat_brick)
+
+# Add a simple light and camera for context
+bpy.ops.object.light_add(type='SUN', location=(5, -5, 8))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), 0, math.radians(30))
+sun.data.energy = 3.0
+
+bpy.ops.object.camera_add(location=(0, -12, 3))
+cam = bpy.context.active_object
+cam.rotation_euler = (math.radians(80), 0, 0)
+bpy.context.scene.camera = cam
+
+print("Brick wall with window opening created.")
+```

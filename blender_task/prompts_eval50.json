@@ -1,0 +1,210 @@
+{
+ "texture": [
+  {
+   "id": "t01_teapot",
+   "prompt": "Create a purple tea pot that has clouds on it."
+  },
+  {
+   "id": "t02_lemon",
+   "prompt": "Make a bumpy textured lemon."
+  },
+  {
+   "id": "t03_orange",
+   "prompt": "Create an orange with dimpled skin and a small green leaf."
+  },
+  {
+   "id": "t04_barrel",
+   "prompt": "Make a rusty metal barrel."
+  },
+  {
+   "id": "t05_marble_pawn",
+   "prompt": "Create a chess pawn made of white marble with grey veins."
+  },
+  {
+   "id": "t06_neon_ring",
+   "prompt": "Make a glowing neon ring floating above a dark floor."
+  },
+  {
+   "id": "t07_frosted_vase",
+   "prompt": "Create a frosted glass vase."
+  },
+  {
+   "id": "t08_crate",
+   "prompt": "Make a wooden crate with visible planks and wood grain."
+  },
+  {
+   "id": "t09_trophy",
+   "prompt": "Create a brushed gold trophy cup."
+  },
+  {
+   "id": "t10_watermelon",
+   "prompt": "Make a watermelon with dark and light green stripes."
+  },
+  {
+   "id": "t11_brick_wall",
+   "prompt": "Create a brick wall with a window opening."
+  },
+  {
+   "id": "t12_basketball",
+   "prompt": "Make a basketball with its black lines and pebbled surface."
+  },
+  {
+   "id": "t13_crystal_ball",
+   "prompt": "Create a crystal ball with swirling mist inside, on a small stand."
+  },
+  {
+   "id": "t14_candy_cane",
+   "prompt": "Make a candy cane with red and white spiral stripes."
+  },
+  {
+   "id": "t15_lava_rock",
+   "prompt": "Create a chunk of lava rock with glowing cracks."
+  },
+  {
+   "id": "t16_picnic",
+   "prompt": "Make a checkered picnic blanket with a wicker basket on it."
+  },
+  {
+   "id": "t17_mossy_boulder",
+   "prompt": "Create a moss-covered boulder."
+  },
+  {
+   "id": "t18_soap_bubble",
+   "prompt": "Make a soap bubble with a rainbow sheen."
+  }
+ ],
+ "simple": [
+  {
+   "id": "s02_mug",
+   "prompt": "Make a red mug with a white handle."
+  },
+  {
+   "id": "s03_table_vase",
+   "prompt": "Build a wooden table with four legs and a green vase on top."
+  },
+  {
+   "id": "s04_duck",
+   "prompt": "Create a yellow rubber duck."
+  },
+  {
+   "id": "s05_snowman",
+   "prompt": "Make a snowman wearing a black top hat, with an orange carrot nose."
+  },
+  {
+   "id": "s06_car",
+   "prompt": "Create a blue car with four black wheels."
+  },
+  {
+   "id": "s07_house",
+   "prompt": "Build a small house with a red roof, a brown door and two windows."
+  },
+  {
+   "id": "s08_traffic_light",
+   "prompt": "Create a traffic light with red, yellow and green lights."
+  },
+  {
+   "id": "s09_rocket",
+   "prompt": "Create a rocket with three fins and a round window."
+  },
+  {
+   "id": "s10_cactus",
+   "prompt": "Make a cactus in a terracotta pot."
+  },
+  {
+   "id": "s11_lighthouse",
+   "prompt": "Build a lighthouse with red and white bands."
+  }
+ ],
+ "lighting": [
+  {
+   "id": "l01_key_rim",
+   "prompt": "Put a sphere, a cube and a cone on a floor and light them with a warm key light from the left and a cool blue rim light from behind, against a dark background."
+  },
+  {
+   "id": "l02_three_point",
+   "prompt": "Create a white statue made of simple shapes on a pedestal and give it dramatic three-point lighting."
+  },
+  {
+   "id": "l03_product_shot",
+   "prompt": "Make a product shot of a perfume bottle: soft light from above, a plain white background, and a camera looking slightly down at it."
+  },
+  {
+   "id": "l04_campfire_night",
+   "prompt": "Build a small campfire scene at night, lit only by the orange glow of the fire."
+  },
+  {
+   "id": "l05_desk_lamp",
+   "prompt": "Create a desk with a lamp on it, lit only by the lamp, in an otherwise dark room."
+  },
+  {
+   "id": "l06_showroom",
+   "prompt": "Place a red sports car on a glossy floor and light it like a car showroom, with long soft lights overhead."
+  },
+  {
+   "id": "l07_sunset",
+   "prompt": "Make a sunset scene: a low orange sun, long shadows and a few simple trees on a hill."
+  },
+  {
+   "id": "l08_spooky_pumpkin",
+   "prompt": "Set up a spooky scene with a pumpkin lit from below by a green light."
+  },
+  {
+   "id": "l09_stage_spots",
+   "prompt": "Create three coloured spotlights (red, green and blue) shining down on a white stage floor so that their pools of light overlap."
+  },
+  {
+   "id": "l10_depth_of_field",
+   "prompt": "Make a close-up of a chess king with a blurred background, using a shallow depth of field."
+  }
+ ],
+ "complex": [
+  {
+   "id": "c01_living_room",
+   "prompt": "Create a living room with a sofa, a coffee table, a floor lamp and a rug."
+  },
+  {
+   "id": "c02_park",
+   "prompt": "Build a small park scene with three trees, a bench, a path and a pond."
+  },
+  {
+   "id": "c03_solar_system",
+   "prompt": "Make a model of the solar system with the sun and four planets on their orbits, each a different colour."
+  },
+  {
+   "id": "c04_desk",
+   "prompt": "Create a desk setup with a monitor, a keyboard, a mug and a desk lamp."
+  },
+  {
+   "id": "c05_kitchen",
+   "prompt": "Build a kitchen with a counter, a sink, a stove, a fridge and two stools."
+  },
+  {
+   "id": "c06_harbour",
+   "prompt": "Create a small harbour with a pier, two boats, a lighthouse and some crates."
+  },
+  {
+   "id": "c07_campsite",
+   "prompt": "Make a campsite with a tent, a campfire, a log bench and pine trees around it."
+  },
+  {
+   "id": "c08_playground",
+   "prompt": "Build a playground with a slide, a swing set, a sandbox and a seesaw."
+  },
+  {
+   "id": "c09_street_corner",
+   "prompt": "Create a street corner with two buildings, a street lamp, a mailbox, a bench and a crosswalk."
+  },
+  {
+   "id": "c10_castle",
+   "prompt": "Make a medieval castle with four towers, walls, a gate and a moat."
+  },
+  {
+   "id": "c11_farm",
+   "prompt": "Create a farm with a barn, a silo, a fence, a tractor and three hay bales."
+  },
+  {
+   "id": "c12_bedroom",
+   "prompt": "Build a bedroom with a bed, a nightstand with a lamp, a wardrobe, a rug and a window."
+  }
+ ]
+}

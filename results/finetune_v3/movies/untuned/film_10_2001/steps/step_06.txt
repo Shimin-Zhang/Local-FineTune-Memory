@@ -1,0 +1,59 @@
+```python
+import bpy
+import math
+from mathutils import Vector
+
+scene = bpy.context.scene
+
+# The scene went black - likely the volume scatter is too dense or the world nodes are broken.
+# Let's fix the world by removing the volume scatter and ensuring the background is visible.
+
+world = scene.world
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+
+# Remove volume scatter nodes
+for node in list(nodes):
+    if node.type == 'VOLUME_SCATTER':
+        nodes.remove(node)
+
+# Make sure the output node has no volume connected
+for node in nodes:
+    if node.type == 'OUTPUT_WORLD':
+        # Disconnect volume if connected
+        for link in list(links):
+            if link.to_node == node and link.to_socket.name == 'Volume':
+                links.remove(link)
+
+# Boost the background strength to ensure it's visible
+for node in nodes:
+    if node.type == 'BACKGROUND':
+        node.inputs['Strength'].default_value = 2.0
+
+# Increase sun energy to compensate
+sun = bpy.data.objects.get("Sun")
+if sun:
+    sun.data.energy = 5.0
+
+rim = bpy.data.objects.get("RimSun")
+if rim:
+    rim.data.energy = 3.0
+
+# Ensure camera is set and pointing correctly
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    scene.camera = camera
+    camera.location = (7, 10, 1.2)
+    target = Vector((0, 0, 3.5))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('-Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 45
+
+# Set film exposure
+scene.view_settings.exposure = 0.5
+scene.view_settings.look = 'Medium High Contrast'
+
+print("Fixed world and lighting")
+print(f"Objects: {len(bpy.data.objects)}")
+```

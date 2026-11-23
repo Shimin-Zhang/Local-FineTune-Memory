@@ -1,0 +1,362 @@
+{
+ "test_0003__s0": {
+  "pass": false,
+  "tokens": 5325,
+  "lines": 386,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs['Base Color'].default_value = color]",
+   "too long: 5325 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0005__s0": {
+  "pass": false,
+  "tokens": 5378,
+  "lines": 411,
+  "objects": 130,
+  "materials": 49,
+  "lights": 2,
+  "edge_share": 0.301,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 30% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 5378 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0008__s0": {
+  "pass": false,
+  "tokens": 2978,
+  "lines": 206,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = col]"
+  ],
+  "warnings": []
+ },
+ "test_0009__s0": {
+  "pass": false,
+  "tokens": 3677,
+  "lines": 313,
+  "objects": 101,
+  "materials": 7,
+  "lights": 2,
+  "edge_share": 0.753,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 75% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3677 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0016__s0": {
+  "pass": false,
+  "tokens": 5114,
+  "lines": 367,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 5114 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0024__s0": {
+  "pass": false,
+  "tokens": 4717,
+  "lines": 389,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 4717 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0025__s0": {
+  "pass": false,
+  "tokens": 7642,
+  "lines": 535,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'Material' object has no attribute 'emission_color'  [line: mat_flame.emission_color = (1.0, 0.5, 0.05)]",
+   "too long: 7642 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0027__s0": {
+  "pass": false,
+  "tokens": 3553,
+  "lines": 242,
+  "objects": 108,
+  "materials": 9,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized  [line: bpy.ops.mesh.primitive_cone_add(radius=5, depth=2.5, location=(pav_loc[0], pav_loc[1], pav_loc[2]+5.25), vertices=4)]",
+   "too long: 3553 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0032__s0": {
+  "pass": false,
+  "tokens": 2749,
+  "lines": 213,
+  "objects": 60,
+  "materials": 8,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: bpy_struct: item.attr = val: enum \"WAVE\" not found in ('TWIST', 'BEND', 'TAPER', 'STRETCH')  [line: wave.deform_method = 'WAVE']"
+  ],
+  "warnings": []
+ },
+ "test_0040__s0": {
+  "pass": false,
+  "tokens": 4914,
+  "lines": 403,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'Material' object has no attribute 'emission_color'  [line: mat_autumn_fire.emission_color = (1.0, 0.4, 0.05, 1)]",
+   "too long: 4914 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0045__s0": {
+  "pass": false,
+  "tokens": 3264,
+  "lines": 299,
+  "objects": 58,
+  "materials": 7,
+  "lights": 1,
+  "edge_share": 0.405,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 40% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0050__s0": {
+  "pass": false,
+  "tokens": 3472,
+  "lines": 335,
+  "objects": 24,
+  "materials": 3,
+  "lights": 1,
+  "edge_share": 0.177,
+  "fill": 0.818,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 18% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3472 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0052__s0": {
+  "pass": false,
+  "tokens": 5572,
+  "lines": 482,
+  "objects": 5,
+  "materials": 2,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: RuntimeError: Operator bpy.ops.object.modifier_apply.poll() failed, context is incorrect  [line: bpy.ops.object.modifier_apply(modifier=\"Bool\")]",
+   "too long: 5572 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0056__s0": {
+  "pass": false,
+  "tokens": 5070,
+  "lines": 430,
+  "objects": 5,
+  "materials": 3,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'ParticleSystem' object has no attribute 'particle_count'  [line: psys.particle_count = 200]",
+   "too long: 5070 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0057__s0": {
+  "pass": false,
+  "tokens": 3805,
+  "lines": 295,
+  "objects": 132,
+  "materials": 6,
+  "lights": 9,
+  "edge_share": 0.362,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 36% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3805 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0068__s0": {
+  "pass": false,
+  "tokens": 3330,
+  "lines": 214,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 3330 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0076__s0": {
+  "pass": false,
+  "tokens": 3019,
+  "lines": 235,
+  "objects": 64,
+  "materials": 10,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ },
+ "test_0079__s0": {
+  "pass": false,
+  "tokens": 6257,
+  "lines": 479,
+  "objects": 1,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 6257 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0080__s0": {
+  "pass": false,
+  "tokens": 4662,
+  "lines": 382,
+  "objects": 47,
+  "materials": 13,
+  "lights": 5,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'ViewLayer' object has no attribute 'shading'  [line: bpy.context.view_layer.shading.type = 'MATERIAL']",
+   "too long: 4662 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0082__s0": {
+  "pass": false,
+  "tokens": 4484,
+  "lines": 376,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs['Base Color'].default_value = color]",
+   "too long: 4484 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0085__s0": {
+  "pass": false,
+  "tokens": 3664,
+  "lines": 277,
+  "objects": 291,
+  "materials": 18,
+  "lights": 12,
+  "edge_share": 0.098,
+  "fill": 1.0,
+  "fails": [
+   "too long: 3664 tokens (limit 3300)"
+  ],
+  "warnings": [
+   "the scene touches the edge of its own view (10% of it)"
+  ]
+ },
+ "test_0088__s0": {
+  "pass": false,
+  "tokens": 2976,
+  "lines": 250,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: bpy_struct: item.attr = val: enum \"NISHITA\" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')  [line: sky.sky_type = 'NISHITA']"
+  ],
+  "warnings": []
+ },
+ "test_0091__s0": {
+  "pass": false,
+  "tokens": 5437,
+  "lines": 323,
+  "objects": 306,
+  "materials": 14,
+  "lights": 6,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: bpy_struct: item.attr = val: enum \"NISHITA\" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')  [line: sky.sky_type = 'NISHITA']",
+   "too long: 5437 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0092__s0": {
+  "pass": false,
+  "tokens": 3525,
+  "lines": 261,
+  "objects": 90,
+  "materials": 35,
+  "lights": 2,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)",
+   "too long: 3525 tokens (limit 3300)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ }
+}

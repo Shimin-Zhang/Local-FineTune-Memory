@@ -1,0 +1,110 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(653)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def skin(rgb, em=0):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+sand, sea, foam, log, log2, plank, flag, red, barrel, hull, sail, black, lit = (skin(c) for c in (
+    (.32, .24, .15), (.04, .17, .2), (.7, .75, .7), (.3, .2, .12), (.22, .14, .09), (.4, .3, .2), (.7, .65, .5), (.6, .08, .06), (.35, .2, .1), (.25, .15, .09), (.65, .6, .5), (.03, .03, .035), (.1, .08, .07)))
+fire = skin((1, .5, .1), 16); lantern = skin((1, .75, .3), 14)
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0), top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, rot)
+def post(at, r, h, m, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at, rot)
+def ball(at, r, m, sq=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2]))
+    return mk(bm, m, at)
+def beam(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def flame(at, rgb, w):
+    L = bpy.data.lights.new("f", "POINT"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("f", L); o.location = at; sc.collection.objects.link(o)
+# shore and sea: a ragged slab, sea in the front half, sand behind, with a foam line
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=3, use_grid_fill=True)
+for v in bm.verts:
+    y = v.co.y * 15; z = v.co.z * 2.4 - 1.2
+    if v.co.z < 0: v.co = Vector((v.co.x * 17 + random.uniform(-1, 1), y * .8 + random.uniform(-1, 1), z - random.uniform(0, 1.5)))
+    else: v.co.z = z + (.08 if y > 0 else 0) + random.uniform(-.04, .04)
+mk(bm, sea)
+slab((0, 5.6, 0), (21, 9.2, .35), sand, top=.97); slab((0, 1.0, 0), (21, 1.6, .3), foam)
+# stockade: sharpened logs round the hut and lookout, with a gap at the front
+for i in range(14):
+    x = -9.5 + i * 1.5
+    if -1.5 < x < 1.5: continue
+    post((x, 10.5, 0), .45, 2.8, log if i % 2 else log2, 6, .1)
+for i in range(7):
+    y = 1.5 + i * 1.4
+    for x in (-9.5, 9.5): post((x, y, 0), .45, 2.8, log2 if i % 2 else log, 6, .1)
+beam((-9.5, 10.5, 1.6), (9.5, 10.5, 1.6), .3, log2); beam((-9.5, 1.5, 1.6), (-9.5, 10.5, 1.6), .3, log2); beam((9.5, 1.5, 1.6), (9.5, 10.5, 1.6), .3, log2)
+# lookout post: four posts, platform, rail, roof, ladder, lantern
+for sx in (-1, 1):
+    for sy in (-1, 1): post((-4.5 + sx * 1.3, 7.5 + sy * 1.3, 0), .22, 6.2, log2, 5)
+slab((-4.5, 7.5, 6.2), (3.8, 3.8, .3), plank)
+for sx in (-1.8, 1.8):
+    for sy in (-1.8, 1.8): post((-4.5 + sx, 7.5 + sy, 6.5), .08, 1.1, log2, 4)
+slab((-4.5, 7.5, 7.6), (4.4, 4.4, .2), red, top=.5); slab((-4.5, 7.5, 7.8), (3.6, 3.6, .2), red, top=.3)
+beam((-3.2, 8.8, 6.5), (-3.2, 8.8, 8.2), .1, log2); post((-3.2, 8.8, 8.2), .25, .3, lantern, 6)
+beam((-5.8, 6.4, 0), (-4.6, 7.2, 6.2), .12, log2); beam((-5.2, 6.4, 0), (-4.0, 7.2, 6.2), .12, log2)
+flame((-3.2, 8.8, 8.5), (1, .75, .3), 220)
+# rum store hut with barrels, sign, door, lantern
+slab((4.5, 8.5, 0), (5.2, 4.0, 2.8), plank)
+slab((4.5, 8.5, 2.8), (5.8, 4.6, .25), log2, top=.8); slab((4.5, 8.5, 3.05), (5.0, 3.8, .25), red, top=.8)
+slab((4.5, 6.45, 0), (1.4, .2, 2.0), black); slab((6.2, 6.45, 1.1), (.9, .1, .8), lit)
+slab((4.5, 6.3, 3.3), (3.2, .15, 1.0), flag); slab((4.5, 6.2, 3.3), (.9, .1, .9), red)
+for i in range(3): post((2.2 + i * .9, 5.6, 0), .4, 1.0, barrel, 7); post((2.65, 5.6, 1.0), .3, .5, barrel, 7)
+post((3.0, 6.4, 1.2), .22, .5, lantern, 6); flame((3.0, 5.9, 1.5), (1, .7, .3), 260)
+# cannon on a carriage facing the sea, with shot and a powder keg
+post((-1.5, 5.0, 1.0), .55, 1.9, black, 7, .38, rot=(0, math.pi / 2 + .35, 0)).location.z = 1.0
+slab((-1.5, 5.0, .5), (2.0, 1.0, .3), log2)
+for sx in (-.9, .9): post((-1.5 + sx, 4.3, .5), .45, .3, log, 8, rot=(math.pi / 2, 0, 0)); post((-1.5 + sx, 5.7, .5), .45, .3, log, 8, rot=(math.pi / 2, 0, 0))
+for i in range(5): ball((-3.2 + i * .5, 4.4, .2), .2, black)
+post((.3, 5.0, 0), .35, .9, barrel, 7); post((.3, 5.0, .9), .3, .2, red, 7)
+# jolly flag: tall pole, black flag with a white skull and bones
+post((9.2, 2.5, 0), .14, 9.5, log2, 5)
+slab((7.6, 2.5, 7.4), (3.2, .08, 2.2), black); ball((7.6, 2.4, 8.1), .5, flag, (1, 1, 1))
+slab((7.6, 2.4, 7.2), (1.8, .06, .2), flag); slab((7.6, 2.4, 7.9), (.2, .06, .8), flag, (0, 0, 0))
+beam((6.8, 2.4, 7.7), (8.4, 2.4, 8.5), .12, flag); beam((6.8, 2.4, 8.5), (8.4, 2.4, 7.7), .12, flag)
+# sloop at the beach: hull, mast, two sails, bowsprit, flag, lantern
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 8, v.co.y * 2.6 * (1 - .55 * abs(v.co.x) ** 2), (v.co.z + .5) * 1.6))
+mk(bm, hull, (3.5, -5.2, .1), (0, 0, .15)); slab((3.5, -5.2, 1.7), (7, 1.0, .15), plank, (0, 0, .15))
+post((3.5, -5.2, 1.8), .12, 8.5, log2, 5); post((3.5, -5.2, 6.8), .1, 5.2, log2, 5)
+slab((3.5, -5.9, 2.6), (5.2, .08, 3.6), sail, (0, 0, .15), top=.9); slab((3.5, -5.2, 3.4), (3.6, .08, 3.0), sail, (0, 0, .15), top=.9)
+beam((7.4, -4.8, 2.0), (10.5, -4.4, 2.8), .12, log2)
+slab((3.5, -5.2, 10.3), (1.6, .08, .8), red); post((3.5, -5.2, 1.7), .2, .3, lantern, 6)
+flame((3.5, -5.2, 2.2), (1, .75, .3), 200)
+# campfire and rocks
+for i in range(5): ball((-7 + i * .3, 3.5 + (i % 2) * .3, .3), .35, black)
+post((-7, 3.5, .2), .5, .8, fire, 5, .05); flame((-7, 3.5, 1.5), (1, .5, .1), 450)
+for i in range(8): ball((random.uniform(-10, 10), random.uniform(-8, -2), .1), random.uniform(.2, .5), log2, (1, 1, .6))
+for rgb, w, p in (((.5, .7, 1), 5, (-24, -14, 8)), ((1, .6, .3), 2, (22, 22, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("dusk"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .025, .045, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+tg = Vector((0, 2, 3)); co.location = tg + Vector((14, -62, 38))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

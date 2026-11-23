@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 5.9,
+ "error": null,
+ "error_line": null,
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 599,
+ "n_lights": 26,
+ "n_materials": 66,
+ "own_camera": true,
+ "render_error": null
+}

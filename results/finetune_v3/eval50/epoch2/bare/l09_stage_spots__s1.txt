@@ -1,0 +1,87 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(1407)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+S = bpy.context.scene
+def paint(rgb, e=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .7
+    if e: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+deck, stage, trim, black, steel, red, green, blue, skin, coat, lamp = (paint(c) for c in (
+    (.05, .05, .06), (.72, .72, .75), (.1, .1, .12), (.02, .02, .025), (.18, .19, .22), (1, .05, .04), (.05, 1, .1), (.05, .2, 1), (.55, .38, .3), (.35, .1, .12), (1, .9, .6)))
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("x"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("x", me); o.location = at; o.rotation_euler = rot
+    S.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = V((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, rot)
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at, rot)
+def ball(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return mk(bm, m, at)
+def bar(a, b, t, m):
+    a, b = V(a), V(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ V((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return mk(bm, m)
+def beam(a, b, w, m):
+    a, b = V(a), V(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=False, segments=6, radius1=w, radius2=.06, depth=(b - a).length)
+    for v in bm.verts: v.co = q @ V((v.co.x, v.co.y, v.co.z + (b - a).length / 2)) + a
+    return mk(bm, m)
+def lamp(kind, at, rgb, w, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; S.collection.objects.link(o)
+    if aim: o.rotation_euler = (V(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# base: black floor with a rough tapered underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=13, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += V((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .2)))
+    v.co.z -= 1.5
+mk(bm, black)
+blk((0, 0, 0), (17, 11, .5), deck)
+# the stage: white floor, three sides of trim, back wall with a glowing strip
+blk((0, 0, .5), (15, 9, .4), stage)
+for s in (-1, 1): blk((0, s * 4.5, .9), (15, .25, .35), trim); blk((s * 7.5, 0, .9), (.25, 9, .35), trim)
+blk((0, 4.5, .9), (15, .25, .35), trim)
+blk((0, 4.3, 1.0), (14, .1, 3.2), black)
+blk((0, 4.2, 2.6), (13, .1, .25), lamp)
+# the three spotlights on the back wall, each aimed at its own patch of floor
+spots = ((-5, red, (-3.5, -1.5)), (0, green, (0, -.5)), (5, blue, (3.5, -1.5)))
+for x, c, (px, py) in spots:
+    cyl((x, 3.9, 3.0), .75, .9, 6, steel, rot=(math.pi / 2, 0, 0))
+    cyl((x, 3.4, 3.0), .5, .3, 6, c, rot=(math.pi / 2, 0, 0))
+    lamp("POINT", (x, 3.0, 3.0), (1, .9, .6), 120)
+    beam((x, 3.2, 3.0), (px, py, .9), 1.7, c)
+    lamp("SPOT", (x, 3.2, 3.0), (1, .95, .8) if c != red else (1, .4, .3), 2600, (px, py, .9))
+# a singer and a band member on the lit floor
+for (x, y, c) in ((-.6, -1.2, coat), (3.2, 1.0, steel)):
+    cyl((x, y, .9), .55, 1.5, 6, c, .38); ball((x, y, 2.8), .42, skin)
+    bar((x - .35, y, 2.2), (x - .9, y, 2.9), .16, c); bar((x + .35, y, 2.2), (x + .9, y, 2.9), .16, c)
+cyl((-.9, -1.2, 2.5), .1, 1.0, 5, black); cyl((-.9, -1.2, 3.5), .25, .15, 6, black)
+cyl((3.2, 1.0, 1.9), .5, .5, 7, red, .3); cyl((3.2, 1.0, 2.4), .3, .3, 7, black)
+# stage furniture: speaker stacks, a monitor, a drum throne, cables
+for x in (-6.5, 6.5):
+    for z in (.9, 2.0): blk((x, 3.0, z), (1.4, 1.1, 1.0), black)
+    cyl((x - .3, 3.0, 1.3), .35, .1, 8, steel, rot=(math.pi / 2, 0, 0)); cyl((x - .3, 3.0, 2.4), .3, .1, 8, steel, rot=(math.pi / 2, 0, 0))
+blk((-1.5, 3.0, .9), (1.2, .8, .6), black); blk((-1.5, 2.6, 1.4), (1.1, .06, .5), lamp)
+cyl((5.2, 2.0, .9), .5, .8, 6, black); cyl((5.2, 2.0, 1.7), .8, .12, 8, steel)
+for i in range(6): blk((-6 + i * 2.4, -3.8, .5), (.12, 1.4, .04), black, (0, 0, random.uniform(-.3, .3)))
+lamp("POINT", (0, -2, 4.5), (.5, .5, .9), 120)
+lamp("SUN", (-26, -20, 10), (.4, .5, 1), 3, (0, 0, 1)); lamp("SUN", (24, 22, 12), (1, .3, .5), 2, (0, 0, 1))
+w = bpy.data.worlds.new("w"); S.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .01, .025, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); S.collection.objects.link(co)
+t = V((0, 0, 1.8)); co.location = t + V((12, -46, 28))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); S.camera = co
+```

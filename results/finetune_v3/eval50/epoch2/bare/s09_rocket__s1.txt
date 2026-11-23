@@ -1,0 +1,84 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(1825)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+S = bpy.context.scene
+def paint(rgb, e=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .5
+    if e: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+deck, rock, white, red, steel, glass, flame, core, soil = (paint((.2, .2, .24)), paint((.16, .15, .17)), paint((.7, .7, .74)), paint((.75, .08, .06)),
+    paint((.35, .36, .4)), paint((.2, .5, .8), 3), paint((1, .4, .05), 16), paint((1, .9, .5), 30), paint((.3, .22, .15)))
+def add(bm, m, loc=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location, o.rotation_euler = loc, rot
+    S.collection.objects.link(o); o.data.materials.append(m); return o
+def cone(m, loc, r1, r2, h, n=8, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, loc, rot)
+def box(m, loc, s, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = V((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, loc, rot)
+def orb(m, loc, r, sq=1.0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return add(bm, m, loc)
+def beam(kind, col, w, loc, aim=None):
+    L = bpy.data.lights.new("b", kind); L.color, L.energy = col, w
+    o = bpy.data.objects.new("b", L); o.location = loc; S.collection.objects.link(o)
+    if aim: o.rotation_euler = (V(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=12, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += V((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.6, .2)))
+    else: v.co.z += random.uniform(-.08, .08)
+add(bm, rock)
+cone(soil, (0, 0, 0), 9, 8.4, .4, 9); cone(steel, (0, 0, .4), 8.2, 8.2, .12, 9)
+for i in range(9):
+    a = i * .698
+    box(steel, (7.6 * math.cos(a), 7.6 * math.sin(a), .5), (.5, 1.2, .7), (0, 0, a + 1.57))
+# the rocket: body, nose, three fins, window, nozzle
+cone(white, (0, 0, 1.5), 2.2, 2.2, 7.0, 8)
+cone(white, (0, 0, 8.5), 2.2, .12, 3.2, 8)
+cone(red, (0, 0, 8.5), 2.21, 2.21, .5, 8)
+for i in range(3):
+    a = i * 2.094 + .5
+    f = box(red, (2.6 * math.cos(a), 2.6 * math.sin(a), 1.5), (.25, 1.6, 3.6), (0, 0, a))
+    f2 = box(white, (2.6 * math.cos(a), 2.6 * math.sin(a), 4.4), (.3, .5, .5), (0, 0, a))
+cone(steel, (0, 0, 1.0), 2.4, 2.2, .5, 8); cone(steel, (0, 0, .4), 1.6, 2.2, .6, 8)
+cone(core, (0, 0, .35), 1.2, 1.2, .1, 8)
+for k in range(3):
+    a = k * 2.094 + .5
+    box(steel, (2.3 * math.cos(a), 2.3 * math.sin(a), 2.2), (.15, .8, 2.6), (0, 0, a))
+cone(steel, (0, -2.2, 5.0), .75, .75, .35, 8, (math.pi / 2, 0, 0))
+cone(glass, (0, -2.35, 5.0), .55, .55, .12, 8, (math.pi / 2, 0, 0))
+for k in range(4):
+    a = k * 1.571 + .785
+    box(steel, (1.0 * math.cos(a), 1.0 * math.sin(a), 8.2), (.1, .1, .5), (0, 0, a))
+cone(steel, (0, 0, 11.7), .08, .08, 1.6, 5)
+# flame and light
+cone(flame, (0, 0, -.2), 1.0, .05, 2.6, 7, (math.pi, 0, 0)); cone(core, (0, 0, -.1), .5, .04, 1.8, 6, (math.pi, 0, 0))
+beam("POINT", (1, .5, .15), 1800, (0, 0, .8)); beam("POINT", (.3, .6, 1), 300, (0, -3.2, 5.0))
+# launch gantry, pad markings, crates, boulders
+for sx in (-1, 1):
+    for sy in (-1, 1): cone(steel, (sx * 5.0, sy * 5.0, .5), .22, .22, 6.0, 5)
+for z in (2.5, 4.5, 6.5):
+    for sx in (-1, 1): box(steel, (sx * 5.0, 0, z), (.2, 10.4, .2))
+    for sy in (-1, 1): box(steel, (0, sy * 5.0, z), (10.4, .2, .2))
+box(steel, (0, 0, 6.5), (10.4, 10.4, .2))
+for i in range(6): box(white, (-2.5 + i, -7.0, .52), (.5, .5, .04))
+for i, (x, y) in enumerate(((-9, 4), (9, -5), (-7, -8), (8, 8))): orb(rock, (x, y, .3), random.uniform(.7, 1.3), .7)
+for i, (x, y) in enumerate(((-6.5, -3), (-5.5, -4.5), (6.5, 3.5))): box(deck, (x, y, .5), (1.4, 1.2, 1.1), (0, 0, i))
+beam("SUN", (.6, .7, 1), 4.5, (-22, -12, 9), (0, 0, 4)); beam("SUN", (1, .5, .3), 2, (18, 16, 10), (0, 0, 4))
+w = bpy.data.worlds.new("w"); S.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); S.collection.objects.link(co)
+t = V((0, 0, 4.5)); co.location = t + V((9, -46, 26))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); S.camera = co
+```

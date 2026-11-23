@@ -1,0 +1,48 @@
+import bpy
+import math
+
+# Clear default scene objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create white stage floor
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, 0))
+floor = bpy.context.active_object
+floor.name = "StageFloor"
+mat = bpy.data.materials.new(name="WhiteFloor")
+mat.use_nodes = True
+bsdf = mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+floor.data.materials.append(mat)
+
+# Create three spotlights: red, green, blue
+lights_data = [
+    {"name": "RedSpot",  "color": (1.0, 0.0, 0.0), "location": (-2, -4, 5)},
+    {"name": "GreenSpot","color": (0.0, 1.0, 0.0), "location": (0,  -4, 5)},
+    {"name": "BlueSpot", "color": (0.0, 0.0, 1.0), "location": (2,  -4, 5)},
+]
+
+for ld in lights_data:
+    bpy.ops.object.light_add(type='SPOT', location=ld["location"])
+    light = bpy.context.active_object
+    light.name = ld["name"]
+    light.data.color = ld["color"]
+    light.data.energy = 1000
+    light.data.spot_size = math.radians(60)
+    light.data.spot_blend = 0.3
+    # Point the spotlight straight down toward the floor
+    light.rotation_euler = (0, 0, 0)  # default spot points along -Z
+
+# Set up a world with dark background for contrast
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.02, 0.02, 0.02, 1.0)
+bg.inputs["Strength"].default_value = 1.0
+
+# Set viewport shading to rendered for best preview
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+        area.spaces[0].shading.type = 'RENDERED'

@@ -1,0 +1,83 @@
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(868)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def lava(r, g, b, glow=0):
+    m = bpy.data.materials.new("l"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (r, g, b, 1); n.inputs["Roughness"].default_value = .95
+    if glow: n.inputs["Emission Color"].default_value = (r, g, b, 1); n.inputs["Emission Strength"].default_value = glow
+    return m
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    o.data.materials.append(m); sc.collection.objects.link(o); return o
+def lump(at, r, m, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
+    for v in bm.verts: v.co = V((v.co.x + random.uniform(-.1, .1) * r, v.co.y + random.uniform(-.1, .1) * r, v.co.z * sq + random.uniform(-.08, .08) * r))
+    return make(bm, m, at)
+def beam(a, b, w, m, w2=None):
+    a, b = V(a), V(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ V((v.co.x * w, v.co.y * (w2 or w), (v.co.z + .5) * d.length)) + a
+    return make(bm, m)
+def lit(kind, c, e, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = e
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (V(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+ash, ash2, ash3 = lava(.045, .04, .04), lava(.08, .055, .05), lava(.12, .08, .07)
+hot, hot2, ember = lava(1, .3, .04, 12), lava(1, .55, .1, 10), lava(1, .12, .02, 6)
+# the rock: a faceted icosphere, crushed flat, with a dark crater floor
+bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=7)
+for v in bm.verts:
+    if v.co.z < 0: v.co = V((v.co.x * .75, v.co.y * .75, v.co.z * 1.0))
+    else: v.co.z *= .55
+    v.co += V((random.uniform(-.4, .4), random.uniform(-.4, .4), random.uniform(-.2, .2)))
+make(bm, ash2)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=4.6, radius2=4.6, depth=.2)
+make(bm, ash, (0, 0, .1))
+# glowing cracks: a branching network of bright strips on the surface
+def crack(a, b, depth=.05):
+    a, b = V(a), V(b); mid = (a + b) / 2
+    beam(a + V((0, 0, .12)), b + V((0, 0, .12)), .22, hot, .12)
+    beam(a + V((0, 0, .12)), b + V((0, 0, .12)), .5, ember, .3)
+    return mid
+pts = [V((math.cos(a) * 4.4, math.sin(a) * 4.4, .12)) for a in [i * .9 + .3 for i in range(5)]]
+for i, p in enumerate(pts):
+    crack(p, V((0, 0, .12)), .05); crack(p, pts[(i + 1) % 5], .05)
+for i in range(6):
+    a = i * 1.05; crack(V((math.cos(a) * 4.4, math.sin(a) * 4.4, .12)), V((math.cos(a + .5) * 1.6, math.sin(a + .5) * 1.6, .12)))
+crack(V((-6.5, 2, .12)), V((-2.5, 3.5, .12))); crack(V((5.5, -4, .12)), V((2.5, -2, .12)))
+lit('POINT', (1, .35, .06), 1800, (0, 0, 1.6)); lit('POINT', (1, .3, .05), 500, (-3, 3, 1.0)); lit('POINT', (1, .3, .05), 500, (3, -3, 1.0))
+# jagged rim boulders around the crater, some with ember bands
+for i in range(14):
+    a = i * 2 * math.pi / 14 + random.uniform(-.15, .15); r = 4.9 + random.uniform(-.3, .5)
+    b = lump((math.cos(a) * r, math.sin(a) * r, .5 + random.uniform(0, .5)), random.uniform(.6, 1.1), random.choice((ash, ash3, ash2)), 1.0)
+    if i % 3 == 0:
+        d = b.data; d.materials.append(hot2)
+        for f in d.polygons:
+            if f.center.z > .1: f.material_index = 1
+# outer spires and shards
+for i in range(9):
+    a = i * .7 + .3; r = 8.2 + random.uniform(0, 1.2)
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=random.uniform(.7, 1.2), radius2=.05, depth=random.uniform(2.5, 4.5))
+    for v in bm.verts: v.co.x += random.uniform(-.15, .15); v.co.y += random.uniform(-.15, .15)
+    make(bm, ash if i % 2 else ash3, (math.cos(a) * r, math.sin(a) * r, 1.0))
+# floating shards above the crater
+for i in range(4):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.3, .5))
+    for v in bm.verts: v.co.z *= .6
+    make(bm, ash3, (random.uniform(-2, 2), random.uniform(-2, 2), random.uniform(2.5, 4.5)))
+# a lava pool at the far edge with a bright lip
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=1.6, radius2=1.6, depth=.15)
+make(bm, hot, (7.5, -2, .15)); lump((7.5, -2, .2), 2.0, ash3, .25)
+lit('POINT', (1, .35, .06), 700, (7.5, -2, 1.2))
+# cool moonlight from the left, faint violet rim from behind
+lit('SUN', (.5, .65, 1), 4.5, (-18, -10, 8), (0, 0, 0)); lit('SUN', (.6, .3, .9), 2, (14, 16, 6), (0, 0, 0))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .008, .02, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = V((0, 0, 1.5)); co.location = t + V((10, -38, 22))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,224 @@
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# --- Materials ---
+def create_material(name, color):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = 0.8
+    return mat
+
+stone_mat = create_material("Stone", (0.45, 0.42, 0.38, 1.0))
+dark_stone_mat = create_material("DarkStone", (0.30, 0.28, 0.25, 1.0))
+wood_mat = create_material("Wood", (0.35, 0.22, 0.10, 1.0))
+water_mat = create_material("Water", (0.05, 0.15, 0.30, 1.0))
+water_mat.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.1
+water_mat.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.3
+grass_mat = create_material("Grass", (0.15, 0.35, 0.10, 1.0))
+gate_mat = create_material("GateIron", (0.10, 0.10, 0.10, 1.0))
+gate_mat.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.9
+gate_mat.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.4
+
+# --- Helper: create a cylinder mesh ---
+def make_cylinder(name, radius, depth, segments=16, location=(0,0,0), material=None):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, vertices=segments, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+# --- Helper: create a cube mesh ---
+def make_cube(name, size=(1,1,1), location=(0,0,0), material=None):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    bpy.ops.object.transform_apply(scale=True)
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+# --- Ground ---
+ground = make_cube("Ground", size=(60, 60, 0.5), location=(0, 0, -0.25), material=grass_mat)
+
+# --- Moat (ring of water) ---
+# Outer ring: large flat cylinder, inner ring subtracted via boolean or just place a torus-like ring
+# Simpler: create a large flat cylinder for the moat bed, and a smaller inner cylinder for the castle base
+moat_outer_r = 22
+moat_inner_r = 16
+moat_depth = 1.0
+
+# Moat water surface
+bpy.ops.mesh.primitive_cylinder_add(radius=moat_outer_r, depth=moat_depth, vertices=64, location=(0, 0, -moat_depth/2 + 0.1))
+moat_water = bpy.context.active_object
+moat_water.name = "MoatWater"
+moat_water.data.materials.append(water_mat)
+
+# Moat bed (dirt/stone below water)
+bpy.ops.mesh.primitive_cylinder_add(radius=moat_outer_r, depth=0.3, vertices=64, location=(0, 0, -moat_depth - 0.15))
+moat_bed = bpy.context.active_object
+moat_bed.name = "MoatBed"
+moat_bed.data.materials.append(dark_stone_mat)
+
+# --- Castle base platform (inside moat) ---
+bpy.ops.mesh.primitive_cylinder_add(radius=moat_inner_r, depth=0.5, vertices=64, location=(0, 0, 0.25))
+castle_base = bpy.context.active_object
+castle_base.name = "CastleBase"
+castle_base.data.materials.append(stone_mat)
+
+# --- Walls (curved wall segments between towers) ---
+# Four towers at cardinal directions: N, S, E, W
+tower_positions = [
+    (0, -moat_inner_r + 2, "Tower_N"),   # North (negative Y in Blender)
+    (0,  moat_inner_r - 2, "Tower_S"),   # South
+    (-moat_inner_r + 2, 0, "Tower_W"),   # West
+    ( moat_inner_r - 2, 0, "Tower_E"),   # East
+]
+
+tower_radius = 3.0
+tower_height = 12.0
+
+# Create towers
+for x, y, name in tower_positions:
+    make_cylinder(name, radius=tower_radius, depth=tower_height, segments=16,
+                  location=(x, y, tower_height/2), material=stone_mat)
+    # Tower top (conical roof)
+    bpy.ops.mesh.primitive_cone_add(radius1=tower_radius * 1.1, radius2=0, depth=4, vertices=16,
+                                     location=(x, y, tower_height + 2))
+    roof = bpy.context.active_object
+    roof.name = name + "_Roof"
+    roof.data.materials.append(wood_mat)
+    # Battlements on top of tower (small cubes around the edge)
+    for i in range(8):
+        angle = i * (2 * math.pi / 8)
+        bx = x + (tower_radius * 0.85) * math.cos(angle)
+        by = y + (tower_radius * 0.85) * math.sin(angle)
+        make_cube(name + f"_Battlement_{i}", size=(0.8, 0.8, 1.2),
+                  location=(bx, by, tower_height + 0.6), material=stone_mat)
+
+# --- Walls connecting towers ---
+# Create wall segments between adjacent towers
+def create_wall_segment(start, end, name, thickness=1.5, height=8.0, material=stone_mat):
+    """Create a wall segment between two points."""
+    sx, sy = start
+    ex, ey = end
+    length = math.sqrt((ex - sx)**2 + (ey - sy)**2)
+    angle = math.atan2(ey - sy, ex - sx)
+    mid_x = (sx + ex) / 2
+    mid_y = (sy + ey) / 2
+    make_cube(name, size=(length, thickness, height),
+              location=(mid_x, mid_y, height/2), material=material)
+    # Rotate the wall to align with the direction
+    bpy.context.active_object.rotation_euler[2] = angle
+    return bpy.context.active_object
+
+# Wall segments: N->E, E->S, S->W, W->N
+wall_height = 8.0
+wall_thickness = 1.5
+
+# N to E
+create_wall_segment((0, -moat_inner_r + 2), (moat_inner_r - 2, 0), "Wall_NE",
+                    thickness=wall_thickness, height=wall_height, material=stone_mat)
+# E to S
+create_wall_segment((moat_inner_r - 2, 0), (0, moat_inner_r - 2), "Wall_ES",
+                    thickness=wall_thickness, height=wall_height, material=stone_mat)
+# S to W
+create_wall_segment((0, moat_inner_r - 2), (-moat_inner_r + 2, 0), "Wall_SW",
+                    thickness=wall_thickness, height=wall_height, material=stone_mat)
+# W to N
+create_wall_segment((-moat_inner_r + 2, 0), (0, -moat_inner_r + 2), "Wall_WN",
+                    thickness=wall_thickness, height=wall_height, material=stone_mat)
+
+# --- Gate (on the South wall, facing outward) ---
+# Gate tower (larger structure on the south side)
+gate_x = 0
+gate_y = moat_inner_r - 2  # South position
+
+# Gate house (two side pillars + arch)
+pillar_offset = 2.5
+pillar_width = 2.0
+pillar_height = 10.0
+
+# Left pillar
+make_cube("GatePillar_L", size=(pillar_width, pillar_width, pillar_height),
+          location=(gate_x - pillar_offset, gate_y, pillar_height/2), material=stone_mat)
+# Right pillar
+make_cube("GatePillar_R", size=(pillar_width, pillar_width, pillar_height),
+          location=(gate_x + pillar_offset, gate_y, pillar_height/2), material=stone_mat)
+
+# Gate arch (top beam)
+make_cube("GateArch", size=(pillar_offset * 2 + pillar_width, pillar_width, 1.5),
+          location=(gate_x, gate_y, pillar_height + 0.75), material=stone_mat)
+
+# Gate door (wooden)
+make_cube("GateDoor", size=(pillar_offset * 2 - 0.5, 0.3, pillar_height - 1),
+          location=(gate_x, gate_y, (pillar_height - 1)/2), material=wood_mat)
+
+# Portcullis (iron bars) - simplified as a dark panel
+make_cube("Portcullis", size=(pillar_offset * 2 - 0.5, 0.1, pillar_height - 1.5),
+          location=(gate_x, gate_y - 0.2, (pillar_height - 1.5)/2), material=gate_mat)
+
+# Gate tower roofs (conical)
+for side in [-1, 1]:
+    gx = gate_x + side * pillar_offset
+    bpy.ops.mesh.primitive_cone_add(radius1=pillar_width * 1.1, radius2=0, depth=3, vertices=8,
+                                     location=(gx, gate_y, pillar_height + 3))
+    roof = bpy.context.active_object
+    roof.name = f"GateRoof_{'L' if side == -1 else 'R'}"
+    roof.data.materials.append(wood_mat)
+
+# --- Keep (central tower) ---
+keep_x = 0
+keep_y = 0
+keep_radius = 5.0
+keep_height = 16.0
+
+make_cylinder("Keep", radius=keep_radius, depth=keep_height, segments=24,
+              location=(keep_x, keep_y, keep_height/2), material=stone_mat)
+# Keep roof
+bpy.ops.mesh.primitive_cone_add(radius1=keep_radius * 1.15, radius2=0, depth=5, vertices=24,
+                                 location=(keep_x, keep_y, keep_height + 2.5))
+keep_roof = bpy.context.active_object
+keep_roof.name = "KeepRoof"
+keep_roof.data.materials.append(wood_mat)
+# Keep battlements
+for i in range(12):
+    angle = i * (2 * math.pi / 12)
+    bx = keep_x + (keep_radius * 0.9) * math.cos(angle)
+    by = keep_y + (keep_radius * 0.9) * math.sin(angle)
+    make_cube(f"KeepBattlement_{i}", size=(1.0, 1.0, 1.5),
+              location=(bx, by, keep_height + 0.75), material=stone_mat)
+
+# --- Camera and Lighting ---
+# Camera
+bpy.ops.object.camera_add(location=(30, -35, 25))
+cam = bpy.context.active_object
+cam.name = "CastleCamera"
+cam.rotation_euler = (math.radians(65), 0, math.radians(45))
+bpy.context.scene.camera = cam
+
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(20, -20, 30))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(20), math.radians(30))
+
+# World background
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.5, 0.6, 0.8, 1.0)
+    bg_node.inputs[1].default_value = 0.5
+
+print("Medieval castle with four towers, walls, gate, and moat created.")

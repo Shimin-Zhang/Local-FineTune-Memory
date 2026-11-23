@@ -1,0 +1,49 @@
+matrix ladder: 48 probes, 0 already done
+[1/48] Qwen3-14B-Base full_fp32 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[2/48] Qwen3-14B-Base full_fp32 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[3/48] Qwen3-14B-Base full_fp32 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[4/48] Qwen3-14B-Base full_fp32 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[5/48] Qwen3-14B-Base full_fp32_amp ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[6/48] Qwen3-14B-Base full_fp32_amp ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[7/48] Qwen3-14B-Base full_fp32_amp ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[8/48] Qwen3-14B-Base full_fp32_amp ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[9/48] Qwen3-14B-Base full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[10/48] Qwen3-14B-Base full_bf16 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[11/48] Qwen3-14B-Base full_bf16 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[12/48] Qwen3-14B-Base full_bf16 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[13/48] Qwen3-14B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[14/48] Qwen3-14B-Base lora_bf16 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[15/48] Qwen3-14B-Base lora_bf16 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[16/48] Qwen3-14B-Base lora_bf16 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[17/48] Qwen3-14B-Base qlora ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.86 GB 43.8s
+[18/48] Qwen3-14B-Base qlora ckpt=0 2x2048 loss=chunked  -> oom (phase step0_forward) peak 22.86 GB 11.0s
+[19/48] Qwen3-14B-Base qlora ckpt=1 2x2048 loss=vanilla  -> ok  peak 21.24 GB 19.9s
+[20/48] Qwen3-14B-Base qlora ckpt=1 2x2048 loss=chunked  -> ok  peak 13.92 GB 20.8s
+[21/48] Qwen3-14B-Base qlora_kbitprep ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.67 GB 8.7s
+[22/48] Qwen3-14B-Base qlora_kbitprep ckpt=0 2x2048 loss=chunked  -> oom (phase step0_forward) peak 22.67 GB 8.7s
+[23/48] Qwen3-14B-Base qlora_kbitprep ckpt=1 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 19.85 GB 9.7s
+[24/48] Qwen3-14B-Base qlora_kbitprep ckpt=1 2x2048 loss=chunked  -> ok  peak 19.79 GB 23.6s
+[25/48] Nanbeige4.3-33B-Base full_fp32 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[26/48] Nanbeige4.3-33B-Base full_fp32 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[27/48] Nanbeige4.3-33B-Base full_fp32 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[28/48] Nanbeige4.3-33B-Base full_fp32 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[29/48] Nanbeige4.3-33B-Base full_fp32_amp ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[30/48] Nanbeige4.3-33B-Base full_fp32_amp ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[31/48] Nanbeige4.3-33B-Base full_fp32_amp ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[32/48] Nanbeige4.3-33B-Base full_fp32_amp ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[33/48] Nanbeige4.3-33B-Base full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[34/48] Nanbeige4.3-33B-Base full_bf16 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[35/48] Nanbeige4.3-33B-Base full_bf16 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[36/48] Nanbeige4.3-33B-Base full_bf16 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[37/48] Nanbeige4.3-33B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[38/48] Nanbeige4.3-33B-Base lora_bf16 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[39/48] Nanbeige4.3-33B-Base lora_bf16 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.3s
+[40/48] Nanbeige4.3-33B-Base lora_bf16 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[41/48] Nanbeige4.3-33B-Base qlora ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.50 GB 83.0s
+[42/48] Nanbeige4.3-33B-Base qlora ckpt=0 2x2048 loss=chunked  -> oom (phase step0_forward) peak 22.50 GB 15.8s
+[43/48] Nanbeige4.3-33B-Base qlora ckpt=1 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.26 GB 13.5s
+[44/48] Nanbeige4.3-33B-Base qlora ckpt=1 2x2048 loss=chunked  -> oom (phase step0_forward) peak 22.26 GB 13.8s
+[45/48] Nanbeige4.3-33B-Base qlora_kbitprep ckpt=0 2x2048 loss=vanilla  -> oom (phase prepare) peak 20.92 GB 12.2s
+[46/48] Nanbeige4.3-33B-Base qlora_kbitprep ckpt=0 2x2048 loss=chunked  -> oom (phase prepare) peak 20.92 GB 12.5s
+[47/48] Nanbeige4.3-33B-Base qlora_kbitprep ckpt=1 2x2048 loss=vanilla  -> oom (phase prepare) peak 20.92 GB 12.5s
+[48/48] Nanbeige4.3-33B-Base qlora_kbitprep ckpt=1 2x2048 loss=chunked  -> oom (phase prepare) peak 20.92 GB 12.5s

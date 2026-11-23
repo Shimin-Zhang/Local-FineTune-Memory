@@ -1,0 +1,242 @@
+[
+ {
+  "id": "shape_01",
+  "category": "shape",
+  "agent": "a",
+  "request": "Model a wine glass with a thin stem and a round bowl."
+ },
+ {
+  "id": "shape_02",
+  "category": "shape",
+  "agent": "b",
+  "request": "Create a wrench: a flat handle with an open jaw at one end and a ring at the other."
+ },
+ {
+  "id": "shape_03",
+  "category": "shape",
+  "agent": "a",
+  "request": "Make an hourglass in a wooden frame with three posts."
+ },
+ {
+  "id": "shape_04",
+  "category": "shape",
+  "agent": "b",
+  "request": "Model a claw-foot bathtub."
+ },
+ {
+  "id": "shape_05",
+  "category": "shape",
+  "agent": "a",
+  "request": "Create a spiral staircase with 16 steps around a central pole and a handrail."
+ },
+ {
+  "id": "shape_06",
+  "category": "shape",
+  "agent": "b",
+  "request": "Make a garden watering can with a long spout and a handle."
+ },
+ {
+  "id": "shape_07",
+  "category": "shape",
+  "agent": "a",
+  "request": "Model a gear wheel with 12 teeth and a hexagonal hole in the middle."
+ },
+ {
+  "id": "shape_08",
+  "category": "shape",
+  "agent": "b",
+  "request": "Create an acoustic guitar with a body, a neck, a sound hole and six strings."
+ },
+ {
+  "id": "shape_09",
+  "category": "shape",
+  "agent": "a",
+  "request": "Make a pair of scissors, slightly open."
+ },
+ {
+  "id": "shape_10",
+  "category": "shape",
+  "agent": "b",
+  "request": "Model a three-tier stone fountain."
+ },
+ {
+  "id": "mat_01",
+  "category": "material",
+  "agent": "a",
+  "request": "Make a loaf of bread with a golden-brown baked crust."
+ },
+ {
+  "id": "mat_02",
+  "category": "material",
+  "agent": "b",
+  "request": "Create a bowling ball with swirls of red and black and three finger holes."
+ },
+ {
+  "id": "mat_03",
+  "category": "material",
+  "agent": "a",
+  "request": "Make an enamel kettle in speckled dark blue."
+ },
+ {
+  "id": "mat_04",
+  "category": "material",
+  "agent": "b",
+  "request": "Create a worn brown leather armchair with creases."
+ },
+ {
+  "id": "mat_05",
+  "category": "material",
+  "agent": "a",
+  "request": "Make a wedge of Swiss cheese with holes."
+ },
+ {
+  "id": "mat_06",
+  "category": "material",
+  "agent": "b",
+  "request": "Create a section of cobblestone path with dark gaps between the stones."
+ },
+ {
+  "id": "mat_07",
+  "category": "material",
+  "agent": "a",
+  "request": "Make a glass marble with a twisted ribbon of colour inside."
+ },
+ {
+  "id": "mat_08",
+  "category": "material",
+  "agent": "b",
+  "request": "Create a knitted wool scarf with mustard and grey stripes."
+ },
+ {
+  "id": "mat_09",
+  "category": "material",
+  "agent": "a",
+  "request": "Make a disco ball covered in small mirror tiles."
+ },
+ {
+  "id": "mat_10",
+  "category": "material",
+  "agent": "b",
+  "request": "Create a strawberry with small seeds and a green leafy top."
+ },
+ {
+  "id": "lit_01",
+  "category": "lit",
+  "agent": "a",
+  "request": "Put a pocket watch on a dark cloth and light it with one soft light from the upper left, like a jewellery advert."
+ },
+ {
+  "id": "lit_02",
+  "category": "lit",
+  "agent": "b",
+  "request": "Build a small lantern and light the scene only with its warm glow, at night."
+ },
+ {
+  "id": "lit_03",
+  "category": "lit",
+  "agent": "a",
+  "request": "Make three glass bottles of different colours on a windowsill, backlit by bright daylight."
+ },
+ {
+  "id": "lit_04",
+  "category": "lit",
+  "agent": "b",
+  "request": "Set up a low-key portrait of a simple bust: one hard light from the side and a faint blue fill."
+ },
+ {
+  "id": "lit_05",
+  "category": "lit",
+  "agent": "a",
+  "request": "Create a snow globe on a table, lit by cool window light from the left and a warm lamp from the right."
+ },
+ {
+  "id": "lit_06",
+  "category": "lit",
+  "agent": "b",
+  "request": "Photograph a pair of headphones on a seamless white background with even studio lighting."
+ },
+ {
+  "id": "lit_07",
+  "category": "lit",
+  "agent": "a",
+  "request": "Light a bowl of fruit like a still-life painting: a single warm light from high on one side and deep shadows."
+ },
+ {
+  "id": "lit_08",
+  "category": "lit",
+  "agent": "b",
+  "request": "Create a row of five stone columns lit by a low sun from behind, so they cast long shadows towards the camera."
+ },
+ {
+  "id": "lit_09",
+  "category": "lit",
+  "agent": "a",
+  "request": "Make a toy robot on a reflective black floor with a magenta light on one side and a cyan light on the other."
+ },
+ {
+  "id": "lit_10",
+  "category": "lit",
+  "agent": "b",
+  "request": "Make a close-up of a row of five coloured pencils with the nearest one in focus and the rest blurred."
+ },
+ {
+  "id": "scene_01",
+  "category": "scene",
+  "agent": "a",
+  "request": "Build a breakfast table: a plate with two fried eggs, a glass of juice, a fork and a knife, and a toaster with two slices of toast."
+ },
+ {
+  "id": "scene_02",
+  "category": "scene",
+  "agent": "b",
+  "request": "Create a small rock garden: raked sand, five rocks, a stone lantern and a bamboo fence at the back."
+ },
+ {
+  "id": "scene_03",
+  "category": "scene",
+  "agent": "a",
+  "request": "Make a tiny desert island with a palm tree, a treasure chest, a rowing boat pulled up on the sand and a signpost."
+ },
+ {
+  "id": "scene_04",
+  "category": "scene",
+  "agent": "b",
+  "request": "Create a chemistry set on a table: a rack of five test tubes with coloured liquids, a flask on a burner stand, a beaker and a pair of goggles."
+ },
+ {
+  "id": "scene_05",
+  "category": "scene",
+  "agent": "a",
+  "request": "Make a model railway: an oval track, a small engine with two wagons, a tunnel and a station hut."
+ },
+ {
+  "id": "scene_06",
+  "category": "scene",
+  "agent": "b",
+  "request": "Create a garden corner with a birdbath, a wooden bench, a row of four flower pots and a picket fence behind."
+ },
+ {
+  "id": "scene_07",
+  "category": "scene",
+  "agent": "a",
+  "request": "Make a drum kit: a bass drum, a snare, two toms, a hi-hat, a cymbal on a stand and a stool."
+ },
+ {
+  "id": "scene_08",
+  "category": "scene",
+  "agent": "b",
+  "request": "Create an entrance corner: a coat stand with a hat and a scarf, an umbrella stand with two umbrellas, a doormat and a wall clock."
+ },
+ {
+  "id": "scene_09",
+  "category": "scene",
+  "agent": "a",
+  "request": "Make a section of science-fiction corridor: floor panels, wall ribs, a sliding door, pipes along the ceiling and two glowing light strips."
+ },
+ {
+  "id": "scene_10",
+  "category": "scene",
+  "agent": "b",
+  "request": "Build a mountain signpost scene: a wooden signpost with three arrows, a cairn of stacked stones, a bench and two fir trees."
+ }
+]

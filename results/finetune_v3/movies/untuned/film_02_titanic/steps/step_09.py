@@ -1,0 +1,75 @@
+import bpy, math
+from mathutils import Vector
+
+# The mast and railing posts are still huge white cylinders blocking the view.
+# Delete all railing posts and the mast.
+for o in list(bpy.data.objects):
+    if (o.name.startswith("RailPost") or o.name.startswith("RailTop") or 
+        o.name.startswith("RailMid") or o.name.startswith("RailBot") or
+        o.name.startswith("Mast") or o.name.startswith("BowRope") or
+        o.name.startswith("Davit")):
+        bpy.data.objects.remove(o, do_unlink=True)
+
+# Re-aim camera to a clean wide shot of the bow with both figures
+jack = [o for o in bpy.data.objects if o.name.startswith("Jack_")]
+rose = [o for o in bpy.data.objects if o.name.startswith("Rose_")]
+allfig = jack + rose
+if allfig:
+    cx = sum(o.location.x for o in allfig) / len(allfig)
+    cy = sum(o.location.y for o in allfig) / len(allfig)
+    cz = sum(o.location.z for o in allfig) / len(allfig)
+else:
+    cx, cy, cz = 0, 28, 10
+
+cam = bpy.context.scene.camera
+if cam:
+    cam.location = (cx - 14, cy - 20, cz + 6)
+    direction = Vector((cx, cy, cz)) - cam.location
+    cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+    cam.data.lens = 40
+    cam.data.dof.use_dof = True
+    cam.data.dof.focus_distance = direction.length
+    cam.data.dof.aperture_fstop = 8.0
+
+# Remove the figure spot light (too harsh)
+o = bpy.data.objects.get("FigureSpot")
+if o: bpy.data.objects.remove(o, do_unlink=True)
+
+# Add a soft key light from the sunset direction (behind the bow, low)
+bpy.ops.object.light_add(type='SUN', location=(0, 50, 5))
+key = bpy.context.active_object; key.name = "SunsetKey"
+key.data.energy = 4.0; key.data.color = (1.0, 0.6, 0.3)
+key.rotation_euler = (math.radians(80), 0, math.radians(180))
+
+# Add a gentle fill from camera side
+bpy.ops.object.light_add(type='AREA', location=(cx - 10, cy - 15, cz + 5))
+fill = bpy.context.active_object; fill.name = "SoftFill"
+fill.data.energy = 80; fill.data.size = 20; fill.data.color = (1.0, 0.85, 0.7)
+direction = Vector((cx, cy, cz)) - fill.location
+fill.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+# Slightly boost exposure
+bpy.context.scene.view_settings.exposure = 0.8
+
+# Add a subtle warm rim from the sunset
+bpy.ops.object.light_add(type='AREA', location=(cx, cy + 10, cz + 3))
+rim = bpy.context.active_object; rim.name = "WarmRim"
+rim.data.energy = 150; rim.data.size = 15; rim.data.color = (1.0, 0.5, 0.2)
+direction = Vector((cx, cy, cz)) - rim.location
+rim.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+# Add a few more deck details: a small table, a hat box
+bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=0.1, location=(cx - 3, cy - 2, cz + 0.5))
+table = bpy.context.active_object; table.name = "DeckTable"
+table.data.materials.append(bpy.data.materials["Wood"])
+
+bpy.ops.mesh.primitive_cube_add(size=0.4, location=(cx + 3, cy - 1, cz + 0.3))
+box = bpy.context.active_object; box.name = "HatBox"
+box.data.materials.append(bpy.data.materials["Wood"])
+
+# Add a faint star field already exists; ensure moon is visible
+moon = bpy.data.objects.get("Moon")
+if moon:
+    moon.location = (60, -200, 80)
+
+print("Removed blocking geometry, added cinematic lighting")

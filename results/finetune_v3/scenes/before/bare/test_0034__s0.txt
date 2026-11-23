@@ -1,0 +1,215 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up dusk lighting
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+
+# World background (dusk sky)
+world = bpy.data.worlds.get('World') or bpy.data.worlds.new('World')
+scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get('Background')
+if bg_node:
+    bg_node.inputs[0].default_value = (0.15, 0.08, 0.25, 1.0)  # deep purple dusk
+    bg_node.inputs[1].default_value = 0.6
+
+# Sun (low, warm dusk light)
+sun_data = bpy.data.lights.new('DuskSun', type='SUN')
+sun_data.energy = 2.0
+sun_data.color = (1.0, 0.6, 0.3)
+sun_obj = bpy.data.objects.new('DuskSun', sun_data)
+scene.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = Euler((math.radians(70), 0, math.radians(45)), 'XYZ')
+
+# Fill light (cool ambient)
+fill_data = bpy.data.lights.new('FillLight', type='AREA')
+fill_data.energy = 50
+fill_data.color = (0.4, 0.5, 0.8)
+fill_data.size = 20
+fill_obj = bpy.data.objects.new('FillLight', fill_data)
+scene.collection.objects.link(fill_obj)
+fill_obj.location = (0, 0, 15)
+fill_obj.rotation_euler = Euler((0, 0, 0), 'XYZ')
+
+# Helper: create a simple tree
+def create_tree(x, y, scale=1.0, seed=0):
+    random.seed(seed)
+    # Trunk
+    trunk_data = bpy.data.meshes.new('Trunk')
+    trunk_obj = bpy.data.objects.new('Trunk', trunk_data)
+    scene.collection.objects.link(trunk_obj)
+    bpy.context.view_layer.objects.active = trunk_obj
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.15*scale, depth=2.5*scale, location=(x, y, 1.25*scale))
+    trunk_obj = bpy.context.active_object
+    trunk_obj.name = f'Trunk_{seed}'
+    # Bark material
+    bark_mat = bpy.data.materials.new(f'Bark_{seed}')
+    bark_mat.use_nodes = True
+    bsdf = bark_mat.node_tree.nodes.get('Principled BSDF')
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.25, 0.15, 0.08, 1.0)
+        bsdf.inputs['Roughness'].default_value = 0.9
+    trunk_obj.data.materials.append(bark_mat)
+
+    # Canopy (several overlapping spheres)
+    for i in range(5):
+        offset_x = random.uniform(-0.6, 0.6) * scale
+        offset_y = random.uniform(-0.6, 0.6) * scale
+        offset_z = random.uniform(2.5, 3.8) * scale
+        radius = random.uniform(0.8, 1.3) * scale
+        canopy_data = bpy.data.meshes.new(f'Canopy_{seed}_{i}')
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=12, radius=radius, location=(x+offset_x, y+offset_y, offset_z))
+        canopy_obj = bpy.context.active_object
+        canopy_obj.name = f'Canopy_{seed}_{i}'
+        # Leaf material with slight variation
+        leaf_mat = bpy.data.materials.new(f'Leaf_{seed}_{i}')
+        leaf_mat.use_nodes = True
+        bsdf = leaf_mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            hue = random.uniform(0.25, 0.35)
+            bsdf.inputs['Base Color'].default_value = (hue*0.3, hue, hue*0.2, 1.0)
+            bsdf.inputs['Roughness'].default_value = 0.8
+        canopy_obj.data.materials.append(leaf_mat)
+
+    # Golden apples on this tree
+    apple_count = random.randint(4, 8)
+    for j in range(apple_count):
+        ax = x + random.uniform(-1.0, 1.0) * scale
+        ay = y + random.uniform(-1.0, 1.0) * scale
+        az = random.uniform(2.2, 3.5) * scale
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.08*scale, location=(ax, ay, az))
+        apple_obj = bpy.context.active_object
+        apple_obj.name = f'Apple_{seed}_{j}'
+        # Golden glowing apple material
+        gold_mat = bpy.data.materials.new(f'GoldApple_{seed}_{j}')
+        gold_mat.use_nodes = True
+        bsdf = gold_mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value = (1.0, 0.85, 0.2, 1.0)
+            bsdf.inputs['Emission Color'].default_value = (1.0, 0.85, 0.2, 1.0)
+            bsdf.inputs['Emission Strength'].default_value = 2.0
+            bsdf.inputs['Roughness'].default_value = 0.3
+        apple_obj.data.materials.append(gold_mat)
+
+# Create ground (grass)
+bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = 'GrassGround'
+grass_mat = bpy.data.materials.new('Grass')
+grass_mat.use_nodes = True
+bsdf = grass_mat.node_tree.nodes.get('Principled BSDF')
+if bsdf:
+    bsdf.inputs['Base Color'].default_value = (0.15, 0.35, 0.1, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.9
+ground.data.materials.append(grass_mat)
+
+# Place trees in an orchard pattern
+tree_positions = [
+    (-6, -4), (-3, -5), (0, -4), (3, -5), (6, -4),
+    (-6, 0),  (-3, -1), (0, 0),   (3, -1),  (6, 0),
+    (-6, 4),  (-3, 5),  (0, 4),   (3, 5),   (6, 4),
+]
+for idx, (tx, ty) in enumerate(tree_positions):
+    create_tree(tx, ty, scale=random.uniform(0.8, 1.2), seed=idx*100)
+
+# Fallen glowing apples on grass
+fallen_count = 25
+for i in range(fallen_count):
+    fx = random.uniform(-8, 8)
+    fy = random.uniform(-7, 7)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.09, location=(fx, fy, 0.09))
+    fallen = bpy.context.active_object
+    fallen.name = f'FallenApple_{i}'
+    # Glowing golden material
+    glow_mat = bpy.data.materials.new(f'GlowApple_{i}')
+    glow_mat.use_nodes = True
+    bsdf = glow_mat.node_tree.nodes.get('Principled BSDF')
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (1.0, 0.9, 0.3, 1.0)
+        bsdf.inputs['Emission Color'].default_value = (1.0, 0.85, 0.2, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = 3.0
+        bsdf.inputs['Roughness'].default_value = 0.2
+    fallen.data.materials.append(glow_mat)
+
+# Wooden gate
+def create_gate(x, y, rotation=0):
+    # Two posts
+    for side in [-1, 1]:
+        px = x + side * 1.0
+        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.08, depth=2.0, location=(px, y, 1.0))
+        post = bpy.context.active_object
+        post.name = f'GatePost_{side}'
+        wood_mat = bpy.data.materials.new(f'Wood_{side}')
+        wood_mat.use_nodes = True
+        bsdf = wood_mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value = (0.35, 0.2, 0.1, 1.0)
+            bsdf.inputs['Roughness'].default_value = 0.85
+        post.data.materials.append(wood_mat)
+
+    # Horizontal bars
+    for h in [0.5, 1.0, 1.5]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, h))
+        bar = bpy.context.active_object
+        bar.scale = (1.0, 0.06, 0.06)
+        bar.name = f'GateBar_{h}'
+        wood_mat = bpy.data.materials.new(f'GateWood_{h}')
+        wood_mat.use_nodes = True
+        bsdf = wood_mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            bsdf.inputs['Base Color'].default_value = (0.3, 0.18, 0.08, 1.0)
+            bsdf.inputs['Roughness'].default_value = 0.85
+        bar.data.materials.append(wood_mat)
+
+create_gate(0, 8, rotation=0)
+
+# Ladder (leaning against a tree)
+ladder_x, ladder_y = 0, 0
+ladder_tilt = math.radians(15)
+# Two rails
+for side in [-0.3, 0.3]:
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.04, depth=3.0, location=(ladder_x + side, ladder_y, 1.5))
+    rail = bpy.context.active_object
+    rail.name = f'LadderRail_{side}'
+    rail.rotation_euler = Euler((0, ladder_tilt, 0), 'XYZ')
+    wood_mat = bpy.data.materials.new(f'LadderWood_{side}')
+    wood_mat.use_nodes = True
+    bsdf = wood_mat.node_tree.nodes.get('Principled BSDF')
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.4, 0.25, 0.12, 1.0)
+        bsdf.inputs['Roughness'].default_value = 0.8
+    rail.data.materials.append(wood_mat)
+
+# Rungs
+for i in range(6):
+    rung_z = 0.4 + i * 0.45
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.03, depth=0.6, location=(ladder_x, ladder_y, rung_z))
+    rung = bpy.context.active_object
+    rung.name = f'LadderRung_{i}'
+    rung.rotation_euler = Euler((math.radians(90), 0, 0), 'XYZ')
+    wood_mat = bpy.data.materials.new(f'RungWood_{i}')
+    wood_mat.use_nodes = True
+    bsdf = wood_mat.node_tree.nodes.get('Principled BSDF')
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.35, 0.22, 0.1, 1.0)
+        bsdf.inputs['Roughness'].default_value = 0.8
+    rung.data.materials.append(wood_mat)
+
+# Camera
+bpy.ops.object.camera_add(location=(0, -15, 4), rotation=(Euler((math.radians(80), 0, 0), 'XYZ')))
+camera = bpy.context.active_object
+camera.name = 'OrchardCamera'
+scene.camera = camera
+
+# Set camera to orthographic-ish wide view
+camera.data.lens = 35
+```

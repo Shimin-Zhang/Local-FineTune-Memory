@@ -1,0 +1,92 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(550)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def col(rgb, glow=0):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .9
+    if glow: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    return m
+turf, turf2, rock, bark, leaf1, leaf2, leaf3, path, sun, cloud = (col((.1, .16, .07)), col((.16, .17, .08)), col((.25, .22, .22)), col((.14, .08, .05)),
+    col((.35, .12, .06)), col((.45, .22, .05)), col((.2, .2, .08)), col((.3, .2, .12)), col((1, .4, .05), 9), col((.5, .25, .25)))
+def solid(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return solid(bm, m, at, rot)
+def cone(at, r, h, n, m, r2=0.0, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return solid(bm, m, at, rot)
+def blob(at, r, m, flat=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= flat
+    return solid(bm, m, at)
+def beam(at, rgb, w):
+    L = bpy.data.lights.new("b", "POINT"); L.color, L.energy = rgb, w
+    o = bpy.data.objects.new("b", L); o.location = at; sc.collection.objects.link(o)
+# a long hill: 10 x 9 grid, height rises toward the back, then a ridge
+bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=10, y_segments=9, size=1)
+for v in bm.verts: v.co = Vector((v.co.x * 10, v.co.y * 8.5, 0))
+for v in bm.verts:
+    v.co.z = 2.8 * max(0, v.co.y / 8.5) ** 1.4 + random.uniform(-.12, .12) * (v.co.y > 0)
+edge = bmesh.ops.extrude_edge_only(bm, edges=[e for e in bm.edges if e.is_boundary])["geom"]
+for v in [g for g in edge if isinstance(g, bmesh.types.BMVert)]: v.co = Vector((v.co.x * .9, v.co.y * .9, -3.0 + random.uniform(-.8, .5)))
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+solid(bm, turf)
+for i in range(14):
+    x, y = random.uniform(-8, 8), random.uniform(-7, 7)
+    blob((x, y, 2.8 * max(0, y / 8.5) ** 1.4 - .1), random.uniform(.7, 1.4), turf2 if i % 2 else rock, .3)
+def hill(x, y): return 2.8 * max(0, y / 8.5) ** 1.4
+# winding path up the hill
+for i in range(12):
+    y = -7 + i * 1.2; x = 1.5 * math.sin(i * .6) - .5
+    blk((x, y, hill(x, y) - .05), (1.6, 1.4, .1), path, (0, 0, .3 * math.cos(i * .6)))
+# the sun, a huge low disc behind the ridge
+sun = cone((-4, 9.6, 1.6), 2.6, .4, 10, sun, 2.6, (math.pi / 2, 0, 0))
+beam((-4, 7.5, 3.5), (1, .45, .1), 3000)
+# simple trees: trunk plus stacked cones or blobs, long shadows implied by the light
+for i, (x, y, k) in enumerate(((-6, -4, 1.0), (-2.5, -1, 1.2), (5.5, -3, .9), (7, 2, 1.1), (-7, 3, 1.0), (0, 4.5, 1.3), (-3.5, 6, 1.1), (3.5, 6.5, 1.0))):
+    z = hill(x, y); h = 2.2 * k
+    cone((x, y, z), .22 * k, h, 5, bark, .15 * k)
+    if i % 3 == 0:
+        for j in range(3): blob((x + random.uniform(-.3, .3), y, z + h * .6 + j * .7 * k), 1.1 * k * (1 - j * .22), (leaf1, leaf2, leaf3)[(i + j) % 3], .9)
+    else:
+        for j in range(3): cone((x, y, z + h * .45 + j * .9 * k), (1.3 - j * .35) * k, 1.5 * k, 6, (leaf1, leaf2, leaf3)[(i + j) % 3], .1)
+# rocks and tufts
+for i in range(10):
+    x, y = random.uniform(-8.5, 8.5), random.uniform(-7.5, 7.5)
+    blob((x, y, hill(x, y) + .1), random.uniform(.3, .7), rock, .7)
+for i in range(16):
+    x, y = random.uniform(-8.5, 8.5), random.uniform(-7.5, 7.5)
+    cone((x, y, hill(x, y)), .12, .5, 4, turf2, .02)
+# a little hut at the foot of the hill with a lit window
+hx, hy = -5, -6
+blk((hx, hy, hill(hx, hy)), (2.6, 2.2, 1.5), col((.4, .25, .18)))
+blk((hx, hy, hill(hx, hy) + 1.5), (3.0, 2.6, .2), col((.2, .1, .08)))
+blk((hx + .6, hy - 1.12, hill(hx, hy) + .5), (.8, .08, .7), col((1, .6, .2), 6))
+beam((hx + .6, hy - 2, hill(hx, hy) + 1), (1, .6, .2), 200)
+# clouds, flat slabs of warm pink
+for x, y, z, w in ((-6, 6, 9, 3), (2, 7, 10.5, 4), (7, 4, 8.5, 2.5)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * 1.2, v.co.z * .35))
+    solid(bm, cloud, (x, y, z))
+# sunset light: deep orange key low from the sun side, violet rim from the other
+for rgb, w, at in (((1, .42, .12), 5.5, (-14, -6, 3.5)), ((.55, .3, .8), 2.2, (12, 10, 8))):
+    s = bpy.data.lights.new("sun", "SUN"); s.color, s.energy = rgb, w
+    o = bpy.data.objects.new("sun", s); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.035, .012, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+co.location = (8, -56, 30)
+co.rotation_euler = (Vector((0, 0, 3.5)) - co.location).to_track_quat('-Z', 'Y').to_euler()
+sc.camera = co
+```

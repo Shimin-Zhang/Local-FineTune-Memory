@@ -1,0 +1,92 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(825)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def col(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+sea, shore, rock, wood, plank, green, grass, reed, hull, sail, rope = (col((.02, .1, .13), rough=.3), col((.3, .24, .16)), col((.18, .17, .18)), col((.2, .12, .07)),
+    col((.35, .25, .15)), col((.06, .22, .15)), col((.1, .2, .08)), col((.4, .35, .12)), col((.5, .12, .08)), col((.7, .65, .5)), col((.3, .25, .15)))
+paints = [col((.7, .12, .1)), col((.1, .35, .6)), col((.75, .5, .08)), col((.1, .45, .3)), col((.55, .2, .5)), col((.7, .35, .1))]
+win, lamp, bulb = col((1, .65, .25), 7), col((1, .7, .3), 14), col((1, .85, .5), 10)
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("h"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("h", me); o.location, o.rotation_euler = at, rot
+    o.data.materials.append(m); sc.collection.objects.link(o); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return make(bm, m, at, rot)
+def post(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at, rot)
+def roof(at, w, d, h, m):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+        if v.co.z > 0: v.co.x = 0
+    return make(bm, m, at)
+def light(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13, depth=3.4)
+for v in bm.verts:
+    v.co.z -= 1.7
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.4, .2)))
+make(bm, sea)
+for i in range(7):
+    a = math.radians(-30 + i * 13)
+    blk((10.5 * math.cos(a) * .9, 10.5 * math.sin(a) * .9, -.1), (3.2, 3.0, .6), rock if i % 2 else shore, (0, 0, a + random.uniform(-.3, .3)))
+# six palafitos on stilts: each with ladder, door, glowing window, lantern, and a small boat tied alongside
+for i in range(6):
+    a = math.radians(-38 + i * 15); x, y = 5.0 * math.cos(a), 5.0 * math.sin(a) + .3
+    p = paints[i]; q = paints[(i + 3) % 6]; rz = a + math.pi / 2
+    for sx in (-1, 1):
+        for sy in (-1, 1): post((x + sx * 1.1, y + sy * 1.0, -.2), .12, 2.2, 5, wood)
+    blk((x, y, 2.0), (2.8, 2.4, .15), plank)
+    blk((x, y, 2.15), (2.4, 2.0, 1.5), p)
+    roof((x, y, 3.65), 2.9, 2.5, 1.0, q)
+    blk((x, y - 1.05, 2.15), (.5, .1, .9), wood)
+    blk((x + .7, y - 1.02, 2.7), (.55, .1, .5), win)
+    blk((x + .7, y - 1.1, 2.6), (.75, .1, .1), wood)
+    blk((x - .8, y - 1.02, 3.0), (.4, .1, .4), win)
+    blk((x + .7, y - 1.25, 2.5), (.1, .1, .1), lamp)
+    light("POINT", (1, .65, .25), 220, (x + .7, y - 1.8, 2.8))
+    for k in range(5): blk((x + .85, y - 1.05, 2.2 + k * .25), (.08, .08, .08), wood)
+    blk((x + .85, y - 1.05, 3.4), (.08, .08, .08), wood)
+    blk((x + .85, y - 1.05, 2.2), (.08, .08, 1.3), wood)
+    post((x - 1.2, y - 1.3, 3.0), .12, .35, 6, lamp); light("POINT", (1, .7, .3), 120, (x - 1.2, y - 1.3, 3.4))
+    bx, by = x + math.sin(a) * 2.3, y - math.cos(a) * 2.3
+    blk((bx, by, .05), (2.0, .8, .35), hull, (0, 0, a + math.pi / 2)); blk((bx, by, .35), (1.6, .6, .06), plank, (0, 0, a + math.pi / 2))
+    blk((bx + .3, by, .4), (.1, .1, .1), rope)
+# plank walkway joining the houses, with lanterns on posts
+for i in range(6):
+    a0, a1 = math.radians(-38 + i * 15), math.radians(-23 + i * 15)
+    for k in range(5):
+        a = a0 + (a1 - a0) * k / 5
+        blk((5.0 * math.cos(a), 5.0 * math.sin(a) + .3, 1.95), (1.0, .8, .1), plank, (0, 0, a + math.pi / 2))
+for i in range(3):
+    a = math.radians(-30 + i * 22); post((5.0 * math.cos(a), 5.0 * math.sin(a) + .3, 2.0), .06, 1.3, 5, wood); post((5.0 * math.cos(a), 5.0 * math.sin(a) + .3, 3.3), .18, .3, 6, bulb)
+    light("POINT", (1, .8, .4), 160, (5.0 * math.cos(a), 5.0 * math.sin(a) + .3, 3.5))
+# reeds and tufts on the shingle
+for i in range(14):
+    a = random.uniform(-1.3, 1.3); r = random.uniform(8.5, 11)
+    for k in range(3): post((r * math.cos(a) + k * .15, r * math.sin(a), 0), .06, random.uniform(.8, 1.5), 4, reed, .02, (random.uniform(-.2, .2), random.uniform(-.2, .2), 0))
+for i in range(10):
+    a = random.uniform(0, 6.28); r = random.uniform(8, 11.5)
+    post((r * math.cos(a), r * math.sin(a), 0), .4, .4, 6, grass, .1)
+light("SUN", (1, .55, .3), 5, (-26, -12, 8), (0, 0, 1)); light("SUN", (.35, .5, .9), 2.2, (22, 20, 10), (0, 0, 1))
+w = bpy.data.worlds.new("dusk"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.04, .02, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co); sc.camera = co
+co.location = Vector((0, 0, 2)) + Vector((6, -46, 30))
+co.rotation_euler = (Vector((0, 0, 2)) - co.location).to_track_quat('-Z', 'Y').to_euler()
+```

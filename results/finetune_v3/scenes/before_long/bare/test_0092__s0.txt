@@ -1,0 +1,263 @@
+```python
+import bpy
+import math
+import mathutils
+import random
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up world
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.05, 0.08, 0.15, 1.0)
+    bg_node.inputs[1].default_value = 1.0
+
+# Lighting
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 2.0
+sun_data.color = (1.0, 0.95, 0.85)
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(45), math.radians(20), 0)
+
+key_light_data = bpy.data.lights.new("KeyLight", type='POINT')
+key_light_data.energy = 150
+key_light_data.color = (1.0, 0.9, 0.7)
+key_light = bpy.data.objects.new("KeyLight", key_light_data)
+bpy.context.collection.objects.link(key_light)
+key_light.location = (10, 10, 15)
+
+# Materials
+def create_material(name, color, roughness=0.5, metallic=0.0, emission=None, emission_strength=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+        bsdf.inputs["Roughness"].default_value = roughness
+        bsdf.inputs["Metallic"].default_value = metallic
+        if emission:
+            bsdf.inputs["Emission Color"].default_value = (*emission, 1.0)
+            bsdf.inputs["Emission Strength"].default_value = emission_strength
+    return mat
+
+mat_stone = create_material("Stone", (0.7, 0.65, 0.6), roughness=0.8)
+mat_brass = create_material("Brass", (0.8, 0.6, 0.2), roughness=0.3, metallic=0.8)
+mat_glass = create_material("Glass", (0.8, 0.9, 1.0), roughness=0.1, metallic=0.0)
+mat_dark_wood = create_material("DarkWood", (0.2, 0.1, 0.05), roughness=0.7)
+mat_red = create_material("Red", (0.8, 0.1, 0.1), roughness=0.6)
+mat_green = create_material("Green", (0.1, 0.5, 0.1), roughness=0.7)
+mat_gold = create_material("Gold", (1.0, 0.85, 0.2), roughness=0.2, metallic=0.9, emission=(1.0, 0.8, 0.3), emission_strength=0.5)
+mat_snow = create_material("Snow", (0.95, 0.95, 0.98), roughness=0.9)
+mat_copper = create_material("Copper", (0.7, 0.4, 0.2), roughness=0.4, metallic=0.8)
+mat_white = create_material("White", (0.9, 0.9, 0.9), roughness=0.5)
+mat_black = create_material("Black", (0.05, 0.05, 0.05), roughness=0.8)
+
+# Main building - L-shaped corner store
+def add_box(name, loc, size, mat, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    obj.rotation_euler = rot
+    obj.data.materials.append(mat)
+    return obj
+
+# Main block
+main_block = add_box("MainBlock", (0, 0, 5), (20, 12, 10), mat_stone)
+
+# Corner wing
+corner_wing = add_box("CornerWing", (10, 6, 5), (12, 12, 10), mat_stone)
+
+# Cornice
+cornice1 = add_box("Cornice1", (0, 0, 10.5), (20.5, 12.5, 0.5), mat_stone)
+cornice2 = add_box("Cornice2", (10, 6, 10.5), (12.5, 12.5, 0.5), mat_stone)
+
+# Pediment above entrance
+pediment = add_box("Pediment", (10, 0, 11), (8, 1, 2), mat_stone)
+
+# Dome over corner entrance
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3, location=(10, 0, 12))
+dome = bpy.context.active_object
+dome.name = "Dome"
+dome.scale = (1, 1, 0.7)
+dome.data.materials.append(mat_copper)
+
+# Dome lantern
+bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=1, location=(10, 0, 14.5))
+lantern = bpy.context.active_object
+lantern.name = "Lantern"
+lantern.data.materials.append(mat_brass)
+
+# Display windows along front (y=6 face)
+for i in range(5):
+    x_pos = -8 + i * 4
+    # Window frame
+    frame = add_box(f"WindowFrame_{i}", (x_pos, 6.1, 4), (3, 0.3, 5), mat_dark_wood)
+    # Glass
+    glass = add_box(f"WindowGlass_{i}", (x_pos, 6.2, 4), (2.5, 0.1, 4.5), mat_glass)
+
+# Side windows (x=16 face)
+for i in range(3):
+    y_pos = -2 + i * 4
+    frame = add_box(f"SideWindowFrame_{i}", (16.1, y_pos, 4), (0.3, 3, 5), mat_dark_wood)
+    glass = add_box(f"SideWindowGlass_{i}", (16.2, y_pos, 4), (0.1, 2.5, 4.5), mat_glass)
+
+# Entrance door
+door = add_box("EntranceDoor", (10, 0, 2.5), (3, 0.5, 5), mat_dark_wood)
+
+# Doorman figure (simple stylized)
+def add_doorman(loc):
+    # Body
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=1.2, location=(loc[0], loc[1], 1.2))
+    body = bpy.context.active_object
+    body.name = "DoormanBody"
+    body.data.materials.append(mat_black)
+    
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(loc[0], loc[1], 2.2))
+    head = bpy.context.active_object
+    head.name = "DoormanHead"
+    head.data.materials.append(mat_white)
+    
+    # Hat
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=0.3, location=(loc[0], loc[1], 2.5))
+    hat = bpy.context.active_object
+    hat.name = "DoormanHat"
+    hat.data.materials.append(mat_black)
+
+add_doorman((10, 1.5, 0))
+
+# Clock on facade
+bpy.ops.mesh.primitive_cylinder_add(radius=1, depth=0.3, location=(10, 0, 8))
+clock_face = bpy.context.active_object
+clock_face.name = "ClockFace"
+clock_face.rotation_euler = (math.radians(90), 0, 0)
+clock_face.data.materials.append(mat_white)
+
+# Clock rim
+bpy.ops.mesh.primitive_torus_add(major_radius=1.1, minor_radius=0.15, location=(10, 0, 8))
+clock_rim = bpy.context.active_object
+clock_rim.name = "ClockRim"
+clock_rim.rotation_euler = (math.radians(90), 0, 0)
+clock_rim.data.materials.append(mat_brass)
+
+# Clock hands
+bpy.ops.mesh.primitive_cube_add(size=1, location=(10, 0.15, 8.3))
+hour_hand = bpy.context.active_object
+hour_hand.name = "HourHand"
+hour_hand.scale = (0.05, 0.05, 0.5)
+hour_hand.data.materials.append(mat_black)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(10, 0.15, 8.5))
+minute_hand = bpy.context.active_object
+minute_hand.name = "MinuteHand"
+minute_hand.scale = (0.03, 0.03, 0.7)
+minute_hand.rotation_euler = (0, math.radians(90), 0)
+minute_hand.data.materials.append(mat_black)
+
+# Delivery carts
+def add_delivery_cart(loc, rot_z=0):
+    # Platform
+    platform = add_box(f"CartPlatform_{loc[0]}", loc, (2, 1.5, 0.3), mat_dark_wood, rot=(0,0,rot_z))
+    
+    # Wheels
+    for wx in [-0.8, 0.8]:
+        for wy in [-0.6, 0.6]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.1, location=(loc[0]+wx, loc[1]+wy, 0.25))
+            wheel = bpy.context.active_object
+            wheel.name = f"Wheel_{wx}_{wy}"
+            wheel.rotation_euler = (math.radians(90), 0, 0)
+            wheel.data.materials.append(mat_black)
+    
+    # Boxes on cart
+    for bx in [-0.5, 0.3]:
+        for by in [-0.3, 0.4]:
+            box = add_box(f"Box_{bx}_{by}", (loc[0]+bx, loc[1]+by, 0.5), (0.6, 0.6, 0.5), mat_red)
+
+add_delivery_cart((5, 8, 0), math.radians(30))
+add_delivery_cart((14, 10, 0), math.radians(-20))
+
+# Holiday decorations
+
+# Christmas wreath on door
+bpy.ops.mesh.primitive_torus_add(major_radius=1, minor_radius=0.3, location=(10, 0.3, 4))
+wreath = bpy.context.active_object
+wreath.name = "Wreath"
+wreath.rotation_euler = (math.radians(90), 0, 0)
+wreath.data.materials.append(mat_green)
+
+# Red bow on wreath
+bpy.ops.mesh.primitive_cube_add(size=1, location=(10, 0.4, 4))
+bow = bpy.context.active_object
+bow.name = "Bow"
+bow.scale = (0.3, 0.3, 0.3)
+bow.data.materials.append(mat_red)
+
+# Holiday lights along cornice
+for i in range(10):
+    x_pos = -9 + i * 2
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(x_pos, 6.2, 10.5))
+    light_sphere = bpy.context.active_object
+    light_sphere.name = f"Light_{i}"
+    mat_light = create_material(f"LightMat_{i}", (1.0, 0.5, 0.1), emission=(1.0, 0.5, 0.1), emission_strength=2.0)
+    light_sphere.data.materials.append(mat_light)
+
+# Garland along building edge
+for i in range(8):
+    x_pos = -8 + i * 2.5
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.5, minor_radius=0.1, location=(x_pos, 6.3, 10))
+    garland_seg = bpy.context.active_object
+    garland_seg.name = f"Garland_{i}"
+    garland_seg.rotation_euler = (0, math.radians(90), 0)
+    garland_seg.data.materials.append(mat_green)
+
+# Snow on ground
+bpy.ops.mesh.primitive_plane_add(size=50, location=(5, 5, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(mat_snow)
+
+# Snow piles
+for i in range(5):
+    x = -5 + i * 5
+    y = 8 + random.uniform(-1, 1)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1 + random.uniform(0, 0.5), location=(x, y, 0.3))
+    pile = bpy.context.active_object
+    pile.name = f"SnowPile_{i}"
+    pile.scale = (1, 1, 0.4)
+    pile.data.materials.append(mat_snow)
+
+# String lights across entrance
+for i in range(15):
+    t = i / 14
+    x = 8 + t * 4
+    y = 0.5 + math.sin(t * math.pi) * 0.5
+    z = 5 - math.sin(t * math.pi) * 1
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(x, y, z))
+    bulb = bpy.context.active_object
+    bulb.name = f"Bulb_{i}"
+    mat_bulb = create_material(f"BulbMat_{i}", (1.0, 0.8, 0.2), emission=(1.0, 0.8, 0.2), emission_strength=1.5)
+    bulb.data.materials.append(mat_bulb)
+
+# Set up camera
+camera_data = bpy.data.cameras.new("Camera")
+camera_data.lens = 35
+camera_obj = bpy.data.objects.new("Camera", camera_data)
+bpy.context.collection.objects.link(camera_obj)
+camera_obj.location = (25, 25, 8)
+camera_obj.rotation_euler = (math.radians(70), 0, math.radians(-45))
+bpy.context.scene.camera = camera_obj
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+```

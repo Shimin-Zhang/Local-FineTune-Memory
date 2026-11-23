@@ -1,0 +1,280 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Set seed for reproducibility
+random.seed(42)
+
+# Clear default scene objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a base icosphere for the boulder
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=1.0, location=(0, 0, 0))
+boulder = bpy.context.active_object
+boulder.name = "Boulder"
+
+# Displace the boulder to make it irregular
+# Add a displace modifier with a noise texture
+texture = bpy.data.textures.new(name="BoulderNoise", type='CLOUDS')
+texture.noise_scale = 0.5
+texture.noise_depth = 3
+
+displace_mod = boulder.modifiers.new(name="Displace", type='DISPLACE')
+displace_mod.texture = texture
+displace_mod.strength = 0.4
+displace_mod.mid_level = 0.5
+
+# Apply the displace modifier
+bpy.context.view_layer.objects.active = boulder
+bpy.ops.object.modifier_apply(modifier="Displace")
+
+# Add a subsurf modifier for smoothness
+subsurf_mod = boulder.modifiers.new(name="Subsurf", type='SUBSURF')
+subsurf_mod.levels = 2
+subsurf_mod.render_levels = 3
+
+# Create a new material for the boulder (rock)
+rock_mat = bpy.data.materials.new(name="RockMaterial")
+rock_mat.use_nodes = True
+nodes = rock_mat.node_tree.nodes
+links = rock_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes for rock material
+output_node = nodes.new(type='ShaderNodeOutputMaterial')
+output_node.location = (400, 0)
+
+diffuse_node = nodes.new(type='ShaderNodeBsdfPrincipled')
+diffuse_node.location = (100, 0)
+diffuse_node.inputs['Base Color'].default_value = (0.25, 0.22, 0.18, 1.0)  # Brownish-gray rock
+diffuse_node.inputs['Roughness'].default_value = 0.9
+diffuse_node.inputs['Specular IOR Level'].default_value = 0.3
+
+noise_node = nodes.new(type='ShaderNodeTexNoise')
+noise_node.location = (-200, 0)
+noise_node.inputs['Scale'].default_value = 15.0
+noise_node.inputs['Detail'].default_value = 8.0
+noise_node.inputs['Roughness'].default_value = 0.6
+
+# Mix rock color with some variation
+mix_node = nodes.new(type='ShaderNodeMixRGB')
+mix_node.location = (0, 0)
+mix_node.inputs['Color1'].default_value = (0.25, 0.22, 0.18, 1.0)
+mix_node.inputs['Color2'].default_value = (0.35, 0.32, 0.28, 1.0)
+
+links.new(noise_node.outputs['Fac'], mix_node.inputs['Fac'])
+links.new(mix_node.outputs['Color'], diffuse_node.inputs['Base Color'])
+links.new(diffuse_node.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign rock material to boulder
+boulder.data.materials.append(rock_mat)
+
+# Create moss material
+moss_mat = bpy.data.materials.new(name="MossMaterial")
+moss_mat.use_nodes = True
+moss_nodes = moss_mat.node_tree.nodes
+moss_links = moss_mat.node_tree.links
+
+# Clear default nodes
+for node in moss_nodes:
+    moss_nodes.remove(node)
+
+# Create nodes for moss material
+moss_output = moss_nodes.new(type='ShaderNodeOutputMaterial')
+moss_output.location = (400, 0)
+
+moss_diffuse = moss_nodes.new(type='ShaderNodeBsdfPrincipled')
+moss_diffuse.location = (100, 0)
+moss_diffuse.inputs['Base Color'].default_value = (0.15, 0.4, 0.1, 1.0)  # Green moss
+moss_diffuse.inputs['Roughness'].default_value = 0.95
+moss_diffuse.inputs['Specular IOR Level'].default_value = 0.1
+
+# Add some noise to moss color
+moss_noise = moss_nodes.new(type='ShaderNodeTexNoise')
+moss_noise.location = (-200, 0)
+moss_noise.inputs['Scale'].default_value = 20.0
+moss_noise.inputs['Detail'].default_value = 6.0
+
+moss_mix = moss_nodes.new(type='ShaderNodeMixRGB')
+moss_mix.location = (0, 0)
+moss_mix.inputs['Color1'].default_value = (0.15, 0.4, 0.1, 1.0)
+moss_mix.inputs['Color2'].default_value = (0.1, 0.35, 0.08, 1.0)
+
+moss_links.new(moss_noise.outputs['Fac'], moss_mix.inputs['Fac'])
+moss_links.new(moss_mix.outputs['Color'], moss_diffuse.inputs['Base Color'])
+moss_links.new(moss_diffuse.outputs['BSDF'], moss_output.inputs['Surface'])
+
+# Create moss patches as separate objects (small displaced spheres)
+moss_count = 30
+for i in range(moss_count):
+    # Random position on the boulder surface
+    # Use a random direction vector
+    theta = random.uniform(0, 2 * math.pi)
+    phi = random.uniform(0, math.pi)
+    
+    # Only place moss on upper parts of the boulder (where it would naturally grow)
+    # Filter by z > 0 or use a weighted distribution
+    if phi > math.pi * 0.6:  # Skip lower hemisphere mostly
+        continue
+    
+    # Random distance from center (slightly larger than boulder radius)
+    r = 1.0 + random.uniform(0.0, 0.1)
+    
+    x = r * math.sin(phi) * math.cos(theta)
+    y = r * math.sin(phi) * math.sin(theta)
+    z = r * math.cos(phi)
+    
+    # Create a small icosphere for moss patch
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=random.uniform(0.05, 0.15), location=(x, y, z))
+    moss_patch = bpy.context.active_object
+    moss_patch.name = f"MossPatch_{i}"
+    
+    # Displace moss patch to make it bumpy
+    moss_tex = bpy.data.textures.new(name=f"MossNoise_{i}", type='CLOUDS')
+    moss_tex.noise_scale = 0.1
+    moss_tex.noise_depth = 2
+    
+    moss_disp = moss_patch.modifiers.new(name="Displace", type='DISPLACE')
+    moss_disp.texture = moss_tex
+    moss_disp.strength = 0.03
+    moss_disp.mid_level = 0.5
+    
+    bpy.context.view_layer.objects.active = moss_patch
+    bpy.ops.object.modifier_apply(modifier="Displace")
+    
+    # Add subsurf for smoothness
+    moss_subsurf = moss_patch.modifiers.new(name="Subsurf", type='SUBSURF')
+    moss_subsurf.levels = 1
+    moss_subsurf.render_levels = 2
+    
+    # Assign moss material
+    moss_patch.data.materials.append(moss_mat)
+    
+    # Randomly rotate moss patch
+    moss_patch.rotation_euler = (
+        random.uniform(0, 2 * math.pi),
+        random.uniform(0, 2 * math.pi),
+        random.uniform(0, 2 * math.pi)
+    )
+
+# Add some small rocks/pebbles around the base
+pebble_count = 15
+for i in range(pebble_count):
+    theta = random.uniform(0, 2 * math.pi)
+    r = random.uniform(1.2, 2.0)
+    x = r * math.cos(theta)
+    y = r * math.sin(theta)
+    z = random.uniform(-0.1, 0.1)
+    
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=random.uniform(0.03, 0.08), location=(x, y, z))
+    pebble = bpy.context.active_object
+    pebble.name = f"Pebble_{i}"
+    
+    # Displace pebble
+    pebble_tex = bpy.data.textures.new(name=f"PebbleNoise_{i}", type='CLOUDS')
+    pebble_tex.noise_scale = 0.05
+    pebble_tex.noise_depth = 2
+    
+    pebble_disp = pebble.modifiers.new(name="Displace", type='DISPLACE')
+    pebble_disp.texture = pebble_tex
+    pebble_disp.strength = 0.02
+    pebble_disp.mid_level = 0.5
+    
+    bpy.context.view_layer.objects.active = pebble
+    bpy.ops.object.modifier_apply(modifier="Displace")
+    
+    # Assign rock material
+    pebble.data.materials.append(rock_mat)
+    
+    # Random rotation
+    pebble.rotation_euler = (
+        random.uniform(0, 2 * math.pi),
+        random.uniform(0, 2 * math.pi),
+        random.uniform(0, 2 * math.pi)
+    )
+
+# Add a ground plane
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, -0.5))
+ground = bpy.context.active_object
+ground.name = "Ground"
+
+# Create ground material
+ground_mat = bpy.data.materials.new(name="GroundMaterial")
+ground_mat.use_nodes = True
+ground_nodes = ground_mat.node_tree.nodes
+ground_links = ground_mat.node_tree.links
+
+for node in ground_nodes:
+    ground_nodes.remove(node)
+
+ground_output = ground_nodes.new(type='ShaderNodeOutputMaterial')
+ground_output.location = (400, 0)
+ground_diffuse = ground_nodes.new(type='ShaderNodeBsdfPrincipled')
+ground_diffuse.location = (100, 0)
+ground_diffuse.inputs['Base Color'].default_value = (0.2, 0.18, 0.15, 1.0)
+ground_diffuse.inputs['Roughness'].default_value = 0.95
+
+ground_links.new(ground_diffuse.outputs['BSDF'], ground_output.inputs['Surface'])
+
+ground.data.materials.append(ground_mat)
+
+# Add lighting
+# Key light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun_light = bpy.context.active_object
+sun_light.name = "KeyLight"
+sun_light.data.energy = 3.0
+sun_light.data.angle = math.radians(5)
+sun_light.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Fill light
+bpy.ops.object.light_add(type='SUN', location=(-5, -3, 8))
+fill_light = bpy.context.active_object
+fill_light.name = "FillLight"
+fill_light.data.energy = 1.0
+fill_light.data.angle = math.radians(10)
+fill_light.rotation_euler = (math.radians(30), math.radians(-20), 0)
+
+# Set up camera
+bpy.ops.object.camera_add(location=(4, -4, 3))
+camera = bpy.context.active_object
+camera.name = "Camera"
+
+# Point camera at the boulder
+direction = Vector((0, 0, 0)) - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set camera as active
+bpy.context.scene.camera = camera
+
+# Set up world background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+
+for node in world_nodes:
+    world_nodes.remove(node)
+
+world_output = world_nodes.new(type='ShaderNodeOutputWorld')
+world_output.location = (400, 0)
+world_bg = world_nodes.new(type='ShaderNodeBackground')
+world_bg.location = (100, 0)
+world_bg.inputs['Color'].default_value = (0.5, 0.7, 0.9, 1.0)  # Sky blue
+world_bg.inputs['Strength'].default_value = 0.5
+
+world_links.new(world_bg.outputs['Background'], world_output.inputs['Surface'])
+
+print("Moss-covered boulder created successfully!")
+```

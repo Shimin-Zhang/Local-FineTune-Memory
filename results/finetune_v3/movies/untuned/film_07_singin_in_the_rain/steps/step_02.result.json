@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 4.7,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene built: wet street, buildings, storefronts, lamp posts, character swinging, umbrella, lights, puddles, neon signs\n",
+ "state_saved": true,
+ "n_objects": 237,
+ "n_lights": 17,
+ "n_materials": 26,
+ "own_camera": true,
+ "render_error": null
+}

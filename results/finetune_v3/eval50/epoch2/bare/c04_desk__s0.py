@@ -1,0 +1,85 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1503)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+mats = {}
+def tone(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .8
+    if glow:
+        n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    mats[name] = m
+for k, c, g in [("wall", (.07, .08, .13), 0), ("wall2", (.05, .06, .1), 0), ("floor", (.12, .08, .06), 0), ("desk", (.28, .16, .09), 0),
+        ("black", (.03, .03, .035), 0), ("grey", (.14, .14, .16), 0), ("key", (.55, .55, .6), 0), ("mug", (.7, .12, .1), 0),
+        ("screen", (.1, .4, .8), 1.4), ("lamp", (1, .75, .35), 12), ("plant", (.1, .3, .12), 0), ("pot", (.4, .2, .12), 0), ("book", (.5, .1, .15), 0), ("book2", (.1, .25, .45), 0)]:
+    tone(k, c, g)
+def mesh(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(mats[k]); return o
+def slab(at, s, k, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mesh(bm, k, at, rot)
+def can(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, k, at, rot)
+def bar(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mesh(bm, k)
+def lit(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+
+# floor slab, two walls, skirting
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 17, v.co.y * 15, v.co.z * 2.4 - 1.2))
+    if v.co.z < 0: v.co.x *= .7; v.co.y *= .7; v.co.z -= random.uniform(0, .8)
+mesh(bm, "floor")
+slab((0, 7.4, 0), (17, .5, 8), "wall"); slab((-8.2, 0, 0), (.5, 15, 8), "wall2"); slab((0, 7.1, 0), (17, .2, .5), "desk"); slab((-7.9, 0, 0), (.2, 15, .5), "desk")
+# desk: top, legs, drawer unit
+slab((0, 0, 3.2), (13, 5.6, .35), "desk")
+for sx in (-6, 6): slab((sx, 0, 0), (.4, 5.2, 3.2), "black")
+slab((0, 2.3, 0), (12.6, .3, 3.2), "black")
+slab((4.2, -.6, .3), (3.4, 3.6, 2.8), "desk"); slab((4.2, -2.45, 1.6), (3.0, .1, .12), "black"); slab((4.2, -2.45, .8), (3.0, .1, .12), "black")
+# monitor with stand and a glowing screen
+slab((0, 1.2, 3.55), (2.6, .6, .2), "black"); slab((0, 1.2, 3.75), (.4, .3, 1.6), "black")
+slab((0, 1.0, 5.3), (7.4, .3, 4.2), "black"); slab((0, .82, 5.5), (6.8, .1, 3.7), "screen")
+for i in range(5): slab((-2.4 + i * 1.2, .75, 6.0 + (i % 2) * .8), (.9, .05, .35), "black")
+# keyboard and mouse
+slab((-1.5, -.6, 3.55), (4.6, 1.5, .2), "grey")
+for r in range(4):
+    for c in range(12): slab((-3.6 + c * .36, -1.0 + r * .36, 3.75), (.3, .28, .06), "key" if (r + c) % 3 else "black")
+can((-1.5, -.6, 3.75), .3, .06, 8, "key", rot=(0, 0, 0)).location = (-1.5, -.6, 3.75)
+slab((1.6, -.7, 3.55), (.7, 1.0, .3), "grey")
+# mug with steam
+can((-4.2, -.4, 3.55), .55, 1.0, 8, "mug"); can((-4.2, -.4, 4.5), .45, .05, 8, "black")
+for i in range(3): can((-4.2 + i * .1 - .1, -.4, 4.8 + i * .5), .12, .5, 5, "grey", .02)
+# desk lamp: base, arm, glowing head
+can((5.4, 1.2, 3.55), .7, .2, 8, "black")
+bar((5.4, 1.2, 3.7), (4.6, .8, 6.0), .14, "black"); bar((4.6, .8, 6.0), (3.4, .2, 6.6), .14, "black")
+slab((3.2, .1, 6.0), (1.2, .9, .5), "lamp", rot=(0, .5, -.4))
+lit("POINT", (1, .75, .35), 450, (3.2, .1, 5.8))
+# shelf on the back wall: books, plant, frame
+slab((-2.5, 6.5, 5.6), (7, .9, .2), "desk")
+for i, k in enumerate(("book", "book2", "key", "book", "book2")): slab((-5.2 + i * .5, 6.5, 5.8), (.35, .6, 1.4 + (i % 2) * .2), k)
+can((-1.0, 6.5, 5.8), .5, .7, 6, "pot"); can((-1.0, 6.5, 6.4), .7, .8, 6, "plant", .1)
+slab((1.5, 6.5, 6.4), (2.2, .15, 1.6), "black"); slab((1.5, 6.4, 6.55), (1.9, .05, 1.3), "screen")
+# chair
+slab((-1.5, -3.2, 1.4), (2.6, 2.4, .3), "black"); slab((-1.5, -4.2, 1.7), (2.6, .3, 2.6), "black")
+for sx in (-.9, .9): slab((-1.5 + sx, -3.2, 0), (.2, 2.0, 1.4), "grey")
+slab((-1.5, -3.2, 1.0), (2.4, .2, .4), "grey")
+lit("SUN", (.6, .5, 1), 3.5, (22, -16, 10), (0, 0, 3)); lit("SUN", (.2, .8, .7), 1.5, (-20, 14, 9), (0, 0, 3))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .012, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3.5)); co.location = t + Vector((22, -40, 24))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,136 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "NameError: name 'cage_end' is not defined",
+ "error_line": "e = cage_end + Vector((offset_x, 0, 0))",
+ "n_renderable_objects": 121,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 1,
+  "MESH": 121
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "WaterMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.0,
+    0.15,
+    0.35
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "HullMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.6,
+    0.6,
+    0.6
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "SteelMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 2.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "direction": [
+    -0.4599,
+    0.551,
+    -0.6964
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   0.0,
+   25.0,
+   8.0
+  ],
+  "direction": [
+   0.0,
+   0.9962,
+   -0.0872
+  ],
+  "up": [
+   0.0,
+   0.0872,
+   0.9962
+  ],
+  "angle": 0.95
+ },
+ "left_out_of_framing": "Water.001",
+ "bbox_size": [
+  4.1,
+  12.05,
+  8.8
+ ],
+ "scene_center": [
+  0.0,
+  -2.975,
+  -1.65
+ ],
+ "scene_radius": 7.7371,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 8.4,
+ "image": true
+}

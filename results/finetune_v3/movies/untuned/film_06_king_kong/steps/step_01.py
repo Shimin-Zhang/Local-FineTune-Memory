@@ -1,0 +1,160 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# --- MATERIALS ---
+def create_material(name, color, roughness=0.5, metallic=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = nodes.get('Principled BSDF')
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Roughness'].default_value = roughness
+    bsdf.inputs['Metallic'].default_value = metallic
+    return mat
+
+mat_kong = create_material('Kong', (0.2, 0.15, 0.1), 0.8)
+mat_building = create_material('Building', (0.15, 0.15, 0.18), 0.6, 0.3)
+mat_biplane = create_material('Biplane', (0.8, 0.1, 0.1), 0.4, 0.5)
+mat_city = create_material('City', (0.1, 0.1, 0.12), 0.7, 0.2)
+mat_sky = create_material('Sky', (0.05, 0.05, 0.1), 1.0)
+
+# --- WORLD / SKY ---
+world = bpy.context.scene.world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+bg = world_nodes.get('Background')
+bg.inputs['Color'].default_value = (0.02, 0.03, 0.08, 1.0)
+bg.inputs['Strength'].default_value = 0.3
+
+# --- LIGHTING ---
+# Dramatic moonlight from above
+moon = bpy.data.lights.new('Moon', type='SUN')
+moon.energy = 2.0
+moon.color = (0.8, 0.85, 1.0)
+moon_obj = bpy.data.objects.new('Moon', moon)
+bpy.context.collection.objects.link(moon_obj)
+moon_obj.rotation_euler = (math.radians(30), math.radians(10), 0)
+
+# Warm ambient fill
+fill = bpy.data.lights.new('Fill', type='AREA')
+fill.energy = 50
+fill.size = 100
+fill_obj = bpy.data.objects.new('Fill', fill)
+bpy.context.collection.objects.link(fill_obj)
+fill_obj.location = (0, 0, 50)
+
+# --- EMPIRE STATE BUILDING ---
+def add_box(name, size, loc, mat):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    obj.data.materials.append(mat)
+    return obj
+
+# Main shaft
+b1 = add_box('ESB_Main', (20, 20, 300), (0, 0, 150), mat_building)
+# Upper section
+b2 = add_box('ESB_Upper', (15, 15, 80), (0, 0, 340), mat_building)
+# Crown
+b3 = add_box('ESB_Crown', (10, 10, 40), (0, 0, 400), mat_building)
+# Spire
+b4 = add_box('ESB_Spire', (2, 2, 30), (0, 0, 435), mat_building)
+
+# Add window grid on main shaft
+for i in range(-8, 9):
+    for j in range(-8, 9):
+        for k in range(0, 30):
+            if abs(i) < 8 and abs(j) < 8:
+                win = add_box(f'Win_{i}_{j}_{k}', (0.5, 0.5, 0.5),
+                             (i*2.5, j*2.5, 10 + k*10), mat_city)
+                win.scale = (0.3, 0.3, 0.3)
+
+# --- KONG ---
+def add_sphere(name, radius, loc, mat, scale=(1,1,1)):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=loc, segments=32, ring_count=16)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = scale
+    obj.data.materials.append(mat)
+    return obj
+
+# Kong's body
+kong_body = add_sphere('Kong_Body', 15, (0, 0, 460), mat_kong, (1, 0.8, 1.2))
+# Head
+kong_head = add_sphere('Kong_Head', 8, (0, 0, 485), mat_kong)
+# Arms
+kong_arm_l = add_sphere('Kong_ArmL', 5, (-12, 0, 465), mat_kong, (0.6, 0.6, 1.5))
+kong_arm_r = add_sphere('Kong_ArmR', 5, (12, 0, 465), mat_kong, (0.6, 0.6, 1.5))
+# Legs
+kong_leg_l = add_sphere('Kong_LegL', 6, (-8, 0, 445), mat_kong, (0.8, 0.8, 1.5))
+kong_leg_r = add_sphere('Kong_LegR', 6, (8, 0, 445), mat_kong, (0.8, 0.8, 1.5))
+
+# --- BIPLANES ---
+def make_biplane(name, loc, rotation_z):
+    # Fuselage
+    fus = add_box(name+'_Fus', (1, 1, 8), loc, mat_biplane)
+    # Wings (upper)
+    wing_up = add_box(name+'_WingUp', (10, 1, 0.3), (loc[0], loc[1], loc[2]+2), mat_biplane)
+    # Wings (lower)
+    wing_lo = add_box(name+'_WingLo', (10, 1, 0.3), (loc[0], loc[1], loc[2]-1), mat_biplane)
+    # Tail
+    tail = add_box(name+'_Tail', (0.3, 4, 1), (loc[0], loc[1], loc[2]-4), mat_biplane)
+    # Propeller
+    prop = add_box(name+'_Prop', (0.2, 3, 0.2), (loc[0], loc[1], loc[2]+4.5), mat_biplane)
+    
+    # Rotate all parts
+    for obj in [fus, wing_up, wing_lo, tail, prop]:
+        obj.rotation_euler[2] = rotation_z
+
+# Circle of biplanes
+num_planes = 8
+radius_circle = 100
+height_circle = 500
+for i in range(num_planes):
+    angle = (i / num_planes) * 2 * math.pi
+    x = radius_circle * math.cos(angle)
+    y = radius_circle * math.sin(angle)
+    z = height_circle + 10 * math.sin(angle * 2)
+    make_biplane(f'Biplane_{i}', (x, y, z), angle + math.pi/2)
+
+# --- CITY BELOW ---
+random.seed(42)
+for i in range(50):
+    x = random.uniform(-200, 200)
+    y = random.uniform(-200, 200)
+    if abs(x) < 30 and abs(y) < 30:
+        continue  # Skip center where ESB is
+    h = random.uniform(20, 80)
+    w = random.uniform(5, 15)
+    city_bldg = add_box(f'City_{i}', (w, w, h), (x, y, h/2), mat_city)
+    # Windows on city buildings
+    for k in range(int(h/5)):
+        win = add_box(f'CityWin_{i}_{k}', (0.3, 0.3, 0.3),
+                     (x + random.uniform(-w/2, w/2), y + random.uniform(-w/2, w/2), 2 + k*5),
+                     mat_city)
+
+# --- GROUND PLANE ---
+bpy.ops.mesh.primitive_plane_add(size=500, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = 'Ground'
+ground.data.materials.append(mat_city)
+
+# --- CAMERA ---
+cam_data = bpy.data.cameras.new('Camera')
+cam_data.lens = 35
+cam_obj = bpy.data.objects.new('Camera', cam_data)
+bpy.context.collection.objects.link(cam_obj)
+cam_obj.location = (80, 80, 550)
+cam_obj.rotation_euler = (math.radians(80), 0, math.radians(45))
+bpy.context.scene.camera = cam_obj
+
+print("Scene built: Kong on Empire State Building with biplanes and city")

@@ -1,0 +1,130 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is now too bright (washed out). Let's balance it:
+# 1. Darken background back to night
+# 2. Reduce emission on most materials
+# 3. Keep Kong and key elements bright
+# 4. Fix camera to actually see the scene
+
+# 1. Dark background
+world = bpy.context.scene.world
+if world:
+    bg = world.node_tree.nodes.get('Background')
+    if bg:
+        bg.inputs['Color'].default_value = (0.02, 0.03, 0.08, 1.0)
+        bg.inputs['Strength'].default_value = 1.0
+
+# 2. Reduce emission on general materials, keep key ones bright
+for mat in bpy.data.materials:
+    if mat.use_nodes:
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            name = mat.name
+            if name in ['KongBright2', 'EyeBright', 'ESBBright', 'PlaneBright', 'CrownLight', 'WindowLit', 'StarMat', 'MoonGlow', 'SearchlightMat', 'ContrailMat', 'StreetLight', 'RedLight', 'GreenLight', 'AntennaLight']:
+                # Keep these bright
+                bsdf.inputs['Emission Strength'].default_value = 10.0
+            else:
+                # Reduce others
+                bsdf.inputs['Emission Strength'].default_value = 1.0
+                bsdf.inputs['Emission Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+
+# 3. Reduce sun light
+sun = bpy.data.lights.get('StrongSun')
+if sun:
+    sun.energy = 5.0
+
+# 4. Fix camera - position to clearly see Kong on ESB with city below
+cam_obj = bpy.data.objects.get('Camera')
+if cam_obj:
+    # Camera positioned to the side and slightly below Kong, looking up
+    cam_obj.location = (80, 80, 300)
+    # Look at Kong
+    target = Vector((0, 0, 480))
+    direction = target - cam_obj.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam_obj.rotation_euler = rot_quat.to_euler()
+    cam_obj.data.lens = 35
+
+# 5. Add a warm light to illuminate the city from below
+city_light = bpy.data.lights.new('CityWarm', type='AREA')
+city_light.energy = 1000
+city_light.size = 200
+city_light.color = (1.0, 0.7, 0.3)
+city_light_obj = bpy.data.objects.new('CityWarm', city_light)
+bpy.context.collection.objects.link(city_light_obj)
+city_light_obj.location = (0, 0, 10)
+city_light_obj.rotation_euler = (0, 0, 0)
+
+# 6. Add a cool rim light on Kong
+rim_light = bpy.data.lights.get('RimLight')
+if rim_light:
+    rim_light.energy = 2000
+    rim_light.color = (0.5, 0.7, 1.0)
+    rim_obj = bpy.data.objects.get('RimLight')
+    if rim_obj:
+        rim_obj.location = (-60, -60, 500)
+        # Point at Kong
+        target = Vector((0, 0, 500))
+        direction = target - rim_obj.location
+        rot_quat = direction.to_track_quat('Z', 'Y')
+        rim_obj.rotation_euler = rot_quat.to_euler()
+
+# 7. Add more city buildings with bright windows
+mat_city_bright = bpy.data.materials.new('CityBright')
+mat_city_bright.use_nodes = True
+bsdf_cb = mat_city_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_cb.inputs['Base Color'].default_value = (0.2, 0.2, 0.3, 1.0)
+bsdf_cb.inputs['Emission Color'].default_value = (0.2, 0.2, 0.3, 1.0)
+bsdf_cb.inputs['Emission Strength'].default_value = 2.0
+
+random.seed(404)
+for i in range(15):
+    x = random.uniform(-150, 150)
+    y = random.uniform(-150, 150)
+    if abs(x) < 35 and abs(y) < 35:
+        continue
+    h = random.uniform(15, 60)
+    w = random.uniform(5, 15)
+    d = random.uniform(5, 15)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, h/2))
+    bldg = bpy.context.active_object
+    bldg.name = f'CityBright_{i}'
+    bldg.scale = (w, d, h)
+    bldg.data.materials.append(mat_city_bright)
+    
+    # Add lit windows
+    for k in range(int(h/6)):
+        wx = x + random.uniform(-w/2+1, w/2-1)
+        wy = y + random.uniform(-d/2+1, d/2-1)
+        wz = 3 + k * 6
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(wx, wy, wz))
+        win = bpy.context.active_object
+        win.name = f'CityBrightWin_{i}_{k}'
+        win.scale = (0.5, 0.5, 0.5)
+        win.data.materials.append(bpy.data.materials.get('WindowLit'))
+
+# 8. Add airplane lights
+mat_red = bpy.data.materials.get('RedLight')
+mat_green = bpy.data.materials.get('GreenLight')
+if mat_red and mat_green:
+    for i in range(8):
+        angle = (i / 8) * 2 * math.pi
+        x = 100 * math.cos(angle)
+        y = 100 * math.sin(angle)
+        z = 480 + 20 * math.sin(angle * 2)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=(x-8, y, z+2), segments=8, ring_count=4)
+        obj = bpy.context.active_object
+        obj.name = f'PlaneRedLight_{i}'
+        obj.data.materials.append(mat_red)
+        
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=(x+8, y, z+2), segments=8, ring_count=4)
+        obj = bpy.context.active_object
+        obj.name = f'PlaneGreenLight_{i}'
+        obj.data.materials.append(mat_green)
+
+print("Scene balanced: night background, reduced emission on general materials, bright key elements, camera fixed, city lights, plane lights")
+```

@@ -1,0 +1,125 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Fix camera - position it lower and looking down the street
+camera = bpy.data.objects.get("Camera")
+if camera:
+    camera.location = (0, 1.5, 20)
+    camera.rotation_euler = (math.radians(88), 0, 0)
+    camera.data.lens = 35
+
+# Add more neon signs at street level
+mat_neon_pink = bpy.data.materials.get("Neon_Pink")
+mat_neon_cyan = bpy.data.materials.get("Neon_Cyan")
+mat_neon_yellow = bpy.data.materials.get("Neon_Yellow")
+mat_neon_green = bpy.data.materials.get("Neon_Green")
+mat_neon_purple = bpy.data.materials.get("Neon_Purple")
+mat_neon_red = bpy.data.materials.get("Neon_Red")
+
+def create_neon_sign_simple(x, y, z, width, height, mat):
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(x, y, z))
+    sign = bpy.context.active_object
+    sign.scale = (width/2, height/2, 1)
+    sign.rotation_euler = (math.pi/2, 0, 0)
+    sign.data.materials.append(mat)
+    return sign
+
+# Street level neon signs
+create_neon_sign_simple(-8, 3, 10, 3, 1, mat_neon_pink)
+create_neon_sign_simple(8, 3, 10, 3, 1, mat_neon_cyan)
+create_neon_sign_simple(-8, 4, 15, 4, 1.2, mat_neon_yellow)
+create_neon_sign_simple(8, 4, 15, 4, 1.2, mat_neon_green)
+create_neon_sign_simple(-8, 5, 20, 5, 1.5, mat_neon_purple)
+create_neon_sign_simple(8, 5, 20, 5, 1.5, mat_neon_red)
+
+# Add more people at street level
+mat_umbrella = bpy.data.materials.get("Umbrella")
+mat_umbrella2 = bpy.data.materials.get("Umbrella2")
+mat_umbrella3 = bpy.data.materials.get("Umbrella3")
+mat_person = bpy.data.materials.get("Person")
+mat_person2 = bpy.data.materials.get("Person2")
+mat_metal = bpy.data.materials.get("Metal")
+
+def create_person_simple(x, z, umbrella_mat):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=1.5, location=(x, 0.75, z))
+    body = bpy.context.active_object
+    body.data.materials.append(random.choice([mat_person, mat_person2]))
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(x, 1.7, z))
+    head = bpy.context.active_object
+    head.data.materials.append(mat_person)
+    
+    bpy.ops.mesh.primitive_cone_add(radius1=0.8, radius2=0.1, depth=0.5, location=(x, 2.2, z))
+    umbrella = bpy.context.active_object
+    umbrella.data.materials.append(umbrella_mat)
+    
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=1, location=(x, 1.7, z))
+    handle = bpy.context.active_object
+    handle.data.materials.append(mat_metal)
+
+# More people at street level
+for i in range(20):
+    x = random.uniform(-15, 15)
+    z = random.uniform(5, 25)
+    if abs(x) < 3:
+        x += 4 * (1 if x > 0 else -1)
+    create_person_simple(x, z, random.choice([mat_umbrella, mat_umbrella2, mat_umbrella3]))
+
+# Add more neon lights at street level
+neon_light_data = [
+    (-8, 3, 10, (1, 0.1, 0.3)),
+    (8, 3, 10, (0.1, 0.8, 1)),
+    (-8, 4, 15, (1, 0.9, 0.1)),
+    (8, 4, 15, (0.1, 1, 0.3)),
+    (-8, 5, 20, (0.6, 0.1, 1)),
+    (8, 5, 20, (1, 0.1, 0.1)),
+]
+
+for x, y, z, color in neon_light_data:
+    bpy.ops.object.light_add(type='POINT', location=(x, y, z))
+    light = bpy.context.active_object
+    light.data.energy = 20
+    light.data.color = color
+    light.data.shadow_soft_size = 0.3
+
+# Add more street lamps
+mat_street_light = bpy.data.materials.get("Street_Light")
+if not mat_street_light:
+    mat_street_light = bpy.data.materials.new("Street_Light")
+    mat_street_light.use_nodes = True
+    nodes = mat_street_light.node_tree.nodes
+    links = mat_street_light.node_tree.links
+    nodes.clear()
+    out = nodes.new('ShaderNodeOutputMaterial')
+    out.location = (300, 0)
+    bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf.location = (0, 0)
+    bsdf.inputs['Base Color'].default_value = (0.8, 0.8, 0.9, 1)
+    bsdf.inputs['Emission Color'].default_value = (0.8, 0.8, 0.9, 1)
+    bsdf.inputs['Emission Strength'].default_value = 2.0
+    links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+
+for z in range(5, 30, 8):
+    # Lamp post
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=5, location=(-12, 2.5, z))
+    post = bpy.context.active_object
+    post.data.materials.append(bpy.data.materials.get("Metal"))
+    
+    # Lamp head
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-12, 5, z))
+    lamp = bpy.context.active_object
+    lamp.scale = (0.5, 0.3, 0.5)
+    lamp.data.materials.append(mat_street_light)
+    
+    # Light
+    bpy.ops.object.light_add(type='POINT', location=(-12, 5, z))
+    light = bpy.context.active_object
+    light.data.energy = 15
+    light.data.color = (0.8, 0.8, 0.9)
+    light.data.shadow_soft_size = 0.5
+
+print("Added more street level detail!")
+```

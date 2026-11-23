@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.7,
+ "error": "ReferenceError: BMesh data of type BMesh has been removed",
+ "error_line": "me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 2,
+ "n_lights": 0,
+ "n_materials": 2,
+ "own_camera": false,
+ "render_error": null
+}

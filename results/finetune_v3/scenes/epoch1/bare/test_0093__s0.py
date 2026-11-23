@@ -1,0 +1,96 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1757)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tint(rgb, glow=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+grass, dirt, white, slate, wood, red, blue, gold, trunk, leaf1, leaf2, leaf3, iron, water, flag = (tint(c) for c in (
+    (.2, .26, .07), (.28, .18, .1), (.5, .46, .36), (.1, .12, .16), (.25, .16, .09), (.45, .08, .06), (.1, .2, .4), (.7, .5, .05), (.2, .12, .07), (.6, .2, .05), (.7, .4, .05), (.5, .08, .06), (.04, .04, .05), (.1, .2, .3), (.6, .05, .05)))
+pane = tint((1, .75, .35), 9); bell = tint((.9, .65, .15), 2)
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(x, y, z, w, d, h, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return put(bm, m, (x, y, z), (0, 0, rz))
+def post(x, y, z, r, h, m, n=6, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, (x, y, z))
+def gable(x, y, z, w, d, h, m):
+    bm = bmesh.new()
+    a = [bm.verts.new(p) for p in ((-w / 2, -d / 2, 0), (w / 2, -d / 2, 0), (w / 2, d / 2, 0), (-w / 2, d / 2, 0), (0, -d / 2, h), (0, d / 2, h))]
+    for f in ((0, 1, 4), (2, 5, 3), (0, 4, 5, 3), (1, 2, 5, 4), (0, 3, 2, 1)): bm.faces.new([a[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return put(bm, m, (x, y, z))
+def leafball(x, y, z, r, m, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return put(bm, m, (x, y, z))
+def sun(x, y, z, rgb, w):
+    L = bpy.data.lights.new("s", "POINT"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# ground: grass base with a rough underside, a dirt path and yard
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13.5, depth=3.5)
+for v in bm.verts:
+    v.co.z -= 1.75
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+put(bm, grass)
+box(0, -4.5, 0, 2.6, 13, .08, dirt)
+# the schoolhouse: white clapboard walls, slate roof, porch, door, glowing windows
+box(0, 5, 0, 9, 5.6, 3.4, white); gable(0, 5, 3.4, 9.8, 6.4, 2.2, slate)
+box(0, 2.1, 0, 4.6, 1.8, .3, wood)
+for i in range(3):
+    for s in (-1, 1): box(s * 1.8, 1.25, .3, .2, .2, 1.6, wood)
+box(0, 1.25, 1.9, 4.6, .2, .2, wood); box(0, 1.25, 3.0, 5.2, 2.2, .25, slate)
+box(0, 2.2, .3, 1.0, .1, 2.2, wood); box(0, 2.2, 2.5, 1.4, .1, .5, pane)
+for x in (-3.0, 3.0):
+    box(x, 2.2, 1.0, 1.4, .1, 1.4, pane); box(x, 2.2, .9, 1.6, .1, .1, wood); box(x, 2.2, 1.6, .1, .1, 1.4, wood)
+    box(x, 2.2, 2.4, 1.6, .1, .12, wood)
+# bell on the roof ridge: a small tower, arched opening, the bell itself
+box(0, 5, 4.6, 1.6, 1.6, 1.5, white); gable(0, 5, 6.1, 2.2, 2.2, 1.2, slate)
+box(0, 4.2, 4.9, .9, .1, .9, wood); post(0, 4.2, 5.6, .1, .1, iron, 4)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=.45, radius2=.22, depth=.8)
+for v in bm.verts: v.co.z -= .4
+put(bm, bell, (0, 4.2, 5.5))
+sun(0, 3.6, 5.0, (1, .8, .4), 150)
+# yard: water pump, flagpole with flag, two outhouses, fence
+post(-5, -2, 0, .3, 1.6, iron, 6, .22); box(-5, -2, 1.6, .5, .5, .3, iron); box(-4.3, -2, 1.5, 1.4, .15, .15, iron)
+box(-5.3, -2, 1.2, .15, .15, .5, iron); box(-5, -2.8, 1.2, .15, .15, .5, iron)
+box(-5, -2, 0, 1.6, 1.0, .12, iron); box(-5, -2.6, .12, .8, .5, .05, water)
+post(5.5, -3, 0, .08, 8, wood, 5); box(6.1, -3, 6.6, 1.2, .05, .8, flag)
+for x, y in ((-8, -5.5), (8, 5.5)):
+    box(x, y, 0, 2.4, 2.0, 1.8, wood); gable(x, y, 1.8, 2.8, 2.4, 1.1, red if x < 0 else blue)
+    box(x, y - 1.05, 0, .8, .1, 1.3, iron); box(x, y - 1.05, 1.2, 1.0, .1, .3, pane)
+    sun(x, y - 1.6, 1.3, (1, .75, .35), 60)
+for i in range(16):
+    x = -10.5 + i * 1.4
+    if abs(x) < 2: continue
+    box(x, -8, 0, .12, .12, 1.0, wood)
+box(0, -8, .8, 21, .1, .1, wood); box(0, -8, .4, 21, .1, .1, wood)
+# autumn trees with gold, orange and red canopies and a pile of fallen leaves
+for x, y, c in ((-9, 4, leaf1), (-9, 9, leaf2), (9.5, 9, leaf3), (9, 3, leaf1)):
+    post(x, y, 0, .35, 2.6, trunk, 5); leafball(x, y, 3.6, 2.0, c); leafball(x + .8, y, 2.8, 1.3, c)
+for i in range(40):
+    x, y = random.uniform(-11, 11), random.uniform(-9, 10)
+    if abs(x) < 1.6 and y < 0: continue
+    box(x, y, .02, .35, .3, .04, random.choice((leaf1, leaf2, leaf3)), random.uniform(0, 3))
+# bright autumn day: strong low sun, cool blue rim
+for rgb, w, p in (((1, .75, .45), 5.5, (-24, -16, 9)), ((.45, .6, 1), 2.2, (20, 22, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("autumn"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .03, .05, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+tgt = Vector((0, 1, 2)); co.location = tgt + Vector((10, -54, 34))
+co.rotation_euler = (tgt - co.location).to_track_quat('-Z', 'Y').to_euler()
+sc.camera = co

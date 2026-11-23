@@ -1,0 +1,169 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Materials ---
+def make_material(name, base_color, emission=None, emission_strength=0.0, roughness=0.5, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = base_color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    if emission is not None:
+        bsdf.inputs["Emission Color"].default_value = emission
+        bsdf.inputs["Emission Strength"].default_value = emission_strength
+    return mat
+
+mat_ground = make_material("Ground", (0.2, 0.35, 0.15), roughness=0.9)
+mat_stone = make_material("Stone", (0.4, 0.4, 0.42), roughness=0.85)
+mat_wood = make_material("Wood", (0.35, 0.22, 0.1), roughness=0.9)
+mat_sheep = make_material("Sheep", (0.9, 0.88, 0.85), roughness=0.95)
+mat_sheep_face = make_material("SheepFace", (0.15, 0.15, 0.15), roughness=0.8)
+mat_power_blue = make_material("PowerBlue", (0.1, 0.5, 1.0), emission=(0.1, 0.5, 1.0), emission_strength=3.0, roughness=0.1)
+mat_power_green = make_material("PowerGreen", (0.1, 1.0, 0.4), emission=(0.1, 1.0, 0.4), emission_strength=3.0, roughness=0.1)
+mat_power_purple = make_material("PowerPurple", (0.6, 0.2, 1.0), emission=(0.6, 0.2, 1.0), emission_strength=3.0, roughness=0.1)
+
+# --- Ground ---
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.data.materials.append(mat_ground)
+# Subdivide for slight noise
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+for v in ground.data.vertices:
+    v.co.z += random.uniform(-0.05, 0.05)
+
+# --- Tall Stone ---
+bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.6, depth=4.0, location=(0, 0, 2.0))
+stone = bpy.context.active_object
+stone.data.materials.append(mat_stone)
+# Taper top slightly
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+bpy.ops.object.mode_set(mode='OBJECT')
+# Add a point at top to taper
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=3)
+bpy.ops.object.mode_set(mode='OBJECT')
+for v in stone.data.vertices:
+    if v.co.z > 1.5:
+        scale = max(0.3, 1.0 - (v.co.z - 1.5) * 0.4)
+        v.co.x *= scale
+        v.co.y *= scale
+
+# --- Glowing Power Lines (curves crossing at the stone) ---
+def create_power_line(name, material, points, radius=0.08):
+    curve_data = bpy.data.curves.new(name, type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.bevel_depth = radius
+    curve_data.bevel_resolution = 4
+    spline = curve_data.splines.new('BEZIER')
+    spline.bezier_points.add(len(points) - 1)
+    for i, p in enumerate(points):
+        bp = spline.bezier_points[i]
+        bp.co = p
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+    obj = bpy.data.objects.new(name, curve_data)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    return obj
+
+# Line 1: East-West, slightly arched
+pts1 = [(-10, 0, 0.5), (-5, 0, 1.5), (0, 0, 3.5), (5, 0, 1.5), (10, 0, 0.5)]
+create_power_line("PowerLine_EW", mat_power_blue, pts1)
+
+# Line 2: North-South, crossing at stone
+pts2 = [(0, -10, 0.5), (0, -5, 1.5), (0, 0, 3.5), (0, 5, 1.5), (0, 10, 0.5)]
+create_power_line("PowerLine_NS", mat_power_green, pts2)
+
+# Line 3: Diagonal, crossing at stone
+pts3 = [(-8, -8, 0.5), (-4, -4, 1.8), (0, 0, 3.5), (4, 4, 1.8), (8, 8, 0.5)]
+create_power_line("PowerLine_Diag", mat_power_purple, pts3)
+
+# --- Old Signpost ---
+def make_signpost(x, y, rot_z=0.0):
+    # Post
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.08, depth=2.0, location=(x, y, 1.0))
+    post = bpy.context.active_object
+    post.data.materials.append(mat_wood)
+    # Sign board
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x + 0.4, y, 1.6))
+    sign = bpy.context.active_object
+    sign.scale = (0.5, 0.15, 0.05)
+    sign.data.materials.append(mat_wood)
+    # Rotate whole group
+    post.rotation_euler = Euler((0, 0, rot_z))
+    sign.rotation_euler = Euler((0, 0, rot_z))
+    # Move sign relative to post
+    sign.location = (x + 0.4 * math.cos(rot_z) - 0.15 * math.sin(rot_z),
+                     y + 0.4 * math.sin(rot_z) + 0.15 * math.cos(rot_z), 1.6)
+
+make_signpost(3, 2, rot_z=0.3)
+
+# --- Sleeping Sheep ---
+def make_sheep(x, y, rot_z=0.0):
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=12, radius=0.4, location=(x, y, 0.35))
+    body = bpy.context.active_object
+    body.scale = (1.2, 0.9, 0.7)
+    body.data.materials.append(mat_sheep)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=8, radius=0.2, location=(x + 0.45 * math.cos(rot_z), y + 0.45 * math.sin(rot_z), 0.3))
+    head = bpy.context.active_object
+    head.data.materials.append(mat_sheep_face)
+    # Legs (small cylinders tucked)
+    for dx, dy in [(-0.2, -0.2), (-0.2, 0.2), (0.2, -0.2), (0.2, 0.2)]:
+        lx = x + dx * math.cos(rot_z) - dy * math.sin(rot_z)
+        ly = y + dx * math.sin(rot_z) + dy * math.cos(rot_z)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.06, depth=0.2, location=(lx, ly, 0.1))
+        leg = bpy.context.active_object
+        leg.data.materials.append(mat_sheep_face)
+    # Rotate body and head
+    body.rotation_euler = Euler((0, 0, rot_z))
+    head.rotation_euler = Euler((0, 0, rot_z))
+    # Adjust head position after rotation
+    head.location = (x + 0.45 * math.cos(rot_z), y + 0.45 * math.sin(rot_z), 0.3)
+
+make_sheep(-2.5, 1.5, rot_z=0.5)
+make_sheep(-3.0, -1.0, rot_z=-0.3)
+make_sheep(1.5, -2.5, rot_z=1.2)
+
+# --- Lighting ---
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.95, 0.85)
+sun.rotation_euler = Euler((math.radians(45), math.radians(30), 0))
+
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 3.5))
+point_light = bpy.context.active_object
+point_light.data.energy = 50
+point_light.data.color = (0.5, 0.8, 1.0)
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(8, 8, 4))
+cam = bpy.context.active_object
+cam.rotation_euler = Euler((math.radians(70), 0, math.radians(45)))
+bpy.context.scene.camera = cam
+
+# Set world background to dark
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.02, 0.02, 0.05, 1.0)
+    bg.inputs[1].default_value = 1.0

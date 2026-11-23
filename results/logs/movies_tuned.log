@@ -1,0 +1,184 @@
+server ready after 4s; 20 sessions, 32768 tokens each, 2 at a time
+film_02_titanic              turn  1  3230 tokens    97.9s  ran  objects=164  used 3377/32768
+film_01_jurassic_park        turn  1  3324 tokens   100.3s  ran  objects=228  used 3473/32768
+film_02_titanic              turn  2  3199 tokens    99.4s  ran  objects=328  used 7237/32768
+film_01_jurassic_park        turn  2  3303 tokens   102.2s  ran  objects=456  used 7437/32768
+film_02_titanic              turn  3  3262 tokens   102.9s  AttributeError: bpy_prop_collection: attribute "remove" not   objects=328  used 11160/32768
+film_01_jurassic_park        turn  3  3303 tokens   104.2s  ran  objects=684  used 11401/32768
+film_02_titanic              turn  4  3251 tokens   104.2s  ran  objects=164  used 15118/32768
+film_01_jurassic_park        turn  4  3391 tokens   108.9s  ran  objects=248  used 15454/32768
+film_02_titanic              turn  5  3249 tokens   105.9s  ran  objects=164  used 19028/32768
+film_01_jurassic_park        turn  5  3391 tokens   110.8s  ran  objects=248  used 19506/32768
+film_02_titanic              turn  6  3250 tokens   107.8s  ran  objects=164  used 22939/32768
+film_01_jurassic_park        turn  6  3390 tokens   112.7s  ran  objects=248  used 23557/32768
+film_02_titanic              turn  7  3250 tokens   109.6s  ran  objects=164  used 26849/32768
+film_01_jurassic_park        turn  7  3390 tokens   114.7s  ran  objects=248  used 27607/32768
+film_02_titanic              turn  8  3250 tokens   111.3s  ran  objects=164  used 30759/32768
+film_01_jurassic_park        turn  8  3390 tokens   116.5s  ran  objects=248  used 31657/32768
+film_01_jurassic_park        done: out of context; 8 turns, 8 runs, 248 objects, 14.9 min
+film_02_titanic              done: out of context (the last reply was cut off and not run); 9 turns, 8 runs, 164 objects, 15.1 min
+film_04_star_wars            turn  1  2814 tokens    86.4s  ran  objects=78  used 2961/32768
+film_03_et                   turn  1  3251 tokens   100.4s  ran  objects=149  used 3399/32768
+film_04_star_wars            turn  2  2704 tokens    84.1s  ran  objects=156  used 6325/32768
+film_03_et                   turn  2  3230 tokens    99.8s  ran  objects=298  used 7290/32768
+film_04_star_wars            turn  3  2704 tokens    85.0s  ran  objects=234  used 9691/32768
+film_03_et                   turn  3  3230 tokens   101.6s  ran  objects=447  used 11181/32768
+film_04_star_wars            turn  4  2704 tokens    86.2s  ran  objects=312  used 13057/32768
+film_03_et                   turn  4  3230 tokens   103.4s  ran  objects=596  used 15073/32768
+film_04_star_wars            turn  5  2704 tokens    87.3s  ran  objects=390  used 16423/32768
+film_03_et                   turn  5  3230 tokens   105.1s  ran  objects=745  used 18965/32768
+film_04_star_wars            turn  6  2704 tokens    88.7s  ran  objects=468  used 19789/32768
+film_03_et                   turn  6  3230 tokens   107.0s  ran  objects=894  used 22857/32768
+film_04_star_wars            turn  7  2704 tokens    89.4s  ran  objects=546  used 23155/32768
+film_04_star_wars            turn  8  2704 tokens    91.2s  ran  objects=624  used 26520/32768
+film_03_et                   turn  7  3230 tokens   110.0s  ran  objects=1043  used 26748/32768
+film_04_star_wars            turn  9  2704 tokens    92.2s  ran  objects=702  used 29885/32768
+film_03_et                   turn  8  3230 tokens   110.2s  ran  objects=1192  used 30640/32768
+film_04_star_wars            done: out of context (the last reply was cut off and not run); 10 turns, 9 runs, 702 objects, 15.1 min
+film_03_et                   done: out of context (the last reply was cut off and not run); 9 turns, 8 runs, 1192 objects, 15.4 min
+film_06_king_kong            turn  1  3181 tokens    96.2s  TypeError: shine() takes from 4 to 5 positional arguments bu  objects=251  used 3325/32768
+film_05_wizard_of_oz         turn  1  3337 tokens   105.9s  ran  objects=254  used 3490/32768
+film_05_wizard_of_oz         turn  2  2967 tokens    91.9s  ran  objects=474  used 7118/32768
+film_06_king_kong            turn  2  3430 tokens   106.6s  TypeError: shine() takes from 4 to 5 positional arguments bu  objects=504  used 7497/32768
+film_05_wizard_of_oz         turn  3  3111 tokens    98.2s  ran  objects=695  used 10891/32768
+film_06_king_kong            turn  3  3412 tokens   107.6s  AttributeError: bpy_prop_collection: attribute "unlink" not   objects=504  used 11687/32768
+film_05_wizard_of_oz         turn  4  3128 tokens   100.5s  ran  objects=916  used 14681/32768
+film_06_king_kong            turn  4  3418 tokens   109.6s  ran  objects=308  used 15812/32768
+film_05_wizard_of_oz         turn  5  3128 tokens   101.9s  ran  objects=1137  used 18471/32768
+film_06_king_kong            turn  5  3418 tokens   111.4s  ran  objects=308  used 19891/32768
+film_05_wizard_of_oz         turn  6  3128 tokens   103.7s  ran  objects=1358  used 22262/32768
+film_06_king_kong            turn  6  3418 tokens   113.4s  ran  objects=308  used 23970/32768
+film_05_wizard_of_oz         turn  7  3128 tokens   105.4s  ran  objects=1579  used 26052/32768
+film_06_king_kong            turn  7  3418 tokens   115.4s  ran  objects=308  used 28048/32768
+film_05_wizard_of_oz         turn  8  3128 tokens   106.9s  ran  objects=1800  used 29842/32768
+film_06_king_kong            turn  8  3418 tokens   117.1s  ran  objects=308  used 32126/32768
+film_06_king_kong            done: out of context; 8 turns, 8 runs, 308 objects, 15.0 min
+film_05_wizard_of_oz         done: out of context (the last reply was cut off and not run); 9 turns, 8 runs, 1800 objects, 15.4 min
+film_07_singin_in_the_rain   turn  1  3513 tokens   109.2s  ran  objects=176  used 3664/32768
+film_08_jaws                 turn  1  3236 tokens    99.7s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 3385/32768
+film_08_jaws                 turn  2  3162 tokens    98.0s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 7270/32768
+film_07_singin_in_the_rain   turn  2  3553 tokens   110.6s  ran  objects=349  used 7878/32768
+film_08_jaws                 turn  3  3162 tokens    99.6s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 11155/32768
+film_07_singin_in_the_rain   turn  3  3553 tokens   112.6s  ran  objects=522  used 12093/32768
+film_08_jaws                 turn  4  3162 tokens   101.3s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 15040/32768
+film_07_singin_in_the_rain   turn  4  3553 tokens   114.6s  ran  objects=695  used 16308/32768
+film_08_jaws                 turn  5  3162 tokens   102.9s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 18925/32768
+film_07_singin_in_the_rain   turn  5  3553 tokens   116.7s  ran  objects=868  used 20523/32768
+film_08_jaws                 turn  6  3162 tokens   104.5s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 22810/32768
+film_07_singin_in_the_rain   turn  6  3553 tokens   119.2s  ran  objects=1041  used 24738/32768
+film_08_jaws                 turn  7  3162 tokens   106.1s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 26694/32768
+film_07_singin_in_the_rain   turn  7  3553 tokens   121.2s  ran  objects=1214  used 28953/32768
+film_08_jaws                 turn  8  3162 tokens   108.2s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=20  used 30578/32768
+film_08_jaws                 done: out of context (the last reply was cut off and not run); 9 turns, 8 runs, 20 objects, 14.7 min
+film_07_singin_in_the_rain   done: out of context (the last reply was cut off and not run); 8 turns, 7 runs, 1214 objects, 15.7 min
+film_09_fellowship           turn  1  3186 tokens   101.4s  TypeError: rod() got an unexpected keyword argument 'top'  objects=111  used 3340/32768
+film_10_2001                 turn  1  2957 tokens    92.1s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=76  used 3108/32768
+film_09_fellowship           turn  2  3170 tokens    98.3s  ran  objects=128  used 7242/32768
+film_10_2001                 turn  2  2937 tokens    91.5s  AttributeError: bpy_prop_collection: attribute "unlink" not   objects=76  used 6768/32768
+film_09_fellowship           turn  3  3042 tokens    96.0s  ran  objects=128  used 10945/32768
+film_10_2001                 turn  3  2943 tokens    93.1s  ran  objects=188  used 10417/32768
+film_09_fellowship           turn  4  3042 tokens    97.3s  ran  objects=128  used 14648/32768
+film_10_2001                 turn  4  2432 tokens    77.5s  ran  objects=237  used 13510/32768
+film_10_2001                 turn  5  2574 tokens    83.7s  ran  objects=390  used 16745/32768
+film_09_fellowship           turn  5  3042 tokens    98.9s  ran  objects=128  used 18351/32768
+film_10_2001                 turn  6  2558 tokens    84.5s  ran  objects=489  used 19964/32768
+film_09_fellowship           turn  6  3042 tokens   100.4s  ran  objects=128  used 22054/32768
+film_10_2001                 turn  7  2612 tokens    87.5s  ran  objects=602  used 23238/32768
+film_09_fellowship           turn  7  3042 tokens   102.0s  ran  objects=128  used 25756/32768
+film_10_2001                 turn  8  2612 tokens    88.6s  ran  objects=715  used 26511/32768
+film_09_fellowship           turn  8  3042 tokens   103.5s  ran  objects=128  used 29458/32768
+film_10_2001                 turn  9  2678 tokens    92.1s  ran  objects=832  used 29850/32768
+film_09_fellowship           done: out of context (the last reply was cut off and not run); 9 turns, 8 runs, 128 objects, 15.1 min
+film_10_2001                 done: out of context (the last reply was cut off and not run); 10 turns, 9 runs, 832 objects, 14.9 min
+film_11_the_shining          turn  1  3035 tokens    96.2s  TypeError: 'int' object is not subscriptable  objects=1  used 3177/32768
+film_12_back_to_the_future   turn  1  3436 tokens   106.2s  SyntaxError: '(' was never closed (script.py, line 57)  objects=1  used 3589/32768
+film_11_the_shining          turn  2  2936 tokens    90.8s  ran  objects=204  used 6896/32768
+film_12_back_to_the_future   turn  2  3438 tokens   107.0s  SyntaxError: '(' was never closed (script.py, line 58)  objects=1  used 7794/32768
+film_11_the_shining          turn  3  2132 tokens    67.3s  ran  objects=297  used 9689/32768
+film_11_the_shining          turn  4  2794 tokens    88.8s  ran  objects=583  used 13145/32768
+film_12_back_to_the_future   turn  3  3452 tokens   109.4s  ran  objects=90  used 12003/32768
+film_11_the_shining          turn  5  2738 tokens    88.5s  ran  objects=797  used 16545/32768
+film_12_back_to_the_future   turn  4  3581 tokens   115.5s  ran  objects=187  used 16245/32768
+film_11_the_shining          turn  6  2738 tokens    89.7s  ran  objects=1011  used 19945/32768
+film_12_back_to_the_future   turn  5  3579 tokens   117.7s  ran  objects=284  used 20486/32768
+film_11_the_shining          turn  7  2738 tokens    91.0s  ran  objects=1225  used 23346/32768
+film_12_back_to_the_future   turn  6  3583 tokens   119.8s  ran  objects=381  used 24731/32768
+film_11_the_shining          turn  8  2738 tokens    92.2s  ran  objects=1439  used 26746/32768
+film_11_the_shining          turn  9  2738 tokens    93.7s  ran  objects=1653  used 30146/32768
+film_12_back_to_the_future   turn  7  3582 tokens   122.0s  ran  objects=478  used 28974/32768
+film_11_the_shining          done: out of context (the last reply was cut off and not run); 10 turns, 9 runs, 1653 objects, 15.0 min
+film_12_back_to_the_future   done: out of context (the last reply was cut off and not run); 8 turns, 7 runs, 478 objects, 15.4 min
+film_13_raiders              turn  1  3161 tokens   102.6s  ran  objects=220  used 3306/32768
+film_14_blade_runner         turn  1  3215 tokens    99.7s  ran  objects=295  used 3366/32768
+film_13_raiders              turn  2  3358 tokens   103.4s  ran  objects=491  used 7325/32768
+film_14_blade_runner         turn  2  3436 tokens   107.1s  ran  objects=599  used 7464/32768
+film_13_raiders              turn  3  3403 tokens   106.2s  ran  objects=768  used 11390/32768
+film_14_blade_runner         turn  3  3436 tokens   109.2s  ran  objects=903  used 11562/32768
+film_13_raiders              turn  4  3395 tokens   107.9s  ran  objects=1045  used 15447/32768
+film_14_blade_runner         turn  4  3436 tokens   111.1s  ran  objects=1207  used 15660/32768
+film_13_raiders              turn  5  3395 tokens   110.0s  ran  objects=1322  used 19505/32768
+film_14_blade_runner         turn  5  3436 tokens   113.0s  ran  objects=1511  used 19759/32768
+film_13_raiders              turn  6  3395 tokens   111.7s  ran  objects=1599  used 23563/32768
+film_14_blade_runner         turn  6  3436 tokens   115.1s  ran  objects=1815  used 23858/32768
+film_13_raiders              turn  7  3395 tokens   113.4s  ran  objects=1876  used 27620/32768
+film_14_blade_runner         turn  7  3436 tokens   117.0s  ran  objects=2119  used 27956/32768
+film_13_raiders              turn  8  3395 tokens   115.0s  ran  objects=2153  used 31677/32768
+film_13_raiders              done: out of context; 8 turns, 8 runs, 2153 objects, 15.0 min
+film_14_blade_runner         turn  8  3436 tokens   114.3s  ran  objects=2423  used 32054/32768
+film_15_spirited_away        turn  1  2984 tokens    97.8s  ran  objects=147  used 3126/32768
+film_14_blade_runner         done: out of context; 8 turns, 8 runs, 2423 objects, 15.9 min
+film_15_spirited_away        turn  2  2432 tokens    76.5s  ran  objects=226  used 6220/32768
+film_16_lion_king            turn  1  3728 tokens   114.5s  ValueError: too many values to unpack (expected 25)  objects=0  used 3877/32768
+film_15_spirited_away        turn  3  2725 tokens    85.4s  ran  objects=325  used 9607/32768
+film_16_lion_king            turn  2  3433 tokens   107.9s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=18  used 8072/32768
+film_15_spirited_away        turn  4  2723 tokens    86.5s  ran  objects=430  used 12992/32768
+film_16_lion_king            turn  3  3436 tokens   109.9s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=18  used 12236/32768
+film_15_spirited_away        turn  5  2705 tokens    86.9s  ran  objects=530  used 16359/32768
+film_15_spirited_away        turn  6  2707 tokens    89.3s  ran  objects=633  used 19728/32768
+film_16_lion_king            turn  4  3407 tokens   112.0s  AttributeError: Vector subtraction: vectors must have the sa  objects=120  used 16374/32768
+film_15_spirited_away        turn  7  2705 tokens    89.9s  ran  objects=736  used 23095/32768
+film_16_lion_king            turn  5  3408 tokens   113.0s  TypeError: IDMaterials.append(): error with argument 1, "mat  objects=170  used 20494/32768
+film_15_spirited_away        turn  8  2707 tokens    91.3s  ran  objects=838  used 26463/32768
+film_16_lion_king            turn  6  3405 tokens   115.0s  ran  objects=237  used 24623/32768
+film_15_spirited_away        turn  9  2705 tokens    92.3s  ran  objects=940  used 29829/32768
+film_15_spirited_away        done: out of context (the last reply was cut off and not run); 10 turns, 9 runs, 940 objects, 15.2 min
+film_16_lion_king            turn  7  3453 tokens   118.3s  ran  objects=489  used 28736/32768
+film_17_casablanca           turn  1  3207 tokens   107.5s  ran  objects=78  used 3361/32768
+film_16_lion_king            done: out of context (the last reply was cut off and not run); 8 turns, 7 runs, 489 objects, 15.3 min
+film_17_casablanca           turn  2  3146 tokens    98.2s  AttributeError: bpy_prop_collection: attribute "unlink" not   objects=78  used 7167/32768
+film_18_ghostbusters         turn  1  3462 tokens   107.9s  ReferenceError: BMesh data of type BMesh has been removed  objects=2  used 3612/32768
+film_17_casablanca           turn  3  3142 tokens    98.7s  AttributeError: bpy_prop_collection: attribute "remove" not   objects=78  used 11006/32768
+film_18_ghostbusters         turn  2  3410 tokens   107.1s  ran  objects=36  used 7733/32768
+film_17_casablanca           turn  4  3142 tokens   100.1s  AttributeError: bpy_prop_collection: attribute "remove" not   objects=78  used 14850/32768
+film_18_ghostbusters         turn  3  3410 tokens   109.1s  ran  objects=36  used 11803/32768
+film_17_casablanca           turn  5  3143 tokens   101.9s  ran  objects=77  used 18695/32768
+film_18_ghostbusters         turn  4  3410 tokens   111.0s  ran  objects=36  used 15873/32768
+film_17_casablanca           turn  6  3143 tokens   103.5s  ran  objects=77  used 22498/32768
+film_18_ghostbusters         turn  5  3410 tokens   113.1s  ran  objects=36  used 19943/32768
+film_17_casablanca           turn  7  3143 tokens   105.2s  ran  objects=77  used 26300/32768
+film_18_ghostbusters         turn  6  3410 tokens   115.0s  ran  objects=36  used 24013/32768
+film_17_casablanca           turn  8  3143 tokens   106.7s  ran  objects=77  used 30102/32768
+film_17_casablanca           done: out of context (the last reply was cut off and not run); 9 turns, 8 runs, 77 objects, 15.2 min
+film_18_ghostbusters         turn  7  3410 tokens   117.7s  ran  objects=36  used 28082/32768
+film_19_good_bad_ugly        turn  1  3086 tokens   102.9s  ran  objects=99  used 3236/32768
+film_18_ghostbusters         turn  8  3410 tokens   113.3s  ran  objects=36  used 32151/32768
+film_18_ghostbusters         done: out of context; 8 turns, 8 runs, 36 objects, 15.4 min
+film_19_good_bad_ugly        turn  2  3027 tokens    95.0s  ran  objects=198  used 6923/32768
+film_20_up                   turn  1  2832 tokens    88.6s  ran  objects=297  used 2970/32768
+film_19_good_bad_ugly        turn  3  3027 tokens    94.8s  ran  objects=297  used 10612/32768
+film_20_up                   turn  2  3119 tokens    97.7s  ran  objects=634  used 6750/32768
+film_19_good_bad_ugly        turn  4  3027 tokens    96.4s  ran  objects=396  used 14301/32768
+film_20_up                   turn  3  3031 tokens    96.5s  ran  objects=963  used 10443/32768
+film_19_good_bad_ugly        turn  5  3027 tokens    97.7s  ran  objects=495  used 17990/32768
+film_20_up                   turn  4  3028 tokens    98.0s  ran  objects=1293  used 14133/32768
+film_19_good_bad_ugly        turn  6  3027 tokens    99.4s  ran  objects=594  used 21679/32768
+film_20_up                   turn  5  3028 tokens    99.5s  ran  objects=1623  used 17824/32768
+film_19_good_bad_ugly        turn  7  3027 tokens   101.0s  ran  objects=693  used 25368/32768
+film_20_up                   turn  6  3028 tokens   101.4s  ran  objects=1952  used 21515/32768
+film_19_good_bad_ugly        turn  8  3027 tokens   102.3s  ran  objects=792  used 29056/32768
+film_20_up                   turn  7  3028 tokens   102.8s  ran  objects=2281  used 25206/32768
+film_19_good_bad_ugly        done: out of context (the last reply was cut off and not run); 9 turns, 8 runs, 792 objects, 15.4 min
+film_20_up                   turn  8  3028 tokens    98.9s  ran  objects=2612  used 28896/32768
+film_20_up                   turn  9  3028 tokens    83.1s  ran  objects=2942  used 32586/32768
+film_20_up                   done: out of context; 9 turns, 9 runs, 2942 objects, 15.1 min
+done in 153 min

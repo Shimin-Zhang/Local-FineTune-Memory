@@ -1,0 +1,99 @@
+import bpy
+import math
+
+# Clear existing objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the bottom snowball
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.2, location=(0, 0, 1.2), segments=32, ring_count=16)
+bottom = bpy.context.active_object
+bottom.name = "Bottom_Ball"
+bpy.ops.object.shade_smooth()
+
+# Create the middle snowball
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.9, location=(0, 0, 2.8), segments=32, ring_count=16)
+middle = bpy.context.active_object
+middle.name = "Middle_Ball"
+bpy.ops.object.shade_smooth()
+
+# Create the head snowball
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.6, location=(0, 0, 4.1), segments=32, ring_count=16)
+head = bpy.context.active_object
+head.name = "Head"
+bpy.ops.object.shade_smooth()
+
+# Create the carrot nose (cone)
+bpy.ops.mesh.primitive_cone_add(radius1=0.12, radius2=0.0, depth=0.4, location=(0, -0.6, 4.1), rotation=(math.radians(90), 0, 0), vertices=16)
+nose = bpy.context.active_object
+nose.name = "Carrot_Nose"
+bpy.ops.object.shade_smooth()
+
+# Create the top hat (cylinder for the base)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.45, depth=0.15, location=(0, 0, 4.7), vertices=32)
+hat_base = bpy.context.active_object
+hat_base.name = "Hat_Base"
+bpy.ops.object.shade_smooth()
+
+# Create the top hat (cylinder for the top)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=0.5, location=(0, 0, 5.05), vertices=32)
+hat_top = bpy.context.active_object
+hat_top.name = "Hat_Top"
+bpy.ops.object.shade_smooth()
+
+# Create materials
+# White material for snow
+mat_snow = bpy.data.materials.new(name="Snow")
+mat_snow.use_nodes = True
+nodes = mat_snow.node_tree.nodes
+links = mat_snow.node_tree.links
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+
+# Orange material for carrot
+mat_carrot = bpy.data.materials.new(name="Carrot")
+mat_carrot.use_nodes = True
+nodes = mat_carrot.node_tree.nodes
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (1.0, 0.4, 0.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.6
+
+# Black material for hat
+mat_black = bpy.data.materials.new(name="Black")
+mat_black.use_nodes = True
+nodes = mat_black.node_tree.nodes
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.4
+
+# Assign materials
+bottom.data.materials.append(mat_snow)
+middle.data.materials.append(mat_snow)
+head.data.materials.append(mat_snow)
+nose.data.materials.append(mat_carrot)
+hat_base.data.materials.append(mat_black)
+hat_top.data.materials.append(mat_black)
+
+# Add a simple ground plane
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+mat_ground = bpy.data.materials.new(name="Ground")
+mat_ground.use_nodes = True
+nodes = mat_ground.node_tree.nodes
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 0.9, 1.0)
+bsdf.inputs["Roughness"].default_value = 1.0
+ground.data.materials.append(mat_ground)
+
+# Add a sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Set up the camera
+bpy.ops.object.camera_add(location=(0, -10, 5), rotation=(math.radians(80), 0, 0))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera

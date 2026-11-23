@@ -1,0 +1,276 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+bpy.ops.object.select_all(action='DESELECT')
+
+# Add lights
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20), rotation=(0.8, 0.3, 0))
+sun = bpy.context.object
+sun.data.energy = 2.0
+sun.data.color = (0.8, 0.85, 0.95)
+
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 5))
+point_light = bpy.context.object
+point_light.data.energy = 100
+point_light.data.color = (1.0, 1.0, 0.9)
+
+# Ground plane
+bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, 0))
+ground = bpy.context.object
+ground.name = "Ground"
+mat_ground = bpy.data.materials.new("GroundMat")
+mat_ground.use_nodes = True
+nodes = mat_ground.node_tree.nodes
+links = mat_ground.node_tree.links
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.2, 0.3, 0.15, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(mat_ground)
+
+# Temple path
+bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0, 0.01))
+path = bpy.context.object
+path.name = "TemplePath"
+path.scale = (1.5, 8, 1)
+bpy.ops.object.transform_apply(scale=True)
+mat_path = bpy.data.materials.new("PathMat")
+mat_path.use_nodes = True
+nodes = mat_path.node_tree.nodes
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.4, 0.38, 0.35, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.95
+path.data.materials.append(mat_path)
+
+# Moss patches on path
+for i in range(15):
+    x = random.uniform(-1.2, 1.2)
+    y = random.uniform(-6, 6)
+    size = random.uniform(0.2, 0.5)
+    bpy.ops.mesh.primitive_plane_add(size=size, location=(x, y, 0.02))
+    moss = bpy.context.object
+    moss.name = f"Moss_{i}"
+    mat_moss = bpy.data.materials.new("MossMat")
+    mat_moss.use_nodes = True
+    nodes = mat_moss.node_tree.nodes
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.1, 0.4, 0.1, 1.0)
+    bsdf.inputs["Roughness"].default_value = 1.0
+    moss.data.materials.append(mat_moss)
+
+# Stone lanterns
+def create_lantern(location):
+    # Base
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.4, location=(location[0], location[1], 0.2))
+    base = bpy.context.object
+    base.name = "LanternBase"
+    mat_stone = bpy.data.materials.new("StoneMat")
+    mat_stone.use_nodes = True
+    nodes = mat_stone.node_tree.nodes
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.5, 0.48, 0.45, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.8
+    base.data.materials.append(mat_stone)
+
+    # Pillar
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=1.0, location=(location[0], location[1], 0.9))
+    pillar = bpy.context.object
+    pillar.name = "LanternPillar"
+    pillar.data.materials.append(mat_stone)
+
+    # Top box
+    bpy.ops.mesh.primitive_cube_add(size=0.5, location=(location[0], location[1], 1.6))
+    top = bpy.context.object
+    top.name = "LanternTop"
+    top.data.materials.append(mat_stone)
+
+    # Roof
+    bpy.ops.mesh.primitive_cone_add(radius1=0.4, radius2=0.0, depth=0.3, location=(location[0], location[1], 1.9))
+    roof = bpy.context.object
+    roof.name = "LanternRoof"
+    mat_roof = bpy.data.materials.new("RoofMat")
+    mat_roof.use_nodes = True
+    nodes = mat_roof.node_tree.nodes
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.3, 0.28, 0.25, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.7
+    roof.data.materials.append(mat_roof)
+
+    # Light inside lantern
+    bpy.ops.object.light_add(type='POINT', location=(location[0], location[1], 1.6))
+    lantern_light = bpy.context.object
+    lantern_light.name = "LanternLight"
+    lantern_light.data.energy = 50
+    lantern_light.data.color = (1.0, 0.8, 0.5)
+    lantern_light.data.shadow_soft_size = 0.1
+
+# Place lanterns along path
+lantern_positions = [(-1.8, -5), (1.8, -5), (-1.8, -2.5), (1.8, -2.5), (-1.8, 0), (1.8, 0), (-1.8, 2.5), (1.8, 2.5), (-1.8, 5), (1.8, 5)]
+for pos in lantern_positions:
+    create_lantern(pos)
+
+# Wooden gate
+def create_gate(location):
+    # Left pillar
+    bpy.ops.mesh.primitive_cube_add(size=0.4, location=(location[0] - 2, location[1], 1.5))
+    left_pillar = bpy.context.object
+    left_pillar.name = "GateLeftPillar"
+    left_pillar.scale = (1, 1, 7.5)
+    bpy.ops.object.transform_apply(scale=True)
+    mat_wood = bpy.data.materials.new("WoodMat")
+    mat_wood.use_nodes = True
+    nodes = mat_wood.node_tree.nodes
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.35, 0.2, 0.1, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.85
+    left_pillar.data.materials.append(mat_wood)
+
+    # Right pillar
+    bpy.ops.mesh.primitive_cube_add(size=0.4, location=(location[0] + 2, location[1], 1.5))
+    right_pillar = bpy.context.object
+    right_pillar.name = "GateRightPillar"
+    right_pillar.scale = (1, 1, 7.5)
+    bpy.ops.object.transform_apply(scale=True)
+    right_pillar.data.materials.append(mat_wood)
+
+    # Top beam
+    bpy.ops.mesh.primitive_cube_add(size=0.3, location=(location[0], location[1], 3.0))
+    top_beam = bpy.context.object
+    top_beam.name = "GateTopBeam"
+    top_beam.scale = (14, 1, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    top_beam.data.materials.append(mat_wood)
+
+    # Middle beam
+    bpy.ops.mesh.primitive_cube_add(size=0.2, location=(location[0], location[1], 2.0))
+    mid_beam = bpy.context.object
+    mid_beam.name = "GateMidBeam"
+    mid_beam.scale = (10, 1, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    mid_beam.data.materials.append(mat_wood)
+
+    # Roof
+    bpy.ops.mesh.primitive_cube_add(size=0.1, location=(location[0], location[1], 3.2))
+    roof = bpy.context.object
+    roof.name = "GateRoof"
+    roof.scale = (15, 2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    mat_roof = bpy.data.materials.new("GateRoofMat")
+    mat_roof.use_nodes = True
+    nodes = mat_roof.node_tree.nodes
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.2, 0.18, 0.15, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.7
+    roof.data.materials.append(mat_roof)
+
+create_gate((0, -8, 0))
+
+# Stream
+bpy.ops.mesh.primitive_plane_add(size=2, location=(0, 0, -0.05))
+stream = bpy.context.object
+stream.name = "Stream"
+stream.scale = (1, 10, 1)
+bpy.ops.object.transform_apply(scale=True)
+stream.location = (0, 0, -0.05)
+mat_water = bpy.data.materials.new("WaterMat")
+mat_water.use_nodes = True
+nodes = mat_water.node_tree.nodes
+links = mat_water.node_tree.links
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.1, 0.2, 0.3, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.1
+bsdf.inputs["Transmission Weight"].default_value = 0.8
+stream.data.materials.append(mat_water)
+
+# Plank bridge
+def create_bridge(location):
+    # Planks
+    for i in range(8):
+        bpy.ops.mesh.primitive_cube_add(size=0.8, location=(location[0] + i * 0.9, location[1], 0.1))
+        plank = bpy.context.object
+        plank.name = f"BridgePlank_{i}"
+        plank.scale = (1, 2, 0.3)
+        bpy.ops.object.transform_apply(scale=True)
+        mat_wood = bpy.data.materials.get("WoodMat")
+        if mat_wood is None:
+            mat_wood = bpy.data.materials.new("WoodMat")
+            mat_wood.use_nodes = True
+            nodes = mat_wood.node_tree.nodes
+            bsdf = nodes["Principled BSDF"]
+            bsdf.inputs["Base Color"].default_value = (0.35, 0.2, 0.1, 1.0)
+            bsdf.inputs["Roughness"].default_value = 0.85
+        plank.data.materials.append(mat_wood)
+
+    # Side rails
+    bpy.ops.mesh.primitive_cube_add(size=0.1, location=(location[0] + 3.5, location[1] - 1.1, 0.4))
+    left_rail = bpy.context.object
+    left_rail.name = "BridgeLeftRail"
+    left_rail.scale = (35, 1, 4)
+    bpy.ops.object.transform_apply(scale=True)
+    left_rail.data.materials.append(mat_wood)
+
+    bpy.ops.mesh.primitive_cube_add(size=0.1, location=(location[0] + 3.5, location[1] + 1.1, 0.4))
+    right_rail = bpy.context.object
+    right_rail.name = "BridgeRightRail"
+    right_rail.scale = (35, 1, 4)
+    bpy.ops.object.transform_apply(scale=True)
+    right_rail.data.materials.append(mat_wood)
+
+create_bridge((-3.5, 0, 0))
+
+# Rain particles
+bpy.ops.object.empty_add(type='PLAIN_AXES', location=(0, 0, 10))
+rain_source = bpy.context.object
+rain_source.name = "RainSource"
+
+# Create rain particle system
+mod = rain_source.modifiers.new("Rain", 'PARTICLE_SYSTEM')
+ps = rain_source.particle_systems[0]
+ps.settings.count = 2000
+ps.settings.frame_start = 1
+ps.settings.frame_end = 250
+ps.settings.lifetime = 50
+ps.settings.emit_from = 'FACE'
+ps.settings.physics_type = 'NEWTON'
+ps.settings.normal_factor = 0
+ps.settings.object_align_factor = (0, 0, -10)
+ps.settings.effector_weights.gravity = 1
+ps.settings.render_type = 'OBJECT'
+
+# Create rain drop object
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.02, location=(0, 0, 0))
+rain_drop = bpy.context.object
+rain_drop.name = "RainDrop"
+mat_rain = bpy.data.materials.new("RainMat")
+mat_rain.use_nodes = True
+nodes = mat_rain.node_tree.nodes
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.8, 0.85, 0.9, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.1
+bsdf.inputs["Transmission Weight"].default_value = 0.9
+rain_drop.data.materials.append(mat_rain)
+rain_drop.hide_render = False
+rain_drop.hide_viewport = False
+
+ps.settings.instance_object = rain_drop
+
+# Set up camera
+bpy.ops.object.camera_add(location=(0, 12, 3), rotation=(1.3, 0, 0))
+camera = bpy.context.object
+camera.name = "Camera"
+bpy.context.scene.camera = camera
+
+# Set world background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.3, 0.35, 0.4, 1.0)
+    bg_node.inputs[1].default_value = 0.5

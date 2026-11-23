@@ -1,0 +1,135 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 24,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 1,
+  "MESH": 24
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Ground",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.4,
+    0.5,
+    0.3
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Water",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.1,
+    0.3,
+    0.5
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "AquaStone",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.7,
+    0.65,
+    0.55
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    10.0,
+    -10.0,
+    20.0
+   ],
+   "direction": [
+    -0.6294,
+    0.3706,
+    -0.683
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   30.0,
+   -60.0,
+   20.0
+  ],
+  "direction": [
+   -0.4423,
+   0.8847,
+   -0.1474
+  ],
+  "up": [
+   -0.0659,
+   0.1319,
+   0.9891
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  21.25,
+  83.5,
+  33.725
+ ],
+ "scene_center": [
+  0.625,
+  5.25,
+  3.1377
+ ],
+ "scene_radius": 46.2633,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.7,
+ "image": true
+}

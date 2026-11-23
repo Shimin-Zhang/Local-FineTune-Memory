@@ -1,0 +1,72 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(456)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def coat(rgb, em=0, rough=.7):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+floor, line, wall = coat((.03, .03, .04)), coat((.08, .1, .16)), coat((.02, .02, .03))
+sphere, cube, cone, core = coat((.8, .25, .08)), coat((.1, .35, .7)), coat((.75, .6, .1)), coat((1, .5, .15), 2.5)
+rim, dust = coat((.2, .6, 1), 3), coat((.4, .5, .7))
+def shape(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return shape(bm, m, at, rot)
+def spin(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return shape(bm, m, at, rot)
+def ball(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return shape(bm, m, at)
+def lamp(kind, at, col, w, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = col, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=7, radius2=13, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.04, .04)
+    v.co.z -= 1.5
+shape(bm, floor)
+# inlaid floor lines and a glowing ring round the trio
+for i in range(14):
+    a = i * math.pi / 7
+    slab((math.cos(a) * 10.3, math.sin(a) * 10.3, 0), (1.2, .12, .05), line, (0, 0, a + math.pi / 2))
+for i in range(12):
+    a = i * math.pi / 6
+    spin((math.cos(a) * 6.6, math.sin(a) * 6.6, .02), .12, .06, 5, core)
+# the three shapes, each on a small plinth
+spin((-5, 1, 0), 1.9, .5, 8, wall); ball((-5, 1, 2.5), 1.9, sphere)
+spin((0, 0, 0), 2.1, .6, 4, wall, rot=(0, 0, math.pi / 4)); slab((0, 0, .6), (2.6, 2.6, 2.6), cube, (0, 0, math.pi / 4))
+spin((5, 1, 0), 2.0, .5, 8, wall); spin((5, 1, .5), 1.8, 3.2, 8, cone, .05)
+# warm key from the left, cool blue rim from behind
+lamp("SUN", (-24, -8, 12), (1, .55, .2), 6, (0, 0, 2))
+lamp("SUN", (6, 24, 14), (.25, .5, 1), 3, (0, 0, 2))
+lamp("POINT", (0, 0, 1.2), (1, .5, .15), 500)
+# a dark studio: two cutaway walls with a neon strip and hanging lamps
+slab((0, 13.5, 0), (20, .6, 9), wall); slab((-12.5, 0, 0), (.6, 20, 9), wall)
+slab((-12.1, 0, 6.5), (.1, 16, .12), rim); slab((0, 13.1, 6.5), (16, .1, .12), rim)
+for x in (-6, 0, 6):
+    slab((x, 8, 9), (.1, .1, 4), dust); slab((x, 8, 4.6), (.8, .8, .5), dust); ball((x, 8, 4.3), .3, core)
+    lamp("POINT", (x, 8, 4.2), (1, .6, .25), 250)
+lamp("POINT", (-12, 0, 6.5), (.3, .6, 1), 300)
+lamp("POINT", (0, 13, 6.5), (.3, .6, 1), 300)
+for i in range(22): ball((random.uniform(-9, 9), random.uniform(-8, 8), random.uniform(3, 9)), random.uniform(.05, .12), dust)
+w = bpy.data.worlds.new("dark"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .01, .025, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 3.5)); co.location = t + Vector((10, -62, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

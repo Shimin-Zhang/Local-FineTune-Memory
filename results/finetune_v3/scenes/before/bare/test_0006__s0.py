@@ -1,0 +1,276 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# --- Clean up ---
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Scene Setup ---
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+
+# World
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.5, 0.7, 0.9, 1.0)
+    bg.inputs[1].default_value = 1.0
+
+# --- Materials ---
+mat_grass = bpy.data.materials.new("Grass")
+mat_grass.use_nodes = True
+bsdf_grass = mat_grass.node_tree.nodes.get("Principled BSDF")
+bsdf_grass.inputs["Base Color"].default_value = (0.2, 0.5, 0.1, 1.0)
+bsdf_grass.inputs["Roughness"].default_value = 0.8
+
+mat_earth = bpy.data.materials.new("Earth")
+mat_earth.use_nodes = True
+bsdf_earth = mat_earth.node_tree.nodes.get("Principled BSDF")
+bsdf_earth.inputs["Base Color"].default_value = (0.4, 0.25, 0.15, 1.0)
+bsdf_earth.inputs["Roughness"].default_value = 0.9
+
+mat_thatch = bpy.data.materials.new("Thatch")
+mat_thatch.use_nodes = True
+bsdf_thatch = mat_thatch.node_tree.nodes.get("Principled BSDF")
+bsdf_thatch.inputs["Base Color"].default_value = (0.6, 0.5, 0.2, 1.0)
+bsdf_thatch.inputs["Roughness"].default_value = 0.95
+
+mat_wood = bpy.data.materials.new("Wood")
+mat_wood.use_nodes = True
+bsdf_wood = mat_wood.node_tree.nodes.get("Principled BSDF")
+bsdf_wood.inputs["Base Color"].default_value = (0.3, 0.2, 0.1, 1.0)
+bsdf_wood.inputs["Roughness"].default_value = 0.8
+
+mat_stone = bpy.data.materials.new("Stone")
+mat_stone.use_nodes = True
+bsdf_stone = mat_stone.node_tree.nodes.get("Principled BSDF")
+bsdf_stone.inputs["Base Color"].default_value = (0.4, 0.4, 0.4, 1.0)
+bsdf_stone.inputs["Roughness"].default_value = 0.9
+
+# --- Helper Functions ---
+def create_hut(location, radius=1.5, height=2.0):
+    """Create a simple thatched hut with a cone roof and cylindrical base."""
+    # Base (cylinder)
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=height*0.6, location=(location[0], location[1], location[2] + height*0.3))
+    base = bpy.context.active_object
+    base.name = "Hut_Base"
+    base.data.materials.append(mat_wood)
+    
+    # Roof (cone)
+    roof_h = height * 0.7
+    bpy.ops.mesh.primitive_cone_add(radius1=radius*1.2, radius2=0, depth=roof_h, location=(location[0], location[1], location[2] + height*0.6 + roof_h/2))
+    roof = bpy.context.active_object
+    roof.name = "Hut_Roof"
+    roof.data.materials.append(mat_thatch)
+    
+    # Door (small cube indent - simplified as a dark plane)
+    door_w, door_h = 0.8, 1.2
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(location[0] + radius*0.8, location[1], location[2] + door_h/2), rotation=(0, math.radians(90), 0))
+    door = bpy.context.active_object
+    door.scale = (door_w/2, door_h/2, 1)
+    door.name = "Hut_Door"
+    mat_door = bpy.data.materials.new("Door_Dark")
+    mat_door.use_nodes = True
+    mat_door.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.05, 0.05, 0.05, 1.0)
+    door.data.materials.append(mat_door)
+
+def create_smithy(location):
+    """Create a smithy structure: stone base, wooden frame, thatched roof, and anvil."""
+    # Stone base
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(location[0], location[1], location[2] + 0.5))
+    base = bpy.context.active_object
+    base.scale = (2.5, 2.0, 0.5)
+    base.name = "Smithy_Base"
+    base.data.materials.append(mat_stone)
+    
+    # Wooden posts
+    for dx in [-1.8, 1.8]:
+        for dy in [-1.4, 1.4]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=2.5, location=(location[0]+dx, location[1]+dy, location[2]+1.0+1.25))
+            post = bpy.context.active_object
+            post.name = "Smithy_Post"
+            post.data.materials.append(mat_wood)
+            
+    # Roof (flat-ish thatch)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(location[0], location[1], location[2] + 3.5))
+    roof = bpy.context.active_object
+    roof.scale = (2.8, 2.3, 0.2)
+    roof.name = "Smithy_Roof"
+    roof.data.materials.append(mat_thatch)
+    
+    # Anvil (simplified)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(location[0]+0.5, location[1], location[2]+1.0+0.4))
+    anvil = bpy.context.active_object
+    anvil.scale = (0.6, 0.3, 0.4)
+    anvil.name = "Anvil"
+    anvil.data.materials.append(mat_stone)
+
+# --- Terrain: High Grass Hill ---
+# Create a large plane and subdivide it, then displace to make a hill
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 0, 0))
+terrain = bpy.context.active_object
+terrain.name = "Terrain"
+
+# Subdivide for displacement
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Displace modifier for hills
+mod = terrain.modifiers.new(name="Hill", type='DISPLACE')
+mod.strength = 5.0
+mod.mid_level = 0.5
+
+# Add a texture for displacement
+tex = bpy.data.textures.new("HillTex", type='CLOUDS')
+tex.noise_scale = 10.0
+mod.texture = tex
+
+# Flatten the center area for the settlement
+# We'll use a vertex group to mask the displacement
+vg = terrain.vertex_groups.new(name="CenterMask")
+# Select vertices near center and assign weight 0 (no displacement)
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+# Select vertices within radius 20 from center
+import bmesh
+bm = bmesh.from_edit_mesh(terrain.data)
+for v in bm.verts:
+    if v.co.length < 25:
+        v.select = True
+bmesh.update_edit_mesh(terrain.data)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Assign weight 0 to selected vertices (center)
+for v in terrain.data.vertices:
+    if v.co.length < 25:
+        vg.add([v.index], 0.0, 'REPLACE')
+    else:
+        vg.add([v.index], 1.0, 'REPLACE')
+
+mod.vertex_group = "CenterMask"
+
+terrain.data.materials.append(mat_grass)
+
+# --- Ditch and Bank ---
+# Ditch: A circular trench around the settlement
+# Bank: A raised earthwork outside the ditch
+
+# Ditch (inverted cylinder)
+ditch_radius = 15
+ditch_depth = 2.0
+bpy.ops.mesh.primitive_cylinder_add(radius=ditch_radius, depth=ditch_depth, location=(0, 0, -ditch_depth/2 + 0.5))
+ditch = bpy.context.active_object
+ditch.name = "Ditch"
+# Make it hollow by adding a boolean or just using a ring
+# Simpler: Create a torus-like shape or use a cylinder with a hole
+# Let's use a cylinder and boolean subtract a smaller cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=ditch_radius-1, depth=ditch_depth+1, location=(0, 0, -ditch_depth/2 + 0.5))
+inner = bpy.context.active_object
+inner.name = "Ditch_Inner"
+
+bool_mod = ditch.modifiers.new(name="Boolean", type='BOOLEAN')
+bool_mod.operation = 'DIFFERENCE'
+bool_mod.object = inner
+bpy.context.view_layer.objects.active = ditch
+bpy.ops.object.modifier_apply(modifier="Boolean")
+bpy.data.objects.remove(inner, do_unlink=True)
+
+ditch.data.materials.append(mat_earth)
+
+# Bank (raised earthwork)
+bank_radius = 17
+bank_height = 1.5
+bpy.ops.mesh.primitive_cylinder_add(radius=bank_radius, depth=bank_height, location=(0, 0, bank_height/2 + 0.5))
+bank = bpy.context.active_object
+bank.name = "Bank"
+# Hollow out the center
+bpy.ops.mesh.primitive_cylinder_add(radius=bank_radius-2, depth=bank_height+1, location=(0, 0, bank_height/2 + 0.5))
+inner_bank = bpy.context.active_object
+inner_bank.name = "Bank_Inner"
+
+bool_mod_bank = bank.modifiers.new(name="Boolean", type='BOOLEAN')
+bool_mod_bank.operation = 'DIFFERENCE'
+bool_mod_bank.object = inner_bank
+bpy.context.view_layer.objects.active = bank
+bpy.ops.object.modifier_apply(modifier="Boolean")
+bpy.data.objects.remove(inner_bank, do_unlink=True)
+
+bank.data.materials.append(mat_earth)
+
+# --- Central Gathering Place ---
+# A cleared area with a central fire pit and seating stones
+fire_pit_radius = 1.0
+bpy.ops.mesh.primitive_cylinder_add(radius=fire_pit_radius, depth=0.5, location=(0, 0, 0.5))
+fire_pit = bpy.context.active_object
+fire_pit.name = "Fire_Pit"
+fire_pit.data.materials.append(mat_stone)
+
+# Fire (emissive sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(0, 0, 0.8))
+fire = bpy.context.active_object
+fire.name = "Fire"
+mat_fire = bpy.data.materials.new("Fire")
+mat_fire.use_nodes = True
+bsdf_fire = mat_fire.node_tree.nodes.get("Principled BSDF")
+bsdf_fire.inputs["Emission Color"].default_value = (1.0, 0.5, 0.0, 1.0)
+bsdf_fire.inputs["Emission Strength"].default_value = 5.0
+fire.data.materials.append(mat_fire)
+
+# Seating stones around the fire
+for i in range(8):
+    angle = i * (2 * math.pi / 8)
+    x = 2.5 * math.cos(angle)
+    y = 2.5 * math.sin(angle)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.5))
+    stone = bpy.context.active_object
+    stone.scale = (0.5, 0.4, 0.3)
+    stone.rotation_euler[2] = random.uniform(0, 2*math.pi)
+    stone.name = f"Seating_Stone_{i}"
+    stone.data.materials.append(mat_stone)
+
+# --- Circle of Thatched Huts ---
+num_huts = 10
+hut_radius = 12
+for i in range(num_huts):
+    angle = i * (2 * math.pi / num_huts)
+    x = hut_radius * math.cos(angle)
+    y = hut_radius * math.sin(angle)
+    create_hut((x, y, 0.5))
+
+# --- Smithy ---
+# Place the smithy at one end of the circle
+smithy_angle = math.pi / 2
+smithy_x = hut_radius * math.cos(smithy_angle)
+smithy_y = hut_radius * math.sin(smithy_angle)
+create_smithy((smithy_x, smithy_y, 0.5))
+
+# --- Lighting ---
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 50))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), 0, math.radians(45))
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(30, 30, 20))
+camera = bpy.context.active_object
+camera.name = "Camera"
+scene.camera = camera
+
+# Point camera at center
+direction = Vector((0, 0, 0)) - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# --- Render Settings ---
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True

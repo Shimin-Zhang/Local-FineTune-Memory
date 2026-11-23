@@ -1,0 +1,215 @@
+```python
+import bpy
+import math
+import random
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up materials
+def create_material(name, color, roughness=0.8, metalness=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metalness
+    return mat
+
+# Materials
+grass_mat = create_material("Grass", (0.2, 0.5, 0.1, 1.0), roughness=0.9)
+trunk_mat = create_material("Trunk", (0.35, 0.2, 0.1, 1.0), roughness=0.8)
+leaf_mat = create_material("Leaves", (0.1, 0.4, 0.05, 1.0), roughness=0.7)
+bench_mat = create_material("Bench", (0.5, 0.3, 0.15, 1.0), roughness=0.6)
+path_mat = create_material("Path", (0.7, 0.65, 0.55, 1.0), roughness=0.9)
+water_mat = create_material("Water", (0.1, 0.3, 0.6, 1.0), roughness=0.1)
+stone_mat = create_material("Stone", (0.5, 0.5, 0.45, 1.0), roughness=0.8)
+
+# Ground plane
+bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(grass_mat)
+
+# Function to create a tree
+def create_tree(location, scale=1.0):
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3 * scale, depth=3 * scale, location=(location[0], location[1], 1.5 * scale))
+    trunk = bpy.context.active_object
+    trunk.name = f"Trunk_{location[0]:.1f}_{location[1]:.1f}"
+    trunk.data.materials.append(trunk_mat)
+    
+    # Canopy - multiple spheres for a bushy look
+    canopy_parts = []
+    offsets = [
+        (0, 0, 3.5),
+        (0.8, 0.3, 3.2),
+        (-0.7, -0.4, 3.3),
+        (0.2, -0.8, 3.1),
+        (-0.3, 0.7, 3.4),
+        (0, 0, 4.2),
+    ]
+    for i, off in enumerate(offsets):
+        r = (1.0 + random.uniform(-0.2, 0.3)) * scale
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(
+            location[0] + off[0] * scale,
+            location[1] + off[1] * scale,
+            location[2] + off[2] * scale
+        ))
+        sphere = bpy.context.active_object
+        sphere.name = f"Canopy_{i}_{location[0]:.1f}_{location[1]:.1f}"
+        sphere.data.materials.append(leaf_mat)
+        # Smooth shading
+        bpy.ops.object.shade_smooth()
+        canopy_parts.append(sphere)
+    
+    return [trunk] + canopy_parts
+
+# Create three trees
+tree1 = create_tree((-8, -5, 0), scale=1.2)
+tree2 = create_tree((7, -6, 0), scale=1.0)
+tree3 = create_tree((10, 4, 0), scale=1.4)
+
+# Bench
+def create_bench(location, rotation_z=0):
+    parts = []
+    # Seat
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(location[0], location[1], 0.5))
+    seat = bpy.context.active_object
+    seat.scale = (1.5, 0.5, 0.08)
+    seat.rotation_euler = (0, 0, rotation_z)
+    seat.name = "Bench_Seat"
+    seat.data.materials.append(bench_mat)
+    parts.append(seat)
+    
+    # Backrest
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(location[0], location[1] - 0.45, 0.9))
+    back = bpy.context.active_object
+    back.scale = (1.5, 0.08, 0.4)
+    back.rotation_euler = (0, 0, rotation_z)
+    back.name = "Bench_Back"
+    back.data.materials.append(bench_mat)
+    parts.append(back)
+    
+    # Legs
+    for dx in [-0.6, 0.6]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.5, location=(
+            location[0] + dx * math.cos(rotation_z) - 0.45 * math.sin(rotation_z),
+            location[1] + dx * math.sin(rotation_z) + 0.45 * math.cos(rotation_z),
+            0.25
+        ))
+        leg = bpy.context.active_object
+        leg.name = "Bench_Leg"
+        leg.data.materials.append(bench_mat)
+        parts.append(leg)
+    
+    return parts
+
+bench = create_bench((2, 2, 0), rotation_z=math.radians(30))
+
+# Path - a series of flat cubes forming a winding path
+def create_path(points):
+    parts = []
+    for i in range(len(points) - 1):
+        p1 = points[i]
+        p2 = points[i + 1]
+        mid_x = (p1[0] + p2[0]) / 2
+        mid_y = (p1[1] + p2[1]) / 2
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        length = math.sqrt(dx**2 + dy**2) + 0.3
+        angle = math.atan2(dy, dx)
+        
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(mid_x, mid_y, 0.02))
+        slab = bpy.context.active_object
+        slab.scale = (length / 2, 0.6, 0.02)
+        slab.rotation_euler = (0, 0, angle)
+        slab.name = f"Path_Slab_{i}"
+        slab.data.materials.append(path_mat)
+        parts.append(slab)
+    return parts
+
+# Winding path from one side to the other
+path_points = [
+    (-12, 8, 0),
+    (-6, 5, 0),
+    (-2, 3, 0),
+    (2, 2, 0),
+    (6, 3, 0),
+    (10, 6, 0),
+    (14, 8, 0),
+]
+path_parts = create_path(path_points)
+
+# Pond - a flattened cylinder or a mesh with a circular shape
+bpy.ops.mesh.primitive_cylinder_add(radius=3, depth=0.1, location=(-4, 6, 0.05))
+pond = bpy.context.active_object
+pond.name = "Pond"
+pond.scale = (1.2, 1.0, 1.0)  # slightly elliptical
+pond.data.materials.append(water_mat)
+bpy.ops.object.shade_smooth()
+
+# Add some stones around the pond
+for i in range(8):
+    angle = i * (2 * math.pi / 8)
+    sx = -4 + 3.5 * math.cos(angle) * 1.2
+    sy = 6 + 3.5 * math.sin(angle) * 1.0
+    r = 0.2 + random.uniform(0, 0.15)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(sx, sy, 0.1))
+    stone = bpy.context.active_object
+    stone.scale = (1, 0.8, 0.5)
+    stone.name = f"Pond_Stone_{i}"
+    stone.data.materials.append(stone_mat)
+    bpy.ops.object.shade_smooth()
+
+# Add a few decorative flowers
+for i in range(15):
+    fx = random.uniform(-10, 10)
+    fy = random.uniform(-8, 8)
+    # Avoid placing on path or pond
+    dist_to_pond = math.sqrt((fx + 4)**2 + (fy - 6)**2)
+    if dist_to_pond < 4:
+        continue
+    flower_mat = create_material(f"Flower_{i}", (random.uniform(0.5, 1.0), random.uniform(0.2, 0.6), random.uniform(0.5, 1.0), 1.0), roughness=0.5)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(fx, fy, 0.15))
+    flower = bpy.context.active_object
+    flower.name = f"Flower_{i}"
+    flower.data.materials.append(flower_mat)
+    bpy.ops.object.shade_smooth()
+
+# Set up camera
+bpy.ops.object.camera_add(location=(0, -18, 10))
+camera = bpy.context.active_object
+camera.name = "Camera"
+camera.rotation_euler = (math.radians(70), 0, 0)
+bpy.context.scene.camera = camera
+
+# Set up lighting
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.95, 0.85)
+
+# Add a fill light
+bpy.ops.object.light_add(type='AREA', location=(-10, -10, 10))
+fill = bpy.context.active_object
+fill.name = "Fill_Light"
+fill.data.energy = 100
+fill.data.size = 10
+fill.rotation_euler = (math.radians(45), 0, math.radians(45))
+
+# Set world background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes["Background"]
+bg_node.inputs["Color"].default_value = (0.5, 0.7, 1.0, 1.0)
+bg_node.inputs["Strength"].default_value = 0.5
+
+print("Park scene created with trees, bench, path, pond, flowers, and stones.")
+```

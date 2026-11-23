@@ -1,0 +1,276 @@
+import bpy
+import math
+import mathutils
+import random
+from mathutils import Vector
+
+# The scene is too washed out and the suns aren't visible. Let me fix the composition.
+# Key issues:
+# 1. The suns are too far away and not visible
+# 2. The overall color is too yellow/washed out
+# 3. Need better lighting balance
+# 4. Luke needs to be more clearly visible as a silhouette
+
+# First, let's adjust the world to have a more dramatic sunset
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    world_nodes = world.node_tree.nodes
+    color_ramp = None
+    for node in world_nodes:
+        if node.type == 'VALTORGB':
+            color_ramp = node
+            break
+    
+    if color_ramp:
+        cr = color_ramp.color_ramp
+        # Reset and create a more dramatic sunset
+        # Clear existing elements
+        while len(cr.elements) > 2:
+            cr.elements.remove(cr.elements[-1])
+        
+        cr.elements[0].position = 0.0
+        cr.elements[0].color = (0.01, 0.005, 0.02, 1)  # Very dark at horizon
+        cr.elements[1].position = 0.1
+        cr.elements[1].color = (0.5, 0.1, 0.01, 1)  # Deep red
+        new_elem = cr.elements.new(0.2)
+        new_elem.color = (0.9, 0.3, 0.02, 1)  # Orange
+        new_elem2 = cr.elements.new(0.35)
+        new_elem2.color = (0.7, 0.2, 0.05, 1)  # Red-orange
+        new_elem3 = cr.elements.new(0.5)
+        new_elem3.color = (0.3, 0.1, 0.15, 1)  # Purple
+        new_elem4 = cr.elements.new(0.7)
+        new_elem4.color = (0.1, 0.05, 0.15, 1)  # Dark purple
+        new_elem5 = cr.elements.new(1.0)
+        new_elem5.color = (0.02, 0.01, 0.05, 1)  # Near black
+
+# Reposition the suns to be more visible and closer to the horizon
+sun1_obj = bpy.data.objects.get("Sun1")
+sun2_obj = bpy.data.objects.get("Sun2")
+
+if sun1_obj:
+    sun1_obj.location = (-8, -50, 1.5)
+    sun1_obj.scale = (1.5, 1.5, 1.5)
+
+if sun2_obj:
+    sun2_obj.location = (3, -55, 3)
+    sun2_obj.scale = (1.0, 1.0, 1.0)
+
+# Move the glow objects too
+sun1_glow = bpy.data.objects.get("Sun1Glow")
+sun2_glow = bpy.data.objects.get("Sun2Glow")
+
+if sun1_glow:
+    sun1_glow.location = sun1_obj.location
+    sun1_glow.scale = (2.0, 2.0, 2.0)
+
+if sun2_glow:
+    sun2_glow.location = sun2_obj.location
+    sun2_glow.scale = (1.5, 1.5, 1.5)
+
+# Adjust the sun lights to match
+sun1_light = bpy.data.objects.get("Sun1")
+sun2_light = bpy.data.objects.get("Sun2")
+
+if sun1_light:
+    sun1_light.rotation_euler = (math.radians(82), 0, math.radians(190))
+    sun1_light.data.energy = 6.0
+    sun1_light.data.color = (1.0, 0.3, 0.05)
+
+if sun2_light:
+    sun2_light.rotation_euler = (math.radians(75), 0, math.radians(180))
+    sun2_light.data.energy = 4.0
+    sun2_light.data.color = (1.0, 0.4, 0.1)
+
+# Reposition Luke to be a clear silhouette in the foreground
+luke_parts = ["LukeTorso", "LukeHead", "LukeHair", "LukeLeg_-1", "LukeLeg_1", "LukeArm_-1", "LukeArm_1", "LukeBelt"]
+for name in luke_parts:
+    obj = bpy.data.objects.get(name)
+    if obj:
+        obj.location.x = 0
+        obj.location.y = 10
+        obj.location.z = obj.location.z  # Keep z
+        # Make Luke face toward the sunset (away from camera)
+        # Luke should be looking toward negative Y
+
+# Reposition the homestead
+dome_obj = bpy.data.objects.get("Dome")
+if dome_obj:
+    dome_obj.location = (0, -20, 0)
+
+# Move all dome-related objects
+for i in range(12):
+    rib = bpy.data.objects.get(f"Rib_{i}")
+    if rib:
+        rib.location = (0, -20, 0)
+
+for ring_z in [1.5, 3.0, 4.0]:
+    ring = bpy.data.objects.get(f"Ring_{ring_z}")
+    if ring:
+        ring.location = (0, -20, 0)
+
+door_obj = bpy.data.objects.get("Door")
+if door_obj:
+    door_obj.location = (0, -15.2, 1.4)
+
+step_obj = bpy.data.objects.get("DoorStep")
+if step_obj:
+    step_obj.location = (0, -14.8, 0.15)
+
+for side in [-1, 1]:
+    annex = bpy.data.objects.get(f"Annex_{side}")
+    if annex:
+        annex.location = (side * 7, -17, 1.1)
+    
+    small_dome = bpy.data.objects.get(f"SmallDome_{side}")
+    if small_dome:
+        small_dome.location = (side * 7, -17, 2.2)
+    
+    window = bpy.data.objects.get(f"Window_{side}")
+    if window:
+        window.location = (side * 7, -14.5, 1.5)
+
+antenna_obj = bpy.data.objects.get("Antenna")
+if antenna_obj:
+    antenna_obj.location = (0, -20, 5)
+
+dish_obj = bpy.data.objects.get("Dish")
+if dish_obj:
+    dish_obj.location = (0, -20, 9)
+
+for i in range(6):
+    pipe = bpy.data.objects.get(f"Pipe_{i}")
+    if pipe:
+        pipe.location = (0, -20, 0)
+
+# Reposition camera for a better composition
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (1, 14, 1.5)
+    cam.rotation_euler = (math.radians(87), 0, math.radians(195))
+    cam.data.lens = 35
+    cam.data.dof.focus_distance = 12.0
+
+# Move the path
+path_obj = bpy.data.objects.get("Path")
+if path_obj:
+    path_obj.location = (0, -10, 0)
+
+# Adjust exposure for better contrast
+scene = bpy.context.scene
+scene.view_settings.exposure = -0.5
+scene.view_settings.look = 'High Contrast'
+
+# Make Luke's material darker for silhouette effect
+luke_mat = bpy.data.materials.get("LukeOutfit")
+if luke_mat and luke_mat.use_nodes:
+    for node in luke_mat.node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (0.3, 0.25, 0.2, 1)
+            node.inputs['Roughness'].default_value = 0.9
+
+# Make hair darker
+hair_mat = bpy.data.materials.get("LukeHair")
+if hair_mat and hair_mat.use_nodes:
+    for node in hair_mat.node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (0.1, 0.05, 0.02, 1)
+
+# Add more atmospheric depth
+atmo_obj = bpy.data.objects.get("Atmosphere")
+if atmo_obj:
+    atmo_mat = bpy.data.materials.get("AtmosphereMat")
+    if atmo_mat and atmo_mat.use_nodes:
+        for node in atmo_mat.node_tree.nodes:
+            if node.type == 'VOLUME_PRINCIPLED':
+                node.inputs['Density'].default_value = 0.005
+                node.inputs['Color'].default_value = (0.8, 0.4, 0.15, 1)
+
+# Add some heat haze distortion effect using a subtle noise
+# Create a plane in front of the suns for heat shimmer
+haze_data = bpy.data.meshes.new("HeatHaze")
+haze_obj = bpy.data.objects.new("HeatHaze", haze_data)
+scene.collection.objects.link(haze_obj)
+
+import bmesh
+bm_haze = bmesh.new()
+bmesh.ops.create_grid(bm_haze, x_segments=20, y_segments=10, size=1)
+for v in bm_haze.verts:
+    v.co.x *= 15
+    v.co.y *= 5
+bm_haze.to_mesh(haze_data)
+bm_haze.free()
+
+haze_obj.location = (0, -45, 2)
+haze_obj.rotation_euler = (math.radians(90), 0, 0)
+
+haze_mat = bpy.data.materials.new("HeatHazeMat")
+haze_mat.use_nodes = True
+haze_mat.blend_method = 'BLEND'
+haze_nodes = haze_mat.node_tree.nodes
+haze_links = haze_mat.node_tree.links
+
+for node in haze_nodes:
+    haze_nodes.remove(node)
+
+bsdf_haze = haze_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_haze.inputs['Base Color'].default_value = (1.0, 0.5, 0.2, 1)
+bsdf_haze.inputs['Alpha'].default_value = 0.1
+bsdf_haze.inputs['Roughness'].default_value = 1.0
+
+haze_links.new(bsdf_haze.outputs['BSDF'], haze_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+haze_obj.data.materials.append(haze_mat)
+haze_obj.visible_camera = False
+
+# Add some more rocks in the foreground for depth
+rock_mat = bpy.data.materials.get("RockMat")
+for i in range(8):
+    rock_data = bpy.data.meshes.new(f"FGRock_{i}")
+    rock_obj = bpy.data.objects.new(f"FGRock_{i}", rock_data)
+    scene.collection.objects.link(rock_obj)
+    
+    bm_rock = bmesh.new()
+    bmesh.ops.create_icosphere(bm_rock, subdivisions=2, radius=0.2)
+    for v in bm_rock.verts:
+        v.co += Vector((random.uniform(-0.05, 0.05), random.uniform(-0.05, 0.05), random.uniform(-0.05, 0.05)))
+    bm_rock.to_mesh(rock_data)
+    bm_rock.free()
+    
+    rock_obj.location = (random.uniform(-5, 5), random.uniform(5, 12), 0.05)
+    rock_obj.scale = (random.uniform(0.5, 1.5), random.uniform(0.5, 1.5), random.uniform(0.3, 0.8))
+    rock_obj.rotation_euler = (random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi))
+    if rock_mat:
+        rock_obj.data.materials.append(rock_mat)
+
+# Add a distant horizon line with more dunes
+for i in range(15):
+    dune_data = bpy.data.meshes.new(f"HorizonDune_{i}")
+    dune_obj = bpy.data.objects.new(f"HorizonDune_{i}", dune_data)
+    scene.collection.objects.link(dune_obj)
+    
+    bm_dune = bmesh.new()
+    bmesh.ops.create_uvsphere(bm_dune, u_segments=16, v_segments=8, radius=20)
+    for v in bm_dune.verts:
+        v.co.z *= 0.15
+    verts_to_remove = [v for v in bm_dune.verts if v.co.z < -0.5]
+    for v in verts_to_remove:
+        bm_dune.verts.remove(v)
+    bm_dune.to_mesh(dune_data)
+    bm_dune.free()
+    
+    dune_obj.location = (random.uniform(-80, 80), random.uniform(-60, -40), 0)
+    dune_obj.scale = (random.uniform(0.5, 1.5), random.uniform(0.5, 1.5), 1)
+    
+    sand_mat = bpy.data.materials.get("DesertSand")
+    if sand_mat:
+        dune_obj.data.materials.append(sand_mat)
+
+# Add a subtle vignette effect by adjusting the camera
+if cam:
+    cam.data.shift_x = 0
+    cam.data.shift_y = 0
+
+# Final adjustments
+scene.cycles.samples = 256
+scene.render.resolution_percentage = 100
+
+print("Binary sunset composition refined!")

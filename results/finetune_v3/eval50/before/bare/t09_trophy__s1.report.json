@@ -1,0 +1,26 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: ObjectModifiers.new(): error with keyword argument \"type\" -  enum \"SPIN\" not found in ('GREASE_PENCIL_VERTEX_WEIGHT_PROXIMITY', 'DATA_TRANSFER', 'MESH_CACHE', 'MESH_SEQUENCE_CACHE', 'NORMAL_EDIT', 'WEIGHTED_NORMAL', 'UV_PROJECT', 'UV_WARP', 'VERTEX_WEIGHT_EDIT', 'VERTEX_WEIGHT_MIX', 'VERTEX_WEIGHT_P",
+ "error_line": "spin_mod = object.modifiers.new(name=\"Spin\", type='SPIN')",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  0.35,
+  0.0,
+  0.82
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.3,
+ "image": true
+}

@@ -1,0 +1,53 @@
+```python
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the Sun
+bpy.ops.mesh.primitive_uv_sphere_add(radius=5, location=(0, 0, 0))
+sun = bpy.context.active_object
+sun.name = "Sun"
+mat_sun = bpy.data.materials.new("SunMaterial")
+mat_sun.diffuse_color = (1.0, 0.8, 0.0, 1.0)
+sun.data.materials.append(mat_sun)
+
+# Planet data: name, orbit_radius, planet_radius, color
+planets = [
+    ("Mercury", 15, 1.0, (0.7, 0.7, 0.7, 1.0)),
+    ("Venus", 25, 1.5, (0.9, 0.7, 0.3, 1.0)),
+    ("Earth", 35, 1.6, (0.2, 0.4, 0.9, 1.0)),
+    ("Mars", 50, 1.2, (0.9, 0.3, 0.1, 1.0)),
+]
+
+for name, orbit_r, planet_r, color in planets:
+    # Create orbit ring (torus)
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=orbit_r,
+        minor_radius=0.1,
+        major_segments=128,
+        minor_segments=8,
+        location=(0, 0, 0)
+    )
+    orbit = bpy.context.active_object
+    orbit.name = f"Orbit_{name}"
+    mat_orbit = bpy.data.materials.new(f"OrbitMaterial_{name}")
+    mat_orbit.diffuse_color = (0.3, 0.3, 0.3, 1.0)
+    orbit.data.materials.append(mat_orbit)
+
+    # Create planet sphere at a position on the orbit
+    angle = math.radians(45 * len(planets))  # spread them out
+    x = orbit_r * math.cos(angle)
+    y = orbit_r * math.sin(angle)
+
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=planet_r, location=(x, y, 0))
+    planet = bpy.context.active_object
+    planet.name = name
+    mat_planet = bpy.data.materials.new(f"PlanetMaterial_{name}")
+    mat_planet.diffuse_color = color
+    planet.data.materials.append(mat_planet)
+
+print("Solar system model created with Sun and four planets on their orbits.")
+```

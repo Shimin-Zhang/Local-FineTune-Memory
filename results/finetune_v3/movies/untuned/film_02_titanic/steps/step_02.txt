@@ -1,0 +1,703 @@
+```python
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up world for sunset using a gradient approach since NISHITA is not available
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+
+world.use_nodes = True
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+
+# Clear existing nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create a sunset gradient sky
+# Use a color ramp with a gradient texture
+gradient_tex = nodes.new('ShaderNodeTexGradient')
+gradient_tex.gradient_type = 'LINEAR'
+
+# Map texture to use object coordinates for vertical gradient
+mapping = nodes.new('ShaderNodeMapping')
+mapping.inputs['Rotation'].default_value = (0, math.radians(90), 0)
+mapping.inputs['Scale'].default_value = (1, 1, 1)
+
+# Use a separate texture coordinate for the sky
+tex_coord = nodes.new('ShaderNodeTexCoord')
+links.new(tex_coord.outputs['Generated'], mapping.inputs['Vector'])
+links.new(mapping.outputs['Vector'], gradient_tex.inputs['Vector'])
+
+# Color ramp for sunset colors
+color_ramp = nodes.new('ShaderNodeValToRGB')
+color_ramp.color_ramp.elements[0].position = 0.0
+color_ramp.color_ramp.elements[0].color = (0.1, 0.05, 0.15, 1.0)  # Dark purple at horizon
+color_ramp.color_ramp.elements[1].position = 1.0
+color_ramp.color_ramp.elements[1].color = (0.05, 0.1, 0.25, 1.0)  # Dark blue at top
+
+# Add more color stops for sunset
+elem_mid = color_ramp.color_ramp.elements.new(0.3)
+elem_mid.color = (0.8, 0.3, 0.1, 1.0)  # Orange
+elem_low = color_ramp.color_ramp.elements.new(0.1)
+elem_low.color = (1.0, 0.5, 0.2, 1.0)  # Bright orange/yellow
+
+links.new(gradient_tex.outputs['Fac'], color_ramp.inputs['Fac'])
+
+bg = nodes.new('ShaderNodeBackground')
+bg.inputs['Strength'].default_value = 1.0
+
+output = nodes.new('ShaderNodeOutputWorld')
+links.new(color_ramp.outputs['Color'], bg.inputs['Color'])
+links.new(bg.outputs['Background'], output.inputs['Surface'])
+
+# Set up camera - looking from behind and slightly above the bow
+bpy.ops.object.camera_add(location=(0, -20, 12), rotation=(math.radians(85), 0, 0))
+camera = bpy.context.active_object
+camera.name = "MainCamera"
+camera.data.lens = 35
+bpy.context.scene.camera = camera
+
+# Set up main sun light for sunset
+bpy.ops.object.light_add(type='SUN', location=(0, -50, 3))
+sun_light = bpy.context.active_object
+sun_light.name = "SunsetSun"
+sun_light.data.energy = 5.0
+sun_light.data.color = (1.0, 0.6, 0.3)
+sun_light.data.angle = math.radians(5)
+sun_light.rotation_euler = (math.radians(80), 0, math.radians(180))
+
+# Add warm fill light from the sun direction
+bpy.ops.object.light_add(type='AREA', location=(0, -15, 8))
+fill_light = bpy.context.active_object
+fill_light.name = "WarmFill"
+fill_light.data.energy = 100
+fill_light.data.size = 30
+fill_light.data.color = (1.0, 0.7, 0.4)
+
+# Add a cool rim light from behind
+bpy.ops.object.light_add(type='AREA', location=(0, 20, 15))
+rim_light = bpy.context.active_object
+rim_light.name = "CoolRim"
+rim_light.data.energy = 50
+rim_light.data.size = 20
+rim_light.data.color = (0.5, 0.6, 1.0)
+
+# Create the ocean with waves
+bpy.ops.mesh.primitive_plane_add(size=600, location=(0, 0, -8))
+ocean = bpy.context.active_object
+ocean.name = "Ocean"
+
+# Subdivide for wave detail
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=150)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Ocean material with wave displacement
+ocean_mat = bpy.data.materials.new("OceanWater")
+ocean_mat.use_nodes = True
+nodes_o = ocean_mat.node_tree.nodes
+links_o = ocean_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes_o:
+    nodes_o.remove(node)
+
+# Create wave noise
+wave_noise = nodes_o.new('ShaderNodeTexNoise')
+wave_noise.inputs['Scale'].default_value = 3.0
+wave_noise.inputs['Detail'].default_value = 10.0
+wave_noise.inputs['Roughness'].default_value = 0.5
+
+# Second layer of waves for variety
+wave_noise2 = nodes_o.new('ShaderNodeTexNoise')
+wave_noise2.inputs['Scale'].default_value = 8.0
+wave_noise2.inputs['Detail'].default_value = 6.0
+wave_noise2.inputs['Roughness'].default_value = 0.3
+
+# Mix the two wave layers
+mix_waves = nodes_o.new('ShaderNodeMix')
+mix_waves.data_type = 'FLOAT'
+mix_waves.inputs['Factor'].default_value = 0.5
+
+links_o.new(wave_noise.outputs['Fac'], mix_waves.inputs['A'])
+links_o.new(wave_noise2.outputs['Fac'], mix_waves.inputs['B'])
+
+# Bump for waves
+bump = nodes_o.new('ShaderNodeBump')
+bump.inputs['Strength'].default_value = 0.4
+bump.inputs['Distance'].default_value = 0.5
+
+links_o.new(mix_waves.outputs['Result'], bump.inputs['Height'])
+
+# Water shader - reflective, transparent
+principle = nodes_o.new('ShaderNodeBsdfPrincipled')
+principle.inputs['Base Color'].default_value = (0.02, 0.08, 0.15, 1.0)
+principle.inputs['Metallic'].default_value = 0.2
+principle.inputs['Roughness'].default_value = 0.05
+principle.inputs['Transmission Weight'].default_value = 0.6
+principle.inputs['IOR'].default_value = 1.33
+principle.inputs['Coat Weight'].default_value = 1.0
+principle.inputs['Coat Roughness'].default_value = 0.1
+
+# Add specular highlights for sun reflection
+specular = nodes_o.new('ShaderNodeBsdfSpecular')
+specular.inputs['Roughness'].default_value = 0.1
+specular.inputs['IOR'].default_value = 1.33
+
+# Mix water and specular
+mix_shader = nodes_o.new('ShaderNodeMixShader')
+mix_shader.inputs['Fac'].default_value = 0.3
+
+output_o = nodes_o.new('ShaderNodeOutputMaterial')
+
+links_o.new(bump.outputs['Normal'], principle.inputs['Normal'])
+links_o.new(principle.outputs['BSDF'], mix_shader.inputs[1])
+links_o.new(specular.outputs['BSDF'], mix_shader.inputs[2])
+links_o.new(mix_shader.outputs['Shader'], output_o.inputs['Surface'])
+
+ocean.data.materials.append(ocean_mat)
+
+# Create the ship's bow - more detailed
+# Main hull - create a proper bow shape
+# Start with a box and shape it
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 10, 5))
+hull = bpy.context.active_object
+hull.name = "ShipHull"
+hull.scale = (10, 25, 8)
+
+# Enter edit mode to shape the bow
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+
+# Move vertices to create bow shape
+import bmesh
+mesh = bpy.context.object.data
+bm = bmesh.from_edit_mesh(mesh)
+
+# Shape the front (positive Y) to be pointed
+for vert in bm.verts:
+    if vert.co.y > 0:
+        # Taper the front
+        factor = vert.co.y / 12.5
+        vert.co.x *= (1 - factor * 0.7)
+        vert.co.z *= (1 - factor * 0.3)
+        # Raise the bow slightly
+        vert.co.z += factor * 3
+
+bmesh.update_edit_mesh(mesh)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Add bevel for smoother edges
+bpy.ops.object.modifier_add(type='BEVEL')
+hull.modifiers["Bevel"].width = 0.5
+hull.modifiers["Bevel"].segments = 3
+
+# Apply modifier
+bpy.ops.object.modifier_apply(modifier="Bevel")
+
+# Hull material - dark steel
+hull_mat = bpy.data.materials.new("ShipSteel")
+hull_mat.use_nodes = True
+nodes_h = hull_mat.node_tree.nodes
+links_h = hull_mat.node_tree.links
+
+for node in nodes_h:
+    nodes_h.remove(node)
+
+principle_h = nodes_h.new('ShaderNodeBsdfPrincipled')
+principle_h.inputs['Base Color'].default_value = (0.15, 0.12, 0.1, 1.0)
+principle_h.inputs['Metallic'].default_value = 0.7
+principle_h.inputs['Roughness'].default_value = 0.5
+
+# Add some rust/weathering
+rust_noise = nodes_h.new('ShaderNodeTexNoise')
+rust_noise.inputs['Scale'].default_value = 5.0
+rust_noise.inputs['Detail'].default_value = 8.0
+
+rust_ramp = nodes_h.new('ShaderNodeValToRGB')
+rust_ramp.color_ramp.elements[0].position = 0.4
+rust_ramp.color_ramp.elements[0].color = (0.15, 0.12, 0.1, 1.0)
+rust_ramp.color_ramp.elements[1].position = 0.6
+rust_ramp.color_ramp.elements[1].color = (0.3, 0.15, 0.05, 1.0)
+
+links_h.new(rust_noise.outputs['Fac'], rust_ramp.inputs['Fac'])
+links_h.new(rust_ramp.outputs['Color'], principle_h.inputs['Base Color'])
+
+output_h = nodes_h.new('ShaderNodeOutputMaterial')
+links_h.new(principle_h.outputs['BSDF'], output_h.inputs['Surface'])
+
+hull.data.materials.append(hull_mat)
+
+# Create the deck
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 10, 12))
+deck = bpy.context.active_object
+deck.name = "MainDeck"
+deck.scale = (9, 22, 1)
+
+# Shape deck to match hull
+bpy.ops.object.mode_set(mode='EDIT')
+mesh_d = bpy.context.object.data
+bm_d = bmesh.from_edit_mesh(mesh_d)
+
+for vert in bm_d.verts:
+    if vert.co.y > 0:
+        factor = vert.co.y / 11
+        vert.co.x *= (1 - factor * 0.7)
+
+bmesh.update_edit_mesh(mesh_d)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Deck material - wooden planks
+deck_mat = bpy.data.materials.new("WoodDeck")
+deck_mat.use_nodes = True
+nodes_d = deck_mat.node_tree.nodes
+links_d = deck_mat.node_tree.links
+
+for node in nodes_d:
+    nodes_d.remove(node)
+
+# Create wood texture
+wood_wave = nodes_d.new('ShaderNodeTexWave')
+wood_wave.inputs['Scale'].default_value = 2.0
+wood_wave.inputs['Distortion'].default_value = 5.0
+wood_wave.inputs['Detail'].default_value = 3.0
+wood_wave.bands_direction = 'Y'
+
+# Wood color ramp
+wood_ramp = nodes_d.new('ShaderNodeValToRGB')
+wood_ramp.color_ramp.elements[0].color = (0.25, 0.12, 0.05, 1.0)
+wood_ramp.color_ramp.elements[1].color = (0.35, 0.18, 0.08, 1.0)
+
+links_d.new(wood_wave.outputs['Fac'], wood_ramp.inputs['Fac'])
+
+principle_d = nodes_d.new('ShaderNodeBsdfPrincipled')
+links_d.new(wood_ramp.outputs['Color'], principle_d.inputs['Base Color'])
+principle_d.inputs['Roughness'].default_value = 0.8
+
+# Add bump for wood grain
+wood_bump = nodes_d.new('ShaderNodeBump')
+wood_bump.inputs['Strength'].default_value = 0.3
+links_d.new(wood_wave.outputs['Fac'], wood_bump.inputs['Height'])
+links_d.new(wood_bump.outputs['Normal'], principle_d.inputs['Normal'])
+
+output_d = nodes_d.new('ShaderNodeOutputMaterial')
+links_d.new(principle_d.outputs['BSDF'], output_d.inputs['Surface'])
+
+deck.data.materials.append(deck_mat)
+
+# Create railing system
+# Main top rail - left
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=20, location=(-7, 10, 14.5))
+rail_top_l = bpy.context.active_object
+rail_top_l.name = "RailTopLeft"
+rail_top_l.rotation_euler = (0, 0, math.radians(90))
+
+# Main top rail - right
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=20, location=(7, 10, 14.5))
+rail_top_r = bpy.context.active_object
+rail_top_r.name = "RailTopRight"
+rail_top_r.rotation_euler = (0, 0, math.radians(90))
+
+# Middle rail - left
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=20, location=(-7, 10, 13.5))
+rail_mid_l = bpy.context.active_object
+rail_mid_l.name = "RailMidLeft"
+rail_mid_l.rotation_euler = (0, 0, math.radians(90))
+
+# Middle rail - right
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=20, location=(7, 10, 13.5))
+rail_mid_r = bpy.context.active_object
+rail_mid_r.name = "RailMidRight"
+rail_mid_r.rotation_euler = (0, 0, math.radians(90))
+
+# Bottom rail - left
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=20, location=(-7, 10, 12.5))
+rail_bot_l = bpy.context.active_object
+rail_bot_l.name = "RailBotLeft"
+rail_bot_l.rotation_euler = (0, 0, math.radians(90))
+
+# Bottom rail - right
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=20, location=(7, 10, 12.5))
+rail_bot_r = bpy.context.active_object
+rail_bot_r.name = "RailBotRight"
+rail_bot_r.rotation_euler = (0, 0, math.radians(90))
+
+# Railing posts - left side
+for i in range(10):
+    y_pos = 0 + i * 2.2
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=2.5, location=(-7, y_pos, 13.5))
+    post = bpy.context.active_object
+    post.name = f"RailPostL_{i}"
+
+# Railing posts - right side
+for i in range(10):
+    y_pos = 0 + i * 2.2
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=2.5, location=(7, y_pos, 13.5))
+    post = bpy.context.active_object
+    post.name = f"RailPostR_{i}"
+
+# Metal material for railings
+metal_mat = bpy.data.materials.new("PolishedMetal")
+metal_mat.use_nodes = True
+nodes_m = metal_mat.node_tree.nodes
+links_m = metal_mat.node_tree.links
+
+for node in nodes_m:
+    nodes_m.remove(node)
+
+principle_m = nodes_m.new('ShaderNodeBsdfPrincipled')
+principle_m.inputs['Base Color'].default_value = (0.3, 0.3, 0.35, 1.0)
+principle_m.inputs['Metallic'].default_value = 0.9
+principle_m.inputs['Roughness'].default_value = 0.2
+
+output_m = nodes_m.new('ShaderNodeOutputMaterial')
+links_m.new(principle_m.outputs['BSDF'], output_m.inputs['Surface'])
+
+# Apply metal material to all railing parts
+rail_objects = [rail_top_l, rail_top_r, rail_mid_l, rail_mid_r, rail_bot_l, rail_bot_r]
+for i in range(10):
+    rail_objects.append(bpy.data.objects[f"RailPostL_{i}"])
+    rail_objects.append(bpy.data.objects[f"RailPostR_{i}"])
+
+for obj in rail_objects:
+    obj.data.materials.append(metal_mat)
+
+# Create Jack (male figure) at the very front of the bow
+jack_base = Vector((0, 30, 12))
+
+# Jack's body - torso
+bpy.ops.mesh.primitive_cylinder_add(radius=0.45, depth=1.6, location=(jack_base.x, jack_base.y, jack_base.z + 1.0))
+jack_torso = bpy.context.active_object
+jack_torso.name = "Jack_Torso"
+jack_torso.scale = (1, 0.8, 1)
+
+# Jack's head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.28, location=(jack_base.x, jack_base.y, jack_base.z + 2.2))
+jack_head = bpy.context.active_object
+jack_head.name = "Jack_Head"
+jack_head.scale = (0.9, 1, 1.1)
+
+# Jack's left arm - spread wide
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.3, location=(jack_base.x - 1.0, jack_base.y, jack_base.z + 1.6))
+jack_arm_l = bpy.context.active_object
+jack_arm_l.name = "Jack_ArmL"
+jack_arm_l.rotation_euler = (0, math.radians(50), 0)
+
+# Jack's right arm - spread wide
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.3, location=(jack_base.x + 1.0, jack_base.y, jack_base.z + 1.6))
+jack_arm_r = bpy.context.active_object
+jack_arm_r.name = "Jack_ArmR"
+jack_arm_r.rotation_euler = (0, math.radians(-50), 0)
+
+# Jack's left hand
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.12, location=(jack_base.x - 1.8, jack_base.y, jack_base.z + 2.0))
+jack_hand_l = bpy.context.active_object
+jack_hand_l.name = "Jack_HandL"
+
+# Jack's right hand
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.12, location=(jack_base.x + 1.8, jack_base.y, jack_base.z + 2.0))
+jack_hand_r = bpy.context.active_object
+jack_hand_r.name = "Jack_HandR"
+
+# Jack's left leg
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=1.3, location=(jack_base.x - 0.2, jack_base.y, jack_base.z + 0.4))
+jack_leg_l = bpy.context.active_object
+jack_leg_l.name = "Jack_LegL"
+
+# Jack's right leg
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=1.3, location=(jack_base.x + 0.2, jack_base.y, jack_base.z + 0.4))
+jack_leg_r = bpy.context.active_object
+jack_leg_r.name = "Jack_LegR"
+
+# Jack's left foot
+bpy.ops.mesh.primitive_cube_add(size=0.3, location=(jack_base.x - 0.2, jack_base.y + 0.15, jack_base.z - 0.2))
+jack_foot_l = bpy.context.active_object
+jack_foot_l.name = "Jack_FootL"
+jack_foot_l.scale = (1, 1.5, 0.5)
+
+# Jack's right foot
+bpy.ops.mesh.primitive_cube_add(size=0.3, location=(jack_base.x + 0.2, jack_base.y + 0.15, jack_base.z - 0.2))
+jack_foot_r = bpy.context.active_object
+jack_foot_r.name = "Jack_FootR"
+jack_foot_r.scale = (1, 1.5, 0.5)
+
+# Jack's hair
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(jack_base.x, jack_base.y - 0.15, jack_base.z + 2.35))
+jack_hair = bpy.context.active_object
+jack_hair.name = "Jack_Hair"
+jack_hair.scale = (1, 0.9, 0.8)
+
+# Jack's clothing material - dark suit
+jack_suit_mat = bpy.data.materials.new("JackSuit")
+jack_suit_mat.use_nodes = True
+nodes_js = jack_suit_mat.node_tree.nodes
+links_js = jack_suit_mat.node_tree.links
+
+for node in nodes_js:
+    nodes_js.remove(node)
+
+principle_js = nodes_js.new('ShaderNodeBsdfPrincipled')
+principle_js.inputs['Base Color'].default_value = (0.08, 0.08, 0.12, 1.0)
+principle_js.inputs['Roughness'].default_value = 0.7
+
+output_js = nodes_js.new('ShaderNodeOutputMaterial')
+links_js.new(principle_js.outputs['BSDF'], output_js.inputs['Surface'])
+
+# Jack's skin material
+jack_skin_mat = bpy.data.materials.new("JackSkin")
+jack_skin_mat.use_nodes = True
+nodes_jk = jack_skin_mat.node_tree.nodes
+links_jk = jack_skin_mat.node_tree.links
+
+for node in nodes_jk:
+    nodes_jk.remove(node)
+
+principle_jk = nodes_jk.new('ShaderNodeBsdfPrincipled')
+principle_jk.inputs['Base Color'].default_value = (0.8, 0.6, 0.5, 1.0)
+principle_jk.inputs['Roughness'].default_value = 0.6
+
+output_jk = nodes_jk.new('ShaderNodeOutputMaterial')
+links_jk.new(principle_jk.outputs['BSDF'], output_jk.inputs['Surface'])
+
+# Jack's hair material
+jack_hair_mat = bpy.data.materials.new("JackHair")
+jack_hair_mat.use_nodes = True
+nodes_jh = jack_hair_mat.node_tree.nodes
+links_jh = jack_hair_mat.node_tree.links
+
+for node in nodes_jh:
+    nodes_jh.remove(node)
+
+principle_jh = nodes_jh.new('ShaderNodeBsdfPrincipled')
+principle_jh.inputs['Base Color'].default_value = (0.2, 0.1, 0.05, 1.0)
+principle_jh.inputs['Roughness'].default_value = 0.9
+
+output_jh = nodes_jh.new('ShaderNodeOutputMaterial')
+links_jh.new(principle_jh.outputs['BSDF'], output_jh.inputs['Surface'])
+
+# Apply materials to Jack
+jack_body_parts = ["Jack_Torso", "Jack_ArmL", "Jack_ArmR", "Jack_LegL", "Jack_LegR"]
+for part_name in jack_body_parts:
+    bpy.data.objects[part_name].data.materials.append(jack_suit_mat)
+
+jack_skin_parts = ["Jack_Head", "Jack_HandL", "Jack_HandR"]
+for part_name in jack_skin_parts:
+    bpy.data.objects[part_name].data.materials.append(jack_skin_mat)
+
+jack_hair.data.materials.append(jack_hair_mat)
+jack_foot_l.data.materials.append(jack_suit_mat)
+jack_foot_r.data.materials.append(jack_suit_mat)
+
+# Create Rose (female figure) next to Jack
+rose_base = Vector((1.5, 30, 12))
+
+# Rose's body - torso (slimmer)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.38, depth=1.5, location=(rose_base.x, rose_base.y, rose_base.z + 0.95))
+rose_torso = bpy.context.active_object
+rose_torso.name = "Rose_Torso"
+rose_torso.scale = (0.9, 0.7, 1)
+
+# Rose's head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(rose_base.x, rose_base.y, rose_base.z + 2.0))
+rose_head = bpy.context.active_object
+rose_head.name = "Rose_Head"
+rose_head.scale = (0.85, 0.9, 1.05)
+
+# Rose's left arm - spread wide
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=1.2, location=(rose_base.x - 0.85, rose_base.y, rose_base.z + 1.5))
+rose_arm_l = bpy.context.active_object
+rose_arm_l.name = "Rose_ArmL"
+rose_arm_l.rotation_euler = (0, math.radians(50), 0)
+
+# Rose's right arm - spread wide
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=1.2, location=(rose_base.x + 0.85, rose_base.y, rose_base.z + 1.5))
+rose_arm_r = bpy.context.active_object
+rose_arm_r.name = "Rose_ArmR"
+rose_arm_r.rotation_euler = (0, math.radians(-50), 0)
+
+# Rose's left hand
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(rose_base.x - 1.55, rose_base.y, rose_base.z + 1.85))
+rose_hand_l = bpy.context.active_object
+rose_hand_l.name = "Rose_HandL"
+
+# Rose's right hand
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(rose_base.x + 1.55, rose_base.y, rose_base.z + 1.85))
+rose_hand_r = bpy.context.active_object
+rose_hand_r.name = "Rose_HandR"
+
+# Rose's left leg
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.2, location=(rose_base.x - 0.15, rose_base.y, rose_base.z + 0.35))
+rose_leg_l = bpy.context.active_object
+rose_leg_l.name = "Rose_LegL"
+
+# Rose's right leg
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.2, location=(rose_base.x + 0.15, rose_base.y, rose_base.z + 0.35))
+rose_leg_r = bpy.context.active_object
+rose_leg_r.name = "Rose_LegR"
+
+# Rose's left foot
+bpy.ops.mesh.primitive_cube_add(size=0.25, location=(rose_base.x - 0.15, rose_base.y + 0.12, rose_base.z - 0.2))
+rose_foot_l = bpy.context.active_object
+rose_foot_l.name = "Rose_FootL"
+rose_foot_l.scale = (0.8, 1.3, 0.4)
+
+# Rose's right foot
+bpy.ops.mesh.primitive_cube_add(size=0.25, location=(rose_base.x + 0.15, rose_base.y + 0.12, rose_base.z - 0.2))
+rose_foot_r = bpy.context.active_object
+rose_foot_r.name = "Rose_FootR"
+rose_foot_r.scale = (0.8, 1.3, 0.4)
+
+# Rose's hair - long flowing
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.28, location=(rose_base.x, rose_base.y - 0.2, rose_base.z + 2.1))
+rose_hair = bpy.context.active_object
+rose_hair.name = "Rose_Hair"
+rose_hair.scale = (1, 1.2, 1.3)
+
+# Add hair strands
+for i in range(5):
+    angle = math.radians(i * 30 - 60)
+    hair_strand_loc = (rose_base.x + math.sin(angle) * 0.3, rose_base.y - 0.3 - math.cos(angle) * 0.2, rose_base.z + 1.5)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=1.5, location=hair_strand_loc)
+    strand = bpy.context.active_object
+    strand.name = f"Rose_HairStrand_{i}"
+    strand.rotation_euler = (math.radians(10), 0, angle)
+
+# Rose's dress material - light, flowing
+rose_dress_mat = bpy.data.materials.new("RoseDress")
+rose_dress_mat.use_nodes = True
+nodes_rd = rose_dress_mat.node_tree.nodes
+links_rd = rose_dress_mat.node_tree.links
+
+for node in nodes_rd:
+    nodes_rd.remove(node)
+
+principle_rd = nodes_rd.new('ShaderNodeBsdfPrincipled')
+principle_rd.inputs['Base Color'].default_value = (0.95, 0.9, 0.85, 1.0)
+principle_rd.inputs['Roughness'].default_value = 0.5
+principle_rd.inputs['Sheen Weight'].default_value = 0.5
+
+output_rd = nodes_rd.new('ShaderNodeOutputMaterial')
+links_rd.new(principle_rd.outputs['BSDF'], output_rd.inputs['Surface'])
+
+# Rose's skin material
+rose_skin_mat = bpy.data.materials.new("RoseSkin")
+rose_skin_mat.use_nodes = True
+nodes_rs = rose_skin_mat.node_tree.nodes
+links_rs = rose_skin_mat.node_tree.links
+
+for node in nodes_rs:
+    nodes_rs.remove(node)
+
+principle_rs = nodes_rs.new('ShaderNodeBsdfPrincipled')
+principle_rs.inputs['Base Color'].default_value = (0.9, 0.7, 0.6, 1.0)
+principle_rs.inputs['Roughness'].default_value = 0.5
+
+output_rs = nodes_rs.new('ShaderNodeOutputMaterial')
+links_rs.new(principle_rs.outputs['BSDF'], output_rs.inputs['Surface'])
+
+# Rose's hair material
+rose_hair_mat = bpy.data.materials.new("RoseHair")
+rose_hair_mat.use_nodes = True
+nodes_rh = rose_hair_mat.node_tree.nodes
+links_rh = rose_hair_mat.node_tree.links
+
+for node in nodes_rh:
+    nodes_rh.remove(node)
+
+principle_rh = nodes_rh.new('ShaderNodeBsdfPrincipled')
+principle_rh.inputs['Base Color'].default_value = (0.4, 0.2, 0.1, 1.0)
+principle_rh.inputs['Roughness'].default_value = 0.8
+
+output_rh = nodes_rh.new('ShaderNodeOutputMaterial')
+links_rh.new(principle_rh.outputs['BSDF'], output_rh.inputs['Surface'])
+
+# Apply materials to Rose
+rose_body_parts = ["Rose_Torso", "Rose_ArmL", "Rose_ArmR", "Rose_LegL", "Rose_LegR"]
+for part_name in rose_body_parts:
+    bpy.data.objects[part_name].data.materials.append(rose_dress_mat)
+
+rose_skin_parts = ["Rose_Head", "Rose_HandL", "Rose_HandR"]
+for part_name in rose_skin_parts:
+    bpy.data.objects[part_name].data.materials.append(rose_skin_mat)
+
+rose_hair.data.materials.append(rose_hair_mat)
+for i in range(5):
+    bpy.data.objects[f"Rose_HairStrand_{i}"].data.materials.append(rose_hair_mat)
+
+rose_foot_l.data.materials.append(rose_dress_mat)
+rose_foot_r.data.materials.append(rose_dress_mat)
+
+# Add ship superstructure - bridge and upper decks
+# Main bridge structure
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 15, 22))
+bridge = bpy.context.active_object
+bridge.name = "Bridge"
+bridge.scale = (8, 6, 4)
+bridge.data.materials.append(hull_mat)
+
+# Bridge windows
+for i in range(6):
+    x_pos = -3 + i * 1.2
+    bpy.ops.mesh.primitive_cube_add(size=0.8, location=(x_pos, 18, 22))
+    window = bpy.context.active_object
+    window.name = f"BridgeWindow_{i}"
+    window.scale = (1, 0.2, 1)
+    
+    glass_mat = bpy.data.materials.new("WindowGlass")
+    glass_mat.use_nodes = True
+    nodes_g = glass_mat.node_tree.nodes
+    links_g = glass_mat.node_tree.links
+    for node in nodes_g:
+        nodes_g.remove(node)
+    principle_g = nodes_g.new('ShaderNodeBsdfPrincipled')
+    principle_g.inputs['Base Color'].default_value = (0.8, 0.9, 1.0, 1.0)
+    principle_g.inputs['Transmission Weight'].default_value = 0.9
+    principle_g.inputs['Roughness'].default_value = 0.1
+    output_g = nodes_g.new('ShaderNodeOutputMaterial')
+    links_g.new(principle_g.outputs['BSDF'], output_g.inputs['Surface'])
+    window.data.materials.append(glass_mat)
+
+# Smokestacks - iconic Titanic feature
+for i in range(2):
+    x_offset = -2.5 + i * 5
+    # Main stack
+    bpy.ops.mesh.primitive_cylinder_add(radius=1.8, depth=14, location=(x_offset, 15, 32))
+    stack = bpy.context.active_object
+    stack.name = f"Smokestack_{i}"
+    stack.data.materials.append(hull_mat)
+    
+    # Black top band
+    bpy.ops.mesh.primitive_cylinder_add(radius=1.9, depth=2.5, location=(x_offset, 15, 39))
+    stack_top = bpy.context.active_object
+    stack_top.name = f"SmokestackTop_{i}"
+    
+    top_mat = bpy.data.materials.new("StackTopBlack")
+    top_mat.use_nodes = True
+    nodes_st = top_mat.node_tree.nodes
+    links_st = top_mat.node_tree.links
+    for node in nodes_st:
+        nodes_st.remove(node)
+    principle_st = nodes_st.new('ShaderNodeBsdfPrincipled')
+    principle_st.inputs['Base Color'].default_value = (0.05, 0.05, 0.05, 1.0)
+    principle_st.inputs['Roughness'].default_value = 0.6
+    output_st = nodes_st.new('ShaderNodeOutputMaterial')
+    links_st.new(principle_st.outputs['BSDF'], output_st.inputs['Surface'])
+    stack_top.data.materials.append(top_mat)
+
+# Add masts
+# Forward mast
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=30, location=(0, 25, 30))
+mast_forward = bpy.context.active_object
+mast_forward.name = "MastForward"
+mast_forward.data.materials.append(metal_mat)
+
+# A

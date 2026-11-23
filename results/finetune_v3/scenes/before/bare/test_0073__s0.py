@@ -1,0 +1,128 @@
+import bpy
+import math
+import random
+from mathutils import Vector, noise
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Materials
+def create_mat(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+mat_ground = create_mat("Ground", (0.55, 0.45, 0.30), roughness=0.95)
+mat_mound = create_mat("Mound", (0.60, 0.48, 0.32), roughness=0.90)
+mat_brick = create_mat("OldBrick", (0.70, 0.55, 0.38), roughness=0.85)
+mat_brick_dark = create_mat("OldBrickDark", (0.50, 0.38, 0.25), roughness=0.90)
+mat_house = create_mat("HouseWall", (0.85, 0.80, 0.70), roughness=0.80)
+mat_roof = create_mat("Roof", (0.40, 0.35, 0.30), roughness=0.90)
+mat_tent = create_mat("Tent", (0.90, 0.85, 0.75), roughness=0.70)
+mat_tent_pole = create_mat("Pole", (0.30, 0.25, 0.20), roughness=0.60)
+mat_path = create_mat("Path", (0.50, 0.42, 0.30), roughness=0.95)
+
+# Ground plane
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.data.materials.append(mat_ground)
+
+# Mound: a flat-topped truncated pyramid (tepe-like)
+def add_box(name, loc, size, mat, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(mat)
+    return obj
+
+# Main mound body (stepped layers)
+mound_center = (0, 0, 0)
+# Layer 1 (base)
+add_box("mound_base", (0, 0, 2.5), (60, 55, 5), mat_mound)
+# Layer 2
+add_box("mound_mid", (0, 0, 6.5), (48, 44, 4), mat_mound)
+# Layer 3
+add_box("mound_upper", (0, 0, 10), (36, 33, 4), mat_mound)
+# Layer 4 (flat top)
+add_box("mound_top", (0, 0, 13), (24, 22, 3), mat_mound)
+
+# Trench cutting into the mound (deep stepped excavation)
+# The trench is a series of recessed boxes on the front face
+trench_x = 0
+trench_y = 27.5  # front face of base layer
+# Step 1 (shallowest, widest)
+t1 = add_box("trench_step1", (trench_x, trench_y - 2, 3.5), (30, 4, 3), mat_brick)
+# Step 2 (deeper)
+t2 = add_box("trench_step2", (trench_x, trench_y - 5, 5.5), (22, 4, 3), mat_brick_dark)
+# Step 3 (deepest)
+t3 = add_box("trench_step3", (trench_x, trench_y - 8, 7.5), (14, 4, 3), mat_brick)
+
+# Exposed mud-brick wall layers inside the trench (horizontal strata)
+for i, (z, w, mat) in enumerate([
+    (3.0, 28, mat_brick),
+    (4.5, 26, mat_brick_dark),
+    (6.0, 24, mat_brick),
+    (7.5, 20, mat_brick_dark),
+    (9.0, 16, mat_brick),
+]):
+    wall = add_box(f"brick_layer_{i}", (trench_x, trench_y - 8 - 1, z), (w, 2, 1.2), mat)
+
+# Dig house at the foot of the mound
+house = add_box("dig_house", (25, 35, 2), (12, 8, 4), mat_house)
+roof = add_box("dig_house_roof", (25, 35, 4.3), (13, 9, 0.6), mat_roof)
+# Door
+door = add_box("house_door", (25, 39.1, 1.5), (2, 0.3, 3), mat_brick_dark)
+# Windows
+for wx in [22, 28]:
+    win = add_box(f"window_{wx}", (wx, 39.1, 2.5), (1.5, 0.3, 1.5), mat_brick_dark)
+
+# Tents at the foot
+def add_tent(loc, name):
+    # Tent body: a stretched cube with a triangular top (use a cone for roof)
+    body = add_box(name + "_body", loc, (5, 4, 2.5), mat_tent)
+    # Roof: a flattened cone
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=3.5, radius2=0, depth=2.5, location=(loc[0], loc[1], loc[2] + 1.25))
+    roof_tent = bpy.context.active_object
+    roof_tent.name = name + "_roof"
+    roof_tent.rotation_euler = (0, 0, math.radians(45))
+    roof_tent.scale = (1, 0.8, 1)
+    bpy.ops.object.transform_apply(scale=True, rotation=True)
+    roof_tent.data.materials.append(mat_tent)
+    # Poles
+    for dx, dy in [(-2, -1.5), (2, -1.5), (-2, 1.5), (2, 1.5)]:
+        pole = add_box(name + f"_pole_{dx}_{dy}", (loc[0]+dx, loc[1]+dy, loc[2]+1.25), (0.15, 0.15, 2.5), mat_tent_pole)
+    return body
+
+add_tent((15, 40, 1.25), "tent1")
+add_tent((35, 42, 1.25), "tent2")
+add_tent((25, 48, 1.25), "tent3")
+
+# Dirt path from tents to trench
+path = add_box("dirt_path", (10, 32, 0.1), (18, 4, 0.2), mat_path)
+
+# Camera
+bpy.ops.object.camera_add(location=(50, 70, 25), rotation=(math.radians(65), 0, math.radians(-35)))
+cam = bpy.context.active_object
+cam.name = "Camera"
+bpy.context.scene.camera = cam
+
+# Light
+bpy.ops.object.light_add(type='SUN', location=(30, 40, 60), rotation=(math.radians(40), math.radians(15), 0))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.data.angle = math.radians(5)
+
+# World
+world = bpy.context.scene.world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs[0].default_value = (0.7, 0.8, 0.95, 1.0)
+bg.inputs[1].default_value = 1.0

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 77.2,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene complete. Objects: 2252\n",
+ "state_saved": true,
+ "n_objects": 2249,
+ "n_lights": 2,
+ "n_materials": 1143,
+ "own_camera": true,
+ "render_error": null
+}

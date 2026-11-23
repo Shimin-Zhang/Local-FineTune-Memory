@@ -1,0 +1,106 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(743)
+sc = bpy.context.scene
+def coat(rgb, em=0, rough=.85):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+mud, grass, asphalt, line, stone, wood = coat((.1, .08, .06)), coat((.07, .14, .05)), coat((.05, .055, .06)), coat((.6, .55, .35)), coat((.25, .25, .27)), coat((.22, .13, .07))
+skin, belly, tooth, car, glass, lamp, head, tail = coat((.2, .17, .12)), coat((.45, .38, .25)), coat((.9, .9, .8)), coat((.5, .06, .05)), coat((.05, .12, .15)), coat((1, .85, .5), 18), coat((.7, .1, .08)), coat((.9, .05, .03), 20)
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, at, (rx, 0, rz))
+def limb(a, b, r, m, n=5, r2=None):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=d.length)
+    for v in bm.verts: v.co.z += d.length / 2
+    return add(bm, m, a, d.to_track_quat('Z', 'Y').to_euler())
+def egg(at, s, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], v.co.z * s[2])) * random.uniform(.93, 1.07)
+    return add(bm, m, at, (0, 0, rz))
+def glim(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("g", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=7, radius2=15, depth=3.5)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.75
+add(bm, mud)
+# the road across the front, with dashed centre line and a verge
+slab((0, -4.5, 0), (27, 5, .15), asphalt)
+for i in range(9): slab((-12 + i * 3, -4.5, .15), (1.4, .25, .03), line)
+# the paddock: stone wall, wire fence posts and rails, with the broken gap where the rex tore through
+for i in range(14):
+    x = -12.5 + i * 1.9
+    if 4 < x < 9: continue
+    slab((x, 4.5, 0), (1.9, .9, 1.0), stone, rx=0)
+    if i % 2 == 0: limb((x, 3.4, 0), (x, 3.4, 3.4), .14, wood, 5)
+for i in range(14):
+    x = -12.5 + i * 1.9
+    if 4 < x < 9: continue
+    for z in (1.6, 2.4): limb((x - .95, 3.4, z), (x + .95, 3.4, z), .05, coat((.5, .5, .55), rough=.4), 4)
+for i in range(3):
+    slab((5.5 + i * 1.3, 3.0 - i * .6, 0), (1.2, .8, .5 + .2 * i), wood, rz=i)
+for i in range(4): slab((9.2 + i * .5, 3.2 - i * .2, 0), (.4, .3, .25), wood, rz=i * .8)
+# the T. rex: legs, tail, hips, torso, neck, head with open jaws, teeth, eyes, arms, claws
+H = 2.2
+for sx in (-1, 1):
+    limb((-2 + sx * 1.6, 1.2, 0), (-2 + sx * 1.6, 1.2, H), .9, skin, 6, .6)
+    limb((-2 + sx * 1.6, 1.2, H), (-2 + sx * 1.6, 1.2, H + 2.2), .6, skin, 6, .45)
+    slab((-2 + sx * 1.6, .7, 0), (1.1, 1.7, .4), skin)
+    for k in range(3): slab((-2 + sx * 1.6, .1 - k * .1, .1), (.3, .25, .2), tooth)
+limb((-4.5, 1.2, H + 2.2), (3.0, 1.2, H + 2.6), 1.5, skin, 7, 1.1)
+egg((-4.5, 1.2, H + 2.4), (2.6, 1.5, 1.2), skin); egg((-4.5, 1.2, H + 1.7), (2.3, 1.2, .8), belly)
+limb((-1.0, 1.2, H + 2.6), (1.5, 1.2, H + 3.6), .9, skin, 6, .7)
+egg((3.2, 1.2, H + 3.9), (1.8, .95, .8), skin)
+slab((4.8, 1.2, H + 3.3), (1.4, .9, .35), skin); slab((4.8, 1.2, H + 4.1), (1.4, .85, .35), skin)
+for sx in (-1, 1):
+    for k in range(5):
+        slab((4.0 + k * .3, 1.2 + sx * .35, H + 3.6), (.12, .12, .3), tooth)
+        slab((4.0 + k * .3, 1.2 + sx * .35, H + 4.0), (.12, .12, .25), tooth)
+    egg((3.2, 1.2 + sx * .8, H + 4.1), (.2, .2, .2), lamp)
+limb((.2, 1.2, H + 2.4), (1.2, 1.2, H + 1.2), .35, skin, 5, .2); limb((.2, -1.2, H + 2.4), (1.2, -1.2, H + 1.2), .35, skin, 5, .2)
+limb((-7.5, 1.2, H + 2.4), (-12, 1.2, H + 1.6), .9, skin, 6, .3)
+limb((-12, 1.2, H + 1.6), (-14.5, 1.2, H + 1.0), .35, skin, 5, .12)
+for sx in (-1, 1): egg((-12.5, 1.2 + sx * .5, H + 1.5), (.2, .2, .2), tail)
+# two tour cars stopped on the road, headlights on
+for cx, cy, rz in ((-8, -5.2, 0), (-3.5, -3.8, .1)):
+    slab((cx, cy, .5), (3.6, 1.7, .8), car, rz=rz)
+    slab((cx + .3, cy, 1.3), (1.8, 1.5, .7), car, rz=rz)
+    slab((cx + .3, cy, 1.95), (1.9, 1.55, .06), glass, rz=rz)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            limb((cx + sx * 1.2, cy + sy * .95, .5), (cx + sx * 1.2, cy + sy * .95, .5), .5, coat((.03, .03, .03)), 8)
+        slab((cx + 1.85, cy + sx * .55, .8), (.1, .35, .25), lamp)
+    glim("POINT", (1, .85, .5), 220, (cx + 2.8, cy, 1.0))
+# rain: pale slanted streaks, and puddles on the road
+for i in range(70):
+    x, y, z = random.uniform(-13, 13), random.uniform(-11, 11), random.uniform(2, 12)
+    limb((x, y, z), (x - .35, y, z - 1.8), .02, coat((.5, .65, 1), .6), 3)
+for i in range(6):
+    egg((random.uniform(-10, 10), random.uniform(-6, -3), .15), (random.uniform(.8, 1.6), random.uniform(.4, .7), .03), coat((.1, .15, .25), rough=.1))
+# palm trees, a broken sign and a fallen post
+for x, y in ((11, 8), (-11, 9), (12, -1), (-12, -1)):
+    limb((x, y, 0), (x + .3, y, 5), .3, wood, 5, .2)
+    for k in range(6):
+        a = k * 1.05
+        limb((x + .3, y, 5), (x + .3 + math.cos(a) * 2.2, y + math.sin(a) * 2.2, 4.4), .12, coat((.1, .25, .08)), 4, .02)
+slab((10, 0, 0), (.2, .2, 2.5), wood, rx=.5); slab((10.4, 0, 2.0), (2.2, .1, .9), tail)
+glim("SUN", (.5, .6, 1), 4, (-26, -22, 12), (0, 0, 2)); glim("SUN", (.9, .5, .6), 2, (26, 24, 10), (0, 0, 2))
+w = bpy.data.worlds.new("storm"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 4)); co.location = t + Vector((10, -62, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

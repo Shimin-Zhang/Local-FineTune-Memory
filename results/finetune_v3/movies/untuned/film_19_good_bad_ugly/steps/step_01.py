@@ -1,0 +1,482 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Set up the scene
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 256
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.resolution_percentage = 100
+
+# Create materials
+def create_material(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = roughness
+        bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+# Materials
+stone_mat = create_material("Stone", (0.5, 0.48, 0.45, 1.0), roughness=0.9)
+cemetery_stone_mat = create_material("CemeteryStone", (0.6, 0.58, 0.55, 1.0), roughness=0.85)
+ground_mat = create_material("Ground", (0.4, 0.35, 0.25, 1.0), roughness=0.95)
+dirt_mat = create_material("Dirt", (0.35, 0.3, 0.2, 1.0), roughness=0.95)
+wood_mat = create_material("Wood", (0.3, 0.2, 0.1, 1.0), roughness=0.8)
+metal_mat = create_material("Metal", (0.4, 0.4, 0.42, 1.0), roughness=0.3, metallic=0.8)
+hat_mat = create_material("Hat", (0.2, 0.15, 0.1, 1.0), roughness=0.7)
+coat_mat = create_material("Coat", (0.3, 0.25, 0.2, 1.0), roughness=0.7)
+skin_mat = create_material("Skin", (0.8, 0.6, 0.5, 1.0), roughness=0.6)
+pants_mat = create_material("Pants", (0.25, 0.2, 0.15, 1.0), roughness=0.7)
+boot_mat = create_material("Boot", (0.15, 0.1, 0.08, 1.0), roughness=0.6)
+hair_mat = create_material("Hair", (0.1, 0.08, 0.05, 1.0), roughness=0.8)
+scarf_mat = create_material("Scarf", (0.5, 0.4, 0.3, 1.0), roughness=0.8)
+sky_mat = create_material("Sky", (0.7, 0.6, 0.5, 1.0), roughness=1.0)
+grass_mat = create_material("Grass", (0.3, 0.4, 0.2, 1.0), roughness=0.9)
+cross_mat = create_material("Cross", (0.5, 0.48, 0.45, 1.0), roughness=0.85)
+horse_mat = create_material("Horse", (0.4, 0.3, 0.2, 1.0), roughness=0.7)
+
+# Create the ground
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.data.materials.append(ground_mat)
+
+# Add some terrain variation
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Create the stone circle (the central area)
+# The circle in the movie is made of large stones arranged in a circle
+circle_radius = 8
+num_stones = 24
+
+for i in range(num_stones):
+    angle = (i / num_stones) * 2 * math.pi
+    x = circle_radius * math.cos(angle)
+    y = circle_radius * math.sin(angle)
+    
+    # Each stone is a rough rectangular block
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, 0.5))
+    stone = bpy.context.active_object
+    stone.scale = (0.8, 0.6, 1.0)
+    stone.rotation_euler = (0, 0, angle + math.pi/2)
+    stone.data.materials.append(stone_mat)
+    
+    # Add some randomness to stone sizes
+    stone.scale.x *= random.uniform(0.8, 1.2)
+    stone.scale.y *= random.uniform(0.8, 1.2)
+    stone.scale.z *= random.uniform(0.8, 1.2)
+
+# Create the inner circle (smaller ring)
+inner_radius = 5
+num_inner_stones = 16
+for i in range(num_inner_stones):
+    angle = (i / num_inner_stones) * 2 * math.pi
+    x = inner_radius * math.cos(angle)
+    y = inner_radius * math.sin(angle)
+    
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, 0.4))
+    stone = bpy.context.active_object
+    stone.scale = (0.5, 0.4, 0.8)
+    stone.rotation_euler = (0, 0, angle + math.pi/2)
+    stone.data.materials.append(stone_mat)
+    stone.scale.x *= random.uniform(0.8, 1.2)
+    stone.scale.y *= random.uniform(0.8, 1.2)
+    stone.scale.z *= random.uniform(0.8, 1.2)
+
+# Create the three gunmen
+def create_gunman(location, rotation_z, name):
+    """Create a detailed gunman figure"""
+    parts = []
+    
+    # Torso (coat)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.8, location=(location[0], location[1], 1.0))
+    torso = bpy.context.active_object
+    torso.data.materials.append(coat_mat)
+    parts.append(torso)
+    
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(location[0], location[1], 1.6))
+    head = bpy.context.active_object
+    head.data.materials.append(skin_mat)
+    parts.append(head)
+    
+    # Hat (wide-brimmed)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.05, location=(location[0], location[1], 1.75))
+    hat_br = bpy.context.active_object
+    hat_br.data.materials.append(hat_mat)
+    parts.append(hat_br)
+    
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.15, location=(location[0], location[1], 1.82))
+    hat_top = bpy.context.active_object
+    hat_top.data.materials.append(hat_mat)
+    parts.append(hat_top)
+    
+    # Legs
+    for leg_offset in [-0.12, 0.12]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.7, 
+            location=(location[0] + leg_offset, location[1], 0.55))
+        leg = bpy.context.active_object
+        leg.data.materials.append(pants_mat)
+        parts.append(leg)
+        
+        # Boots
+        bpy.ops.mesh.primitive_cube_add(location=(location[0] + leg_offset, location[1] + 0.05, 0.05))
+        boot = bpy.context.active_object
+        boot.scale = (0.08, 0.12, 0.05)
+        boot.data.materials.append(boot_mat)
+        parts.append(boot)
+    
+    # Arms (holding gun forward)
+    # Left arm
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.5, 
+        location=(location[0] - 0.25, location[1] + 0.15, 1.1))
+    left_arm = bpy.context.active_object
+    left_arm.rotation_euler = (math.radians(60), 0, 0)
+    left_arm.data.materials.append(coat_mat)
+    parts.append(left_arm)
+    
+    # Right arm
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.5, 
+        location=(location[0] + 0.25, location[1] + 0.15, 1.1))
+    right_arm = bpy.context.active_object
+    right_arm.rotation_euler = (math.radians(60), 0, 0)
+    right_arm.data.materials.append(coat_mat)
+    parts.append(right_arm)
+    
+    # Gun (revolver)
+    gun_x = location[0]
+    gun_y = location[1] + 0.4
+    gun_z = 1.1
+    
+    # Gun barrel
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.3, 
+        location=(gun_x, gun_y, gun_z))
+    barrel = bpy.context.active_object
+    barrel.rotation_euler = (math.radians(90), 0, 0)
+    barrel.data.materials.append(metal_mat)
+    parts.append(barrel)
+    
+    # Gun grip
+    bpy.ops.mesh.primitive_cube_add(location=(gun_x, gun_y - 0.15, gun_z - 0.05))
+    grip = bpy.context.active_object
+    grip.scale = (0.03, 0.08, 0.04)
+    grip.data.materials.append(wood_mat)
+    parts.append(grip)
+    
+    # Hair (for the Ugly - long hair)
+    if name == "ugly":
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.14, location=(location[0], location[1], 1.55))
+        hair = bpy.context.active_object
+        hair.scale = (1.1, 1.1, 1.3)
+        hair.data.materials.append(hair_mat)
+        parts.append(hair)
+        
+        # Beard
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(location[0], location[1] + 0.05, 1.5))
+        beard = bpy.context.active_object
+        beard.scale = (1.0, 0.8, 1.2)
+        beard.data.materials.append(hair_mat)
+        parts.append(beard)
+    
+    # Scarf (for the Bad)
+    if name == "bad":
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.18, minor_radius=0.04, 
+            location=(location[0], location[1], 1.45))
+        scarf = bpy.context.active_object
+        scarf.data.materials.append(scarf_mat)
+        parts.append(scarf)
+    
+    # Rotate the whole figure to face the center
+    # We'll handle this by rotating individual parts around the character's center
+    center = Vector((location[0], location[1], 1.0))
+    for part in parts:
+        part.rotation_euler.rotate_axis('Z', rotation_z)
+        # Rotate position around center
+        pos = part.location - center
+        pos.rotate(mathutils_Euler = None)  # We'll use a different approach
+    
+    return parts
+
+# We need to import mathutils properly
+from mathutils import Euler
+
+def rotate_point_around_center(point, center, angle):
+    """Rotate a point around a center in the XY plane"""
+    dx = point.x - center.x
+    dy = point.y - center.y
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    new_x = center.x + dx * cos_a - dy * sin_a
+    new_y = center.y + dx * sin_a + dy * cos_a
+    return Vector((new_x, new_y, point.z))
+
+def create_gunman_v2(location, rotation_z, name):
+    """Create a detailed gunman figure with proper rotation"""
+    parts = []
+    center = Vector((location[0], location[1], 1.0))
+    
+    def add_part(obj, offset):
+        """Add a part with offset from center, then rotate"""
+        obj.location = center + Vector(offset)
+        parts.append(obj)
+        return obj
+    
+    # Torso (coat)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.8, location=(0,0,0))
+    torso = bpy.context.active_object
+    torso.data.materials.append(coat_mat)
+    add_part(torso, (0, 0, 0))
+    
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(0,0,0))
+    head = bpy.context.active_object
+    head.data.materials.append(skin_mat)
+    add_part(head, (0, 0, 0.6))
+    
+    # Hat (wide-brimmed)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.05, location=(0,0,0))
+    hat_br = bpy.context.active_object
+    hat_br.data.materials.append(hat_mat)
+    add_part(hat_br, (0, 0, 0.75))
+    
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.15, location=(0,0,0))
+    hat_top = bpy.context.active_object
+    hat_top.data.materials.append(hat_mat)
+    add_part(hat_top, (0, 0, 0.82))
+    
+    # Legs
+    for leg_offset in [-0.12, 0.12]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.7, location=(0,0,0))
+        leg = bpy.context.active_object
+        leg.data.materials.append(pants_mat)
+        add_part(leg, (leg_offset, 0, -0.45))
+        
+        # Boots
+        bpy.ops.mesh.primitive_cube_add(location=(0,0,0))
+        boot = bpy.context.active_object
+        boot.scale = (0.08, 0.12, 0.05)
+        boot.data.materials.append(boot_mat)
+        add_part(boot, (leg_offset, 0.05, -0.95))
+    
+    # Arms (holding gun forward - forward is +Y before rotation)
+    # Left arm
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.5, location=(0,0,0))
+    left_arm = bpy.context.active_object
+    left_arm.rotation_euler = (math.radians(60), 0, 0)
+    left_arm.data.materials.append(coat_mat)
+    add_part(left_arm, (-0.25, 0.15, 0.1))
+    
+    # Right arm
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.5, location=(0,0,0))
+    right_arm = bpy.context.active_object
+    right_arm.rotation_euler = (math.radians(60), 0, 0)
+    right_arm.data.materials.append(coat_mat)
+    add_part(right_arm, (0.25, 0.15, 0.1))
+    
+    # Gun (revolver) - pointing forward (+Y)
+    # Gun barrel
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.3, location=(0,0,0))
+    barrel = bpy.context.active_object
+    barrel.rotation_euler = (math.radians(90), 0, 0)
+    barrel.data.materials.append(metal_mat)
+    add_part(barrel, (0, 0.4, 0.1))
+    
+    # Gun grip
+    bpy.ops.mesh.primitive_cube_add(location=(0,0,0))
+    grip = bpy.context.active_object
+    grip.scale = (0.03, 0.08, 0.04)
+    grip.data.materials.append(wood_mat)
+    add_part(grip, (0, 0.25, 0.05))
+    
+    # Character-specific features
+    if name == "ugly":
+        # Long hair
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.14, location=(0,0,0))
+        hair = bpy.context.active_object
+        hair.scale = (1.1, 1.1, 1.3)
+        hair.data.materials.append(hair_mat)
+        add_part(hair, (0, 0, 0.55))
+        
+        # Beard
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(0,0,0))
+        beard = bpy.context.active_object
+        beard.scale = (1.0, 0.8, 1.2)
+        beard.data.materials.append(hair_mat)
+        add_part(beard, (0, 0.05, 0.5))
+    
+    if name == "bad":
+        # Scarf
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.18, minor_radius=0.04, location=(0,0,0))
+        scarf = bpy.context.active_object
+        scarf.data.materials.append(scarf_mat)
+        add_part(scarf, (0, 0, 0.45))
+    
+    # Now rotate all parts around the center
+    for part in parts:
+        # Rotate position
+        new_pos = rotate_point_around_center(part.location, center, rotation_z)
+        part.location = new_pos
+        # Add rotation to the object's rotation
+        part.rotation_euler.z += rotation_z
+    
+    return parts
+
+# Position the three gunmen in a triangle, facing the center
+# Good (Blondie) - at top
+# Bad (Tuco) - at bottom left
+# Ugly (Santino) - at bottom right
+
+gunman_dist = 3.5
+
+# Good - facing down (toward center)
+good_loc = (0, gunman_dist, 0)
+good_rot = math.pi  # facing -Y direction (toward center)
+create_gunman_v2(good_loc, good_rot, "good")
+
+# Bad - facing upper right (toward center)
+bad_angle = math.pi + math.pi/3  # 240 degrees
+bad_loc = (gunman_dist * math.cos(bad_angle), gunman_dist * math.sin(bad_angle), 0)
+bad_rot = bad_angle + math.pi/2  # facing toward center
+create_gunman_v2(bad_loc, bad_rot, "bad")
+
+# Ugly - facing upper left (toward center)
+ugly_angle = math.pi - math.pi/3  # 120 degrees
+ugly_loc = (gunman_dist * math.cos(ugly_angle), gunman_dist * math.sin(ugly_angle), 0)
+ugly_rot = ugly_angle + math.pi/2  # facing toward center
+create_gunman_v2(ugly_loc, ugly_rot, "ugly")
+
+# Create cemetery headstones around the scene
+num_headstones = 80
+for i in range(num_headstones):
+    # Random position in a ring around the stone circle
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(12, 40)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    # Skip if too close to the stone circle
+    if dist < 10:
+        continue
+    
+    # Headstone - a rectangular slab
+    height = random.uniform(0.5, 1.0)
+    width = random.uniform(0.3, 0.5)
+    
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, height/2))
+    headstone = bpy.context.active_object
+    headstone.scale = (width/2, 0.1, height/2)
+    headstone.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+    headstone.data.materials.append(cemetery_stone_mat)
+    
+    # Some headstones have crosses
+    if random.random() < 0.3:
+        # Vertical bar
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height + 0.2))
+        vbar = bpy.context.active_object
+        vbar.scale = (0.03, 0.03, 0.2)
+        vbar.data.materials.append(cross_mat)
+        
+        # Horizontal bar
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height + 0.25))
+        hbar = bpy.context.active_object
+        hbar.scale = (0.1, 0.03, 0.03)
+        hbar.data.materials.append(cross_mat)
+
+# Add some scattered rocks and debris
+for i in range(30):
+    x = random.uniform(-20, 20)
+    y = random.uniform(-20, 20)
+    # Skip if in the stone circle
+    if math.sqrt(x*x + y*y) < 9:
+        continue
+    
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=random.uniform(0.1, 0.3), 
+        location=(x, y, 0.1))
+    rock = bpy.context.active_object
+    rock.scale = (random.uniform(0.8, 1.5), random.uniform(0.8, 1.5), random.uniform(0.5, 1.0))
+    rock.data.materials.append(stone_mat)
+
+# Add a horse (the Ugly's horse or just a horse in the cemetery)
+# Simple horse shape
+horse_x, horse_y = 15, 15
+# Body
+bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=1.2, location=(horse_x, horse_y, 0.8))
+horse_body = bpy.context.active_object
+horse_body.rotation_euler = (0, math.radians(90), 0)
+horse_body.data.materials.append(horse_mat)
+
+# Head
+bpy.ops.mesh.primitive_cube_add(location=(horse_x + 0.7, horse_y, 1.1))
+horse_head = bpy.context.active_object
+horse_head.scale = (0.2, 0.15, 0.2)
+horse_head.data.materials.append(horse_mat)
+
+# Legs
+for lx, ly in [(horse_x - 0.3, horse_y - 0.2), (horse_x - 0.3, horse_y + 0.2),
+               (horse_x + 0.3, horse_y - 0.2), (horse_x + 0.3, horse_y + 0.2)]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.6, location=(lx, ly, 0.3))
+    hleg = bpy.context.active_object
+    hleg.data.materials.append(horse_mat)
+
+# Add some dry grass tufts
+for i in range(100):
+    x = random.uniform(-30, 30)
+    y = random.uniform(-30, 30)
+    if math.sqrt(x*x + y*y) < 9:
+        continue
+    
+    bpy.ops.mesh.primitive_cone_add(radius=0.05, depth=0.2, location=(x, y, 0.1))
+    grass = bpy.context.active_object
+    grass.scale = (1, 1, random.uniform(0.5, 1.5))
+    grass.data.materials.append(grass_mat)
+
+# Set up lighting - harsh midday sun
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 50))
+sun = bpy.context.active_object
+sun.data.energy = 5
+sun.data.angle = math.radians(2)
+sun.rotation_euler = (math.radians(30), math.radians(20), 0)
+
+# World - dusty sky
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.7, 0.6, 0.45, 1.0)  # Dusty sky
+    bg.inputs[1].default_value = 0.5
+
+# Set up camera
+bpy.ops.object.camera_add(location=(0, -15, 3))
+camera = bpy.context.active_object
+camera.data.lens = 50
+# Point camera at the center
+direction = Vector((0, 0, 1)) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+scene.camera = camera
+
+# Set up render settings
+scene.render.film_transparent = False
+scene.view_settings.look = 'Medium High Contrast'
+scene.view_settings.exposure = 0.5
+
+print("Scene created: The Good, the Bad and the Ugly - Final Standoff")
+print("Objects in scene:", len(bpy.data.objects))

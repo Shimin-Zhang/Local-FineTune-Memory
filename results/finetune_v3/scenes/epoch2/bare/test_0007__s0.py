@@ -1,0 +1,85 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1436)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+H = {}
+def glaze(k, c, e=0):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = .9
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    H[k] = m
+for k, c in dict(soil=(.2, .13, .08), path=(.32, .24, .17), plaster=(.5, .4, .28), plaster2=(.42, .32, .22), red=(.55, .08, .05), roof=(.3, .15, .08),
+                 vine=(.12, .28, .08), vine2=(.2, .35, .08), trunk=(.2, .13, .08), stone=(.35, .3, .25), dark=(.03, .02, .02), gold=(.8, .55, .1)).items(): glaze(k, c)
+glaze("lamp", (1, .6, .2), 14); glaze("flame", (1, .45, .1), 25)
+def part(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("h"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("h", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(H[k]); return o
+def block(at, s, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return part(bm, k, at, (0, 0, rz))
+def rod(at, r, h, n, k, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return part(bm, k, at)
+def shine(at, c, w):
+    L = bpy.data.lights.new("s", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+# hillside slab
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=15, depth=3.6)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.4, .3)))
+    v.co.z -= 1.8
+part(bm, "soil")
+# stepped terrace walls and the house on them
+block((-1, 4, 0), (17, 12, 1.2), "stone", top=.96); block((-1, 4, 1.2), (14, 9, .5), "plaster2", top=.97)
+block((-1, 4.5, 1.7), (11, 7, 3.0), "plaster", top=.98)
+block((-1, 4.5, 4.7), (8, 5, 2.6), "plaster2", top=.98)
+block((-1, 4.5, 7.3), (5, 3.4, 2.2), "plaster", top=.98)
+for z, w, d in ((4.7, 8.4, 5.4), (7.3, 5.4, 3.8)):
+    block((-1, 4.5, z), (w, d, .15), "stone")
+# red columns, two per level on the front, with capitals
+for z, y in ((1.7, .7), (4.7, 1.9), (7.3, 2.6)):
+    for x in (-3.4, -1, 1.4, 3.8):
+        rod((x, y, z), .22, 2.4, 6, "red", .2); block((x, y, z + 2.4), (.6, .6, .18), "red"); block((x, y, z), (.6, .6, .18), "red")
+# windows: dark openings with lamp-lit ones, and the tall window shaft
+for x, z in ((-4.5, 2.2), (3.0, 2.2), (-2.5, 5.2), (2.0, 5.2)): block((x, .9 if z < 4 else 1.9, z), (.9, .1, 1.2), "lamp" if x > 0 else "dark")
+block((-1, 4.5, 7.3), (1.4, 3.6, 2.0), "stone"); block((-1, 2.6, 7.8), (1.2, .12, 1.5), "lamp")
+shine((-1, 1.5, 8.5), (1, .6, .2), 700); shine((3.0, -.5, 2.5), (1, .6, .2), 250)
+# the shrine room: open front, red columns, gold statue and a flame
+block((-1, 4.5, 9.5), (5.6, 4.0, .3), "roof"); block((-1, 6.3, 9.5), (5.6, .3, 2.2), "plaster2")
+for x in (-3.4, -1, 1.4, 3.8): rod((x, 2.7, 9.5), .16, 2.0, 6, "red")
+block((-1, 5.0, 9.5), (2.2, 1.4, .4), "stone"); rod((-1, 5.0, 9.9), .3, 1.0, 6, "gold", .2)
+rod((-1, 4.2, 9.5), .15, .4, 5, "flame", .02); shine((-1, 4.2, 10.2), (1, .5, .15), 500)
+# stair up the front of the house
+for i in range(5): block((-1, -1.6 - i * .6, 0), (3, .6, .25 * (i + 1)), "stone")
+# vineyard: rows of vines on a sloped patch, with posts and wire
+for r in range(5):
+    y = -9 + r * 1.7
+    for i in range(8):
+        x = -11 + i * 1.7
+        b = bmesh.new(); bmesh.ops.create_icosphere(b, subdivisions=1, radius=.55)
+        for v in b.verts: v.co *= random.uniform(.85, 1.2)
+        part(b, "vine" if (i + r) % 2 else "vine2", (x, y, .35))
+    for i in range(8): rod((-11 + i * 1.7, y, 0), .07, .8, 4, "trunk")
+# a few rocks and a path stone
+for i in range(8):
+    b = bmesh.new(); bmesh.ops.create_icosphere(b, subdivisions=1, radius=random.uniform(.4, .9))
+    for v in b.verts: v.co *= random.uniform(.7, 1.2); v.co.z *= .6
+    part(b, "stone", (random.choice((-1, 1)) * random.uniform(11, 14), random.uniform(-6, 10), .1))
+# golden hour: low amber key from the right, violet rim from behind
+for c, w, p in (((1, .62, .28), 6, (30, -12, 10)), ((.5, .4, 1), 2.2, (-22, 26, 14))):
+    L = bpy.data.lights.new("sun", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("sun", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("gold"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .04, 1)
+cm = bpy.data.cameras.new("cam"); cm.lens = 85
+ob = bpy.data.objects.new("cam", cm); sc.collection.objects.link(ob)
+tg = Vector((-1, 0, 4.5)); ob.location = tg + Vector((12, -66, 40))
+ob.rotation_euler = (tg - ob.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = ob

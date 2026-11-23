@@ -1,0 +1,195 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 44,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 4,
+  "MESH": 44
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Ice",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.7,
+    0.85,
+    1.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "FrozenWater",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.9,
+    1.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Snow",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.95,
+    0.97,
+    1.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 2.0,
+   "color": [
+    0.8,
+    0.9,
+    1.0
+   ],
+   "location": [
+    0.0,
+    0.0,
+    50.0
+   ],
+   "direction": [
+    0.0,
+    0.5,
+    -0.866
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "AREA",
+   "energy": 5000.0,
+   "color": [
+    0.0,
+    1.0,
+    0.5
+   ],
+   "location": [
+    50.0,
+    0.0,
+    30.0
+   ],
+   "direction": [
+    0.0,
+    -0.7071,
+    -0.7071
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "AREA",
+   "energy": 5000.0,
+   "color": [
+    0.5,
+    0.0,
+    1.0
+   ],
+   "location": [
+    -25.0,
+    43.3,
+    30.0
+   ],
+   "direction": [
+    0.6124,
+    0.3536,
+    -0.7071
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "AREA",
+   "energy": 5000.0,
+   "color": [
+    0.0,
+    0.5,
+    1.0
+   ],
+   "location": [
+    -25.0,
+    -43.3,
+    30.0
+   ],
+   "direction": [
+    -0.6124,
+    0.3536,
+    -0.7071
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   0.0,
+   60.0,
+   15.0
+  ],
+  "direction": [
+   0.0,
+   0.9511,
+   -0.309
+  ],
+  "up": [
+   0.0,
+   0.309,
+   0.9511
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  75.561,
+  75.764,
+  40.0
+ ],
+ "scene_center": [
+  -0.7148,
+  0.1824,
+  10.0
+ ],
+ "scene_radius": 57.1177,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 5.3,
+ "image": true
+}

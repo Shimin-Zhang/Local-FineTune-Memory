@@ -1,0 +1,74 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(483)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tint(rgb, glow=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+mud, pumpkin, pumpkin2, stem, eye, wisp, bone, grave, hedge, mist = (tint((.1, .09, .08)), tint((.75, .25, .04)), tint((.55, .15, .04)), tint((.12, .2, .08)),
+    tint((.1, .04, .02)), tint((.2, 1, .3), 14), tint((.6, .6, .5)), tint((.2, .2, .22)), tint((.04, .1, .06)), tint((.1, .16, .14)))
+def form(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("f"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("f", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(at, s, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return form(bm, m, at, (0, 0, rz))
+def cone(at, r1, r2, h, n, m):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return form(bm, m, at)
+def blob(at, r, m, sq=(1, 1, 1), sub=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) * random.uniform(.92, 1.08)
+    return form(bm, m, at)
+def lamp(kind, at, rgb, w, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=10, depth=3.6)
+for v in bm.verts:
+    v.co.z -= 1.8
+    if v.co.z < -1: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.1, .1)
+form(bm, mud)
+# the pumpkin: lobed body, stem, carved face, lit from below
+for k in range(8):
+    a = k * math.pi / 4; blob((math.cos(a) * .95, math.sin(a) * .95, 1.1), 1.15, pumpkin if k % 2 else pumpkin2, (1, .8, .95), 2)
+blob((0, 0, 1.0), 1.5, pumpkin, (1, 1, .85), 2); cone((0, 0, 2.3), .35, .2, .8, 5, stem)
+for sx in (-1, 1):
+    cone((sx * .5, -1.35, 1.4), .3, .02, .45, 4, eye).rotation_euler = (math.pi / 2, 0, 0)
+cube((0, -1.4, .6), (1.3, .3, .25), eye); cube((-.4, -1.4, .55), (.2, .2, .3), eye, .4); cube((.4, -1.4, .55), (.2, .2, .3), eye, -.4)
+lamp("POINT", (0, 0, .25), (.2, 1, .3), 1200)
+# graveyard: gravestones, a cross, a fence, hedge, dead tree
+for i, (x, y, r) in enumerate(((-6, 5, .2), (-3.5, 6.5, -.3), (4, 6, .1), (7, 3.5, -.4), (6.5, -3, .3))):
+    cube((x, y, 0), (1.2, .35, 1.6 - i * .1), grave, r); cone((x, y, 1.6 - i * .1), .6, .6, .35, 3, grave).scale.y = .29
+cube((-8, 2, 0), (.3, .3, 2.6), grave); cube((-8, 2, 1.9), (1.6, .3, .3), grave)
+for i in range(11):
+    x = -9 + i * 1.8; cube((x, -6.5, 0), (.3, .3, 1.3), stem); cone((x, -6.5, 1.3), .2, .02, .3, 4, stem)
+    if i < 10: cube((x + .9, -6.5, .9), (1.8, .12, .12), stem)
+for i in range(6):
+    x, y = -8 + i * 3.2, 8 - abs(i - 2.5) * .3; blob((x, y, .8), 1.6, hedge, (1.4, 1, .8))
+cone((8, -5, 0), .4, .25, 5, 5, stem)
+for k, (dx, dy, dz) in enumerate(((1.2, 0, 3.5), (-1.1, .4, 4.3), (.3, 1.3, 5.0))): cone((8 + dx * .6, -5, dz), .12, .02, 2.4, 4, stem).rotation_euler = (dy * 1.2, -dx * 1.2, 0)
+# ghost wisps and fog banks
+for i in range(12):
+    a = random.uniform(0, 6.28); r = random.uniform(2, 9)
+    blob((math.cos(a) * r, math.sin(a) * r * .8, random.uniform(1, 5)), random.uniform(.12, .22), wisp, (1, 1, 1.4))
+lamp("POINT", (0, 0, 3.5), (.2, 1, .3), 250)
+for i in range(8):
+    a = i * .8; blob((math.cos(a) * 6.5, math.sin(a) * 5.5, .15), random.uniform(1.4, 2.2), mist, (1.6, 1.2, .15))
+lamp("SUN", (-24, -14, 10), (.45, .5, 1), 4, (0, 0, 1)); lamp("SUN", (20, 22, 9), (.2, .8, .5), 2, (0, 0, 1))
+w = bpy.data.worlds.new("night"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .025, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2)); co.location = t + Vector((12, -40, 26))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

@@ -1,0 +1,218 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# World settings for dusk
+world = bpy.context.scene.world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+bg.inputs[0].default_value = [0.05, 0.08, 0.15, 1.0]  # Dark blue dusk
+bg.inputs[1].default_value = 0.5
+
+# Sun (low, warm)
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 0.5
+sun_data.color = [1.0, 0.6, 0.3]
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = Euler((math.radians(10), 0, math.radians(45)), 'XYZ')
+
+# Materials
+def make_mat(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+mat_brick = make_mat("Brick", [0.5, 0.2, 0.1], 0.9)
+mat_concrete = make_mat("Concrete", [0.5, 0.5, 0.48], 0.95)
+mat_steel = make_mat("Steel", [0.3, 0.3, 0.35], 0.3, 0.8)
+mat_hut_wall = make_mat("HutWall", [0.7, 0.7, 0.6], 0.8)
+mat_hut_roof = make_mat("HutRoof", [0.2, 0.3, 0.5], 0.5)
+mat_scaffold = make_mat("Scaffold", [0.6, 0.6, 0.6], 0.4, 0.7)
+mat_lamp_glow = make_mat("LampGlow", [1.0, 0.9, 0.5], 0.3)
+mat_lamp_glow.use_nodes = True
+bsdf = mat_lamp_glow.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Emission Color"].default_value = [1.0, 0.8, 0.4, 1.0]
+bsdf.inputs["Emission Strength"].default_value = 5.0
+
+# Helper: add box
+def add_box(name, size, loc, mat, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    obj.rotation_euler = Euler(rot, 'XYZ')
+    obj.data.materials.append(mat)
+    bpy.ops.object.transform_apply(scale=True, rotation=True)
+    return obj
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0,0,0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(make_mat("Ground", [0.2, 0.18, 0.15], 0.95))
+
+# --- Half-built brick block (4 stories, partially built) ---
+# Block: 20m x 15m footprint, 4 floors, each 3m tall
+bx, by, bz = 0, 0, 0
+bw, bd, bh = 20, 15, 12  # 4 floors * 3m
+
+# Base slab
+add_box("Slab", (bw+2, bd+2, 0.5), (bx, by, 0.25), mat_concrete)
+
+# Floors 1-3 fully built (walls), floor 4 half built
+wall_thick = 0.3
+for floor in range(4):
+    z = 0.5 + floor * 3
+    # Floor slab
+    add_box(f"FloorSlab{floor}", (bw, bd, 0.3), (bx, by, z+0.15), mat_concrete)
+    
+    if floor < 3:
+        # Full walls
+        # Front (y = bd/2)
+        add_box(f"WallF{floor}", (bw, wall_thick, 3), (bx, by+bd/2-wall_thick/2, z+1.5), mat_brick)
+        # Back (y = -bd/2)
+        add_box(f"WallB{floor}", (bw, wall_thick, 3), (bx, by-bd/2+wall_thick/2, z+1.5), mat_brick)
+        # Left (x = -bw/2)
+        add_box(f"WallL{floor}", (wall_thick, bd, 3), (bx-bw/2+wall_thick/2, by, z+1.5), mat_brick)
+        # Right (x = bw/2)
+        add_box(f"WallR{floor}", (wall_thick, bd, 3), (bx+bw/2-wall_thick/2, by, z+1.5), mat_brick)
+    else:
+        # Floor 4: half built - only front and left walls, partial
+        # Front wall (full)
+        add_box(f"WallF{floor}", (bw, wall_thick, 3), (bx, by+bd/2-wall_thick/2, z+1.5), mat_brick)
+        # Left wall (full)
+        add_box(f"WallL{floor}", (wall_thick, bd, 3), (bx-bw/2+wall_thick/2, by, z+1.5), mat_brick)
+        # Right wall (half length)
+        add_box(f"WallR_half{floor}", (wall_thick, bd/2, 3), (bx+bw/2-wall_thick/2, by-bd/4, z+1.5), mat_brick)
+        # Back wall (half length)
+        add_box(f"WallB_half{floor}", (bw/2, wall_thick, 3), (bx-bw/4, by-bd/2+wall_thick/2, z+1.5), mat_brick)
+
+# Windows (dark openings represented as dark boxes on walls)
+mat_window = make_mat("Window", [0.05, 0.05, 0.1], 0.2)
+for floor in range(3):
+    z = 0.5 + floor * 3 + 1.2
+    # Front windows
+    for i in range(4):
+        wx = bx - bw/2 + 2.5 + i * 4.5
+        add_box(f"WinF{floor}_{i}", (1.5, 0.1, 1.2), (wx, by+bd/2-wall_thick, z), mat_window)
+    # Back windows
+    for i in range(4):
+        wx = bx - bw/2 + 2.5 + i * 4.5
+        add_box(f"WinB{floor}_{i}", (1.5, 0.1, 1.2), (wx, by-bd/2+wall_thick, z), mat_window)
+    # Side windows
+    for i in range(3):
+        wy = by - bd/2 + 2 + i * 4
+        add_box(f"WinL{floor}_{i}", (0.1, 1.5, 1.2), (bx-bw/2+wall_thick, wy, z), mat_window)
+        add_box(f"WinR{floor}_{i}", (0.1, 1.5, 1.2), (bx+bw/2-wall_thick, wy, z), mat_window)
+
+# --- Tower Crane ---
+crane_x, crane_y = -18, -12  # Position crane to the side
+
+# Base
+add_box("CraneBase", (4, 4, 1), (crane_x, crane_y, 0.5), mat_steel)
+
+# Mast (tower) - lattice tower
+mast_height = 25
+mast_x, mast_y = crane_x, crane_y
+# Main vertical columns
+for dx in [-1.5, 1.5]:
+    for dy in [-1.5, 1.5]:
+        add_box(f"MastCol_{dx}_{dy}", (0.2, 0.2, mast_height), (mast_x+dx, mast_y+dy, 0.5+mast_height/2), mat_steel)
+# Cross bracing (simplified - horizontal rings every 2.5m)
+for i in range(int(mast_height/2.5)):
+    z = 0.5 + i * 2.5 + 1.25
+    add_box(f"MastRing_{i}", (3.2, 0.15, 0.15), (mast_x, mast_y+1.5, z), mat_steel)
+    add_box(f"MastRing2_{i}", (3.2, 0.15, 0.15), (mast_x, mast_y-1.5, z), mat_steel)
+    add_box(f"MastRing3_{i}", (0.15, 3.2, 0.15), (mast_x+1.5, mast_y, z), mat_steel)
+    add_box(f"MastRing4_{i}", (0.15, 3.2, 0.15), (mast_x-1.5, mast_y, z), mat_steel)
+
+# Operator cab
+cab_z = 0.5 + mast_height
+add_box("CraneCab", (2, 2, 2), (mast_x, mast_y, cab_z+1), mat_steel)
+# Cab windows (glowing)
+mat_cab_win = make_mat("CabWin", [0.2, 0.3, 0.5], 0.2)
+mat_cab_win.node_tree.nodes.get("Principled BSDF").inputs["Emission Color"].default_value = [0.5, 0.7, 1.0, 1.0]
+mat_cab_win.node_tree.nodes.get("Principled BSDF").inputs["Emission Strength"].default_value = 2.0
+add_box("CabWinF", (1.5, 0.1, 1), (mast_x, mast_y+1.05, cab_z+1.2), mat_cab_win)
+add_box("CabWinL", (0.1, 1.5, 1), (mast_x-1.05, mast_y, cab_z+1.2), mat_cab_win)
+
+# Slewing unit
+add_box("Slew", (2.5, 2.5, 0.5), (mast_x, mast_y, cab_z+2.25), mat_steel)
+
+# Jib (horizontal arm) - extends toward the building
+jib_length = 30
+jib_start_x = mast_x + 1
+jib_z = cab_z + 2.5
+# Main jib beams
+add_box("JibTop", (jib_length, 0.15, 0.15), (jib_start_x + jib_length/2, mast_y, jib_z+0.5), mat_steel)
+add_box("JibBot", (jib_length, 0.15, 0.15), (jib_start_x + jib_length/2, mast_y, jib_z-0.5), mat_steel)
+# Vertical struts along jib
+for i in range(0, int(jib_length), 2):
+    add_box(f"JibStrut_{i}", (0.1, 0.1, 1.0), (jib_start_x + i + 1, mast_y, jib_z), mat_steel)
+# Diagonal braces
+for i in range(0, int(jib_length)-2, 2):
+    x1 = jib_start_x + i
+    x2 = jib_start_x + i + 2
+    # Simplified diagonal
+    mid_x = (x1 + x2) / 2
+    add_box(f"JibDiag_{i}", (0.1, 0.1, 1.2), (mid_x, mast_y, jib_z), mat_steel, rot=(0, math.radians(30), 0))
+
+# Counter-jib (opposite side)
+counter_jib_len = 10
+cj_start_x = mast_x - 1
+add_box("CounterJibTop", (counter_jib_len, 0.15, 0.15), (cj_start_x - counter_jib_len/2, mast_y, jib_z+0.5), mat_steel)
+add_box("CounterJibBot", (counter_jib_len, 0.15, 0.15), (cj_start_x - counter_jib_len/2, mast_y, jib_z-0.5), mat_steel)
+for i in range(0, int(counter_jib_len), 2):
+    add_box(f"CJStrut_{i}", (0.1, 0.1, 1.0), (cj_start_x - i - 1, mast_y, jib_z), mat_steel)
+
+# Counterweight
+add_box("CounterWeight", (2, 1.5, 2), (cj_start_x - counter_jib_len + 1, mast_y, jib_z-1), mat_concrete)
+
+# Tie bars (from top of mast to jib)
+top_z = cab_z + 4
+add_box("TieBar1", (0.1, 0.1, 5), (mast_x + 5, mast_y, (jib_z + top_z)/2), mat_steel, rot=(0, math.radians(-20), 0))
+add_box("TieBar2", (0.1, 0.1, 4), (mast_x - 5, mast_y, (jib_z + top_z)/2), mat_steel, rot=(0, math.radians(20), 0))
+# Apex
+add_box("Apex", (0.3, 0.3, 0.3), (mast_x, mast_y, top_z), mat_steel)
+
+# Trolley and hoist cable
+trolley_x = mast_x + 15  # Partway along jib
+add_box("Trolley", (1, 0.8, 0.5), (trolley_x, mast_y, jib_z-0.75), mat_steel)
+# Cable down
+cable_drop = 8
+add_box("HoistCable", (0.05, 0.05, cable_drop), (trolley_x, mast_y, jib_z-1 - cable_drop/2), mat_steel)
+# Hook block
+add_box("HookBlock", (0.5, 0.5, 0.8), (trolley_x, mast_y, jib_z-1-cable_drop), mat_steel)
+
+# --- Hoist (elevator) on side of building ---
+hoist_x = bx + bw/2 + 1
+hoist_y = by
+# Hoist tower
+add_box("HoistTower", (1, 1, bh), (hoist_x, hoist_y, 0.5+bh/2), mat_steel)
+# Hoist cabin
+add_box("HoistCabin", (1.2, 1.2, 2), (hoist_x, hoist_y, 8), mat_steel)
+# Cabin door (glowing)
+add_box("HoistDoor", (0.1, 0.8, 1.5), (hoist_x+0.65, hoist_y, 8), mat_cab_win)
+
+# --- Site Hut ---
+hut_x, hut_y = 15, 10
+add_box("HutBase", (4, 3, 0.2), (hut_x, hut_y, 0.1), mat_concrete)
+# Walls
+add_box("HutWallF", (4, 0.15, 2.5), (hut_x, hut_y+1.5-0.075, 0.2+1.25), mat_hut_wall)
+add_box("HutWallB", (4, 0.15, 2.5), (hut_x, hut_y-1.5+0.075, 0.2+1.25), mat_hut_wall)
+add_box("HutWallL", (0.15, 3, 2.5), (hut_x-2+0.075, hut_y, 0.2+1.25), mat_hut_wall)
+add_box("HutWallR", (0.15, 3, 2.5), (hut_x+2-0.075, hut_y, 0.2+1.25), mat_hut_wall)
+# Roof
+add_box("HutRoof", (4.2, 3.2, 0.15), (hut_x, hut_y, 0.2+2.5+0.075), mat_hut_roof)
+# Windows (glowing - lamps on)
+mat_hut_win = make_mat("HutWin", [0.3, 0.4, 0.

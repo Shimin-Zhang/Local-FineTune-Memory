@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.6,
+ "error": "AttributeError: Vector subtraction: vectors must have the same dimensions for this operation",
+ "error_line": "a, b = Vector(a), Vector(b); d = b - a",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 120,
+ "n_lights": 0,
+ "n_materials": 12,
+ "own_camera": false,
+ "render_error": null
+}

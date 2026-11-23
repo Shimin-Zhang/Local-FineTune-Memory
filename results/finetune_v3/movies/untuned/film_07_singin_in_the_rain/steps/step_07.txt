@@ -1,0 +1,148 @@
+```python
+import bpy, math, random
+from mathutils import Vector
+
+def cm(name, col, met=0, rgh=0.5, em=0, ecol=(0,0,0,1)):
+    m = bpy.data.materials.get(name)
+    if m: return m
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    n = m.node_tree.nodes; l = m.node_tree.links; n.clear()
+    b = n.new('ShaderNodeBsdfPrincipled'); o = n.new('ShaderNodeOutputMaterial')
+    o.location=(300,0); b.location=(0,0)
+    b.inputs['Base Color'].default_value = col
+    b.inputs['Metallic'].default_value = met
+    b.inputs['Roughness'].default_value = rgh
+    if em > 0:
+        b.inputs['Emission Color'].default_value = ecol
+        b.inputs['Emission Strength'].default_value = em
+    l.new(b.outputs['BSDF'], o.inputs['Surface'])
+    return m
+
+# The camera is looking UP at the sky and buildings from below.
+# The camera is at (0, 2, 4) looking at (3, 4, 1) - that's looking slightly up and to the right.
+# But the image shows we're looking up at the sky. The camera Z=4 might be too high,
+# or the look-at target is wrong. Let's place the camera at street level, looking across.
+
+cam = bpy.data.objects.get("MainCam")
+if cam:
+    # Place camera at street level on the left sidewalk, looking across the street
+    cam.location = (-9, 1, 2)
+    # Look at the character at (2.5, 3.5, 0) - slightly above street level
+    target = Vector((2.5, 3, 1.5))
+    direction = target - cam.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam.rotation_euler = rot_quat.to_euler()
+    cam.data.lens = 30
+    cam.data.sensor_width = 36
+    cam.data.clip_start = 0.1
+    cam.data.clip_end = 500
+
+# The scene is too bright/washed out now. Let's reduce the top fill and sky fill.
+for obj in bpy.data.objects:
+    if obj.type == 'LIGHT':
+        if obj.name == "TopFill":
+            obj.data.energy = 300
+        elif obj.name == "SkyFill":
+            obj.data.energy = 200
+        elif obj.name.startswith("LampLight"):
+            obj.data.energy = 1000
+        elif obj.name.startswith("LampL"):
+            obj.data.energy = 400
+        elif obj.name.startswith("StoreL"):
+            obj.data.energy = 200
+        elif obj.name.startswith("StoreInt"):
+            obj.data.energy = 100
+        elif obj.name.startswith("NeonL"):
+            obj.data.energy = 150
+        elif obj.name == "FillSun":
+            obj.data.energy = 1.0
+        elif obj.name == "RimLight":
+            obj.data.energy = 300
+        elif obj.name.startswith("Bounce"):
+            obj.data.energy = 100
+        elif obj.name == "BlueRim":
+            obj.data.energy = 200
+
+# Reduce exposure
+bpy.context.scene.view_settings.exposure = 0.5
+
+# Make the world background darker
+w = bpy.context.scene.world
+if w and w.use_nodes:
+    bg = w.node_tree.nodes.get("Background")
+    if bg:
+        bg.inputs[0].default_value = (0.005, 0.008, 0.02, 1)
+        bg.inputs[1].default_value = 1.0
+
+# The buildings look too pink/orange. Let's darken them.
+for bname in ["Brick1", "Brick2", "Brick3"]:
+    mb = bpy.data.materials.get(bname)
+    if mb and mb.use_nodes:
+        bsdf = mb.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            if bname == "Brick1":
+                bsdf.inputs['Base Color'].default_value = (0.15, 0.05, 0.03, 1)
+            elif bname == "Brick2":
+                bsdf.inputs['Base Color'].default_value = (0.2, 0.08, 0.05, 1)
+            elif bname == "Brick3":
+                bsdf.inputs['Base Color'].default_value = (0.1, 0.06, 0.04, 1)
+
+# Make the stone/sidewalk darker
+mSt = bpy.data.materials.get("Stone")
+if mSt and mSt.use_nodes:
+    bsdf = mSt.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.15, 0.14, 0.12, 1)
+
+# Make the road darker
+mA = bpy.data.materials.get("WetAsphalt")
+if mA and mA.use_nodes:
+    bsdf = mA.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.03, 0.03, 0.04, 1)
+
+# Add a subtle rain effect using a large transparent plane with noise
+# Actually, let's just add more rain drops
+mRainDrop = cm("RainDrop",(0.5,0.5,0.6,1),0,0.1,0.3,(0.4,0.4,0.5,1))
+random.seed(999)
+for i in range(50):
+    rx = random.uniform(-10, 10)
+    ry = random.uniform(0.5, 6)
+    rz = random.uniform(-15, 15)
+    rd = bpy.data.objects.get(f"Drop2_{i}")
+    if not rd:
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.008, location=(rx, ry, rz), segments=6, ring_count=4)
+        rd = bpy.context.active_object; rd.name=f"Drop2_{i}"
+        rd.data.materials.append(mRainDrop)
+
+# Add a simple "wet street" reflection by making the road material more glossy
+# Already done above, but let's ensure the wet reflection plane is visible
+mWet = bpy.data.materials.get("WetReflect")
+if mWet and mWet.use_nodes:
+    bsdf = mWet.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.02, 0.02, 0.03, 1)
+        bsdf.inputs['Metallic'].default_value = 0.7
+        bsdf.inputs['Roughness'].default_value = 0.05
+
+# Add a few more point lights to illuminate the character from the front
+if not bpy.data.objects.get("CharFront"):
+    bpy.ops.object.light_add(type='POINT', location=(0, 2, 1))
+    cfl = bpy.context.active_object; cfl.name="CharFront"
+    cfl.data.energy = 200
+    cfl.data.color = (1.0, 0.9, 0.7)
+    cfl.data.shadow_soft_size = 0.5
+
+# Set final render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'
+bpy.context.scene.view_settings.exposure = 0.5
+bpy.context.scene.cycles.max_bounces = 8
+bpy.context.scene.cycles.glossy_bounces = 4
+
+print("Fixed: camera at street level looking across, lighting reduced, buildings darkened, road darker, more rain drops, character front light added")
+```

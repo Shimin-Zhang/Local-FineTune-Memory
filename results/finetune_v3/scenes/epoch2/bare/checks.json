@@ -1,0 +1,1266 @@
+{
+ "test_0000__s0": {
+  "pass": false,
+  "tokens": 3372,
+  "lines": 109,
+  "objects": 136,
+  "materials": 14,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.911,
+  "fails": [
+   "too long: 3372 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0001__s0": {
+  "pass": true,
+  "tokens": 2726,
+  "lines": 96,
+  "objects": 127,
+  "materials": 10,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.911,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0002__s0": {
+  "pass": true,
+  "tokens": 3043,
+  "lines": 97,
+  "objects": 116,
+  "materials": 11,
+  "lights": 4,
+  "edge_share": 0.057,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (6% of it)"
+  ]
+ },
+ "test_0003__s0": {
+  "pass": true,
+  "tokens": 3256,
+  "lines": 97,
+  "objects": 117,
+  "materials": 14,
+  "lights": 5,
+  "edge_share": 0.031,
+  "fill": 0.979,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0004__s0": {
+  "pass": true,
+  "tokens": 2827,
+  "lines": 84,
+  "objects": 94,
+  "materials": 15,
+  "lights": 7,
+  "edge_share": 0.0,
+  "fill": 0.969,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0005__s0": {
+  "pass": true,
+  "tokens": 2682,
+  "lines": 88,
+  "objects": 75,
+  "materials": 14,
+  "lights": 6,
+  "edge_share": 0.0,
+  "fill": 0.885,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0006__s0": {
+  "pass": true,
+  "tokens": 2693,
+  "lines": 91,
+  "objects": 135,
+  "materials": 12,
+  "lights": 4,
+  "edge_share": 0.038,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0007__s0": {
+  "pass": true,
+  "tokens": 2425,
+  "lines": 85,
+  "objects": 152,
+  "materials": 13,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.883,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0008__s0": {
+  "pass": true,
+  "tokens": 3148,
+  "lines": 111,
+  "objects": 149,
+  "materials": 14,
+  "lights": 3,
+  "edge_share": 0.039,
+  "fill": 0.982,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0009__s0": {
+  "pass": true,
+  "tokens": 2926,
+  "lines": 91,
+  "objects": 146,
+  "materials": 19,
+  "lights": 7,
+  "edge_share": 0.0,
+  "fill": 0.951,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0010__s0": {
+  "pass": true,
+  "tokens": 2966,
+  "lines": 93,
+  "objects": 111,
+  "materials": 13,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.833,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0011__s0": {
+  "pass": true,
+  "tokens": 2682,
+  "lines": 96,
+  "objects": 134,
+  "materials": 14,
+  "lights": 3,
+  "edge_share": 0.005,
+  "fill": 0.966,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0012__s0": {
+  "pass": true,
+  "tokens": 2840,
+  "lines": 103,
+  "objects": 144,
+  "materials": 23,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.948,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0013__s0": {
+  "pass": true,
+  "tokens": 2805,
+  "lines": 97,
+  "objects": 112,
+  "materials": 13,
+  "lights": 9,
+  "edge_share": 0.0,
+  "fill": 0.818,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0014__s0": {
+  "pass": true,
+  "tokens": 2605,
+  "lines": 88,
+  "objects": 135,
+  "materials": 12,
+  "lights": 7,
+  "edge_share": 0.072,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (7% of it)"
+  ]
+ },
+ "test_0015__s0": {
+  "pass": true,
+  "tokens": 2650,
+  "lines": 81,
+  "objects": 101,
+  "materials": 8,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.883,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0016__s0": {
+  "pass": false,
+  "tokens": 3426,
+  "lines": 96,
+  "objects": 66,
+  "materials": 12,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: to_track_quat() argument 1 must be str, not Vector  [line: if i: box((p - q).to_track_quat(Vector((0, 1, 0)), 'Z').to_euler(), (.04, .04, (p - q).length), \"door\").rotation_euler = (p - q).to_track_quat(Vector((0, 1, 0)), 'Z').to_euler()]",
+   "too long: 3426 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0017__s0": {
+  "pass": true,
+  "tokens": 2799,
+  "lines": 100,
+  "objects": 97,
+  "materials": 11,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.909,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0018__s0": {
+  "pass": false,
+  "tokens": 3160,
+  "lines": 100,
+  "objects": 27,
+  "materials": 7,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: IDMaterials.append(): error with argument 1, \"material\" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]"
+  ],
+  "warnings": []
+ },
+ "test_0019__s0": {
+  "pass": true,
+  "tokens": 2854,
+  "lines": 90,
+  "objects": 110,
+  "materials": 12,
+  "lights": 4,
+  "edge_share": 0.039,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0020__s0": {
+  "pass": true,
+  "tokens": 2446,
+  "lines": 80,
+  "objects": 101,
+  "materials": 10,
+  "lights": 8,
+  "edge_share": 0.0,
+  "fill": 0.93,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0021__s0": {
+  "pass": false,
+  "tokens": 2913,
+  "lines": 95,
+  "objects": 161,
+  "materials": 11,
+  "lights": 10,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: IDMaterials.append(): error with argument 1, \"material\" -  Function.material expected a Material type, not BMesh  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]"
+  ],
+  "warnings": []
+ },
+ "test_0022__s0": {
+  "pass": true,
+  "tokens": 2701,
+  "lines": 90,
+  "objects": 234,
+  "materials": 18,
+  "lights": 17,
+  "edge_share": 0.048,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0023__s0": {
+  "pass": true,
+  "tokens": 2977,
+  "lines": 98,
+  "objects": 126,
+  "materials": 14,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.906,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0024__s0": {
+  "pass": false,
+  "tokens": 3301,
+  "lines": 115,
+  "objects": 4,
+  "materials": 4,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: Vector addition: (Vector + tuple) invalid type for this operation  [line: a, b = Vector(a), Vector(b); log_(a, b, .3, m); log_(b + (0, 0, .5), b + (0, 0, 1.1), .3, m, 3)]",
+   "too long: 3301 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0025__s0": {
+  "pass": true,
+  "tokens": 3086,
+  "lines": 100,
+  "objects": 183,
+  "materials": 13,
+  "lights": 8,
+  "edge_share": 0.027,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0026__s0": {
+  "pass": true,
+  "tokens": 2871,
+  "lines": 92,
+  "objects": 127,
+  "materials": 14,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.823,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0027__s0": {
+  "pass": true,
+  "tokens": 2694,
+  "lines": 91,
+  "objects": 173,
+  "materials": 13,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.867,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0028__s0": {
+  "pass": true,
+  "tokens": 3089,
+  "lines": 102,
+  "objects": 268,
+  "materials": 27,
+  "lights": 4,
+  "edge_share": 0.023,
+  "fill": 0.901,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0029__s0": {
+  "pass": true,
+  "tokens": 2436,
+  "lines": 81,
+  "objects": 85,
+  "materials": 12,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.849,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0030__s0": {
+  "pass": true,
+  "tokens": 2288,
+  "lines": 84,
+  "objects": 167,
+  "materials": 8,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.956,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0031__s0": {
+  "pass": true,
+  "tokens": 2913,
+  "lines": 92,
+  "objects": 148,
+  "materials": 14,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.841,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0032__s0": {
+  "pass": true,
+  "tokens": 3014,
+  "lines": 105,
+  "objects": 104,
+  "materials": 12,
+  "lights": 4,
+  "edge_share": 0.004,
+  "fill": 0.992,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0033__s0": {
+  "pass": false,
+  "tokens": 2724,
+  "lines": 91,
+  "objects": 18,
+  "materials": 3,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: IDMaterials.append(): error with argument 1, \"material\" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]"
+  ],
+  "warnings": []
+ },
+ "test_0034__s0": {
+  "pass": false,
+  "tokens": 2694,
+  "lines": 94,
+  "objects": 154,
+  "materials": 10,
+  "lights": 7,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: not enough values to unpack (expected 3, got 2)  [line: if math.hypot(x, y) < 11 and not any(math.hypot(x - tx, y - ty) < 1.2 for tx, ty, _ in trees): lump((x, y, .45), .26, apple, .8)]"
+  ],
+  "warnings": []
+ },
+ "test_0035__s0": {
+  "pass": true,
+  "tokens": 2582,
+  "lines": 102,
+  "objects": 133,
+  "materials": 14,
+  "lights": 3,
+  "edge_share": 0.011,
+  "fill": 0.992,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0036__s0": {
+  "pass": true,
+  "tokens": 2956,
+  "lines": 108,
+  "objects": 233,
+  "materials": 11,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.758,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0037__s0": {
+  "pass": true,
+  "tokens": 2390,
+  "lines": 84,
+  "objects": 448,
+  "materials": 20,
+  "lights": 4,
+  "edge_share": 0.004,
+  "fill": 0.943,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0038__s0": {
+  "pass": false,
+  "tokens": 3168,
+  "lines": 123,
+  "objects": 47,
+  "materials": 6,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: IDMaterials.append(): error with argument 1, \"material\" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]"
+  ],
+  "warnings": []
+ },
+ "test_0039__s0": {
+  "pass": true,
+  "tokens": 2918,
+  "lines": 97,
+  "objects": 109,
+  "materials": 15,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.906,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0040__s0": {
+  "pass": false,
+  "tokens": 3026,
+  "lines": 99,
+  "objects": 47,
+  "materials": 7,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: 'Material' object is not callable  [line: flame((gx, gy - 1.8, 1.0), 700)]"
+  ],
+  "warnings": []
+ },
+ "test_0041__s0": {
+  "pass": false,
+  "tokens": 2815,
+  "lines": 100,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: invalid syntax (script.py, line 44)"
+  ],
+  "warnings": []
+ },
+ "test_0042__s0": {
+  "pass": true,
+  "tokens": 2759,
+  "lines": 93,
+  "objects": 125,
+  "materials": 18,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.982,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0043__s0": {
+  "pass": true,
+  "tokens": 2803,
+  "lines": 98,
+  "objects": 264,
+  "materials": 12,
+  "lights": 7,
+  "edge_share": 0.004,
+  "fill": 0.961,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0044__s0": {
+  "pass": true,
+  "tokens": 2905,
+  "lines": 94,
+  "objects": 84,
+  "materials": 13,
+  "lights": 8,
+  "edge_share": 0.015,
+  "fill": 0.99,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0045__s0": {
+  "pass": false,
+  "tokens": 2805,
+  "lines": 98,
+  "objects": 128,
+  "materials": 13,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: part() takes from 2 to 4 positional arguments but 5 were given  [line: part(bm, cliff, random.uniform(-3, 3), random.uniform(-8, -5), .15)]"
+  ],
+  "warnings": []
+ },
+ "test_0046__s0": {
+  "pass": true,
+  "tokens": 2900,
+  "lines": 93,
+  "objects": 87,
+  "materials": 15,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.948,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0047__s0": {
+  "pass": true,
+  "tokens": 3147,
+  "lines": 105,
+  "objects": 156,
+  "materials": 15,
+  "lights": 6,
+  "edge_share": 0.0,
+  "fill": 0.901,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0048__s0": {
+  "pass": true,
+  "tokens": 2659,
+  "lines": 96,
+  "objects": 129,
+  "materials": 13,
+  "lights": 4,
+  "edge_share": 0.003,
+  "fill": 0.979,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0049__s0": {
+  "pass": true,
+  "tokens": 2987,
+  "lines": 90,
+  "objects": 105,
+  "materials": 15,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.901,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0050__s0": {
+  "pass": true,
+  "tokens": 2809,
+  "lines": 100,
+  "objects": 212,
+  "materials": 10,
+  "lights": 4,
+  "edge_share": 0.063,
+  "fill": 0.969,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (6% of it)"
+  ]
+ },
+ "test_0051__s0": {
+  "pass": true,
+  "tokens": 2509,
+  "lines": 83,
+  "objects": 253,
+  "materials": 9,
+  "lights": 5,
+  "edge_share": 0.026,
+  "fill": 0.919,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0052__s0": {
+  "pass": false,
+  "tokens": 2809,
+  "lines": 94,
+  "objects": 13,
+  "materials": 4,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Element-wise multiplication: not supported between 'Vector' and 'tuple' types  [line: for v in bm.verts: v.co = Vector((v.co.x, v.co.y, v.co.z)) * (1.25, 1.25, 1)]"
+  ],
+  "warnings": []
+ },
+ "test_0053__s0": {
+  "pass": false,
+  "tokens": 2419,
+  "lines": 86,
+  "objects": 90,
+  "materials": 14,
+  "lights": 4,
+  "edge_share": 0.271,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 27% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0054__s0": {
+  "pass": true,
+  "tokens": 2013,
+  "lines": 77,
+  "objects": 138,
+  "materials": 28,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.901,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0055__s0": {
+  "pass": true,
+  "tokens": 2835,
+  "lines": 89,
+  "objects": 105,
+  "materials": 11,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.867,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0056__s0": {
+  "pass": true,
+  "tokens": 2499,
+  "lines": 87,
+  "objects": 124,
+  "materials": 13,
+  "lights": 5,
+  "edge_share": 0.04,
+  "fill": 0.982,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0057__s0": {
+  "pass": true,
+  "tokens": 2827,
+  "lines": 109,
+  "objects": 240,
+  "materials": 11,
+  "lights": 11,
+  "edge_share": 0.057,
+  "fill": 0.966,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (6% of it)"
+  ]
+ },
+ "test_0058__s0": {
+  "pass": true,
+  "tokens": 2559,
+  "lines": 86,
+  "objects": 80,
+  "materials": 13,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.865,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0059__s0": {
+  "pass": true,
+  "tokens": 2908,
+  "lines": 106,
+  "objects": 87,
+  "materials": 11,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.885,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0060__s0": {
+  "pass": true,
+  "tokens": 3203,
+  "lines": 112,
+  "objects": 156,
+  "materials": 18,
+  "lights": 7,
+  "edge_share": 0.047,
+  "fill": 0.974,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0061__s0": {
+  "pass": true,
+  "tokens": 2669,
+  "lines": 90,
+  "objects": 124,
+  "materials": 21,
+  "lights": 8,
+  "edge_share": 0.004,
+  "fill": 0.966,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0062__s0": {
+  "pass": true,
+  "tokens": 2865,
+  "lines": 96,
+  "objects": 90,
+  "materials": 14,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.878,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0063__s0": {
+  "pass": false,
+  "tokens": 3163,
+  "lines": 99,
+  "objects": 3,
+  "materials": 3,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'NoneType' object has no attribute 'faces'  [line: for s in (-1, 1): blk(bm, 0, s * 1.5, 3.3, 7.8, 3.4, .25, 0).faces]"
+  ],
+  "warnings": []
+ },
+ "test_0064__s0": {
+  "pass": true,
+  "tokens": 3230,
+  "lines": 107,
+  "objects": 177,
+  "materials": 13,
+  "lights": 6,
+  "edge_share": 0.017,
+  "fill": 0.995,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0065__s0": {
+  "pass": true,
+  "tokens": 2966,
+  "lines": 98,
+  "objects": 163,
+  "materials": 12,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.958,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0066__s0": {
+  "pass": false,
+  "tokens": 2646,
+  "lines": 96,
+  "objects": 58,
+  "materials": 8,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: IDMaterials.append(): error with argument 1, \"material\" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); me.materials.append(m); return o]"
+  ],
+  "warnings": []
+ },
+ "test_0067__s0": {
+  "pass": true,
+  "tokens": 3178,
+  "lines": 101,
+  "objects": 97,
+  "materials": 14,
+  "lights": 4,
+  "edge_share": 0.014,
+  "fill": 0.997,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0068__s0": {
+  "pass": true,
+  "tokens": 3190,
+  "lines": 97,
+  "objects": 117,
+  "materials": 19,
+  "lights": 7,
+  "edge_share": 0.093,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (9% of it)"
+  ]
+ },
+ "test_0069__s0": {
+  "pass": false,
+  "tokens": 3293,
+  "lines": 101,
+  "objects": 12,
+  "materials": 7,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: IDMaterials.append(): error with argument 1, \"material\" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]"
+  ],
+  "warnings": []
+ },
+ "test_0070__s0": {
+  "pass": true,
+  "tokens": 3054,
+  "lines": 90,
+  "objects": 196,
+  "materials": 10,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.922,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0071__s0": {
+  "pass": true,
+  "tokens": 3206,
+  "lines": 110,
+  "objects": 162,
+  "materials": 13,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.781,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0072__s0": {
+  "pass": true,
+  "tokens": 3265,
+  "lines": 118,
+  "objects": 204,
+  "materials": 14,
+  "lights": 6,
+  "edge_share": 0.016,
+  "fill": 0.997,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0073__s0": {
+  "pass": true,
+  "tokens": 2550,
+  "lines": 81,
+  "objects": 185,
+  "materials": 11,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.898,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0074__s0": {
+  "pass": false,
+  "tokens": 3345,
+  "lines": 118,
+  "objects": 126,
+  "materials": 13,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.922,
+  "fails": [
+   "too long: 3345 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0075__s0": {
+  "pass": true,
+  "tokens": 2755,
+  "lines": 97,
+  "objects": 167,
+  "materials": 15,
+  "lights": 4,
+  "edge_share": 0.02,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0076__s0": {
+  "pass": true,
+  "tokens": 2714,
+  "lines": 92,
+  "objects": 125,
+  "materials": 14,
+  "lights": 6,
+  "edge_share": 0.0,
+  "fill": 0.859,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0077__s0": {
+  "pass": true,
+  "tokens": 3008,
+  "lines": 99,
+  "objects": 97,
+  "materials": 12,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.826,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0078__s0": {
+  "pass": true,
+  "tokens": 3273,
+  "lines": 93,
+  "objects": 130,
+  "materials": 12,
+  "lights": 6,
+  "edge_share": 0.073,
+  "fill": 0.961,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (7% of it)"
+  ]
+ },
+ "test_0079__s0": {
+  "pass": true,
+  "tokens": 2762,
+  "lines": 84,
+  "objects": 109,
+  "materials": 13,
+  "lights": 11,
+  "edge_share": 0.084,
+  "fill": 0.992,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (8% of it)"
+  ]
+ },
+ "test_0080__s0": {
+  "pass": false,
+  "tokens": 3301,
+  "lines": 102,
+  "objects": 66,
+  "materials": 12,
+  "lights": 6,
+  "edge_share": 0.0,
+  "fill": 0.917,
+  "fails": [
+   "too long: 3301 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0081__s0": {
+  "pass": true,
+  "tokens": 2871,
+  "lines": 97,
+  "objects": 187,
+  "materials": 13,
+  "lights": 5,
+  "edge_share": 0.0,
+  "fill": 0.818,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0082__s0": {
+  "pass": true,
+  "tokens": 3000,
+  "lines": 95,
+  "objects": 214,
+  "materials": 18,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.846,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0083__s0": {
+  "pass": true,
+  "tokens": 2906,
+  "lines": 82,
+  "objects": 116,
+  "materials": 14,
+  "lights": 5,
+  "edge_share": 0.079,
+  "fill": 0.914,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (8% of it)"
+  ]
+ },
+ "test_0084__s0": {
+  "pass": true,
+  "tokens": 3000,
+  "lines": 100,
+  "objects": 148,
+  "materials": 12,
+  "lights": 4,
+  "edge_share": 0.042,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0085__s0": {
+  "pass": true,
+  "tokens": 2974,
+  "lines": 92,
+  "objects": 171,
+  "materials": 16,
+  "lights": 7,
+  "edge_share": 0.0,
+  "fill": 0.896,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0086__s0": {
+  "pass": true,
+  "tokens": 2886,
+  "lines": 93,
+  "objects": 206,
+  "materials": 12,
+  "lights": 9,
+  "edge_share": 0.016,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0087__s0": {
+  "pass": true,
+  "tokens": 2848,
+  "lines": 104,
+  "objects": 222,
+  "materials": 15,
+  "lights": 11,
+  "edge_share": 0.083,
+  "fill": 0.935,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (8% of it)"
+  ]
+ },
+ "test_0088__s0": {
+  "pass": true,
+  "tokens": 2835,
+  "lines": 89,
+  "objects": 129,
+  "materials": 12,
+  "lights": 3,
+  "edge_share": 0.002,
+  "fill": 0.917,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0089__s0": {
+  "pass": true,
+  "tokens": 2713,
+  "lines": 89,
+  "objects": 171,
+  "materials": 11,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.883,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0090__s0": {
+  "pass": false,
+  "tokens": 3472,
+  "lines": 106,
+  "objects": 154,
+  "materials": 14,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.815,
+  "fails": [
+   "too long: 3472 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0091__s0": {
+  "pass": true,
+  "tokens": 3280,
+  "lines": 103,
+  "objects": 392,
+  "materials": 11,
+  "lights": 7,
+  "edge_share": 0.004,
+  "fill": 0.893,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0092__s0": {
+  "pass": true,
+  "tokens": 3259,
+  "lines": 100,
+  "objects": 140,
+  "materials": 14,
+  "lights": 6,
+  "edge_share": 0.0,
+  "fill": 0.802,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0093__s0": {
+  "pass": true,
+  "tokens": 3051,
+  "lines": 98,
+  "objects": 111,
+  "materials": 16,
+  "lights": 5,
+  "edge_share": 0.056,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (6% of it)"
+  ]
+ },
+ "test_0094__s0": {
+  "pass": false,
+  "tokens": 3147,
+  "lines": 108,
+  "objects": 59,
+  "materials": 10,
+  "lights": 2,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: too many values to unpack (expected 3)  [line: for i, (r, yaw, pitch) in enumerate([(-1, 0.4, .1, 1.5), (1.2, 3.6, -.1, 1.2), (0, 5.2, .2, 1.7)]):]"
+  ],
+  "warnings": []
+ },
+ "test_0095__s0": {
+  "pass": true,
+  "tokens": 2956,
+  "lines": 99,
+  "objects": 87,
+  "materials": 14,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.932,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0096__s0": {
+  "pass": true,
+  "tokens": 2757,
+  "lines": 87,
+  "objects": 105,
+  "materials": 14,
+  "lights": 4,
+  "edge_share": 0.035,
+  "fill": 0.953,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0097__s0": {
+  "pass": true,
+  "tokens": 3225,
+  "lines": 99,
+  "objects": 127,
+  "materials": 15,
+  "lights": 6,
+  "edge_share": 0.0,
+  "fill": 0.94,
+  "fails": [],
+  "warnings": []
+ },
+ "test_0098__s0": {
+  "pass": true,
+  "tokens": 2497,
+  "lines": 96,
+  "objects": 254,
+  "materials": 10,
+  "lights": 3,
+  "edge_share": 0.105,
+  "fill": 1.0,
+  "fails": [],
+  "warnings": [
+   "the scene touches the edge of its own view (10% of it)"
+  ]
+ },
+ "test_0099__s0": {
+  "pass": true,
+  "tokens": 2977,
+  "lines": 90,
+  "objects": 74,
+  "materials": 13,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.826,
+  "fails": [],
+  "warnings": []
+ }
+}

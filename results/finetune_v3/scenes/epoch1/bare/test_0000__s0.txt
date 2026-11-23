@@ -1,0 +1,94 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1932)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def rust(c, e=0):
+    m = bpy.data.materials.new("r"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = .9
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+sand, crack, mud, hull, hull2, deck = rust((.42, .3, .16)), rust((.08, .05, .04)), rust((.22, .14, .08)), rust((.42, .12, .05)), rust((.28, .09, .05)), rust((.2, .12, .07))
+tin, tin2, wood, rope, weed, bulb = rust((.25, .27, .28)), rust((.15, .17, .18)), rust((.3, .2, .12)), rust((.5, .4, .25)), rust((.3, .38, .12)), rust((1, .7, .3), 14)
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, at, rot)
+def spar(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return add(bm, m)
+def tube(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def heap(at, r, m, sq=.5):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.8, 1.2); v.co.z *= sq
+    return add(bm, m, at)
+def lamp(c, w, at):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+# dry seabed: a slab of cracked mud with a ragged underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=12.5, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.12, .12)
+    v.co.z -= 2
+add(bm, sand)
+for i in range(16):
+    a = random.uniform(0, 6.28); r = random.uniform(1, 11)
+    slab((math.cos(a) * r, math.sin(a) * r, 0), (random.uniform(2, 5), .2, .06), crack, (0, 0, a + random.uniform(-.5, .5)))
+# the ship: a keel, two hull sides leaning apart, a deck, a cabin, mast and rigging
+def ship(at, rot, L, W, H, hull):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        v.co = Vector((v.co.x * L, v.co.y * W, (v.co.z + .5) * H))
+        if v.co.z > H / 2: v.co.y *= .75; v.co.x = v.co.x * 1.0 + (0 if v.co.y > 0 else 0)
+    add(bm, hull, at, rot)
+slab((0, 0, 0), (3.4, 2.4, .6), hull2, (0, 0, .15))
+ship((-1.5, -1.5, .2), (.3, 0, .15), 12, 2.6, 2.2, hull); ship((1.5, 1.5, .2), (-.3, 0, .15), 12, 2.6, 2.2, hull2)
+slab((0, 0, 1.9), (11, 2.6, .3), deck, (0, 0, .15))
+slab((-3.2, 0, 2.2), (3.4, 2.0, 2.2), hull2, (0, 0, .15)); slab((-3.2, 1.05, 3.1), (2.2, .1, .8), tin2, (0, 0, .15))
+slab((-3.2, -1.05, 3.1), (2.2, .1, .8), tin2, (0, 0, .15))
+spar((1.0, 0, 2.2), (1.0, 0, 8.2), .22, wood); spar((1.0, 0, 6.5), (1.0, 2.2, 4.0), .1, rope); spar((1.0, 0, 6.5), (1.0, -2.2, 4.0), .1, rope); spar((1.0, 0, 6.5), (-3.2, 0, 4.4), .08, rope)
+tube((-3.2, 0, 4.4), .2, 1.4, 6, tin2)
+slab((-5.2, 0, 2.2), (.1, 1.4, .1), rope)
+# the ladder dangling from the deck edge
+for sx in (-.3, .3): spar((2.8, -1.0, 2.0), (2.8, -1.0, -1.4), .08, wood)
+for k in range(7): slab((2.8, -1.0, 1.7 - k * .45), (.8, .1, .08), wood)
+# wrecked sheds: bent tin roofs, broken walls, one leaning on its side
+for (x, y, r, m) in ((-7, 4.5, .4, tin), (5.5, 6, 1.2, tin2), (8, -2, -.3, tin)):
+    slab((x, y, 0), (3.2, 2.4, 1.8), m, (0, 0, r))
+    slab((x, y, 1.8), (3.6, 2.8, .15), tin2, (.2 * (r > 0), 0, r))
+    slab((x + 1.0, y - 1.22, 0), (.9, .06, 1.4), crack, (0, 0, r))
+slab((-8.5, -4, .4), (3.0, 2.0, .4), tin, (.5, 0, .8)); slab((-8.5, -4, .8), (3.0, 2.0, .1), tin2, (.5, 0, .8))
+# scrubby plants: clumps of spiky weed
+for i in range(16):
+    a = random.uniform(0, 6.28); r = random.uniform(2, 10.5)
+    x, y = math.cos(a) * r, math.sin(a) * r
+    if abs(y) < 2.5 and abs(x) < 7: continue
+    for k in range(3): tube((x + k * .2 - .2, y, 0), .12, random.uniform(.5, 1.0), 4, weed, .02, (random.uniform(-.4, .4), random.uniform(-.4, .4), 0))
+# a broken buoy and a lantern on a post
+tube((7.5, 1.5, 0), .5, .9, 7, hull, .35); spar((7.5, 1.5, .9), (7.5, 1.5, 1.7), .1, wood)
+spar((-6.5, -3.5, 0), (-6.5, -3.5, 2.2), .12, wood); slab((-6.5, -3.5, 2.2), (.5, .5, .6), bulb); lamp((1, .65, .25), 500, (-6.5, -3.5, 2.8))
+# a faint sunken window in the cabin glows
+slab((-3.2, -1.1, 2.7), (.6, .06, .5), bulb, (0, 0, .15)); lamp((1, .6, .25), 150, (-3.2, -2.2, 2.9))
+for c, w, p in (((1, .5, .22), 6, (-26, -14, 8)), ((.4, .55, .8), 2.2, (24, 22, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .025, .02, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 85; cm.clip_end = 500
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+t = Vector((0, 0, 2)); co.location = t + Vector((8, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

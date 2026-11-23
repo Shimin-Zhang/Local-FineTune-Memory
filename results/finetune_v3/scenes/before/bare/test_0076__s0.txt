@@ -1,0 +1,252 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Set up
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+
+# Materials
+def create_mat(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+mat_cliff = create_mat("Cliff", (0.45, 0.38, 0.30, 1), 0.95)
+mat_mud = create_mat("MudWall", (0.65, 0.52, 0.38, 1), 0.9)
+mat_roof_flat = create_mat("FlatRoof", (0.5, 0.42, 0.32, 1), 0.95)
+mat_thatch = create_mat("Thatch", (0.72, 0.6, 0.35, 1), 0.85)
+mat_cave = create_mat("CaveDark", (0.08, 0.06, 0.05, 1), 1.0)
+mat_mask = create_mat("Mask", (0.85, 0.75, 0.55, 1), 0.6)
+mat_mask_eye = create_mat("MaskEye", (0.1, 0.08, 0.06, 1), 0.5)
+mat_terrace = create_mat("Terrace", (0.55, 0.48, 0.38, 1), 0.95)
+mat_stone = create_mat("Stone", (0.5, 0.48, 0.45, 1), 0.9)
+mat_pillar = create_mat("Pillar", (0.55, 0.5, 0.42, 1), 0.85)
+mat_rug = create_mat("Rug", (0.6, 0.2, 0.15, 1), 0.95)
+mat_bell = create_mat("Bell", (0.6, 0.5, 0.2, 1), 0.3, 0.8)
+mat_lantern = create_mat("Lantern", (0.9, 0.8, 0.5, 1), 0.7)
+mat_lantern_emit = create_mat("LanternGlow", (1.0, 0.85, 0.4, 1), 0.5)
+mat_lantern_emit.node_tree.nodes["Principled BSDF"].inputs["Emission Color"].default_value = (1.0, 0.85, 0.4, 1)
+mat_lantern_emit.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = 3.0
+mat_door = create_mat("Door", (0.35, 0.25, 0.15, 1), 0.8)
+mat_window = create_mat("Window", (0.2, 0.18, 0.12, 1), 0.7)
+mat_rope = create_mat("Rope", (0.5, 0.4, 0.25, 1), 0.95)
+mat_wood = create_mat("Wood", (0.4, 0.28, 0.15, 1), 0.85)
+
+# Helper
+def add_box(name, loc, size, mat):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(mat)
+    return obj
+
+def add_cyl(name, loc, r, depth, mat, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=depth, location=loc, rotation=rot)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(mat)
+    return obj
+
+def add_sphere(name, loc, r, mat, seg=16):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=loc, segments=seg, ring_count=seg//2)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(mat)
+    return obj
+
+# ===== CLIFF FACE =====
+# Main cliff - a large stepped rock face
+cliff_parts = [
+    # (location, size)
+    ((0, 0, -8), (40, 30, 16)),      # base
+    ((0, -5, 2), (38, 28, 10)),      # mid
+    ((0, -8, 10), (35, 25, 8)),      # upper
+    ((0, -10, 16), (30, 22, 6)),     # top shelf
+    # Cliff overhangs / ledges
+    ((-8, -12, 6), (12, 8, 4)),
+    ((10, -14, 12), (10, 6, 3)),
+    ((-12, -15, 14), (8, 5, 3)),
+    # Side rock formations
+    ((-18, -5, 0), (8, 15, 20)),
+    ((18, -3, 2), (7, 12, 18)),
+    ((-15, -18, 8), (6, 8, 10)),
+    ((15, -16, 10), (5, 7, 8)),
+]
+for i, (loc, size) in enumerate(cliff_parts):
+    add_box(f"Cliff_{i}", loc, size, mat_cliff)
+
+# ===== FLAT-ROOFED MUD HOUSE (lower level) =====
+# House sits on a terrace at z ~ 4
+house_z = 4
+house_x = -5
+house_y = -12
+
+# House base / foundation
+add_box("House_Foundation", (house_x, house_y, house_z - 0.5), (8, 6, 1), mat_stone)
+
+# Mud walls
+wall_h = 4
+wall_t = 0.4
+# Front wall
+add_box("House_FrontWall", (house_x, house_y + 3 - wall_t/2, house_z + wall_h/2), (8, wall_t, wall_h), mat_mud)
+# Back wall
+add_box("House_BackWall", (house_x, house_y - 3 + wall_t/2, house_z + wall_h/2), (8, wall_t, wall_h), mat_mud)
+# Left wall
+add_box("House_LeftWall", (house_x - 4 + wall_t/2, house_y, house_z + wall_h/2), (wall_t, 6, wall_h), mat_mud)
+# Right wall
+add_box("House_RightWall", (house_x + 4 - wall_t/2, house_y, house_z + wall_h/2), (wall_t, 6, wall_h), mat_mud)
+
+# Door opening (cut into front wall - simulate with a dark inset)
+add_box("House_Door", (house_x, house_y + 3 - 0.1, house_z + 1.2), (1.6, 0.2, 2.4), mat_door)
+
+# Windows
+add_box("House_Window_L", (house_x - 2, house_y + 3 - 0.1, house_z + 2.2), (1, 0.2, 1), mat_window)
+add_box("House_Window_R", (house_x + 2, house_y + 3 - 0.1, house_z + 2.2), (1, 0.2, 1), mat_window)
+
+# Flat roof
+roof_z = house_z + wall_h
+add_box("House_FlatRoof", (house_x, house_y, roof_z + 0.3), (9, 7, 0.6), mat_roof_flat)
+# Roof edge trim
+add_box("House_RoofTrim_F", (house_x, house_y + 3.5, roof_z + 0.3), (9.2, 0.3, 0.7), mat_wood)
+add_box("House_RoofTrim_B", (house_x, house_y - 3.5, roof_z + 0.3), (9.2, 0.3, 0.7), mat_wood)
+add_box("House_RoofTrim_L", (house_x - 4.5, house_y, roof_z + 0.3), (0.3, 7.2, 0.7), mat_wood)
+add_box("House_RoofTrim_R", (house_x + 4.5, house_y, roof_z + 0.3), (0.3, 7.2, 0.7), mat_wood)
+
+# ===== TALL THATCHED ROOF (on top of the flat roof, like a second story / tower) =====
+tower_x = house_x
+tower_y = house_y
+tower_base_z = roof_z + 0.6
+tower_h = 6
+
+# Tower walls (smaller, centered)
+tw = 4
+td = 3
+add_box("Tower_FrontWall", (tower_x, tower_y + td/2 - wall_t/2, tower_base_z + tower_h/2), (tw, wall_t, tower_h), mat_mud)
+add_box("Tower_BackWall", (tower_x, tower_y - td/2 + wall_t/2, tower_base_z + tower_h/2), (tw, wall_t, tower_h), mat_mud)
+add_box("Tower_LeftWall", (tower_x - tw/2 + wall_t/2, tower_y, tower_base_z + tower_h/2), (wall_t, td, tower_h), mat_mud)
+add_box("Tower_RightWall", (tower_x + tw/2 - wall_t/2, tower_y, tower_base_z + tower_h/2), (wall_t, td, tower_h), mat_mud)
+
+# Tower door
+add_box("Tower_Door", (tower_x, tower_y + td/2 - 0.1, tower_base_z + 1.2), (1.2, 0.2, 2), mat_door)
+
+# Tall thatched roof - cone/pyramid shape
+thatch_z = tower_base_z + tower_h
+# Use a cone for the thatched roof
+bpy.ops.mesh.primitive_cone_add(radius1=3.5, radius2=0.3, depth=5, location=(tower_x, tower_y, thatch_z + 2.5), vertices=8)
+thatch = bpy.context.active_object
+thatch.name = "ThatchedRoof"
+thatch.data.materials.append(mat_thatch)
+# Slightly flatten
+thatch.scale = (1, 0.8, 1)
+bpy.ops.object.transform_apply(scale=True)
+
+# Thatch texture bumps - add small overlapping boxes around the roof
+for i in range(20):
+    angle = i * 2 * math.pi / 20
+    r = 2.8
+    bx = tower_x + r * math.cos(angle)
+    by = tower_y + r * 0.8 * math.sin(angle)
+    bz = thatch_z + 1.5 + random.uniform(0, 2)
+    add_box(f"Thatch_{i}", (bx, by, bz), (0.8, 0.4, 1.2), mat_thatch)
+
+# ===== CAVE-MOUTH SHRINE (above the house, in the cliff) =====
+cave_x = 5
+cave_y = -18
+cave_z = 14
+
+# Cave opening - dark recess
+add_box("Cave_Recess", (cave_x, cave_y, cave_z), (6, 3, 4), mat_cave)
+
+# Cave arch / frame
+# Arch top
+bpy.ops.mesh.primitive_cylinder_add(radius=3, depth=1.5, location=(cave_x, cave_y + 1.5, cave_z + 2), rotation=(math.pi/2, 0, 0))
+arch = bpy.context.active_object
+arch.name = "Cave_Arch"
+arch.scale = (1, 1, 0.5)
+bpy.ops.object.transform_apply(scale=True)
+arch.data.materials.append(mat_stone)
+
+# Pillars
+add_cyl("Cave_Pillar_L", (cave_x - 2.5, cave_y + 1.5, cave_z), 0.5, 5, mat_pillar)
+add_cyl("Cave_Pillar_R", (cave_x + 2.5, cave_y + 1.5, cave_z), 0.5, 5, mat_pillar)
+
+# Shrine platform inside cave
+add_box("Cave_Platform", (cave_x, cave_y, cave_z - 1.5), (4, 1.5, 0.5), mat_stone)
+
+# Shrine object in cave (a small altar)
+add_box("Cave_Altar", (cave_x, cave_y - 0.5, cave_z - 0.8), (2, 0.8, 1), mat_stone)
+# Offering bowl
+add_cyl("Cave_Bowl", (cave_x, cave_y - 0.5, cave_z + 0.1), 0.3, 0.2, mat_bell)
+
+# Small lanterns in cave
+for side in [-1, 1]:
+    lx = cave_x + side * 1.5
+    add_cyl(f"Cave_Lantern_{side}", (lx, cave_y + 0.5, cave_z - 0.5), 0.15, 0.4, mat_lantern)
+    add_sphere(f"Cave_LanternGlow_{side}", (lx, cave_y + 0.5, cave_z - 0.3), 0.1, mat_lantern_emit)
+
+# ===== TERRACE WITH MASKS =====
+# Terrace platform - a wide flat area in front of the house
+ter_z = house_z
+ter_x = house_x
+ter_y = house_y + 6
+
+# Main terrace floor
+add_box("Terrace_Floor", (ter_x, ter_y, ter_z - 0.3), (14, 5, 0.6), mat_terrace)
+
+# Terrace steps (going down)
+for i in range(3):
+    add_box(f"Terrace_Step_{i}", (ter_x, ter_y + 2.5 + i * 0.8, ter_z - 0.3 - i * 0.3), (14, 0.8, 0.3), mat_terrace)
+
+# Terrace railing
+rail_h = 0.8
+rail_t = 0.15
+# Front railing
+add_box("Terrace_Rail_F", (ter_x, ter_y + 2.5, ter_z + rail_h/2), (14, rail_t, rail_h), mat_wood)
+# Side railings
+add_box("Terrace_Rail_L", (ter_x - 7, ter_y, ter_z + rail_h/2), (rail_t, 5, rail_h), mat_wood)
+add_box("Terrace_Rail_R", (ter_x + 7, ter_y, ter_z + rail_h/2), (rail_t, 5, rail_h), mat_wood)
+
+# Railing posts
+for i in range(8):
+    px = ter_x - 7 + i * 2
+    add_cyl(f"Terrace_Post_{i}", (px, ter_y + 2.5, ter_z + rail_h/2), 0.08, rail_h, mat_wood)
+
+# ===== MASKS LINE UP ON TERRACE =====
+# Create mask shape: a flat oval face with eye holes
+def create_mask(name, loc, scale=1.0, rot_z=0):
+    # Face - flattened sphere
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.4 * scale, location=loc, segments=16, ring_count=8)
+    face = bpy.context.active_object
+    face.name = name
+    face.scale = (1, 0.3, 1.2)
+    bpy.ops.object.transform_apply(scale=True)
+    face.data.materials.append(mat_mask)
+    
+    # Eyes - small dark spheres
+    eye_r = 0.08 * scale
+    for side in [-1, 1]:
+        ex = loc[0] + side * 0.15 * scale
+        ey = loc[1] + 0.12 * scale
+        ez = loc[2] + 0.1 * scale
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=eye_r, location=(ex, ey, ez), segments=8, ring_count=4)
+        eye = bpy.context.active_object
+        eye.name = f"{name}_Eye_{side}"
+        eye.data.materials.append(mat_mask_eye)
+    
+    # Mouth - small dark

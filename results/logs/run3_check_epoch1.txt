@@ -1,0 +1,101 @@
+test_0000__s0 PASS   2860 tokens  objects=88  
+test_0001__s0 PASS   3008 tokens  objects=177  
+test_0002__s0 PASS   2939 tokens  objects=83  
+test_0003__s0 PASS   3177 tokens  objects=116  
+test_0004__s0 PASS   2888 tokens  objects=136  
+test_0005__s0 PASS   2723 tokens  objects=105  
+test_0006__s0 PASS   2802 tokens  objects=112  
+test_0007__s0 PASS   2628 tokens  objects=170  (warning) the scene is small in its own view (it spans 73% of the picture); move the camera closer
+test_0008__s0 PASS   2735 tokens  objects=159  
+test_0009__s0 PASS   2814 tokens  objects=118  
+test_0010__s0 PASS   2600 tokens  objects=98  
+test_0011__s0 PASS   2825 tokens  objects=153  
+test_0012__s0 FAIL   3056 tokens  objects=186  cut off by the picture's edge: the scene covers 16% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base
+test_0013__s0 PASS   2922 tokens  objects=168  
+test_0014__s0 FAIL   2483 tokens  objects=6  error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 2  [line: o = bpy.data.objects.new("f", me); o.location, o.rotation_euler = at, rot]
+test_0015__s0 FAIL   2993 tokens  objects=52  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0016__s0 FAIL   2961 tokens  objects=132  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0017__s0 FAIL   3036 tokens  objects=9  error: TypeError: 'float' object is not subscriptable  [line: v.co = Vector((v.co.x * d[0] * k, v.co.y * d[1] * k, (v.co.z + .5) * d[2]))]
+test_0018__s0 PASS   2808 tokens  objects=94  
+test_0019__s0 PASS   2622 tokens  objects=132  
+test_0020__s0 PASS   2577 tokens  objects=70  
+test_0021__s0 PASS   2852 tokens  objects=163  
+test_0022__s0 PASS   2941 tokens  objects=222  
+test_0023__s0 PASS   2791 tokens  objects=92  
+test_0024__s0 FAIL   3762 tokens  objects=104  too long: 3762 tokens (limit 3300)
+test_0025__s0 PASS   2959 tokens  objects=119  
+test_0026__s0 PASS   2825 tokens  objects=195  (warning) the scene touches the edge of its own view (5% of it)
+test_0027__s0 PASS   2755 tokens  objects=247  
+test_0028__s0 PASS   2956 tokens  objects=164  
+test_0029__s0 PASS   3193 tokens  objects=119  (warning) the scene touches the edge of its own view (9% of it)
+test_0030__s0 PASS   2861 tokens  objects=143  
+test_0031__s0 PASS   2962 tokens  objects=122  
+test_0032__s0 FAIL   3109 tokens  objects=81  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not int  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0033__s0 PASS   2794 tokens  objects=218  
+test_0034__s0 PASS   2551 tokens  objects=157  
+test_0035__s0 FAIL   2547 tokens  objects=77  error: TypeError: lump() takes 3 positional arguments but 4 were given  [line: lump((sx, sy, .55), (1.0, .65, .55), wool, (0, 0, a))]
+test_0036__s0 PASS   2744 tokens  objects=230  
+test_0037__s0 PASS   2060 tokens  objects=409  
+test_0038__s0 FAIL   3176 tokens  objects=29  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0039__s0 PASS   3085 tokens  objects=119  
+test_0040__s0 FAIL   2910 tokens  objects=72  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0041__s0 FAIL   2908 tokens  objects=0  error: SyntaxError: unmatched ')' (script.py, line 49)
+test_0042__s0 PASS   2971 tokens  objects=165  
+test_0043__s0 PASS   2746 tokens  objects=163  (warning) the scene touches the edge of its own view (5% of it)
+test_0044__s0 PASS   3008 tokens  objects=75  
+test_0045__s0 PASS   3088 tokens  objects=171  
+test_0046__s0 FAIL   2597 tokens  objects=19  error: TypeError: slab() missing 2 required positional arguments: 'h' and 'k'  [line: pole((-1.5, 1.0, 2.95), (-.4, 1.0, 3.1), .07, "log2", 4); slab((.2, 1.0, 2.95), .5, .3, .1, "log")]
+test_0047__s0 PASS   3194 tokens  objects=94  
+test_0048__s0 PASS   2859 tokens  objects=90  
+test_0049__s0 PASS   2683 tokens  objects=84  (warning) the scene touches the edge of its own view (6% of it)
+test_0050__s0 FAIL   3016 tokens  objects=21  error: AttributeError: BMeshOpsModule: operator "join" doesn't exist  [line: qb = q.copy(); q.free(); bmesh.ops.join(bm, geoms=[bm.verts, bm.faces, bm.edges, qb.verts, qb.faces, qb.edges])]
+test_0051__s0 PASS   2799 tokens  objects=282  
+test_0052__s0 PASS   2605 tokens  objects=69  
+test_0053__s0 PASS   3128 tokens  objects=228  
+test_0054__s0 FAIL   2078 tokens  objects=20  error: ValueError: not enough values to unpack (expected 3, got 2)  [line: for ring, r, h in enumerate((3.8, 5.0, 6.2)):]
+test_0055__s0 PASS   2871 tokens  objects=126  
+test_0056__s0 FAIL   2795 tokens  objects=55  error: AttributeError: 'Vector' object has no attribute 'perp'  [line: p = a.lerp(b, t); n = (b - a).normalized().perp()]
+test_0057__s0 PASS   2509 tokens  objects=114  (warning) the scene touches the edge of its own view (10% of it)
+test_0058__s0 PASS   2569 tokens  objects=87  
+test_0059__s0 FAIL   2680 tokens  objects=71  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0060__s0 FAIL   3659 tokens  objects=234  too long: 3659 tokens (limit 3300)
+test_0061__s0 PASS   3216 tokens  objects=102  
+test_0062__s0 FAIL   3239 tokens  objects=1  error: ReferenceError: BMesh data of type BMesh has been removed  [line: bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r, matrix=__import__("mathutils").Matrix.Translation((x, y, z)) @ __import__("mathutils").Matrix.Diagonal((1, 1, sq, 1)))]
+test_0063__s0 FAIL   2544 tokens  objects=2  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0064__s0 PASS   3227 tokens  objects=140  
+test_0065__s0 PASS   3284 tokens  objects=356  
+test_0066__s0 FAIL   2577 tokens  objects=0  error: TypeError: Matrix.Diagonal() takes exactly one argument (2 given)  [line: bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1, matrix=__import__("mathutils").Matrix.Diagonal((26, 22, 3.4), 1) @ __import__("mathutils").Matrix.Translation((0, 0, -1.7)))]
+test_0067__s0 FAIL   3360 tokens  objects=88  too long: 3360 tokens (limit 3300)
+test_0068__s0 PASS   3140 tokens  objects=92  
+test_0069__s0 FAIL   3181 tokens  objects=16  error: ValueError: too many values to unpack (expected 2)  [line: gx, gy = at(0, 4.2, 0)]
+test_0070__s0 FAIL   3721 tokens  objects=285  too long: 3721 tokens (limit 3300)
+test_0071__s0 FAIL   2995 tokens  objects=215  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0072__s0 PASS   2733 tokens  objects=180  
+test_0073__s0 PASS   2926 tokens  objects=152  
+test_0074__s0 PASS   3195 tokens  objects=112  
+test_0075__s0 PASS   2680 tokens  objects=150  (warning) the scene touches the edge of its own view (8% of it)
+test_0076__s0 PASS   2939 tokens  objects=128  
+test_0077__s0 PASS   2678 tokens  objects=85  
+test_0078__s0 FAIL   3334 tokens  objects=136  too long: 3334 tokens (limit 3300); (warning) the scene touches the edge of its own view (5% of it)
+test_0079__s0 FAIL   3304 tokens  objects=225  too long: 3304 tokens (limit 3300)
+test_0080__s0 FAIL   3504 tokens  objects=78  too long: 3504 tokens (limit 3300)
+test_0081__s0 PASS   3217 tokens  objects=221  
+test_0082__s0 PASS   3167 tokens  objects=136  
+test_0083__s0 PASS   3273 tokens  objects=166  (warning) the scene touches the edge of its own view (12% of it)
+test_0084__s0 PASS   3014 tokens  objects=125  
+test_0085__s0 PASS   2656 tokens  objects=118  
+test_0086__s0 PASS   2813 tokens  objects=255  
+test_0087__s0 PASS   2518 tokens  objects=264  
+test_0088__s0 FAIL   3341 tokens  objects=205  error: IndexError: tuple index out of range  [line: m = (goat, goat2, goat)[i]]; too long: 3341 tokens (limit 3300)
+test_0089__s0 FAIL   2162 tokens  objects=7  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0090__s0 FAIL   3442 tokens  objects=120  too long: 3442 tokens (limit 3300)
+test_0091__s0 PASS   3235 tokens  objects=265  (warning) the scene is small in its own view (it spans 73% of the picture); move the camera closer
+test_0092__s0 FAIL   3448 tokens  objects=113  too long: 3448 tokens (limit 3300)
+test_0093__s0 PASS   2976 tokens  objects=113  
+test_0094__s0 FAIL   2973 tokens  objects=59  error: TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function  [line: sc.collection.objects.link(o); o.data.materials.append(m); return o]
+test_0095__s0 PASS   3228 tokens  objects=114  
+test_0096__s0 PASS   3039 tokens  objects=124  (warning) the scene touches the edge of its own view (7% of it)
+test_0097__s0 FAIL   3326 tokens  objects=101  too long: 3326 tokens (limit 3300)
+test_0098__s0 FAIL   2451 tokens  objects=0  error: TypeError: 'Material' object is not callable  [line: brick2, cloth, wood, thatch = clay((.45, .2, .13)), clay((.6, .55, .45)), clay((.28, .18, .1)), clay((.3, .22, .1))]
+test_0099__s0 PASS   2903 tokens  objects=125  (warning) the scene touches the edge of its own view (6% of it)
+66 of 100 pass

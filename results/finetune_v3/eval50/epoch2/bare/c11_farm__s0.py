@@ -1,0 +1,102 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1684)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+F = {}
+def dye(k, rgb, glow=0, rough=.9):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if glow: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    F[k] = m
+for k, c, g, r in [("soil", (.14, .1, .06), 0, 1), ("grass", (.1, .2, .06), 0, 1), ("red", (.5, .08, .06), 0, .8), ("white", (.7, .68, .6), 0, .8),
+        ("roof", (.12, .12, .14), 0, .8), ("silo", (.5, .5, .45), 0, .6), ("steel", (.3, .32, .35), 0, .5), ("yellow", (.8, .55, .05), 0, .7),
+        ("tyre", (.04, .04, .04), 0, 1), ("hay", (.65, .5, .18), 0, 1), ("wood", (.3, .2, .1), 0, 1), ("glass", (1, .7, .3), 12, 1), ("lamp", (1, .8, .4), 18, 1),
+        ("green", (.1, .3, .1), 0, 1), ("path", (.3, .24, .16), 0, 1)]: dye(k, c, g, r)
+def part(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(F[k]); return o
+def blk(at, s, k, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return part(bm, k, at, (rx, 0, rz))
+def tube(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return part(bm, k, at, rot)
+def rod(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return part(bm, k)
+def shine(kind, c, w, at, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# base: a round farm plot, soil with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.08, .08)
+    v.co.z -= 2
+part(bm, "soil")
+# grass paddock and a trodden path from the barn door to the front
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=11.5, radius2=11.5, depth=.15)
+for v in bm.verts: v.co += Vector((random.uniform(-.4, .4), random.uniform(-.4, .4), 0))
+part(bm, "grass", (0, 0, 0))
+blk((0, -2, .08), (2.2, 14, .05), "path", .1)
+# barn: red walls, white trim, gambrel roof, big doors, lit windows
+blk((-4, 4, 0), (7, 5, 3.2), "red")
+for s in (-1, 1):
+    blk((-4, 4 + s * 1.2, 3.2), (7.6, 3.4, .25), "roof", 0, s * .62)
+    blk((-4, 4 + s * 3.1, 3.6), (7.6, 1.6, .22), "roof", 0, s * 1.1)
+blk((-4, 4, 4.7), (7.8, .5, .3), "white")
+blk((-4, 1.45, 0), (3, .15, 2.5), "wood"); blk((-5.4, 1.45, 0), (.1, .1, 2.5), "white"); blk((-2.6, 1.45, 0), (.1, .1, 2.5), "white")
+for x in (-6.2, -1.8): blk((x, 1.45, 1.5), (.9, .1, .9), "glass")
+blk((-4, 1.4, 2.5), (3.2, .1, .12), "white")
+shine("POINT", (1, .7, .3), 600, (-4, -.2, 1.8))
+# silo: ribbed drum, conical roof, ladder rail and a small hatch house
+tube((3.5, 5, 0), 1.7, 6.5, 8, "silo")
+for z in (1.2, 2.6, 4.0, 5.4): tube((3.5, 5, z), 1.78, .18, 8, "steel")
+tube((3.5, 5, 6.5), 1.9, 1.6, 8, "roof", .1)
+blk((3.5, 3.2, 0), (.15, .15, 5.4), "wood"); blk((4.1, 3.2, 0), (.15, .15, 5.4), "wood")
+for i in range(10): rod((3.5, 3.2, .4 + i * .5), (4.1, 3.2, .4 + i * .5), .08, "wood")
+# fence round the paddock: posts and two rails, open at the front for the path
+for i in range(18):
+    a = math.pi * 1.02 + i * .173
+    p = Vector((math.cos(a) * 10.5, math.sin(a) * 9.2, 0))
+    if p.y < -7.5: continue
+    tube(p, .12, 1.2, 5, "wood")
+    b = Vector((math.cos(a + .173) * 10.5, math.sin(a + .173) * 9.2, 0))
+    if b.y > -7.5:
+        for z in (.45, .95): rod(p + Vector((0, 0, z)), b + Vector((0, 0, z)), .08, "wood")
+# tractor: yellow body, big rear tyres, cab, exhaust, headlamps, a tow bar
+tx, ty = 1.5, -4.5
+blk((tx, ty, .9), (3.0, 1.4, .9), "yellow"); blk((tx + .3, ty, 1.8), (1.2, 1.3, 1.1), "yellow"); blk((tx + .3, ty, 2.9), (1.4, 1.5, .12), "steel")
+blk((tx - 1.2, ty, 1.8), (.2, 1.2, .7), "glass")
+for sx in (-1, 1):
+    for wx, r in ((-.9, .9), (.9, .6)):
+        tube((tx + wx, ty + sx * .8, r), r, .5, 8, "tyre", rot=(math.pi / 2, 0, 0)); tube((tx + wx, ty + sx * .8, r), r * .45, .55, 6, "steel", rot=(math.pi / 2, 0, 0))
+tube((tx - .8, ty, 1.8), .1, 1.5, 5, "steel"); blk((tx + 1.5, ty - .3, 1.1), (.2, .3, .3), "lamp"); blk((tx + 1.5, ty + .3, 1.1), (.2, .3, .3), "lamp")
+shine("POINT", (1, .85, .5), 220, (tx + 2.2, ty, 1.2))
+# three hay bales: one round, two square, with binding lines
+tube((6, -3, .8), .8, 1.6, 8, "hay", rot=(0, math.pi / 2, 0))
+for i, (x, y) in enumerate([(-1.5, -7.5), (1, -8.2)]):
+    blk((x, y, 0), (1.7, 1.2, 1.2), "hay", .3 * i); blk((x, y, .4), (1.75, .1, 1.2), "wood", .3 * i); blk((x, y, .8), (1.75, .1, 1.2), "wood", .3 * i)
+# windmill on the back rim: lattice tower, wheel, lantern
+mx, my = -9, 7
+for sx, sy in ((-.4, -.4), (.4, -.4), (.4, .4), (-.4, .4)): rod((mx + sx, my + sy, 0), (mx + sx * .5, my + sy * .5, 6), .1, "wood")
+rod((mx, my, 6), (mx, my, 6.4), .3, "steel")
+for k in range(6):
+    a = k * math.pi / 3; rod((mx, my, 6.4), (mx + math.cos(a) * 2.4, my, 6.4 + math.sin(a) * 2.4), .12, "steel")
+blk((mx, my, 6.2), (.4, .4, .4), "lamp"); shine("POINT", (1, .8, .4), 150, (mx, my - .5, 6.4))
+# evening: warm low key from the left, cool rim from behind
+shine("SUN", (1, .6, .3), 5.5, (-26, -12, 8), (0, 0, 2)); shine("SUN", (.35, .45, .9), 2.2, (22, 24, 12), (0, 0, 2))
+w = bpy.data.worlds.new("eve"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.5)); co.location = t + Vector((14, -50, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

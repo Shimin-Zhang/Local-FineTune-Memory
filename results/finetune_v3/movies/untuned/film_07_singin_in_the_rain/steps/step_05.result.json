@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 6.5,
+ "error": null,
+ "error_line": null,
+ "printed": "Fixed: camera repositioned to good vantage point, lights massively boosted, sky fill added, materials tuned, more puddles and rain drops added, render settings improved\n",
+ "state_saved": true,
+ "n_objects": 373,
+ "n_lights": 30,
+ "n_materials": 39,
+ "own_camera": true,
+ "render_error": null
+}

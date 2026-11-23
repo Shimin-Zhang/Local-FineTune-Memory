@@ -1,0 +1,169 @@
+import bpy, math, random
+from mathutils import Vector
+
+# Reposition camera to see the scene properly
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (40, 40, 20)
+    cam.rotation_euler = (math.radians(60), 0, math.radians(-135))
+    cam.data.lens = 35
+
+# Add world background - dark stormy sky
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.02, 0.02, 0.04, 1)
+    bg.inputs[1].default_value = 1.0
+
+# Boost lightning light
+ll = bpy.data.objects.get("LightningLight")
+if ll:
+    ll.data.energy = 2000
+    ll.data.color = (0.6, 0.7, 1.0)
+
+# Boost fire light
+fl = bpy.data.objects.get("FireLight")
+if fl:
+    fl.data.energy = 300
+    fl.data.color = (1.0, 0.4, 0.1)
+
+# Add more fire glow spheres along the trail
+dl = Vector((15, 15, 0.5))
+m_fire = bpy.data.materials.get("Fire")
+m_spark = bpy.data.materials.get("Spark")
+m_glow = bpy.data.materials.get("Glow")
+
+# Extra fire glow at the car's rear
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(dl.x - 2.5, dl.y, dl.z))
+fg = bpy.context.object; fg.name = "FireGlowRear"
+if m_fire: fg.data.materials.append(m_fire)
+
+# Add a large fire glow sphere behind the car
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.5, location=(dl.x - 4, dl.y, dl.z - 0.2))
+fg2 = bpy.context.object; fg2.name = "FireGlowBig"
+if m_fire: fg2.data.materials.append(m_fire)
+
+# Add more sparks
+for i in range(40):
+    t = random.random()
+    x = dl.x - 3 - t * 20
+    y = dl.y + random.uniform(-2, 2)
+    z = dl.z - 0.2 + random.uniform(0, 1.5)
+    sz = random.uniform(0.03, 0.12) * (1 - t * 0.6)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=sz, location=(x, y, z))
+    sp = bpy.context.object; sp.name = f"SparkX{i}"
+    if m_spark: sp.data.materials.append(m_spark)
+
+# Add smoke puffs
+m_smoke = bpy.data.materials.get("Smoke")
+for i in range(20):
+    t = random.random()
+    x = dl.x - 3 - t * 15
+    y = dl.y + random.uniform(-1.5, 1.5)
+    z = dl.z + random.uniform(0.5, 3.0)
+    sz = random.uniform(0.4, 1.2) * (0.5 + t)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=sz, location=(x, y, z))
+    sm = bpy.context.object; sm.name = f"SmokeX{i}"
+    if m_smoke: sm.data.materials.append(m_smoke)
+
+# Add a secondary lightning bolt from a different angle
+m_bolt = bpy.data.materials.get("Bolt")
+import bmesh
+def bolt2(s, e, segs=12, spread=3, name="Bolt2"):
+    mesh = bpy.data.meshes.new(name)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    pts = []
+    for i in range(segs + 1):
+        t = i / segs
+        p = s.lerp(e, t)
+        if 0 < i < segs:
+            p += Vector((random.uniform(-spread, spread) * (1 - t * 0.5),
+                         random.uniform(-spread, spread) * (1 - t * 0.5),
+                         random.uniform(-spread * 0.3, spread * 0.3)))
+        pts.append(p)
+    for i in range(len(pts) - 1):
+        p1, p2 = pts[i], pts[i + 1]
+        d = (p2 - p1).normalized()
+        up = Vector((0, 0, 1))
+        if abs(d.dot(up)) > 0.9: up = Vector((1, 0, 0))
+        side = d.cross(up).normalized()
+        up2 = d.cross(side).normalized()
+        r1, r2 = 0.25, 0.15
+        v1 = bm.verts.new(p1 + side * r1); v2 = bm.verts.new(p1 - side * r1)
+        v3 = bm.verts.new(p1 + up2 * r1); v4 = bm.verts.new(p1 - up2 * r1)
+        v5 = bm.verts.new(p2 + side * r2); v6 = bm.verts.new(p2 - side * r2)
+        v7 = bm.verts.new(p2 + up2 * r2); v8 = bm.verts.new(p2 - up2 * r2)
+        bm.faces.new([v1, v2, v6, v5]); bm.faces.new([v2, v4, v8, v6])
+        bm.faces.new([v4, v3, v7, v8]); bm.faces.new([v3, v1, v5, v7])
+    bm.to_mesh(mesh); bm.free()
+    if m_bolt: obj.data.materials.append(m_bolt)
+    return obj
+
+bolt2(Vector((-15, -20, 55)), Vector((0, 0, 39)), 15, 3.5, "Bolt2")
+bolt2(Vector((10, 15, 50)), Vector((0, 0, 38)), 12, 2.5, "Bolt3")
+
+# Add glow at each bolt impact
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, location=(0, 0, 39), segments=12, ring_count=6)
+ig2 = bpy.context.object; ig2.name = "ImpactGlow2"
+if m_glow: ig2.data.materials.append(m_glow)
+
+# Add a point light at the second bolt impact
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 39))
+pl2 = bpy.context.object; pl2.name = "LightningLight2"
+pl2.data.energy = 1500
+pl2.data.color = (0.6, 0.7, 1.0)
+
+# Add road markings - center line dashes
+m_white = bpy.data.materials.get("White")
+for i in range(-8, 9):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(i * 4, 0, 0.03))
+    dash = bpy.context.object; dash.name = f"CenterDash{i}"
+    dash.scale = (1.5, 0.15, 0.01)
+    if m_white: dash.data.materials.append(m_white)
+
+# Add a few more street details - fire hydrant
+m_red = bpy.data.materials.new("Red")
+m_red.use_nodes = True
+rb = m_red.node_tree.nodes['Principled BSDF']
+rb.inputs['Base Color'].default_value = (0.8, 0.1, 0.1, 1)
+rb.inputs['Roughness'].default_value = 0.5
+bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.8, location=(5, -22, 0.4))
+fh = bpy.context.object; fh.name = "FireHydrant"
+fh.data.materials.append(m_red)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(5, -22, 0.85))
+fht = bpy.context.object; fht.name = "FireHydrantTop"
+fht.data.materials.append(m_red)
+
+# Add a bench on the sidewalk
+m_wood = bpy.data.materials.get("Wood")
+m_conc = bpy.data.materials.get("Conc")
+bpy.ops.mesh.primitive_cube_add(size=1, location=(-5, -23, 0.4))
+bench = bpy.context.object; bench.name = "Bench"
+bench.scale = (1.5, 0.5, 0.1)
+if m_wood: bench.data.materials.append(m_wood)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(-5, -23, 0.7))
+bback = bpy.context.object; bback.name = "BenchBack"
+bback.scale = (1.5, 0.1, 0.4)
+if m_wood: bback.data.materials.append(m_wood)
+
+# Add a mailbox
+m_metal = bpy.data.materials.get("Metal")
+bpy.ops.mesh.primitive_cube_add(size=1, location=(8, -23, 0.6))
+mb = bpy.context.object; mb.name = "Mailbox"
+mb.scale = (0.3, 0.2, 0.4)
+if m_metal: mb.data.materials.append(m_metal)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.6, location=(8, -23, 0.3))
+mbp = bpy.context.object; mbp.name = "MailboxPole"
+mbp.data.materials.append(m_metal)
+
+# Set up the scene to be more dramatic - lower the sun
+sun = bpy.data.objects.get("Sun")
+if sun:
+    sun.data.energy = 0.5
+    sun.rotation_euler = (math.radians(80), 0, math.radians(30))

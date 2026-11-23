@@ -1,0 +1,150 @@
+c03_solar_system__s1.py      exit 0       4.0s image=True objects=14 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "vertices" unrecognized
+c02_park__s2.py              exit 0       4.6s image=True objects=88 viewport_only_materials=0 error=None
+c02_park__s0.py              exit 0       4.7s image=True objects=12 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not Vector
+c01_living_room__s0.py       exit 0       4.8s image=True objects=60 viewport_only_materials=0 error=None
+c02_park__s1.py              exit 0       5.0s image=True objects=67 viewport_only_materials=0 error=None
+c01_living_room__s1.py       exit 0       5.2s image=True objects=71 viewport_only_materials=0 error=None
+c01_living_room__s2.py       exit 0       5.5s image=True objects=83 viewport_only_materials=0 error=None
+c03_solar_system__s0.py      exit 0       5.7s image=True objects=36 viewport_only_materials=0 error=None
+c03_solar_system__s2.py      exit 0       3.9s image=True objects=143 viewport_only_materials=0 error=None
+c04_desk__s1.py              exit 0       5.8s image=True objects=96 viewport_only_materials=0 error=None
+c05_kitchen__s0.py           exit 0       5.8s image=True objects=92 viewport_only_materials=0 error=None
+c04_desk__s0.py              exit 0       6.2s image=True objects=96 viewport_only_materials=0 error=None
+c04_desk__s2.py              exit 0       6.2s image=True objects=90 viewport_only_materials=0 error=None
+c05_kitchen__s1.py           exit 0       6.0s image=True objects=164 viewport_only_materials=0 error=None
+c05_kitchen__s2.py           exit 0       5.9s image=True objects=98 viewport_only_materials=0 error=None
+c06_harbour__s1.py           exit 0       3.8s image=True objects=78 viewport_only_materials=0 error=None
+c06_harbour__s0.py           exit 0       5.9s image=True objects=63 viewport_only_materials=0 error=None
+c07_campsite__s0.py          exit 0       2.5s image=True objects=0 viewport_only_materials=0 error=ValueError: not enough values to unpack (expected 13, got 11)
+c06_harbour__s2.py           exit 0       2.8s image=True objects=46 viewport_only_materials=0 error=TypeError: blk() takes from 3 to 4 positional arguments but 5 were given
+c07_campsite__s1.py          exit 0       3.8s image=True objects=131 viewport_only_materials=0 error=None
+c07_campsite__s2.py          exit 0       3.7s image=True objects=94 viewport_only_materials=0 error=None
+c08_playground__s0.py        exit 0       3.7s image=True objects=55 viewport_only_materials=0 error=ValueError: not enough values to unpack (expected 4, got 2)
+c08_playground__s1.py        exit 0       3.7s image=True objects=61 viewport_only_materials=0 error=None
+c09_street_corner__s0.py     exit 0       4.1s image=True objects=1 viewport_only_materials=0 error=KeyError: 'road'
+c08_playground__s2.py        exit 0       5.8s image=True objects=104 viewport_only_materials=0 error=None
+c09_street_corner__s2.py     exit 0       4.9s image=True objects=62 viewport_only_materials=0 error=None
+c09_street_corner__s1.py     exit 0       5.6s image=True objects=62 viewport_only_materials=0 error=None
+c10_castle__s1.py            exit 0       4.5s image=True objects=95 viewport_only_materials=0 error=None
+c10_castle__s0.py            exit 0       5.1s image=True objects=143 viewport_only_materials=0 error=None
+c11_farm__s0.py              exit 0       5.1s image=True objects=98 viewport_only_materials=0 error=None
+c10_castle__s2.py            exit 0       5.5s image=True objects=131 viewport_only_materials=0 error=None
+c11_farm__s1.py              exit 0       4.9s image=True objects=73 viewport_only_materials=0 error=None
+c12_bedroom__s1.py           exit 0       3.5s image=True objects=16 viewport_only_materials=0 error=TypeError: box() missing 1 required positional argument: 'm'
+c12_bedroom__s0.py           exit 0       4.5s image=True objects=66 viewport_only_materials=0 error=None
+c11_farm__s2.py              exit 0       5.8s image=True objects=91 viewport_only_materials=0 error=None
+c12_bedroom__s2.py           exit 0       4.7s image=True objects=63 viewport_only_materials=0 error=None
+l01_key_rim__s0.py           exit 0       4.4s image=True objects=68 viewport_only_materials=0 error=None
+l01_key_rim__s1.py           exit 0       4.7s image=True objects=37 viewport_only_materials=0 error=None
+l02_three_point__s0.py       exit 0       4.8s image=True objects=56 viewport_only_materials=0 error=None
+l01_key_rim__s2.py           exit 0       5.9s image=True objects=20 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+l02_three_point__s1.py       exit 0       4.1s image=True objects=110 viewport_only_materials=0 error=None
+l03_product_shot__s0.py      exit 0       3.8s image=True objects=35 viewport_only_materials=0 error=AttributeError: 'PointLight' object has no attribute 'spot_size'
+l02_three_point__s2.py       exit 0       4.5s image=True objects=57 viewport_only_materials=0 error=None
+l03_product_shot__s1.py      exit 0       4.4s image=True objects=26 viewport_only_materials=0 error=None
+l03_product_shot__s2.py      exit 0       4.7s image=True objects=31 viewport_only_materials=0 error=None
+l04_campfire_night__s2.py    exit 0       2.9s image=True objects=23 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+l04_campfire_night__s1.py    exit 0       4.2s image=True objects=97 viewport_only_materials=0 error=None
+l04_campfire_night__s0.py    exit 0       5.5s image=True objects=93 viewport_only_materials=0 error=None
+l05_desk_lamp__s0.py         exit 0       6.3s image=True objects=45 viewport_only_materials=0 error=None
+l05_desk_lamp__s2.py         exit 0       7.2s image=True objects=67 viewport_only_materials=0 error=None
+l05_desk_lamp__s1.py         exit 0       7.7s image=True objects=129 viewport_only_materials=0 error=None
+l06_showroom__s1.py          exit 0       6.1s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 106)
+l06_showroom__s0.py          exit 0       6.9s image=True objects=60 viewport_only_materials=0 error=None
+l06_showroom__s2.py          exit 0       6.4s image=True objects=139 viewport_only_materials=0 error=None
+l07_sunset__s0.py            exit 0       6.1s image=True objects=92 viewport_only_materials=0 error=None
+l07_sunset__s1.py            exit 0       5.4s image=True objects=90 viewport_only_materials=0 error=None
+l07_sunset__s2.py            exit 0       4.2s image=True objects=98 viewport_only_materials=0 error=None
+l08_spooky_pumpkin__s0.py    exit 0       3.8s image=True objects=73 viewport_only_materials=0 error=None
+l08_spooky_pumpkin__s2.py    exit 0       3.8s image=True objects=0 viewport_only_materials=0 error=TypeError: Value after * must be an iterable, not float
+l08_spooky_pumpkin__s1.py    exit 0       4.3s image=True objects=90 viewport_only_materials=0 error=None
+l09_stage_spots__s1.py       exit 0       3.5s image=True objects=10 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+l09_stage_spots__s0.py       exit 0       3.8s image=True objects=45 viewport_only_materials=0 error=None
+l09_stage_spots__s2.py       exit 0       3.8s image=True objects=71 viewport_only_materials=0 error=None
+l10_depth_of_field__s0.py    exit 0       4.5s image=True objects=105 viewport_only_materials=0 error=None
+l10_depth_of_field__s1.py    exit 0       3.8s image=True objects=30 viewport_only_materials=0 error=TypeError: lathe() takes from 3 to 4 positional arguments but 5 were given
+s02_mug__s0.py               exit 0       3.7s image=True objects=0 viewport_only_materials=0 error=ValueError: too many values to unpack (expected 2)
+l10_depth_of_field__s2.py    exit 0       4.9s image=True objects=87 viewport_only_materials=0 error=None
+s02_mug__s2.py               exit 0       4.5s image=True objects=60 viewport_only_materials=0 error=ValueError: too many values to unpack (expected 2)
+s03_table_vase__s0.py        exit 0       4.7s image=True objects=64 viewport_only_materials=0 error=None
+s02_mug__s1.py               exit 0       5.0s image=True objects=86 viewport_only_materials=0 error=None
+s03_table_vase__s1.py        exit 0       4.7s image=True objects=73 viewport_only_materials=0 error=None
+s03_table_vase__s2.py        exit 0       4.7s image=True objects=100 viewport_only_materials=0 error=None
+s04_duck__s0.py              exit 0       4.6s image=True objects=89 viewport_only_materials=0 error=None
+s04_duck__s2.py              exit 0       4.0s image=True objects=57 viewport_only_materials=0 error=None
+s05_snowman__s2.py           exit 0       3.9s image=True objects=53 viewport_only_materials=0 error=None
+s04_duck__s1.py              exit 0       5.7s image=True objects=64 viewport_only_materials=0 error=None
+s05_snowman__s0.py           exit 0       4.8s image=True objects=68 viewport_only_materials=0 error=None
+s05_snowman__s1.py           exit 0       5.5s image=True objects=114 viewport_only_materials=0 error=None
+s06_car__s0.py               exit 0       5.3s image=True objects=42 viewport_only_materials=0 error=None
+s06_car__s2.py               exit 0       4.5s image=True objects=52 viewport_only_materials=0 error=None
+s06_car__s1.py               exit 0       5.1s image=True objects=45 viewport_only_materials=0 error=None
+s07_house__s0.py             exit 0       3.3s image=True objects=33 viewport_only_materials=0 error=TypeError: wall() got an unexpected keyword argument 'j'
+s07_house__s1.py             exit 0       3.9s image=True objects=68 viewport_only_materials=0 error=None
+s07_house__s2.py             exit 0       3.7s image=True objects=22 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+s08_traffic_light__s0.py     exit 0       3.7s image=True objects=38 viewport_only_materials=0 error=None
+s08_traffic_light__s1.py     exit 0       3.9s image=True objects=22 viewport_only_materials=0 error=ValueError: too many values to unpack (expected 2)
+s08_traffic_light__s2.py     exit 0       4.5s image=True objects=56 viewport_only_materials=0 error=None
+s09_rocket__s0.py            exit 0       4.3s image=True objects=56 viewport_only_materials=0 error=None
+s09_rocket__s1.py            exit 0       4.2s image=True objects=66 viewport_only_materials=0 error=None
+s09_rocket__s2.py            exit 0       4.3s image=True objects=75 viewport_only_materials=0 error=None
+s10_cactus__s0.py            exit 0       3.2s image=True objects=13 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+s10_cactus__s1.py            exit 0       3.1s image=True objects=44 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+s10_cactus__s2.py            exit 0       3.8s image=True objects=88 viewport_only_materials=0 error=None
+s11_lighthouse__s0.py        exit 0       3.6s image=True objects=84 viewport_only_materials=0 error=NameError: name 'wood' is not defined
+s11_lighthouse__s1.py        exit 0       3.5s image=True objects=2 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not BMesh
+s11_lighthouse__s2.py        exit 0       4.0s image=True objects=61 viewport_only_materials=0 error=None
+t01_teapot__s1.py            exit 0       3.7s image=True objects=54 viewport_only_materials=0 error=None
+t01_teapot__s2.py            exit 0       3.8s image=True objects=46 viewport_only_materials=0 error=TypeError: glaze() missing 1 required positional argument: 'b'
+t01_teapot__s0.py            exit 0       4.6s image=True objects=55 viewport_only_materials=0 error=None
+t02_lemon__s0.py             exit 0       3.9s image=True objects=85 viewport_only_materials=0 error=None
+t02_lemon__s1.py             exit 0       4.7s image=True objects=185 viewport_only_materials=0 error=None
+t02_lemon__s2.py             exit 0       4.2s image=True objects=17 viewport_only_materials=0 error=TypeError: unsupported operand type(s) for *: 'NoneType' and 'float'
+t03_orange__s1.py            exit 0       3.4s image=True objects=5 viewport_only_materials=0 error=AttributeError: module 'random' has no attribute 'acos'
+t03_orange__s0.py            exit 0       4.3s image=True objects=89 viewport_only_materials=0 error=None
+t04_barrel__s2.py            exit 0       3.5s image=True objects=1 viewport_only_materials=0 error=AttributeError: bpy_prop "MeshPolygon.center" is read-only
+t04_barrel__s0.py            exit 0       3.9s image=True objects=66 viewport_only_materials=0 error=None
+t03_orange__s2.py            exit 0       4.5s image=True objects=56 viewport_only_materials=0 error=None
+t04_barrel__s1.py            exit 0       4.6s image=True objects=77 viewport_only_materials=0 error=None
+t05_marble_pawn__s0.py       exit 0       4.1s image=True objects=138 viewport_only_materials=0 error=TypeError: lathe() takes from 3 to 4 positional arguments but 5 were given
+t05_marble_pawn__s1.py       exit 0       5.2s image=True objects=57 viewport_only_materials=0 error=None
+t05_marble_pawn__s2.py       exit 0       4.8s image=True objects=65 viewport_only_materials=0 error=None
+t06_neon_ring__s0.py         exit 0       5.9s image=True objects=158 viewport_only_materials=0 error=None
+t06_neon_ring__s2.py         exit 0       5.6s image=True objects=79 viewport_only_materials=0 error=None
+t06_neon_ring__s1.py         exit 0       6.1s image=True objects=164 viewport_only_materials=0 error=None
+t07_frosted_vase__s0.py      exit 0       6.0s image=True objects=67 viewport_only_materials=0 error=None
+t07_frosted_vase__s1.py      exit 0       5.4s image=True objects=76 viewport_only_materials=0 error=None
+t07_frosted_vase__s2.py      exit 0       4.5s image=True objects=49 viewport_only_materials=0 error=None
+t08_crate__s1.py             exit 0       3.8s image=True objects=1 viewport_only_materials=0 error=SyntaxError: invalid syntax (script.py, line 68)
+t08_crate__s0.py             exit 0       4.7s image=True objects=86 viewport_only_materials=0 error=None
+t08_crate__s2.py             exit 0       4.4s image=True objects=74 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+t09_trophy__s0.py            exit 0       3.9s image=True objects=10 viewport_only_materials=0 error=StopIteration: 
+t10_watermelon__s0.py        exit 0       4.1s image=True objects=30 viewport_only_materials=0 error=None
+t09_trophy__s2.py            exit 0       4.8s image=True objects=77 viewport_only_materials=0 error=None
+t09_trophy__s1.py            exit 0       5.0s image=True objects=57 viewport_only_materials=0 error=None
+t10_watermelon__s2.py        exit 0       3.9s image=True objects=54 viewport_only_materials=0 error=None
+t10_watermelon__s1.py        exit 0       4.9s image=True objects=53 viewport_only_materials=0 error=None
+t11_brick_wall__s0.py        exit 0       3.5s image=True objects=157 viewport_only_materials=0 error=None
+t11_brick_wall__s1.py        exit 0       3.9s image=True objects=179 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+t11_brick_wall__s2.py        exit 0       6.0s image=True objects=492 viewport_only_materials=0 error=None
+t12_basketball__s0.py        exit 0       5.3s image=True objects=334 viewport_only_materials=0 error=None
+t12_basketball__s1.py        exit 0       5.4s image=True objects=1 viewport_only_materials=0 error=SyntaxError: invalid syntax (script.py, line 58)
+t13_crystal_ball__s1.py      exit 0       4.9s image=True objects=67 viewport_only_materials=0 error=None
+t13_crystal_ball__s0.py      exit 0       5.2s image=True objects=50 viewport_only_materials=0 error=None
+t12_basketball__s2.py        exit 0       5.9s image=True objects=321 viewport_only_materials=0 error=None
+t13_crystal_ball__s2.py      exit 0       5.0s image=True objects=53 viewport_only_materials=0 error=ValueError: too many values to unpack (expected 2)
+t14_candy_cane__s0.py        exit 0       5.0s image=True objects=63 viewport_only_materials=0 error=None
+t14_candy_cane__s1.py        exit 0       3.6s image=True objects=65 viewport_only_materials=0 error=None
+t14_candy_cane__s2.py        exit 0       3.9s image=True objects=175 viewport_only_materials=0 error=None
+t15_lava_rock__s2.py         exit 0       4.3s image=True objects=84 viewport_only_materials=0 error=None
+t15_lava_rock__s1.py         exit 0       4.5s image=True objects=67 viewport_only_materials=0 error=None
+t15_lava_rock__s0.py         exit 0       5.3s image=True objects=100 viewport_only_materials=0 error=None
+t16_picnic__s1.py            exit 0       5.0s image=True objects=127 viewport_only_materials=0 error=None
+t16_picnic__s0.py            exit 0       5.1s image=True objects=177 viewport_only_materials=0 error=None
+t16_picnic__s2.py            exit 0       4.6s image=True objects=282 viewport_only_materials=0 error=None
+t17_mossy_boulder__s1.py     exit 0       4.0s image=True objects=119 viewport_only_materials=0 error=None
+t17_mossy_boulder__s0.py     exit 0       4.8s image=True objects=164 viewport_only_materials=0 error=TypeError: create_icosphere: keyword "radius" expected a float, not Material
+t18_soap_bubble__s0.py       exit 0       3.4s image=True objects=24 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+t17_mossy_boulder__s2.py     exit 0       3.4s image=True objects=153 viewport_only_materials=0 error=None
+t18_soap_bubble__s1.py       exit 0       2.8s image=True objects=0 viewport_only_materials=0 error=NameError: name 'r' is not defined
+t18_soap_bubble__s2.py       exit 0       2.8s image=True objects=52 viewport_only_materials=0 error=None

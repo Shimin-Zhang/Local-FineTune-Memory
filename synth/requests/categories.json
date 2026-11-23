@@ -1,0 +1,266 @@
+[
+ {
+  "id": "temples_east_asia",
+  "scope": "Temples, shrines, pagodas and monasteries of East and South-East Asia",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "temples_mediterranean",
+  "scope": "Temples and sacred sites of ancient Greece, Rome, Egypt, Mesopotamia and Persia",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "sacred_americas_africa_oceania",
+  "scope": "Sacred and ceremonial sites of the Americas, Africa and Oceania (not the step pyramid: already made)",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "churches_mosques",
+  "scope": "Churches, chapels, abbeys, mosques, synagogues and cloisters of Europe, North Africa and the Middle East",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "towers",
+  "scope": "Towers that are not lighthouses, castles or wizard towers: watchtowers, bell towers, water towers, signal towers, minarets, fire lookouts",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "fortifications",
+  "scope": "Forts, gatehouses, palisades, town walls, bunkers, border posts and siege works (no castles)",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "ruins_archaeology",
+  "scope": "Ruins and digs: ruined towns, excavations, standing stones, tombs, burial mounds, abandoned quarries",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "fantasy_architecture",
+  "scope": "Fantasy buildings: elven halls, dwarven gates, goblin shacks, dragon roosts, giant's houses, floating keeps (not the wizard's tower: already made)",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "fantasy_places",
+  "scope": "Fantasy places that are not buildings first: enchanted groves, fairy rings, portals, crystal caverns, witch's gardens, troll bridges",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "scifi_outposts",
+  "scope": "Science-fiction exteriors: moon and Mars bases, landing pads, asteroid mines, orbital docks, alien monoliths",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "scifi_interiors",
+  "scope": "Science-fiction interiors shown as cutaways: ship bridges, reactor rooms, cryo bays, hydroponics, airlocks (not a plain corridor: already made)",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "near_future_city",
+  "scope": "Near-future and cyberpunk city fragments: neon alleys, capsule hotels, rooftop antenna farms, drone ports, vending corners",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "rural_dwellings",
+  "scope": "Rural dwellings around the world: cabins, huts, yurts, igloos, stilt houses, treehouses, roundhouses (not a plain house, not a farm)",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "town_buildings",
+  "scope": "Town buildings seen from outside with a little of their surroundings: bakery, inn, bookshop, post office, fire station, town hall, cinema",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "markets_stalls",
+  "scope": "Markets, stalls and street food: night market, flower stall, noodle cart, fishmonger, bazaar lane, flea market",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "workshops_crafts",
+  "scope": "Workshops and crafts, as yards or cutaways: blacksmith, potter, glassblower, cooper, weaver, shipwright, luthier",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "industry_energy",
+  "scope": "Industry and energy: mines, derricks, dams, sawmills, kilns, foundries, power stations, wind and solar plants",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "mills_waterworks",
+  "scope": "Mills and waterworks: watermills, windmills, wells, aqueducts, canal locks, pump houses, irrigation wheels",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "bridges_crossings",
+  "scope": "Bridges and crossings: rope, stone arch, covered, draw, suspension and pontoon bridges, fords, ferry landings, stepping stones",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "railways",
+  "scope": "Railways and tramways: halts, signal boxes, engine sheds, turntables, funiculars, cable cars, mine railways, level crossings",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "roadside",
+  "scope": "Roads and roadsides: fuel stations, bus shelters, toll booths, diners, motels, rest areas, road works, drive-ins (no street corner)",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "docks_shores",
+  "scope": "Boats and shores: fishing piers, boathouses, slipways, dry docks, shipwrecks on a beach, canal moorings, ferry slips (no harbour, no lighthouse)",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "underwater",
+  "scope": "Under the sea: reefs, sunken ships, diving bells, underwater labs, kelp forests, hydrothermal vents, lost statues",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "airfields_flight",
+  "scope": "Flight: hangars, airship masts, balloon launches, helipads, control towers, bush airstrips, glider winches (no rocket)",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "mountains_caves",
+  "scope": "Mountains and caves: alpine huts, summit shelters, cave mouths, cliff dwellings, via ferrata, mountain passes, glacier camps",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "forest_jungle",
+  "scope": "Forest and jungle places: ranger stations, canopy walkways, logging camps, hidden waterfalls, hides, charcoal burners (no plain campsite)",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "deserts_canyons",
+  "scope": "Deserts and canyons: caravanserais, mesa pueblos, desert wells, rock arches, salt works, sandstone tombs, nomad tents (not the desert island: already made)",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "polar_winter",
+  "scope": "Polar and winter places: ice-fishing huts, research stations, ski lifts, frozen falls, snow forts, husky kennels (no snowman as the subject)",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "islands_beaches",
+  "scope": "Tropical islands and beaches: tiki huts, lagoons, lifeguard towers, tide pools, beach bars, surf shacks, turtle beaches",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "rivers_lakes_wetlands",
+  "scope": "Rivers, lakes and wetlands: stilt fishing shacks, beaver dams, lily ponds with pavilions, swamp boardwalks, weirs, houseboats",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "gardens",
+  "scope": "Gardens and garden buildings: zen gardens, hedge mazes, greenhouses, gazebos, topiary, walled gardens, orangeries (no park, no playground)",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "fields_plantations",
+  "scope": "Growing places that are not a farmyard: vineyards, rice terraces, tea slopes, orchards, apiaries, hop gardens, lavender fields (no barn, silo or tractor scene)",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "monuments",
+  "scope": "Monuments and memorials: obelisks, triumphal arches, colossal statues, fountain plazas, sundials, war memorials, totem poles",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "sports_games",
+  "scope": "Sport and games places: skate ramps, mini-golf holes, ski jumps, boxing rings, archery ranges, bowling greens, climbing walls (no playground)",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "fairs_festivals",
+  "scope": "Fairs, festivals and stages: carousels, big wheels, bandstands, puppet theatres, lantern festivals, maypoles, circus rings",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "expeditions_camps",
+  "scope": "Expeditions and working camps: dig camps, base camps, safari camps, pirate hideouts, gold-rush claims, surveyors' camps (not a plain campsite)",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "rooms_cutaway",
+  "scope": "Rooms shown as cutaways: library nook, bathhouse, wine cellar, attic, throne room, observatory dome, greenhouse lab (no living room, kitchen, bedroom or desk)",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "shops_cutaway",
+  "scope": "Shop interiors shown as cutaways: clock repairer, apothecary, tailor, record shop, toy shop, cheese shop, bicycle shop",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "ancient_everyday",
+  "scope": "Everyday places of the ancient and early medieval world: cave camps, roundhouses, Roman baths, longhouses, granaries, forums, villas",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "myth_legend",
+  "scope": "Scenes from myth and legend: a sword in a stone, a wooden horse at a gate, a labyrinth entrance, a world tree, an ark on a mountain",
+  "quota": 52,
+  "agent": "d"
+ },
+ {
+  "id": "miniature_toy_worlds",
+  "scope": "Miniature and toy worlds: dolls' house rooms, board-game islands, snow-globe villages, terrariums, toy forts, model villages",
+  "quota": 52,
+  "agent": "a"
+ },
+ {
+  "id": "vehicles_in_place",
+  "scope": "A vehicle at rest in its place: a steam engine at a water tower, a covered wagon at a ford, a submarine in its pen, a tram at its stop (no car as the subject)",
+  "quota": 52,
+  "agent": "b"
+ },
+ {
+  "id": "animal_places",
+  "scope": "Places made by or for animals: beehives, seabird cliffs, anthills in cutaway, dinosaur nests, stable yards, dovecotes, sheepfolds",
+  "quota": 52,
+  "agent": "c"
+ },
+ {
+  "id": "abandoned_overgrown",
+  "scope": "Abandoned and overgrown places: a rusting fairground ride, a bus in the woods, a ghost-town saloon, a flooded chapel, a derelict greenhouse",
+  "quota": 52,
+  "agent": "d"
+ }
+]

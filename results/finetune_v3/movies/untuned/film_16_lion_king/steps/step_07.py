@@ -1,0 +1,83 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Adjust camera to a wider angle to capture the full scene including animals
+cam = bpy.data.objects.get('Camera')
+if cam:
+    cam.location = (0, -80, 15)
+    cam.rotation_euler = (math.radians(85), 0, 0)
+    cam.data.lens = 20
+
+# Add a few more animals to fill out the crowd
+# Add more zebras
+for i in range(3):
+    x = -15 + i * 6
+    z = 25
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(x, z, 1.2))
+    body = bpy.context.active_object
+    body.name = f'ZebraC{i}_body'
+    body.scale = (1.5, 1, 0.8)
+    body.data.materials.append(bpy.data.materials.get('Zebra'))
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(x + 1.2, z, 1.5))
+    head = bpy.context.active_object
+    head.name = f'ZebraC{i}_head'
+    head.data.materials.append(bpy.data.materials.get('Zebra'))
+    # Legs
+    for j, (lx, lz) in enumerate([(-0.5, -0.3), (-0.5, 0.3), (0.5, -0.3), (0.5, 0.3)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=1, location=(x + lx, z + lz, 0.5))
+        leg = bpy.context.active_object
+        leg.name = f'ZebraC{i}_leg{j}'
+        leg.data.materials.append(bpy.data.materials.get('Zebra'))
+
+# Add more wildebeests
+for i in range(3):
+    x = 5 + i * 5
+    z = 30
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.7, location=(x, z, 1))
+    body = bpy.context.active_object
+    body.name = f'WildebeestC{i}_body'
+    body.scale = (1.5, 1, 0.8)
+    body.data.materials.append(bpy.data.materials.get('Wildebeest'))
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(x + 1, z, 1.2))
+    head = bpy.context.active_object
+    head.name = f'WildebeestC{i}_head'
+    head.data.materials.append(bpy.data.materials.get('Wildebeest'))
+    # Horns
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.4, location=(x + 1, z + side*0.15, 1.4))
+        horn = bpy.context.active_object
+        horn.name = f'WildebeestC{i}_horn{side}'
+        horn.rotation_euler = (0, math.radians(45*side), 0)
+        horn.data.materials.append(bpy.data.materials.get('Buffalo'))
+    # Legs
+    for j, (lx, lz) in enumerate([(-0.4, -0.2), (-0.4, 0.2), (0.4, -0.2), (0.4, 0.2)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.8, location=(x + lx, z + lz, 0.4))
+        leg = bpy.context.active_object
+        leg.name = f'WildebeestC{i}_leg{j}'
+        leg.data.materials.append(bpy.data.materials.get('Wildebeest'))
+
+# Add a few more birds
+for i in range(8):
+    x = random.uniform(-60, 60)
+    y = random.uniform(-30, 30)
+    z = random.uniform(40, 70)
+    bpy.ops.mesh.primitive_cone_add(radius1=0.2, depth=0.4, location=(x, y, z))
+    bird = bpy.context.active_object
+    bird.name = f'BirdC{i}'
+    bird.rotation_euler = (random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi))
+    bird.data.materials.append(bpy.data.materials.get('Bird'))
+    # Wings
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_plane_add(size=0.3, location=(x, y + side*0.2, z))
+        wing = bpy.context.active_object
+        wing.name = f'BirdC{i}_wing{side}'
+        wing.rotation_euler = (0, math.radians(30*side), 0)
+        wing.data.materials.append(bpy.data.materials.get('Bird'))
+
+# Add more grass

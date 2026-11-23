@@ -1,0 +1,91 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1556)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def pigment(rgb, em=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+mud, mud2, stone, stone2, roof = pigment((.22, .15, .1)), pigment((.12, .09, .07)), pigment((.6, .58, .52)), pigment((.42, .4, .38)), pigment((.3, .1, .12))
+gold, glass, water, wood, iron = pigment((1, .7, .15), 10), pigment((1, .75, .3), 7), pigment((.1, .6, .7), 3), pigment((.28, .16, .09)), pigment((.12, .12, .14))
+cloth = [pigment(c) for c in ((.6, .08, .1), (.1, .2, .6), (.8, .7, .15))]
+def mesh(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mesh(bm, m, at, rot)
+def col(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, m, at, rot)
+def gable(at, w, d, h, m):
+    bm = bmesh.new(); p = [bm.verts.new(c) for c in ((-w / 2, -d / 2, 0), (w / 2, -d / 2, 0), (w / 2, d / 2, 0), (-w / 2, d / 2, 0), (-w / 2, 0, h), (w / 2, 0, h))]
+    for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 1, 2, 3)): bm.faces.new([p[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return mesh(bm, m, at)
+def glow(at, rgb, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = rgb, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# muddy field: a rough octagon with ruts, puddles and tufts of straw
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=14, depth=3.4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.2, .3)))
+    else: v.co.z += random.uniform(-.12, .12)
+    v.co.z -= 1.7
+mesh(bm, mud)
+for i in range(8):
+    box((-7 + i * 2.0, -3.0 + (i % 2) * .3, .02), (1.6, .5, .05), mud2)
+for x, y, r in ((-6, -6, 1.8), (5.5, -6.5, 1.3), (-1, -8, 1.0), (8, -3, 1.2)): col((x, y, .03), r, .06, 7, water)
+for i in range(20):
+    x, y = random.uniform(-11, 11), random.uniform(-10, 10)
+    if x * x + y * y < 121 and not (x * x + (y - 3) * (y - 3) < 60 and y > -3): col((x, y, 0), .1, random.uniform(.5, 1.0), 4, pigment((.5, .4, .15)), .02)
+# the chapel: nave, apse, gabled roof, tower with spire, steps
+box((0, 3, 0), (6, 10, 5.0), stone); col((0, 8.2, 0), 3.0, 4.4, 8, stone2); gable((0, 3, 5.0), 6.6, 10.6, 3.2, roof); gable((0, 8.2, 4.4), 6.8, 6.8, 2.4, roof)
+box((0, -2.4, 0), (3.6, .8, 1.8), stone2)
+for i in range(3): box((0, -3.2 - i * .7, 0), (4.0, .7, .25), stone2)
+box((-3.6, 0, 0), (2.4, 4.0, 7.0), stone); gable((-3.6, 0, 7.0), 3.0, 4.6, 2.0, roof); col((-3.6, 0, 9.0), 1.7, 3.4, 4, stone2, .05, (0, 0, math.pi / 4))
+for z in (1.5, 3.6, 5.6): box((-4.83, 0, z), (.1, .5, .9), glass); box((-4.83, 0, z - .1), (.1, .7, .1), stone2)
+box((-3.6, 0, 9.2), (.1, .1, .1), stone)
+# the golden sunburst window on the apse: ring, rays and a bright disc
+col((0, 5.15, 3.0), 1.4, .15, 10, gold, rot=(math.pi / 2, 0, 0)); col((0, 5.0, 3.0), .8, .2, 10, glass, rot=(math.pi / 2, 0, 0))
+for k in range(12):
+    a = k * math.pi / 6; box((math.cos(a) * 1.15, 5.05, 3.0 + math.sin(a) * 1.15), (.22, .1, .35), gold, (0, -a, 0))
+glow((0, 3.6, 3.2), (1, .7, .2), 900)
+# door and side windows
+box((0, -2.5, 0), (1.6, .3, 2.6), wood); box((0, -2.5, 2.6), (2.0, .3, .3), stone2)
+for x in (-2.2, 2.2): box((x, -2.5, 1.0), (.9, .2, 1.4), glass); box((x, -2.5, 2.4), (1.2, .2, .2), stone2)
+glow((0, -3.5, 1.5), (1, .7, .3), 250)
+# the healing well: stone ring, water, little roof on posts
+col((-6, -4, 0), 1.5, 1.2, 8, stone2); col((-6, -4, 1.15), 1.1, .06, 8, water)
+for sx in (-1, 1): box((-6 + sx * 1.2, -4, 1.2), (.2, .2, 2.0), wood)
+box((-6, -4, 3.1), (3.0, .8, .2), roof); col((-6, -4, 1.3), .08, 1.6, 4, iron)
+glow((-6, -4, 1.5), (.2, .8, .9), 350)
+# shield rack on two posts with shields and spears
+for sx in (-1, 1): col((6.0 + sx * 2.2, -4.0, 0), .15, 3.2, 5, wood)
+box((6, -4, 2.9), (4.8, .15, .15), wood)
+for i, c in enumerate(cloth):
+    col((4.8 + i * 1.2, -4.3, 1.4), .55, .12, 8, c, rot=(math.pi / 2, 0, 0)); col((4.8 + i * 1.2, -4.35, 1.4), .2, .14, 8, stone, rot=(math.pi / 2, 0, 0))
+for i in range(5): col((8.4 + i * .25, -4.0, 0), .05, 4.0, 4, wood, rot=(0, .05 * i, 0))
+# banners flying over the field on poles
+for x, y, c in ((-9, 2, 0), (-1, 10.5, 1), (9, 2, 2)):
+    col((x, y, 0), .1, 6.5, 5, wood); box((x + 1.0, y, 4.6), (2.0, .1, 1.8), c, (0, 0, .05)); box((x + .1, y, 4.6), (.2, .1, .1), iron)
+# a fallen log and a cart wheel for the muddy aftermath
+col((2, -7, .3), .4, 3.0, 6, wood, rot=(0, math.pi / 2, .3)); col((7, -8, .6), 1.0, .3, 8, wood, rot=(math.pi / 2, 0, 0))
+# dawn: gold sun low from the left, violet rim behind
+for rgb, w, p in (((1, .72, .4), 6, (-30, -18, 9)), ((.5, .35, .9), 2.2, (24, 28, 12))):
+    s = bpy.data.lights.new("sun", "SUN"); s.color, s.energy = rgb, w
+    o = bpy.data.objects.new("sun", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("dawn"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .05, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 2, 3)); co.location = t + Vector((14, -58, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

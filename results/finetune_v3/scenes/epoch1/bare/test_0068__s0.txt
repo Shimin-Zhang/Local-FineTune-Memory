@@ -1,0 +1,93 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1374)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+col = {}
+def tint(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    col[name] = m
+for k, v in dict(gravel=(.2, .17, .13), brick=(.34, .12, .08), brick2=(.26, .09, .06), roof=(.1, .11, .13), tar=(.04, .04, .05), white=(.55, .55, .5),
+                 yellow=(.7, .5, .05), green=(.05, .25, .12), red=(.5, .06, .04), wood=(.28, .17, .09), steel=(.2, .22, .24), tyre=(.02, .02, .02),
+                 dark=(.02, .02, .03), pipe=(.3, .3, .32), post=(.15, .1, .06), hedge=(.04, .13, .06)).items(): tint(k, v)
+tint("sodium", (1, .5, .12), 14); tint("lamp", (1, .85, .5), 12); tint("window", (1, .6, .2), 5)
+def part(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("d"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("d", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(col[k]); return o
+def box(x, y, z, w, d, h, k, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return part(bm, k, (x, y, z), (rx, 0, rz))
+def cyl(x, y, z, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return part(bm, k, (x, y, z), rot)
+def beam(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return part(bm, k)
+def glim(x, y, z, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# gravel yard slab with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13.5, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    v.co.z -= 1.5
+part(bm, "gravel")
+box(0, -3.2, 0, 15, 4.6, .1, "tar"); box(0, -3.2, .1, 4, .15, .02, "yellow")
+# brick garage: two bays with a gable roof, lit bays, a pit in front
+for s in (-1, 1):
+    box(s * 3.3, 5.6, 0, 4.6, .5, 3.4, "brick"); box(s * 3.3, 7.6, 0, 4.6, .5, 3.4, "brick")
+box(0, 6.6, 0, 2.0, 2.0, 3.4, "brick")
+box(0, 6.6, 3.4, 12.4, 3.6, .3, "roof"); box(0, 6.6, 3.7, 12.4, 3.0, .3, "roof")
+for s in (-1, 1):
+    box(s * 3.3, 5.3, 0, 3.8, .2, 2.7, "window"); box(s * 3.3, 5.2, 2.7, 4.0, .4, .3, "brick2"); box(s * 3.3, 5.3, .2, 3.4, .2, .1, "yellow")
+glim(-3.3, 4.2, 1.8, (1, .6, .2), 450); glim(3.3, 4.2, 1.8, (1, .6, .2), 450)
+box(0, 3.9, 0, 4.4, 2.4, .1, "tar"); box(0, 3.9, .1, 2.6, 1.4, .02, "dark"); box(0, 3.9, .12, 1.6, .12, .02, "yellow")
+# two old buses nose to nose: boxy bodies, windscreen, windows, wheels, headlights
+def bus(x, y, body, roof, face):
+    box(x, y, .9, 5.4, 2.3, 1.6, body, rz=face); box(x, y, 2.5, 5.2, 2.2, .15, roof, rz=face)
+    box(x + face * 2.6, y, 1.7, .1, 1.8, .6, "window", rz=face); box(x + face * 2.6, y, 1.0, .1, 1.6, .2, "dark", rz=face)
+    for s in (-1, 1):
+        box(x + face * 2.6, y + s * .7, 1.0, .1, .3, .2, "lamp", rz=face)
+        for wx in (-1.8, 1.4):
+            cyl(x + wx, y + s * 1.2, .75, .75, .3, 8, "tyre", rot=(math.pi / 2, 0, 0))
+    for wx in (-1.6, -.4, .8, 1.9): box(x + wx, y, 2.55, .9, 1.9, .05, "window", rz=face)
+bus(-3.3, 3.9, "yellow", "white", 1); bus(3.3, 3.9, "green", "white", -1)
+# fuel pump on a concrete pad, with hose and nozzle
+box(-8.5, -2.0, 0, 2.2, 2.2, .2, "steel"); box(-8.5, -2.0, .2, .9, .8, 1.8, "red"); box(-8.5, -2.4, 1.2, .6, .05, .6, "lamp")
+box(-8.5, -2.4, 2.0, 1.1, .05, .15, "white"); cyl(-8.5, -2.0, 2.0, .6, .15, 6, "dark", rot=(0, 0, 0)); glim(-8.5, -3.2, 1.5, (1, .8, .5), 150)
+beam((-8.0, -2.4, 1.4), (-7.2, -2.4, .6), .08, "dark"); box(-7.2, -2.4, .6, .3, .2, .3, "white")
+# wooden timetable board with a post and rows of paper
+for s in (-1, 1): beam((-1.5 + s * 1.2, -8.2, 0), (-1.5 + s * 1.2, -8.2, 2.6), .18, "post")
+box(-1.5, -8.2, 2.6, 3.6, .2, 2.0, "wood"); box(-1.5, -8.35, 2.8, 3.0, .05, 1.5, "white")
+for i in range(5): box(-1.5, -8.42, 3.9 - i * .3, 2.4, .03, .1, "dark")
+# sodium lamp on a tall pole, a fence, a hedge, a stack of tyres
+beam((9.0, -5.5, 0), (9.0, -5.5, 6.0), .2, "steel"); beam((9.0, -5.5, 6.0), (7.4, -5.5, 6.0), .15, "steel"); box(7.4, -5.5, 5.7, 1.0, .5, .3, "sodium"); glim(7.4, -5.5, 5.2, (1, .5, .12), 900)
+for i in range(10):
+    beam((-11 + i * 2.5, -9.2, 0), (-11 + i * 2.5, -9.2, 1.4), .15, "wood")
+    if i < 9: box(-9.75 + i * 2.5, -9.2, .8, 2.5, .08, .1, "wood")
+for i in range(3): cyl(-9.5 + i * .9, -6.0, .75, .75, .5, 8, "tyre", rot=(math.pi / 2, 0, 0))
+for i in range(4):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1.2)
+    for v in bm.verts: v.co.z *= .6
+    part(bm, "hedge", (10.5, 3.0 - i * 2.2, .6))
+# night: cold blue key from the left, warm rim behind, sodium glow
+for c, w, p in (((.4, .55, 1), 4.5, (-26, -16, 9)), ((1, .5, .25), 2.2, (22, 24, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("night"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .012, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((6, -58, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

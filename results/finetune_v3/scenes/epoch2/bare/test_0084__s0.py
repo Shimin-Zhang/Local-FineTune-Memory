@@ -1,0 +1,100 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1654)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def paint(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    M[name] = m
+for k, c in dict(grass=(.1, .2, .08), dirt=(.3, .2, .12), straw=(.55, .42, .2), white=(.7, .68, .6), red=(.65, .08, .06), blue=(.1, .2, .6),
+                 wood=(.28, .16, .08), wood2=(.2, .12, .06), cloth=(.55, .5, .4), paper=(.75, .72, .6), dark=(.04, .04, .05)).items(): paint(k, c)
+paint("bulb", (1, .75, .35), 12); paint("score", (1, .6, .15), 10)
+def mk(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(M[m]); return o
+def cube(p, s, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return mk(bm, m, p, (0, 0, rz))
+def cyl(p, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, p, rot)
+def stick(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def bulb(p, w):
+    L = bpy.data.lights.new("b", "POINT"); L.color = (1, .75, .35); L.energy = w
+    o = bpy.data.objects.new("b", L); o.location = p; sc.collection.objects.link(o)
+# base: grass field, rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=14.5, depth=3.4)
+for v in bm.verts:
+    v.co.y *= .72
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.2, 1.2), random.uniform(-1.3, .3)))
+    v.co.z -= 1.7
+mk(bm, "grass")
+for i in range(14): cube((-12 + i * 1.8, 0, 0), (1.8, 3.6, .06), "dirt", rz=random.uniform(-.05, .05))
+# shooting line: painted white line and a low rail
+cube((0, -6.2, 0), (16, .25, .08), "white"); cube((0, -7.4, 0), (16, .18, .5), "wood2")
+for i in range(5):
+    x = -6 + i * 3
+    cyl((x, -6.2, 0), .16, 1.5, 5, "wood"); cyl((x, -6.2, 1.5), .3, .3, 6, "cloth", .2)
+    stick((x - .2, -6.2, 1.5), (x + .2, -6.2, 1.5), .06, "wood")
+# targets at three distances, each with rings and arrows
+def target(y, big):
+    cube((0, y, 0), (2.2, .5, .3), "wood2")
+    for sx in (-1.0, 1.0): stick((sx, y, 0), (sx, y, 3.2 * big), .12, "wood")
+    for k, (r, m) in enumerate(((1.3, "white"), (1.0, "blue"), (.7, "red"), (.4, "white"), (.15, "red"))):
+        cyl((0, y - .3, 1.6 * big), r * big, .22, 10, m, rot=(math.pi / 2, 0, 0)).location.z = 1.6 * big
+    for k in range(3):
+        a = random.uniform(0, 6.28); r = random.uniform(0, .5) * big
+        stick((r * math.cos(a), y - .5, 1.6 * big + r * math.sin(a)), (r * math.cos(a) + .3, y - 1.6, 1.6 * big + r * math.sin(a) - .1), .05, "wood")
+target(-1.0, .85); target(3.2, 1.0); target(7.6, 1.15)
+# scorekeeper's table with a glowing score board
+cube((-9, -3.5, 0), (3.2, 1.5, 1.1), "wood")
+for sx in (-1.4, 1.4):
+    for sy in (-.6, .6): cube((-9 + sx, -3.5 + sy, 0), (.15, .15, 1.0), "wood2")
+cube((-9, -3.5, 1.1), (3.4, 1.7, .12), "cloth")
+for i in range(4): cube((-9.9 + i * .6, -3.5, 1.22), (.5, .35, .05), "paper", rz=random.uniform(-.3, .3))
+cube((-9, -4.5, 1.22), (1.2, .1, .9), "dark", top=.95); cube((-9, -4.56, 1.3), (1.0, .05, .65), "score")
+cyl((-9.9, -3.0, 1.22), .25, .15, 6, "red"); cyl((-8.1, -3.1, 1.22), .22, .2, 6, "cloth")
+# arrow rack: a frame of slots holding arrows
+for sx in (-1, 1): cube((6 + sx * 1.2, -3.5, 0), (.15, .15, 1.8), "wood2")
+for z in (.3, 1.4): cube((6, -3.5, z), (2.7, .12, .12), "wood")
+for i in range(9):
+    stick((5.3 + i * .17, -3.5, .5), (5.3 + i * .17, -3.5, 1.9), .05, "wood"); cyl((5.3 + i * .17, -3.5, 1.9), .06, .25, 4, "red", .01)
+# striped pavilion: four posts, striped roof, benches, hanging bulbs
+for sx in (-1, 1):
+    for sy in (-1, 1): cyl((-10 + sx * 2.6, 3.5 + sy * 2.2, 0), .15, 3.2, 5, "wood")
+for i in range(10):
+    for s in (-1, 1):
+        cube((-10 + (i - 4.5) * .55, 3.5 + s * 1.4, 3.2 + .1 * (1 - abs(s))), (.55, 2.6, .12), "red" if i % 2 else "white").rotation_euler.x = -s * .35
+for i in range(5): cube((-10 + (i - 2) * 1.0, 3.5, 3.55), (.5, .5, .35), "red" if i % 2 else "white")
+for i in range(3): cube((-10, 3.5 + (i - 1) * 1.3, 0), (4.0, .6, .6), "wood2")
+for x in (-11.5, -8.5):
+    stick((x, 3.5, 3.2), (x, 3.5, 2.6), .03, "dark"); cyl((x, 3.5, 2.3), .25, .4, 6, "bulb", .15)
+bulb((-11.5, 3.5, 2.4), 220); bulb((-8.5, 3.5, 2.4), 220)
+# a few trees and boulders at the edge
+for x, y in ((11, 6), (12, -3), (-12.5, 6.5)):
+    cyl((x, y, 0), .35, 2.4, 5, "wood2"); cyl((x, y, 2.0), 1.8, 3.2, 6, "grass", .1)
+for i in range(5): cube((random.uniform(-12, 12), random.choice((-9.5, 9.5)), 0), (random.uniform(.5, 1), random.uniform(.5, .9), .4), "dark", rz=random.random())
+# lights: warm late-afternoon key, cool rim, amber glow handled by bulbs
+for c, e, p in (((1, .62, .3), 5.5, (-26, -18, 11)), ((.4, .55, 1), 2.2, (22, 24, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = e
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .025, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((13, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

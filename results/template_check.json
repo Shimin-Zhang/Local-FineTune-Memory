@@ -1,0 +1,1332 @@
+{
+ "tokenizer": {
+  "added_tokens": {
+   "248044": {
+    "content": "<|endoftext|>",
+    "special": true
+   },
+   "248045": {
+    "content": "<|im_start|>",
+    "special": true
+   },
+   "248046": {
+    "content": "<|im_end|>",
+    "special": true
+   },
+   "248047": {
+    "content": "<|object_ref_start|>",
+    "special": true
+   },
+   "248048": {
+    "content": "<|object_ref_end|>",
+    "special": true
+   },
+   "248049": {
+    "content": "<|box_start|>",
+    "special": true
+   },
+   "248050": {
+    "content": "<|box_end|>",
+    "special": true
+   },
+   "248051": {
+    "content": "<|quad_start|>",
+    "special": true
+   },
+   "248052": {
+    "content": "<|quad_end|>",
+    "special": true
+   },
+   "248053": {
+    "content": "<|vision_start|>",
+    "special": true
+   },
+   "248054": {
+    "content": "<|vision_end|>",
+    "special": true
+   },
+   "248055": {
+    "content": "<|vision_pad|>",
+    "special": true
+   },
+   "248056": {
+    "content": "<|image_pad|>",
+    "special": true
+   },
+   "248057": {
+    "content": "<|video_pad|>",
+    "special": true
+   },
+   "248058": {
+    "content": "<tool_call>",
+    "special": false
+   },
+   "248059": {
+    "content": "</tool_call>",
+    "special": false
+   },
+   "248060": {
+    "content": "<|fim_prefix|>",
+    "special": false
+   },
+   "248061": {
+    "content": "<|fim_middle|>",
+    "special": false
+   },
+   "248062": {
+    "content": "<|fim_suffix|>",
+    "special": false
+   },
+   "248063": {
+    "content": "<|fim_pad|>",
+    "special": false
+   },
+   "248064": {
+    "content": "<|repo_name|>",
+    "special": false
+   },
+   "248065": {
+    "content": "<|file_sep|>",
+    "special": false
+   },
+   "248066": {
+    "content": "<tool_response>",
+    "special": false
+   },
+   "248067": {
+    "content": "</tool_response>",
+    "special": false
+   },
+   "248068": {
+    "content": "<think>",
+    "special": false
+   },
+   "248069": {
+    "content": "</think>",
+    "special": false
+   },
+   "248070": {
+    "content": "<|audio_start|>",
+    "special": true
+   },
+   "248071": {
+    "content": "<|audio_end|>",
+    "special": true
+   },
+   "248072": {
+    "content": "<tts_pad>",
+    "special": true
+   },
+   "248073": {
+    "content": "<tts_text_bos>",
+    "special": true
+   },
+   "248074": {
+    "content": "<tts_text_eod>",
+    "special": true
+   },
+   "248075": {
+    "content": "<tts_text_bos_single>",
+    "special": true
+   },
+   "248076": {
+    "content": "<|audio_pad|>",
+    "special": true
+   }
+  },
+  "eos_token": "<|endoftext|>",
+  "eos_id": 248044,
+  "pad_token": "<|endoftext|>",
+  "bos_token": null,
+  "groups": {
+   "chat_markers": {
+    "<|im_start|>": 248045,
+    "<|im_end|>": 248046
+   },
+   "think": {
+    "<think>": 248068,
+    "</think>": 248069
+   },
+   "tool": {
+    "<tool_call>": 248058,
+    "</tool_call>": 248059,
+    "<tool_response>": 248066,
+    "</tool_response>": 248067
+   },
+   "vision": {
+    "<|object_ref_start|>": 248047,
+    "<|object_ref_end|>": 248048,
+    "<|box_start|>": 248049,
+    "<|box_end|>": 248050,
+    "<|quad_start|>": 248051,
+    "<|quad_end|>": 248052,
+    "<|vision_start|>": 248053,
+    "<|vision_end|>": 248054,
+    "<|vision_pad|>": 248055,
+    "<|image_pad|>": 248056,
+    "<|video_pad|>": 248057
+   },
+   "audio_tts": {
+    "<|audio_start|>": 248070,
+    "<|audio_end|>": 248071,
+    "<tts_pad>": 248072,
+    "<tts_text_bos>": 248073,
+    "<tts_text_eod>": 248074,
+    "<tts_text_bos_single>": 248075,
+    "<|audio_pad|>": 248076
+   },
+   "fim_repo": {
+    "<|fim_prefix|>": 248060,
+    "<|fim_middle|>": 248061,
+    "<|fim_suffix|>": 248062,
+    "<|fim_pad|>": 248063,
+    "<|repo_name|>": 248064,
+    "<|file_sep|>": 248065
+   },
+   "endoftext": {
+    "<|endoftext|>": 248044
+   }
+  },
+  "chat_template": "{%- set image_count = namespace(value=0) %}\n{%- set video_count = namespace(value=0) %}\n{%- macro render_content(content, do_vision_count, is_system_content=false) %}\n    {%- if content is string %}\n        {{- content }}\n    {%- elif content is iterable and content is not mapping %}\n        {%- for item in content %}\n            {%- if 'image' in item or 'image_url' in item or item.type == 'image' %}\n                {%- if is_system_content %}\n                    {{- raise_exception('System message cannot contain images.') }}\n                {%- endif %}\n                {%- if do_vision_count %}\n                    {%- set image_count.value = image_count.value + 1 %}\n                {%- endif %}\n                {%- if add_vision_id %}\n                    {{- 'Picture ' ~ image_count.value ~ ': ' }}\n                {%- endif %}\n                {{- '<|vision_start|><|image_pad|><|vision_end|>' }}\n            {%- elif 'video' in item or item.type == 'video' %}\n                {%- if is_system_content %}\n                    {{- raise_exception('System message cannot contain videos.') }}\n                {%- endif %}\n                {%- if do_vision_count %}\n                    {%- set video_count.value = video_count.value + 1 %}\n                {%- endif %}\n                {%- if add_vision_id %}\n                    {{- 'Video ' ~ video_count.value ~ ': ' }}\n                {%- endif %}\n                {{- '<|vision_start|><|video_pad|><|vision_end|>' }}\n            {%- elif 'text' in item %}\n                {{- item.text }}\n            {%- else %}\n                {{- raise_exception('Unexpected item type in content.') }}\n            {%- endif %}\n        {%- endfor %}\n    {%- elif content is none or content is undefined %}\n        {{- '' }}\n    {%- else %}\n        {{- raise_exception('Unexpected content type.') }}\n    {%- endif %}\n{%- endmacro %}\n{%- if not messages %}\n    {{- raise_exception('No messages provided.') }}\n{%- endif %}\n{%- if tools and tools is iterable and tools is not mapping %}\n    {{- '<|im_start|>system\\n' }}\n    {{- \"# Tools\\n\\nYou have access to the following functions:\\n\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\" }}\n    {{- '\\n\\nIf you choose to call a function ONLY reply in the following format with NO suffix:\\n\\n<tool_call>\\n<function=example_function_name>\\n<parameter=example_parameter_1>\\nvalue_1\\n</parameter>\\n<parameter=example_parameter_2>\\nThis is the value for the second parameter\\nthat can span\\nmultiple lines\\n</parameter>\\n</function>\\n</tool_call>\\n\\n<IMPORTANT>\\nReminder:\\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\\n- Required parameters MUST be specified\\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\\n</IMPORTANT>' }}\n    {%- if messages[0].role == 'system' %}\n        {%- set content = render_content(messages[0].content, false, true)|trim %}\n        {%- if content %}\n            {{- '\\n\\n' + content }}\n        {%- endif %}\n    {%- endif %}\n    {{- '<|im_end|>\\n' }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {%- set content = render_content(messages[0].content, false, true)|trim %}\n        {{- '<|im_start|>system\\n' + content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" %}\n        {%- set content = render_content(message.content, false)|trim %}\n        {%- if not(content.startswith('<tool_response>') and content.endswith('</tool_response>')) %}\n            {%- set ns.multi_step_tool = false %}\n            {%- set ns.last_query_index = index %}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if ns.multi_step_tool %}\n    {{- raise_exception('No user query found in messages.') }}\n{%- endif %}\n{%- for message in messages %}\n    {%- set content = render_content(message.content, true)|trim %}\n    {%- if message.role == \"system\" %}\n        {%- if not loop.first %}\n            {{- raise_exception('System message must be at the beginning.') }}\n        {%- endif %}\n    {%- elif message.role == \"user\" %}\n        {{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is string %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in content %}\n                {%- set reasoning_content = content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n                {%- set content = content.split('</think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- set reasoning_content = reasoning_content|trim %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content + '\\n</think>\\n\\n' + content }}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls and message.tool_calls is iterable and message.tool_calls is not mapping %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if tool_call.function is defined %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {%- if loop.first %}\n                    {%- if content|trim %}\n                        {{- '\\n\\n<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                    {%- else %}\n                        {{- '<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                    {%- endif %}\n                {%- else %}\n                    {{- '\\n<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                {%- endif %}\n                {%- if tool_call.arguments is defined %}\n                    {%- for args_name, args_value in tool_call.arguments|items %}\n                        {{- '<parameter=' + args_name + '>\\n' }}\n                        {%- set args_value = args_value | tojson | safe if args_value is mapping or (args_value is sequence and args_value is not string) else args_value | string %}\n                        {{- args_value }}\n                        {{- '\\n</parameter>\\n' }}\n                    {%- endfor %}\n                {%- endif %}\n                {{- '</function>\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.previtem and loop.previtem.role != \"tool\" %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- content }}\n        {{- '\\n</tool_response>' }}\n        {%- if not loop.last and loop.nextitem.role != \"tool\" %}\n            {{- '<|im_end|>\\n' }}\n        {%- elif loop.last %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- else %}\n        {{- raise_exception('Unexpected message role.') }}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is true %}\n        {{- '<think>\\n' }}\n    {%- else %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+  "len_tokenizer": 248077,
+  "reserved_note": "no named reserved placeholders; ids max_added+1 .. vocab_size-1 have no token (padding rows)",
+  "embedding_rows": 248320,
+  "unassigned_id_range": [
+   248077,
+   248319
+  ]
+ },
+ "embedding_stats": {
+  "chat_markers(im_start,im_end)": {
+   "n": 2,
+   "ids_sample": [
+    248045,
+    248046
+   ],
+   "l2_norm_mean": 0.5724255442619324,
+   "l2_norm_std": 0.062489110976457596,
+   "l2_norm_min": 0.5282390713691711,
+   "l2_norm_max": 0.6166120171546936,
+   "row_mean_avg": -0.0005749113624915481,
+   "row_mean_absavg": 0.0005749113624915481,
+   "row_std_avg": 0.01788768731057644,
+   "row_std_min": 0.016508879140019417,
+   "row_std_max": 0.01926649548113346,
+   "pairwise_cos_mean": 0.12416903674602509,
+   "pairwise_cos_std": null,
+   "pairwise_cos_max": 0.12416903674602509,
+   "cos_to_ordinary_centroid_mean": -0.06954902410507202
+  },
+  "think_markers": {
+   "n": 2,
+   "ids_sample": [
+    248068,
+    248069
+   ],
+   "l2_norm_mean": 0.5588158965110779,
+   "l2_norm_std": 0.012195780873298645,
+   "l2_norm_min": 0.5501921772956848,
+   "l2_norm_max": 0.567439615726471,
+   "row_mean_avg": 0.0001879239280242473,
+   "row_mean_absavg": 0.00036856086808256805,
+   "row_std_avg": 0.01746668666601181,
+   "row_std_min": 0.017200957983732224,
+   "row_std_max": 0.017732415348291397,
+   "pairwise_cos_mean": 0.3300989270210266,
+   "pairwise_cos_std": null,
+   "pairwise_cos_max": 0.3300989270210266,
+   "cos_to_ordinary_centroid_mean": 0.051515497267246246
+  },
+  "tool_markers": {
+   "n": 4,
+   "ids_sample": [
+    248058,
+    248059,
+    248066,
+    248067
+   ],
+   "l2_norm_mean": 0.49993056058883667,
+   "l2_norm_std": 0.02076290175318718,
+   "l2_norm_min": 0.47404566407203674,
+   "l2_norm_max": 0.5227404832839966,
+   "row_mean_avg": 0.00013888681132812053,
+   "row_mean_absavg": 0.00023144895385485142,
+   "row_std_avg": 0.015627926215529442,
+   "row_std_min": 0.01481772679835558,
+   "row_std_max": 0.0163436196744442,
+   "pairwise_cos_mean": 0.2781122028827667,
+   "pairwise_cos_std": 0.022819671779870987,
+   "pairwise_cos_max": 0.3128916025161743,
+   "cos_to_ordinary_centroid_mean": 0.14406074583530426
+  },
+  "vision_markers": {
+   "n": 11,
+   "ids_sample": [
+    248047,
+    248048,
+    248049,
+    248050,
+    248051,
+    248052,
+    248053,
+    248054
+   ],
+   "l2_norm_mean": 0.4810939133167267,
+   "l2_norm_std": 0.09920492023229599,
+   "l2_norm_min": 0.34716638922691345,
+   "l2_norm_max": 0.6521984338760376,
+   "row_mean_avg": -6.965425563976169e-05,
+   "row_mean_absavg": 0.0004187524609733373,
+   "row_std_avg": 0.015033789910376072,
+   "row_std_min": 0.010833214968442917,
+   "row_std_max": 0.020372869446873665,
+   "pairwise_cos_mean": 0.22534039616584778,
+   "pairwise_cos_std": 0.2046111524105072,
+   "pairwise_cos_max": 0.9989982843399048,
+   "cos_to_ordinary_centroid_mean": 0.3554297983646393
+  },
+  "fim_repo_markers": {
+   "n": 6,
+   "ids_sample": [
+    248060,
+    248061,
+    248062,
+    248063,
+    248064,
+    248065
+   ],
+   "l2_norm_mean": 0.5513809323310852,
+   "l2_norm_std": 0.07961951941251755,
+   "l2_norm_min": 0.4207061231136322,
+   "l2_norm_max": 0.6272965669631958,
+   "row_mean_avg": -0.00010839314927579835,
+   "row_mean_absavg": 0.000366903463145718,
+   "row_std_avg": 0.017232950776815414,
+   "row_std_min": 0.013147467747330666,
+   "row_std_max": 0.01961236633360386,
+   "pairwise_cos_mean": 0.26400789618492126,
+   "pairwise_cos_std": 0.07384028285741806,
+   "pairwise_cos_max": 0.3873073160648346,
+   "cos_to_ordinary_centroid_mean": 0.3692593574523926
+  },
+  "audio_tts_markers": {
+   "n": 7,
+   "ids_sample": [
+    248070,
+    248071,
+    248072,
+    248073,
+    248074,
+    248075,
+    248076
+   ],
+   "l2_norm_mean": 0.42192021012306213,
+   "l2_norm_std": 4.3288393499096856e-05,
+   "l2_norm_min": 0.42182204127311707,
+   "l2_norm_max": 0.421936571598053,
+   "row_mean_avg": 0.0004003536596428603,
+   "row_mean_absavg": 0.0004003536596428603,
+   "row_std_avg": 0.013185366988182068,
+   "row_std_min": 0.013182309456169605,
+   "row_std_max": 0.013185877352952957,
+   "pairwise_cos_mean": 1.0,
+   "pairwise_cos_std": 4.4331221715765423e-07,
+   "pairwise_cos_max": 1.0000003576278687,
+   "cos_to_ordinary_centroid_mean": 0.9358897805213928
+  },
+  "endoftext": {
+   "n": 1,
+   "ids_sample": [
+    248044
+   ],
+   "l2_norm_mean": 0.878455638885498,
+   "l2_norm_std": null,
+   "l2_norm_min": 0.878455638885498,
+   "l2_norm_max": 0.878455638885498,
+   "row_mean_avg": -0.0009557557059451938,
+   "row_mean_absavg": 0.0009557557059451938,
+   "row_std_avg": 0.0274485033005476,
+   "row_std_min": 0.0274485033005476,
+   "row_std_max": 0.0274485033005476,
+   "pairwise_cos_mean": NaN,
+   "pairwise_cos_std": null,
+   "pairwise_cos_max": NaN,
+   "cos_to_ordinary_centroid_mean": -0.4172046184539795
+  },
+  "ordinary_random_2000": {
+   "n": 2000,
+   "ids_sample": [
+    47,
+    54,
+    74,
+    170,
+    577,
+    659,
+    673,
+    871
+   ],
+   "l2_norm_mean": 0.6339114308357239,
+   "l2_norm_std": 0.0612652525305748,
+   "l2_norm_min": 0.41949477791786194,
+   "l2_norm_max": 0.8472110033035278,
+   "row_mean_avg": 0.00017082672275137156,
+   "row_mean_absavg": 0.00046468680375255644,
+   "row_std_avg": 0.019810957834124565,
+   "row_std_min": 0.013114530593156815,
+   "row_std_max": 0.02648700587451458,
+   "pairwise_cos_mean": 0.19635386765003204,
+   "pairwise_cos_std": 0.08510252088308334,
+   "pairwise_cos_max": 0.9785781502723694,
+   "cos_to_ordinary_centroid_mean": 0.4435557425022125
+  },
+  "unassigned_padding_rows": {
+   "n": 243,
+   "ids_sample": [
+    248077,
+    248078,
+    248079,
+    248080,
+    248081,
+    248082,
+    248083,
+    248084
+   ],
+   "l2_norm_mean": 0.4219090938568115,
+   "l2_norm_std": 5.0849575927713886e-05,
+   "l2_norm_min": 0.42181530594825745,
+   "l2_norm_max": 0.421936571598053,
+   "row_mean_avg": 0.00040030229138210416,
+   "row_mean_absavg": 0.00040030229138210416,
+   "row_std_avg": 0.01318502239882946,
+   "row_std_min": 0.013182100839912891,
+   "row_std_max": 0.013185877352952957,
+   "pairwise_cos_mean": 0.9999999403953552,
+   "pairwise_cos_std": 3.708711346916971e-07,
+   "pairwise_cos_max": 1.000000238418579,
+   "cos_to_ordinary_centroid_mean": 0.9358951449394226
+  },
+  "_note": "unassigned_padding_rows = ids beyond the last real token; never emitted by tokenizer, so their rows receive no input gradient (only output-logit gradient since tied).",
+  "cross_group_cos": {
+   "chat_vs_ordinary": -0.03068482130765915,
+   "chat_vs_padding": -0.0859864205121994,
+   "chat_vs_vision": 0.06764540076255798,
+   "chat_vs_think": 0.21458880603313446,
+   "padding_vs_ordinary": 0.41532012820243835
+  }
+ },
+ "behaviour": {
+  "model_class": "Qwen3_5ForCausalLM",
+  "generations": {
+   "chat": [
+    {
+     "new_token_ids": [
+      248068,
+      198,
+      5170,
+      11,
+      279,
+      3296,
+      369,
+      25,
+      328,
+      826,
+      2250,
+      5839,
+      7736,
+      1149,
+      353,
+      1144,
+      310,
+      18516,
+      1092,
+      5839,
+      7736,
+      513,
+      13,
+      733,
+      1880,
+      321,
+      1829,
+      9826,
+      11,
+      279,
+      5839,
+      7736,
+      513,
+      279,
+      6557,
+      7736,
+      494,
+      864,
+      660,
+      975,
+      7736,
+      628,
+      381,
+      3354,
+      13,
+      271,
+      760,
+      1379,
+      4047,
+      5839,
+      7736,
+      513,
+      2438,
+      11,
+      13358,
+      11,
+      321,
+      6105,
+      13,
+      4081,
+      513,
+      3428,
+      13464,
+      310,
+      430,
+      279,
+      20338,
+      7736,
+      13,
+      4213,
+      11,
+      303,
+      975,
+      36353,
+      11,
+      1040,
+      23009,
+      11,
+      279,
+      5839
+     ],
+     "text_with_specials": "<think>\nFirst, the question is: \"List three primary colors.\" I need to recall what primary colors are. In art and color theory, the primary colors are the basic colors from which all other colors can be created.\n\nThe most common primary colors are red, yellow, and blue. These are often referred to as the RGB colors. However, in other contexts, like photography, the primary",
+     "emitted_im_end": false,
+     "emitted_endoftext": false,
+     "stopped_early": false,
+     "first_stop_token": null,
+     "instruction": "List three primary colors.",
+     "prompt": "<|im_start|>user\nList three primary colors.<|im_end|>\n<|im_start|>assistant\n"
+    },
+    {
+     "new_token_ids": [
+      248068,
+      198,
+      77264,
+      11,
+      279,
+      1156,
+      369,
+      9859,
+      364,
+      264,
+      14053,
+      314,
+      328,
+      17981,
+      6353,
+      1,
+      1083,
+      8323,
+      13,
+      1061,
+      369,
+      264,
+      29350,
+      1622,
+      440,
+      264,
+      2708,
+      4087,
+      13,
+      4558,
+      40,
+      18516,
+      421,
+      8323,
+      5533,
+      328,
+      5782,
+      28303,
+      1,
+      364,
+      328,
+      17981,
+      6353,
+      1,
+      321,
+      328,
+      5782,
+      684,
+      396,
+      1,
+      364,
+      328,
+      17981,
+      12967,
+      1149,
+      8439,
+      279,
+      1156,
+      5024,
+      328,
+      17981,
+      6353,
+      1288,
+      279,
+      4252,
+      14053,
+      369,
+      328,
+      5782,
+      28303,
+      1149,
+      4558,
+      40,
+      1220,
+      3300,
+      279,
+      14053,
+      5774,
+      321,
+      6970
+     ],
+     "text_with_specials": "<think>\nHmm, the user is asking for a translation of \"good morning\" into French. This is a straightforward request with a clear answer. \n\nI recall that French uses \"bonjour\" for \"good morning\" and \"bonsoir\" for \"good afternoon.\" Since the user specified \"good morning,\" the correct translation is \"bonjour.\" \n\nI should provide the translation directly and maybe",
+     "emitted_im_end": false,
+     "emitted_endoftext": false,
+     "stopped_early": false,
+     "first_stop_token": null,
+     "instruction": "Translate 'good morning' to French.",
+     "prompt": "<|im_start|>user\nTranslate 'good morning' to French.<|im_end|>\n<|im_start|>assistant\n"
+    },
+    {
+     "new_token_ids": [
+      248068,
+      198,
+      1596,
+      513,
+      4439,
+      25,
+      328,
+      3710,
+      369,
+      220,
+      16,
+      17,
+      2942,
+      220,
+      22,
+      7285,
+      1061,
+      369,
+      264,
+      4145,
+      44896,
+      3377,
+      13,
+      1165,
+      1144,
+      310,
+      12204,
+      220,
+      16,
+      17,
+      23985,
+      220,
+      22,
+      13,
+      271,
+      9764,
+      579,
+      12204,
+      2923,
+      539,
+      2923,
+      25,
+      220,
+      16,
+      17,
+      23985,
+      220,
+      22,
+      283,
+      220,
+      16,
+      17,
+      23985,
+      220,
+      20,
+      478,
+      220,
+      16,
+      17,
+      23985,
+      220,
+      17,
+      283,
+      220,
+      21,
+      15,
+      478,
+      220,
+      17,
+      19,
+      283,
+      220,
+      23,
+      19,
+      13,
+      37201,
+      11,
+      220,
+      16,
+      17
+     ],
+     "text_with_specials": "<think>\nWe are asked: \"What is 12 times 7?\" This is a simple multiplication problem. We need to compute 12 \u00d7 7.\n\nLet's compute step by step: 12 \u00d7 7 = 12 \u00d7 5 + 12 \u00d7 2 = 60 + 24 = 84. Alternatively, 12",
+     "emitted_im_end": false,
+     "emitted_endoftext": false,
+     "stopped_early": false,
+     "first_stop_token": null,
+     "instruction": "What is 12 times 7?",
+     "prompt": "<|im_start|>user\nWhat is 12 times 7?<|im_end|>\n<|im_start|>assistant\n"
+    },
+    {
+     "new_token_ids": [
+      760,
+      17415,
+      369,
+      264,
+      12401,
+      11,
+      8476,
+      11,
+      321,
+      2199,
+      1284,
+      575,
+      1988,
+      2407,
+      314,
+      2919,
+      421,
+      20182,
+      1004,
+      11247,
+      579,
+      9682,
+      321,
+      11222,
+      279,
+      18900,
+      314,
+      27657,
+      2199,
+      13,
+      248046,
+      198,
+      248044
+     ],
+     "text_with_specials": "The ocean is a vast, dynamic, and life-sustaining body of water that shapes our planet's climate and supports the diversity of marine life.<|im_end|>\n<|endoftext|>",
+     "emitted_im_end": true,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|im_end|>",
+     "instruction": "Write one sentence about the ocean.",
+     "prompt": "<|im_start|>user\nWrite one sentence about the ocean.<|im_end|>\n<|im_start|>assistant\n"
+    }
+   ],
+   "chat_template_nothink": [
+    {
+     "new_token_ids": [
+      760,
+      2250,
+      5839,
+      7736,
+      513,
+      2972,
+      1114,
+      11,
+      5983,
+      11,
+      321,
+      6105,
+      159034,
+      4081,
+      513,
+      279,
+      6557,
+      7736,
+      494,
+      864,
+      660,
+      975,
+      7736,
+      303,
+      279,
+      9155,
+      19142,
+      513,
+      3354,
+      539,
+      25936,
+      13,
+      248046,
+      198,
+      248044
+     ],
+     "text_with_specials": "The three primary colors are **red, green, and blue**. These are the basic colors from which all other colors in the visible spectrum are created by mixing.<|im_end|>\n<|endoftext|>",
+     "emitted_im_end": true,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|im_end|>",
+     "instruction": "List three primary colors.",
+     "prompt": "<|im_start|>user\nList three primary colors.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "new_token_ids": [
+      78768,
+      13,
+      248046,
+      198,
+      248044
+     ],
+     "text_with_specials": "Bonjour.<|im_end|>\n<|endoftext|>",
+     "emitted_im_end": true,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|im_end|>",
+     "instruction": "Translate 'good morning' to French.",
+     "prompt": "<|im_start|>user\nTranslate 'good morning' to French.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "new_token_ids": [
+      16,
+      17,
+      2942,
+      220,
+      22,
+      16327,
+      220,
+      23,
+      19,
+      13,
+      248046,
+      198,
+      248044
+     ],
+     "text_with_specials": "12 times 7 equals 84.<|im_end|>\n<|endoftext|>",
+     "emitted_im_end": true,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|im_end|>",
+     "instruction": "What is 12 times 7?",
+     "prompt": "<|im_start|>user\nWhat is 12 times 7?<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    },
+    {
+     "new_token_ids": [
+      760,
+      17415,
+      369,
+      264,
+      12401,
+      11,
+      8476,
+      11,
+      321,
+      2199,
+      1284,
+      575,
+      1988,
+      5176,
+      421,
+      20182,
+      1004,
+      11247,
+      579,
+      9682,
+      11,
+      9931,
+      1674,
+      27657,
+      58801,
+      11,
+      321,
+      5529,
+      279,
+      15787,
+      364,
+      26706,
+      3611,
+      7253,
+      13,
+      248046,
+      198,
+      248044
+     ],
+     "text_with_specials": "The ocean is a vast, dynamic, and life-sustaining force that shapes our planet's climate, sustains marine ecosystems, and provides the foundation for countless human activities.<|im_end|>\n<|endoftext|>",
+     "emitted_im_end": true,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|im_end|>",
+     "instruction": "Write one sentence about the ocean.",
+     "prompt": "<|im_start|>user\nWrite one sentence about the ocean.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    }
+   ],
+   "plain": [
+    {
+     "new_token_ids": [
+      760,
+      2250,
+      5839,
+      7736,
+      513,
+      2438,
+      11,
+      5983,
+      11,
+      321,
+      6105,
+      13,
+      248044
+     ],
+     "text_with_specials": "The three primary colors are red, green, and blue.<|endoftext|>",
+     "emitted_im_end": false,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|endoftext|>",
+     "instruction": "List three primary colors.",
+     "prompt": "### Instruction:\nList three primary colors.\n\n### Response:\n"
+    },
+    {
+     "new_token_ids": [
+      78768,
+      13,
+      271,
+      13962,
+      5764,
+      25,
+      198,
+      78768,
+      13,
+      248044
+     ],
+     "text_with_specials": "Bonjour.\n\n### Response:\nBonjour.<|endoftext|>",
+     "emitted_im_end": false,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|endoftext|>",
+     "instruction": "Translate 'good morning' to French.",
+     "prompt": "### Instruction:\nTranslate 'good morning' to French.\n\n### Response:\n"
+    },
+    {
+     "new_token_ids": [
+      16,
+      17,
+      2942,
+      220,
+      22,
+      369,
+      220,
+      23,
+      19,
+      13,
+      271,
+      13962,
+      68868,
+      25,
+      198,
+      1206,
+      1423,
+      220,
+      16,
+      17,
+      2942,
+      220,
+      22,
+      11,
+      488,
+      628,
+      29283,
+      220,
+      16,
+      17,
+      539,
+      220,
+      22,
+      13,
+      1061,
+      628,
+      381,
+      2725,
+      539,
+      14293,
+      424,
+      1441,
+      1083,
+      33153,
+      7123,
+      25,
+      198,
+      16,
+      13,
+      68647,
+      220,
+      16,
+      15,
+      539,
+      220,
+      22,
+      11,
+      864,
+      6486,
+      220,
+      22,
+      15,
+      13,
+      198,
+      17,
+      13,
+      68647,
+      220,
+      17,
+      539,
+      220,
+      22,
+      11,
+      864,
+      6486,
+      220,
+      16,
+      19,
+      13,
+      198
+     ],
+     "text_with_specials": "12 times 7 is 84.\n\n### Explanation:\nTo find 12 times 7, you can multiply 12 by 7. This can be done by breaking it down into simpler steps:\n1. Multiply 10 by 7, which gives 70.\n2. Multiply 2 by 7, which gives 14.\n",
+     "emitted_im_end": false,
+     "emitted_endoftext": false,
+     "stopped_early": false,
+     "first_stop_token": null,
+     "instruction": "What is 12 times 7?",
+     "prompt": "### Instruction:\nWhat is 12 times 7?\n\n### Response:\n"
+    },
+    {
+     "new_token_ids": [
+      760,
+      17415,
+      369,
+      264,
+      12401,
+      11,
+      5365,
+      11,
+      321,
+      8476,
+      2407,
+      314,
+      2919,
+      421,
+      14103,
+      777,
+      1056,
+      4139,
+      314,
+      279,
+      8964,
+      579,
+      7099,
+      13,
+      248044
+     ],
+     "text_with_specials": "The ocean is a vast, deep, and dynamic body of water that covers more than half of the Earth's surface.<|endoftext|>",
+     "emitted_im_end": false,
+     "emitted_endoftext": true,
+     "stopped_early": true,
+     "first_stop_token": "<|endoftext|>",
+     "instruction": "Write one sentence about the ocean.",
+     "prompt": "### Instruction:\nWrite one sentence about the ocean.\n\n### Response:\n"
+    }
+   ]
+  },
+  "teacher_forced": [
+   {
+    "format": "chat",
+    "instruction": "List three primary colors.",
+    "answer": "Red, blue, and yellow.",
+    "p_im_end": 0.9408337473869324,
+    "p_endoftext": 0.00029488408472388983,
+    "p_im_start": 5.345950349067152e-09,
+    "p_newline": 0.0009947152575477958,
+    "rank_im_end": 1,
+    "rank_endoftext": 20,
+    "top5": [
+     [
+      "<|im_end|>",
+      0.94083
+     ],
+     [
+      "\u0120These",
+      0.02399
+     ],
+     [
+      "\u010a\u010a",
+      0.01277
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.00288
+     ],
+     [
+      "\u0120They",
+      0.00215
+     ]
+    ]
+   },
+   {
+    "format": "plain",
+    "instruction": "List three primary colors.",
+    "answer": "Red, blue, and yellow.",
+    "p_im_end": 0.0005302340723574162,
+    "p_endoftext": 0.8397848010063171,
+    "p_im_start": 1.6194635632515997e-09,
+    "p_newline": 0.0013252648059278727,
+    "rank_im_end": 14,
+    "rank_endoftext": 1,
+    "top5": [
+     [
+      "<|endoftext|>",
+      0.83978
+     ],
+     [
+      "\u010a\u010a",
+      0.11581
+     ],
+     [
+      "\u0120These",
+      0.01079
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.00655
+     ],
+     [
+      "\u0120(",
+      0.00574
+     ]
+    ]
+   },
+   {
+    "format": "chat",
+    "instruction": "Translate 'good morning' to French.",
+    "answer": "Bonjour.",
+    "p_im_end": 0.9369415044784546,
+    "p_endoftext": 1.8353151972405612e-05,
+    "p_im_start": 2.7303921346089055e-09,
+    "p_newline": 0.0010243031429126859,
+    "rank_im_end": 1,
+    "rank_endoftext": 83,
+    "top5": [
+     [
+      "<|im_end|>",
+      0.93694
+     ],
+     [
+      "\u010a\u010a",
+      0.02373
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.01561
+     ],
+     [
+      "\u0120(",
+      0.0072
+     ],
+     [
+      "\u0120",
+      0.00151
+     ]
+    ]
+   },
+   {
+    "format": "plain",
+    "instruction": "Translate 'good morning' to French.",
+    "answer": "Bonjour.",
+    "p_im_end": 0.0019995984621345997,
+    "p_endoftext": 0.1906704157590866,
+    "p_im_start": 1.0072144007722272e-08,
+    "p_newline": 0.025821026414632797,
+    "rank_im_end": 14,
+    "rank_endoftext": 2,
+    "top5": [
+     [
+      "\u010a\u010a",
+      0.5949
+     ],
+     [
+      "<|endoftext|>",
+      0.19067
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.04782
+     ],
+     [
+      "\u010a",
+      0.02582
+     ],
+     [
+      "\u010a\u010a\u010a",
+      0.01577
+     ]
+    ]
+   },
+   {
+    "format": "chat",
+    "instruction": "What is 12 times 7?",
+    "answer": "12 times 7 is 84.",
+    "p_im_end": 0.7080700993537903,
+    "p_endoftext": 0.0005719585460610688,
+    "p_im_start": 3.7100356120589595e-10,
+    "p_newline": 0.007702487986534834,
+    "rank_im_end": 1,
+    "rank_endoftext": 23,
+    "top5": [
+     [
+      "<|im_end|>",
+      0.70807
+     ],
+     [
+      "\u010a\u010a",
+      0.08589
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.04484
+     ],
+     [
+      "\u0120This",
+      0.02695
+     ],
+     [
+      "\u0120Here",
+      0.02365
+     ]
+    ]
+   },
+   {
+    "format": "plain",
+    "instruction": "What is 12 times 7?",
+    "answer": "12 times 7 is 84.",
+    "p_im_end": 0.0016160503728315234,
+    "p_endoftext": 0.1458289623260498,
+    "p_im_start": 1.9848468701955113e-10,
+    "p_newline": 0.030066024512052536,
+    "rank_im_end": 28,
+    "rank_endoftext": 2,
+    "top5": [
+     [
+      "\u010a\u010a",
+      0.41015
+     ],
+     [
+      "<|endoftext|>",
+      0.14583
+     ],
+     [
+      "\u0120This",
+      0.07426
+     ],
+     [
+      "\u0120To",
+      0.04618
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.04081
+     ]
+    ]
+   },
+   {
+    "format": "chat",
+    "instruction": "Write one sentence about the ocean.",
+    "answer": "The ocean stretches endlessly under the sky.",
+    "p_im_end": 0.9972163438796997,
+    "p_endoftext": 1.642340976104606e-05,
+    "p_im_start": 9.666778488792716e-09,
+    "p_newline": 0.00018891507352236658,
+    "rank_im_end": 1,
+    "rank_endoftext": 12,
+    "top5": [
+     [
+      "<|im_end|>",
+      0.99722
+     ],
+     [
+      "\u010a\u010a",
+      0.00123
+     ],
+     [
+      "\u0120It",
+      0.0003
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.0002
+     ],
+     [
+      "\u010a",
+      0.00019
+     ]
+    ]
+   },
+   {
+    "format": "plain",
+    "instruction": "Write one sentence about the ocean.",
+    "answer": "The ocean stretches endlessly under the sky.",
+    "p_im_end": 0.0001396438601659611,
+    "p_endoftext": 0.9854871034622192,
+    "p_im_start": 8.850061239407125e-10,
+    "p_newline": 0.00011152475053677335,
+    "rank_im_end": 10,
+    "rank_endoftext": 1,
+    "top5": [
+     [
+      "<|endoftext|>",
+      0.98549
+     ],
+     [
+      "\u010a\u010a",
+      0.00811
+     ],
+     [
+      "\u0120\u010a\u010a",
+      0.00168
+     ],
+     [
+      "\u0120It",
+      0.00147
+     ],
+     [
+      "\u0120\u00f0\u0141",
+      0.00077
+     ]
+    ]
+   }
+  ],
+  "teacher_forced_summary": {
+   "chat": {
+    "mean_p_im_end": 0.8957654237747192,
+    "mean_p_endoftext": 0.00022540479812960257
+   },
+   "plain": {
+    "mean_p_im_end": 0.001071381691872375,
+    "mean_p_endoftext": 0.5404428206384182
+   }
+  }
+ },
+ "verdict": {
+  "label": "trained",
+  "justification": "Embeddings: chat-marker rows have L2 norm 0.572 (ordinary tokens 0.634 +/- 0.061), pairwise cosine between <|im_start|> and <|im_end|> 0.124 (ordinary-pair mean 0.196), and cosine to the ordinary-token centroid -0.070. The genuinely untrained reference (243 unassigned padding rows plus the 7 audio/tts tokens) is unmistakable: identical rows, norm 0.4219, pairwise cosine 1.000000. The chat markers look nothing like that. Behaviour: teacher-forced after a complete short answer in chat format, P(<|im_end|>) averages 0.896 (range 0.71-1.00, always rank 1) versus P(<|endoftext|>) 0.00023; in plain format the reverse holds (P(<|endoftext|>) 0.540, P(<|im_end|>) 0.0011). In greedy generation with the model's own chat template (which adds an empty think block) all four answers end with <|im_end|> then <|endoftext|>. With the bare <|im_start|>assistant\\n prompt the model usually opens a <think> reasoning block and runs past 80 tokens (3 of 4), so it is not a clean 'answer then stop' there. Both lines of evidence agree that the markers are trained in this checkpoint: this 'Base' model was evidently pretrained/mid-trained on chat-formatted data. Limitations: single 0.8B checkpoint, 4 prompts, greedy decoding; larger sizes may differ; embedding statistics cannot prove training on their own (a trained row can still be near ordinary scale), but the contrast with the exactly-identical untrained rows is strong. Caveat for fine-tuning: <|im_end|> is trained as a stop signal but the exact template matters (use the template's empty <think></think> block, or expect think-mode openings), and the template wrapper tokens <|im_start|>/<|im_end|> need no embedding training."
+ }
+}

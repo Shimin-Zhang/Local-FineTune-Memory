@@ -1,0 +1,103 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1159)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def paint(name, rgb, glow=0, rough=.9):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if glow:
+        n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    M[name] = m
+for k, c, g in [("tarmac", (.1, .1, .12), 0), ("brick", (.42, .16, .1), 0), ("brick2", (.33, .12, .09), 0), ("concrete", (.35, .35, .37), 0),
+        ("steel", (.75, .55, .08), 0), ("dark", (.12, .13, .15), 0), ("scaffold", (.55, .58, .6), 0), ("hut", (.1, .22, .4), 0),
+        ("lamp", (1, .75, .35), 14), ("win", (1, .8, .4), 10), ("hoist", (1, .2, .1), 10), ("tire", (.03, .03, .03), 0)]:
+    paint(k, c, g)
+def piece(bm, key, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("o", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(M[key]); return o
+def slab(at, s, key, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return piece(bm, key, at, rot)
+def beam(a, b, t, key):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return piece(bm, key)
+def drum(at, r, h, n, key, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return piece(bm, key, at, rot)
+def glim(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+def sunl(at, c, w, aim):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# concrete slab base with rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 24 + random.uniform(-2, 2), v.co.y * 20 + random.uniform(-2, 2), -3.5 + random.uniform(-1, .5)))
+    else: v.co = Vector((v.co.x * 30, v.co.y * 26, -1.0))
+piece(bm, "tarmac")
+# half-built brick block: two storeys finished, third storey only half laid, windows lit
+bx, by = -3, 3
+for lv in range(3):
+    for i in range(6):
+        for j in range(4):
+            done = lv < 2 or (i < 4 and j < 3) or (i < 4 and j == 3)
+            if done:
+                for k in range(3):
+                    slab((bx - 4.5 + i * 1.8, by - 3 + j * 2.0, lv * 3.0 + k * .9), (1.78, 1.98, .9), "brick" if (i + j + k) % 3 else "brick2")
+for i in range(6):
+    for j in range(4):
+        if (i + j) % 2 == 0:
+            slab((bx - 4.5 + i * 1.8, by - 3.02 + j * 2.0, 1.2), (.9, .1, 1.0), "win" if (i + j) % 4 == 0 else "dark")
+            slab((bx - 4.5 + i * 1.8, by - 3.02 + j * 2.0, 4.2), (.9, .1, 1.0), "win" if (i + j) % 3 == 0 else "dark")
+slab((bx, by, 9.0), (11.2, 8.4, .4), "concrete")
+glim((bx, by - 4.5, 3), (1, .7, .3), 500); glim((bx + 1, by - 4.5, 6), (1, .7, .3), 400)
+# scaffolding on the front face: poles, ledgers, planks
+for i in range(7):
+    for z in (0, 3, 6): beam((bx - 5.4 + i * 1.8, by - 4.6, z), (bx - 5.4 + i * 1.8, by - 4.6, z + 3), .1, "scaffold")
+for z in (3, 6):
+    for i in range(6): beam((bx - 5.4 + i * 1.8, by - 4.6, z), (bx - 3.6 + i * 1.8, by - 4.6, z), .1, "scaffold")
+for z in (2.9, 5.9): slab((bx, by - 4.6, z), (11.4, .5, .12), "scaffold")
+# tower crane: lattice mast, slewing platform, cab, jib, counter-jib, tie bars, hoist, hook, load
+cx, cy = 8, -1
+for k in range(10):
+    for a, b in [((-.7, -.7), (.7, -.7)), ((.7, -.7), (.7, .7)), ((.7, .7), (-.7, .7)), ((-.7, .7), (-.7, -.7))]:
+        beam((cx + a[0], cy + a[1], k * 1.5), (cx + b[0], cy + b[1], k * 1.5), .12, "steel")
+        beam((cx + a[0], cy + a[1], k * 1.5), (cx + b[0], cy + b[1], (k + 1) * 1.5), .12, "steel")
+for a, b in [((-.7, -.7), (.7, -.7)), ((.7, .7), (-.7, .7)), ((-.7, .7), (-.7, -.7))]: beam((cx + a[0], cy + a[1], 15), (cx + b[0], cy + b[1], 15), .12, "steel")
+slab((cx, cy, 15), (2.2, 2.2, .5), "steel")
+slab((cx + 1.0, cy - .5, 15.5), (1.6, 1.8, 1.6), "steel"); slab((cx + 1.0, cy - 1.42, 16.2), (1.0, .1, .6), "win")
+beam((cx, cy, 15.5), (cx - 6, cy, 15.5), .4, "steel"); beam((cx, cy, 15.5), (cx + 17, cy, 15.5), .4, "steel")
+for k in range(1, 17): beam((cx + k, cy, 15.5), (cx + k + .5, cy, 15.0), .08, "steel")
+for k in range(1, 6): beam((cx - k, cy, 15.5), (cx - k + .5, cy, 15.0), .08, "steel")
+slab((cx - 5.5, cy, 14.5), (1.6, 1.6, 1.2), "concrete")
+beam((cx + 17, cy, 15.5), (cx + 17, cy, 15.0), .1, "steel")
+beam((cx + 17, cy, 15.0), (cx + 17, cy, 4.0), .08, "dark"); beam((cx + 16.9, cy, 15.0), (cx + 16.9, cy, 4.0), .08, "dark")
+slab((cx + 17, cy, 3.2), (.8, .8, .8), "hoist"); slab((cx + 17, cy, 2.0), (1.2, 1.2, 1.2), "brick")
+glim((cx + 17, cy - 1.5, 4), (1, .3, .15), 300)
+# site hut with a lit window, door and a lamp post
+slab((-11, -6, 0), (4.2, 3.2, 2.6), "hut"); slab((-11, -6, 2.6), (4.6, 3.6, .25), "dark", (.0, .12, 0))
+slab((-9.9, -6, 1.0), (.1, 1.4, 1.0), "win"); slab((-11.5, -4.4, 0), (.9, .1, 1.8), "dark")
+glim((-9, -6, 1.2), (1, .75, .4), 400)
+drum((-6, -7, 0), .12, 4.5, 5, "dark"); slab((-6, -7, 4.5), (.8, .8, .5), "lamp"); glim((-6, -7, 4.4), (1, .75, .35), 700)
+# stacks of bricks, pallets, a wheelbarrow
+for i, (x, y) in enumerate([(-12, 4), (-10.5, 5.5), (-12, 7.5), (2, -9), (4, -9.5)]):
+    for k in range(4 - (i % 3)): slab((x, y, k * .35), (2.2, 1.4, .35), "brick" if k % 2 else "brick2", (0, 0, k * .15))
+drum((11, 8, 0), .9, .8, 8, "dark"); drum((11, 8, .8), .8, .5, 8, "brick")
+# dusk: low amber key from the left, violet rim from behind right
+sunl((-34, -16, 9), (1, .55, .25), 5.5, (0, 0, 4)); sunl((28, 30, 14), (.5, .35, .9), 2.2, (0, 0, 4))
+w = bpy.data.worlds.new("dusk"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .015, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 7)); co.location = t + Vector((6, -82, 48))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

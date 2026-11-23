@@ -1,0 +1,97 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(191)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def mk(rgb, em=0):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+grass, grass2, soil, stone, stone2, stone3, water, dark, cloth, wood, reed = mk((.14, .22, .08)), mk((.2, .26, .1)), mk((.12, .08, .05)), mk((.5, .45, .36)), mk((.4, .36, .3)), mk((.3, .27, .23)), mk((.1, .25, .3)), mk((.02, .02, .02)), mk((.6, .5, .35)), mk((.2, .12, .07)), mk((.3, .25, .1))
+def mesh(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = data(o := bpy.data.objects.new("p", me)); o.location, o.rotation_euler = at, rot; o.data.materials.append(m); return o
+def slab(m, at, s, rot=(0, 0, 0), top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return mesh(bm, m, at, rot)
+def col(m, at, r, h, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, m, at, rot)
+def arch(m, at, rx, ry, z, thick, n=8):
+    bm = bmesh.new(); prev = None
+    for i in range(n + 1):
+        a = math.pi * i / n; p = Vector((math.cos(a) * rx, math.sin(a) * ry, z))
+        q = bmesh.new(); bmesh.ops.create_cube(q, size=1)
+        for v in q.verts: v.co = Vector((v.co.x * thick, v.co.y * .8, v.co.z * .9))
+        bmesh.ops.join(bm, geoms=[bm.verts, bm.faces, bm.edges, q.verts, q.faces, q.edges], transform=q.matrix_world) if False else None
+        for v in q.verts: v.co += p
+        qb = q.copy(); q.free(); bmesh.ops.join(bm, geoms=[bm.verts, bm.faces, bm.edges, qb.verts, qb.faces, qb.edges])
+    return mesh(bm, m)
+def data(o): sc.collection.objects.link(o); return o
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=16, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.2, .2)
+    v.co.z -= 2
+mesh(bm, grass)
+# valley floor: two banks and a stream bed between them
+for s in (-1, 1): slab(grass2, (s * 6.5, 0, 0), (9, 22, 1.0), top=.95)
+slab(soil, (0, 0, 0), (4.6, 22, .3)); slab(water, (0, 0, .1), (4.0, 22, .15))
+for i in range(14): slab(stone2, (random.uniform(-1.8, 1.8), random.uniform(-9, 9), .2), (random.uniform(.6, 1.1), random.uniform(.6, 1), .35), (0, 0, random.random()), .8)
+# two tiers of arches across the valley: lower tier 6 arches, upper tier 4 arches
+for k in range(6):
+    x = -7.5 + k * 3.0
+    for s in (-1, 1): slab(stone, (x + s * 1.5, 0, 1.0), (.9, 1.8, 4.2), top=.9)
+    arch(stone2, (x, 0, 5.2), 1.5, 1.4, 5.2, .9)
+    slab(stone3, (x, 0, 6.1), (3.0, 1.8, .5))
+for k in range(4):
+    x = -6.0 + k * 4.0
+    for s in (-1, 1): slab(stone2, (x + s * 2.0, 0, 6.6), (1.2, 1.6, 3.0), top=.9)
+    arch(stone, (x, 0, 9.6), 2.0, 1.2, 9.6, 1.0)
+    slab(stone3, (x, 0, 10.4), (4.0, 1.6, .45))
+slab(stone3, (0, 0, 10.85), (17, 1.6, .3))
+slab(water, (0, 0, 11.15), (16.6, .9, .1))
+# stone bridge on the stream, with a lamp post
+for s in (-1, 1): slab(stone2, (s * 2.8, -4, .1), (3.4, 2.4, .8))
+arch(stone, (0, -4, .9), 2.6, 1.2, .9, 2.4, 8)
+slab(stone3, (0, -4, 2.4), (5.2, 2.4, .25))
+col(stone, (-3.3, -4, .1), .12, 3.4, 5); slab(dark, (-3.3, -4, 3.4), (.5, .5, .6)); slab((1, .8, .4), (-3.3, -4, 3.5), (.35, .35, .3))
+lamp("POINT", (1, .75, .35), 350, (-3.3, -4, 3.8))
+# washing place on the left bank: basin, trough, tubs, women with cloths
+slab(stone3, (-8.5, -5, .9), (4.6, 3.2, .7)); slab(water, (-8.5, -5, 1.55), (3.8, 2.4, .1))
+slab(stone, (-10.5, -5, .9), (.6, 3.2, 1.0)); slab(stone, (-6.5, -5, .9), (.6, 3.2, 1.0))
+col(wood, (-8.5, -6.8, .9), .55, .8, 8); col(cloth, (-8.5, -6.8, 1.7), .45, .05, 8)
+for i, c in enumerate(((.5, .15, .1), (.15, .3, .45), (.55, .4, .1))):
+    x = -10.2 + i * 1.5
+    col(mk(c), (x, -3.3, .9), .55, 1.6, 6, .7); col(cloth, (x, -3.3, 2.5), .22, .4, 6)
+# distribution tank at the right end: basin with a channel from the aqueduct
+slab(stone3, (12, 0, .1), (6.5, 6.5, 1.8)); slab(stone, (12, 0, 1.9), (5.6, 5.6, .3)); slab(water, (12, 0, 2.2), (4.8, 4.8, .1))
+slab(stone2, (8.8, 0, 11.1), (3.0, 1.0, .12), (0, .1, 0)); slab(stone2, (10.2, 0, 6.0), (.9, .9, 5.2))
+slab(stone3, (12, 0, 2.3), (1.0, 1.0, 3.5), top=.8)
+for s in (-1, 1): slab(stone2, (12 + s * 3.6, 0, .1), (.8, 6.5, .9))
+# scrub, olive trees and a few boulders
+for x, y in ((-12, 5), (-13, -1), (13, 8), (12, -8), (-11, 9), (14, -2)):
+    col(wood, (x, y, .1), .3, 2.2, 5, .2); col(grass2, (x, y, 2.0), 1.5, 1.2, 6, .2)
+for i in range(16):
+    x, y = random.uniform(-14, 14), random.uniform(-10, 10)
+    if abs(x) < 11 and abs(y) < 1.5 or abs(x) > 11 and abs(y) < 3.5 or abs(x) < 3: continue
+    b = bmesh.new(); bmesh.ops.create_icosphere(b, subdivisions=1, radius=random.uniform(.4, .9))
+    for v in b.verts: v.co *= random.uniform(.8, 1.2)
+    mesh(b, stone2 if i % 2 else soil, (x, y, .1))
+lamp("SUN", (1, .65, .3), 5.5, (-30, -14, 11), (0, 0, 3)); lamp("SUN", (.35, .5, 1), 2.2, (26, 22, 14), (0, 0, 3))
+w = bpy.data.worlds.new("dusk"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.025, .015, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co); sc.camera = co
+t = Vector((0, 0, 5)); co.location = t + Vector((8, -72, 40))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler()

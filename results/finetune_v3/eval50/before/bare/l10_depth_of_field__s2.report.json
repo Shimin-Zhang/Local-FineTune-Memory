@@ -1,0 +1,113 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 11,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 3,
+  "MESH": 11
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "King_Material",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.95,
+    0.93,
+    0.88
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Background_Material",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.15,
+    0.08,
+    0.04
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "AREA",
+   "energy": 100.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    2.0,
+    -2.0,
+    3.0
+   ]
+  },
+  {
+   "type": "AREA",
+   "energy": 30.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    -2.0,
+    -1.0,
+    2.0
+   ]
+  },
+  {
+   "type": "SPOT",
+   "energy": 50.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    0.0,
+    2.0,
+    3.0
+   ]
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": true,
+ "left_out_of_framing": "Background",
+ "bbox_size": [
+  10.6,
+  7.6,
+  2.0
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 81.0,
+ "image": true
+}

@@ -1,0 +1,58 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "KeyError: 'bpy_prop_collection[key]: key \"Thickness\" not found'",
+ "error_line": "bsdf_node.inputs['Thickness'].default_value = 0.05",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 1,
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [
+  "CAMERA",
+  "LIGHT"
+ ],
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 1000.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    4.08,
+    1.01,
+    5.9
+   ],
+   "direction": [
+    -0.5664,
+    -0.2184,
+    -0.7947
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  1.46,
+  1.46,
+  2.1
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  1.05
+ ],
+ "scene_radius": 1.4725,
+ "process": "exit 0",
+ "seconds": 0.5,
+ "image": false
+}

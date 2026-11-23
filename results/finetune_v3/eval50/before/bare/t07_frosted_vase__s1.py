@@ -1,0 +1,163 @@
+import bpy
+import math
+
+# Clear existing mesh objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a cylinder to start the vase shape
+bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=0.5, depth=1.5, location=(0, 0, 0.75))
+vase = bpy.context.active_object
+vase.name = "FrostedGlassVase"
+
+# Add a Subdivision Surface modifier for smoothness
+subsurf = vase.modifiers.new(name="Subdivision", type='SUBSURF')
+subsurf.levels = 2
+subsurf.render_levels = 3
+
+# Shape the vase using proportional editing via bmesh
+import bmesh
+
+mesh = vase.data
+bm = bmesh.new()
+bm.from_mesh(mesh)
+
+# Scale rings to create a vase profile
+# We'll iterate through the loops (rings) and scale them
+# The cylinder has 3 loops: bottom, middle, top (with 64 verts each)
+# Actually, let's work with the mesh directly by scaling vertex rings
+
+# Get vertices and group them by Z
+verts_by_z = {}
+for v in mesh.vertices:
+    z_rounded = round(v.co.z, 4)
+    if z_rounded not in verts_by_z:
+        verts_by_z[z_rounded] = []
+    verts_by_z[z_rounded].append(v)
+
+# Sort by Z
+z_keys = sorted(verts_by_z.keys())
+
+# Define a vase profile: scale factor as a function of normalized height (0 to 1)
+def vase_profile(t):
+    """
+    t: 0 (bottom) to 1 (top)
+    Returns a scale factor for the radius at that height.
+    """
+    # Bottom: narrow
+    # Lower body: widens
+    # Middle: widest
+    # Upper body: narrows
+    # Neck: narrow
+    # Lip: slight flare
+    
+    # Use a combination of curves
+    if t < 0.1:
+        # Bottom curve
+        return 0.3 + 0.7 * (t / 0.1) ** 0.5
+    elif t < 0.4:
+        # Lower body widening
+        local_t = (t - 0.1) / 0.3
+        return 1.0 + 0.4 * math.sin(local_t * math.pi / 2)
+    elif t < 0.6:
+        # Middle - widest part
+        return 1.4
+    elif t < 0.85:
+        # Upper body narrowing
+        local_t = (t - 0.6) / 0.25
+        return 1.4 - 0.9 * local_t
+    else:
+        # Neck to lip
+        local_t = (t - 0.85) / 0.15
+        return 0.5 + 0.2 * local_t
+
+# Apply the profile
+for i, z_key in enumerate(z_keys):
+    t = i / (len(z_keys) - 1) if len(z_keys) > 1 else 0
+    scale = vase_profile(t)
+    for v in verts_by_z[z_key]:
+        # Scale X and Y relative to center
+        v.co.x *= scale
+        v.co.y *= scale
+
+bm.free()
+
+# Add a Solidify modifier to give it thickness (glass wall)
+solidify = vase.modifiers.new(name="Solidify", type='SOLIDIFY')
+solidify.thickness = 0.02
+solidify.offset = 0
+
+# Apply modifiers
+bpy.context.view_layer.objects.active = vase
+bpy.ops.object.modifier_apply(modifier="Subdivision")
+bpy.ops.object.modifier_apply(modifier="Solidify")
+
+# Smooth shading
+bpy.ops.object.shade_smooth()
+
+# Create a new material for frosted glass
+material = bpy.data.materials.new(name="FrostedGlass")
+material.use_nodes = True
+
+nodes = material.node_tree.nodes
+links = material.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+output_node = nodes.new(type='ShaderNodeOutputMaterial')
+output_node.location = (400, 0)
+
+transmission_node = nodes.new(type='ShaderNodeBsdfTranslucent')
+transmission_node.location = (0, 0)
+
+# Actually, for frosted glass, we want a combination of:
+# - Principled BSDF with transmission
+# - Roughness for the frosted effect
+
+principled = nodes.new(type='ShaderNodeBsdfPrincipled')
+principled.location = (0, 0)
+
+# Set properties for frosted glass
+principled.inputs['Base Color'].default_value = (0.9, 0.95, 1.0, 1.0)  # Slight blue tint
+principled.inputs['Roughness'].default_value = 0.4  # Frosted effect
+principled.inputs['IOR'].default_value = 1.45  # Glass IOR
+principled.inputs['Transmission Weight'].default_value = 1.0  # Full transmission
+principled.inputs['Metallic'].default_value = 0.0
+
+# Link Principled to Output
+links.new(principled.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign material to vase
+vase.data.materials.append(material)
+
+# Set up a simple scene with a light and camera
+# Add a light
+bpy.ops.object.light_add(type='AREA', location=(2, 2, 3))
+light = bpy.context.active_object
+light.data.energy = 100
+light.data.size = 2
+
+# Add a camera
+bpy.ops.object.camera_add(location=(2, -2, 1.5), rotation=(math.radians(75), 0, math.radians(45)))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera
+
+# Set render engine to Cycles for better glass rendering
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+
+# Set background color
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.05, 0.05, 0.1, 1.0)
+    bg_node.inputs[1].default_value = 1.0
+
+print("Frosted glass vase created successfully!")

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.3,
+ "error": "TypeError: bpy_struct: item.attr = val: enum \"Medium High Contrast\" not found in ('None', 'AgX - Punchy', 'AgX - Greyscale', 'AgX - Very High Contrast', 'AgX - High Contrast', 'AgX - Medium High Contrast', 'AgX - Base Contrast', 'AgX - Medium Low Contrast', 'AgX - Low Contrast', 'AgX - Very Low Contrast')",
+ "error_line": "scene.view_settings.look = 'Medium High Contrast'",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 271,
+ "n_lights": 3,
+ "n_materials": 151,
+ "own_camera": true,
+ "render_error": null
+}

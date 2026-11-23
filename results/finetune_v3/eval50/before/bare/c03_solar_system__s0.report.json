@@ -1,0 +1,207 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 9,
+ "object_types": {
+  "MESH": 9
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "SunMaterial",
+   "diffuse_color": [
+    1.0,
+    0.8,
+    0.0
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "OrbitMaterial_Mercury",
+   "diffuse_color": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "PlanetMaterial_Mercury",
+   "diffuse_color": [
+    0.7,
+    0.7,
+    0.7
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "OrbitMaterial_Venus",
+   "diffuse_color": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "PlanetMaterial_Venus",
+   "diffuse_color": [
+    0.9,
+    0.7,
+    0.3
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "OrbitMaterial_Earth",
+   "diffuse_color": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "PlanetMaterial_Earth",
+   "diffuse_color": [
+    0.2,
+    0.4,
+    0.9
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "OrbitMaterial_Mars",
+   "diffuse_color": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  },
+  {
+   "name": "PlanetMaterial_Mars",
+   "diffuse_color": [
+    0.9,
+    0.3,
+    0.1
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": true
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 9,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  101.3,
+  100.2,
+  10.0
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.3,
+ "image": true
+}

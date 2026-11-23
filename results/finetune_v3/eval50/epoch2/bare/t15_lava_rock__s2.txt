@@ -1,0 +1,86 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(468)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tone(rgb, e=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if e: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+ash, ash2, basalt, basalt2, deep, ember, ember2, scorch = tone((.05, .04, .04)), tone((.08, .06, .06)), tone((.1, .09, .09)), tone((.06, .06, .07)), tone((.02, .015, .02)), tone((1, .3, .04), 14), tone((1, .55, .08), 18), tone((.03, .02, .02))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return add(bm, m, at, (0, 0, rz))
+def spike(at, r, h, n, m, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co += Vector((random.uniform(-.2, .2), random.uniform(-.2, .2), 0)); v.co.z += h / 2
+    return add(bm, m, at)
+def blob(at, r, m, sq=.7):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(.8, 1.2), v.co.y * random.uniform(.8, 1.2), v.co.z * sq * random.uniform(.8, 1.2)))
+    return add(bm, m, at)
+def lit(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=10, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .2)))
+    else: v.co.z += random.uniform(-.1, .1)
+add(bm, ash2)
+# the rock: a faceted block of basalt with a ragged underside, built from stacked slabs
+for i, (r, h) in enumerate(((7.2, 1.6), (6.4, 1.5), (5.4, 1.4), (4.2, 1.3), (2.8, 1.1))):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=r, radius2=r * .82, depth=h)
+    for v in bm.verts: v.co += Vector((random.uniform(-.5, .5), random.uniform(-.5, .5), 0)); v.co.z += h / 2
+    add(bm, basalt if i % 2 else basalt2, (0, 0, i * 1.3))
+for i in range(10):
+    a = random.uniform(0, 6.28); r = random.uniform(3, 6.2); z = random.uniform(0, 5)
+    slab((r * math.cos(a), r * math.sin(a), z), (random.uniform(1.5, 3), random.uniform(1, 2), random.uniform(1.5, 3)), basalt2 if i % 2 else deep, random.uniform(0, 3), .6)
+# glowing cracks: bright slivers laid on the faces and in the gaps, each with its own light
+cracks = []
+for i in range(26):
+    a = random.uniform(0, 6.28); r = random.uniform(3.2, 6.6); z = random.uniform(.2, 5.2)
+    w, d = random.uniform(1.2, 3.2), random.uniform(.1, .2)
+    o = slab((r * math.cos(a), r * math.sin(a), z), (w, d, .12), ember if i % 3 else ember2, a + 1.57 + random.uniform(-.5, .5))
+    o.location.z = z + .05; cracks.append((o.location, 120 + random.random() * 100))
+for i in range(7):
+    a = random.uniform(0, 6.28); r = random.uniform(1.2, 3.6)
+    o = slab((r * math.cos(a), r * math.sin(a), 6.5), (random.uniform(1, 2.2), .12, .12), ember2, random.uniform(0, 3)); cracks.append((o.location, 90))
+for i, (p, w) in enumerate(cracks[:9]): lit("POINT", (1, .35, .05), w, (p[0], p[1], p[2] + .8))
+lit("POINT", (1, .3, .04), 700, (0, 0, 7.4)); lit("POINT", (1, .4, .08), 500, (0, -3, 1.5))
+# a lava stream running out of the base crack, and a pool at the foot
+for i in range(7):
+    x, y = 3 + i * .5, -5.5 - i * .9 + math.sin(i) * .6
+    slab((x, y, .02), (1.3, 1.6, .08), ember2 if i % 2 else ember, i * .5)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=2.6, radius2=2.4, depth=.2)
+for v in bm.verts: v.co += Vector((random.uniform(-.3, .3), random.uniform(-.3, .3), 0))
+add(bm, ember2, (8, -12, 0))
+lit("POINT", (1, .4, .05), 500, (8, -12, 1.5))
+# basalt spires and cooled boulders round the rock
+for x, y, r, h in ((-8, 4, 1.6, 6), (-6.5, 7, 1.2, 4.5), (7, 6, 1.5, 5.5), (9, -2, 1.1, 3.5), (-9, -4, 1.0, 3)):
+    spike((x, y, 0), r, h, 6, basalt, r * .25)
+for i in range(16):
+    a = random.uniform(0, 6.28); r = random.uniform(8, 10.5)
+    blob((r * math.cos(a), r * math.sin(a), .2), random.uniform(.4, 1.0), scorch if i % 2 else basalt2)
+for i in range(6):
+    a = random.uniform(0, 6.28); r = random.uniform(7, 8.6)
+    blob((r * math.cos(a), r * math.sin(a), .1), .5, ember)
+lit("SUN", (1, .35, .1), 2.5, (-26, -14, 9), (0, 0, 3)); lit("SUN", (.25, .35, 1), 2.2, (22, 24, 12), (0, 0, 3))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .008, .012, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, -1, 3.5)); co.location = t + Vector((6, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

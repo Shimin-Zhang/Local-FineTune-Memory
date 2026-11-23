@@ -1,0 +1,75 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1924)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, glow=0, rough=.85):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (r, g, b, 1); p.inputs["Roughness"].default_value = rough
+    if glow:
+        p.inputs["Emission Color"].default_value = (r, g, b, 1); p.inputs["Emission Strength"].default_value = glow
+    return m
+grass, soil, wall, trim, roof, door, slate, brick, wood, glass, trunk, leaf, leaf2, lamp = (
+    paint(*c) for c in ((.07, .17, .08), (.1, .07, .05), (.55, .5, .4), (.3, .27, .24), (.5, .08, .06), (.28, .14, .07), (.12, .12, .14), (.35, .15, .1), (.2, .13, .08), (1, .72, .3), (.6, .6, .6), (.1, .22, .08), (.16, .26, .08), (1, .6, .2)))
+def mesh(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(x, y, z, w, d, h, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return mesh(bm, m, (x, y, z), (0, 0, rz))
+def gable(x, y, z, w, d, h, m):
+    bm = bmesh.new(); a = [bm.verts.new(p) for p in ((-w / 2, -d / 2, 0), (w / 2, -d / 2, 0), (w / 2, d / 2, 0), (-w / 2, d / 2, 0), (-w / 2, 0, h), (w / 2, 0, h))]
+    for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 1, 2, 3)): bm.faces.new([a[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return mesh(bm, m, (x, y, z))
+def cyl(x, y, z, r, h, n, m, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, m, (x, y, z))
+def blob(x, y, z, r, m, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(.85, 1.15), v.co.y * random.uniform(.85, 1.15), v.co.z * sq))
+    return mesh(bm, m, (x, y, z))
+def lamp(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=7, radius2=13.5, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.5
+mesh(bm, grass)
+# the house: walls, front gable, door, two windows with frames, chimneys, steps
+box(0, 0, 0, 7.0, 5.0, 3.0, wall)
+gable(0, 0, 3.0, 7.0, 5.0, 2.2, roof)
+gable(0, -2.52, 3.0, 7.0, .1, 2.2, trim)
+box(0, -2.55, 0, 1.3, .15, 2.2, door)
+for i in range(3): box(0, -3.0 - i * .35, 0, 1.8, .5, .15 * (3 - i), trim)
+for sx in (-2.4, 2.4):
+    box(sx, -2.55, 1.0, 1.4, .15, 1.3, glass); box(sx, -2.6, 1.0, 1.6, .1, .1, trim); box(sx, -2.6, 2.3, 1.6, .1, .1, trim); box(sx, -2.6, 1.0, .1, .1, 1.3, trim)
+box(2.2, 1.0, 3.0, .8, .8, 3.4, brick)
+# side porch with a flat roof and a hanging lamp
+box(-4.6, -1.2, 0, 2.2, 3.2, 2.6, trim); box(-4.6, -1.2, 2.6, 2.8, 3.8, .25, roof)
+for sx in (-5.6, -3.6): box(sx, -2.8, 0, .2, .2, 2.6, wood)
+cyl(-4.6, -2.8, 1.9, .3, .5, 6, lamp, r2=.2); lamp("POINT", (1, .65, .25), 450, (-4.6, -3.2, 2.0))
+# garden: fence, path, flower beds, a tree, a well
+for i in range(10):
+    box(-7.5 + i * 1.0, -7.0, 0, .15, .15, 1.0, wood)
+    if i: box(-7.0 + i * 1.0, -7.0, .5, 1.0, .1, .12, wood)
+for i in range(8): box(0 + math.sin(i) * .2, -4.2 - i * .75, 0, 1.3, .7, .06, trim)
+for bx, by in ((4.5, -4.5), (-4.5, -4.5)):
+    box(bx, by, 0, 2.4, 1.0, .3, soil)
+    for i in range(5): blob(bx - 1 + i * .5, by + random.uniform(-.2, .2), .45, .28, leaf2 if i % 2 else leaf, 1.0)
+cyl(8.0, 3.0, 0, .4, 3.0, 6, wood)
+for k, (dx, dy, dz, r) in enumerate(((0, 0, 4.2, 2.2), (1.2, .5, 3.4, 1.6), (-1.3, -.4, 3.6, 1.7))): blob(8.0 + dx, 3.0 + dy, dz, r, leaf if k != 1 else leaf2, .9)
+cyl(-8.0, 2.0, 0, .9, .8, 8, slate); cyl(-8.0, 2.0, .8, .6, .1, 8, glass)
+lamp("SUN", (.6, .65, 1), 4.5, (-24, -16, 10), (0, 0, 2)); lamp("SUN", (1, .5, .4), 2.2, (20, 22, 8), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, -1, 2.5)); co.location = t + Vector((6, -46, 27))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

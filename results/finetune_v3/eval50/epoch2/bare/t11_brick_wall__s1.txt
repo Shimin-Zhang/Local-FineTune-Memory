@@ -1,0 +1,88 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(1373)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+S = bpy.context.scene
+def clay(rgb, e=0, r=.9):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = r
+    if e: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+brick, brick2, brick3, mortar, plaster, slate, stone, wood, glass, lamp = (clay((.36, .1, .07)), clay((.3, .08, .06)), clay((.22, .08, .06)), clay((.3, .27, .22)),
+    clay((.35, .3, .25)), clay((.1, .11, .14), r=.5), clay((.3, .28, .26)), clay((.14, .08, .05)), clay((1, .62, .22), 14), clay((1, .6, .2), 25))
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("w"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("w", me); o.location, o.rotation_euler = at, rot
+    S.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(x0, x1, z0, z1, y0, y1, m):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = V(((v.co.x + .5) * (x1 - x0) + x0, (v.co.y + .5) * (y1 - y0) + y0, (v.co.z + .5) * (z1 - z0) + z0))
+    return mk(bm, m)
+def rod(a, b, w, m):
+    a, b = V(a), V(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ V((v.co.x * w, v.co.y * w, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def lamp(at, w, col=(1, .6, .2)):
+    L = bpy.data.lights.new("l", "POINT"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; S.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=4, radius2=10, depth=3)
+for v in bm.verts:
+    v.co.y *= .8
+    if v.co.z < 0: v.co += V((random.uniform(-1, 1), random.uniform(-.8, .8), random.uniform(-1, .3)))
+    v.co.z -= 1.5
+mk(bm, mortar)
+blk(-9.5, 9.5, 0, .5, -4.5, 4.5, plaster); blk(-9.5, 9.5, .5, .55, -4.5, -3.9, stone)
+# the wall: courses of bricks with a window opening, built from pieces either side of the hole
+W0, W1, Z0, Z1 = -1.5, 1.5, 1.4, 4.6
+for r in range(10):
+    z0, z1 = .5 + r * .5, 1.0 + r * .5
+    for x in (-9, -6, -3, 0, 3, 6):
+        for k in range(3):
+            xa, xb = x + k * 1.0, x + k * 1.0 + .92
+            if z1 <= Z0 or z0 >= Z1:
+                blk(xa, xb, z0, z1, 0, .6, (brick, brick2, brick3)[(r + k + int(xa)) % 3])
+            else:
+                for a, b in ((xa, min(xb, W0)), (max(xa, W1), xb)):
+                    if b - a > .02: blk(a, b, z0, z1, 0, .6, (brick, brick2, brick3)[(r + k + int(a)) % 3])
+blk(W0, W1, Z1, Z1 + .5, 0, .7, stone); blk(W0 - .3, W1 + .3, Z1 + .5, Z1 + .7, 0, .75, stone)
+blk(W0 - .3, W0, Z0, Z1, 0, .6, stone); blk(W1, W1 + .3, Z0, Z1, 0, .6, stone)
+blk(W0, W1, Z0, Z0 + .25, 0, .6, stone); blk(W0, W1, Z0 + .25, Z0 + .35, 0, .6, stone)
+# window: frame, mullions, glass, sill and a lamp inside
+blk(W0 + .1, W1 - .1, Z0 + .3, Z1 - .1, -.2, .1, wood)
+blk(W0 + .15, W1 - .15, Z0 + .35, Z1 - .15, -.35, -.2, glass)
+blk((W0 + W1) / 2 - .05, (W0 + W1) / 2 + .05, Z0 + .35, Z1 - .15, -.4, -.15, wood)
+blk(W0 + .15, W1 - .15, (Z0 + Z1) / 2 - .05, (Z0 + Z1) / 2 + .05, -.4, -.15, wood)
+blk(W0 - .5, W1 + .5, Z0, Z0 + .2, -.9, -.1, stone)
+blk((W0 + W1) / 2 - .2, (W0 + W1) / 2 + .2, Z0 + .25, Z0 + .8, -.3, .1, lamp)
+lamp((0, -1.6, 3.0), 700)
+# slate roof over the top with a chimney
+blk(-9.4, 9.4, 5.5, 5.8, -1.0, 1.0, slate)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=1, radius2=.05, depth=2.4)
+for v in bm.verts: v.co = V((v.co.x * 11.2, v.co.y * 2.6, v.co.z))
+mk(bm, slate, (0, 0, 6.9), (0, 0, math.pi / 4))
+blk(6.0, 7.2, 5.5, 9.2, -.4, .4, brick2); blk(5.8, 7.4, 9.2, 9.5, -.6, .6, stone)
+# a brick chimney pot, a drainpipe, a hanging lantern by the wall, and a plank leaning on it
+blk(6.6, 7.0, 9.5, 10.4, -.2, .2, brick3)
+rod((-8.2, -.9, .6), (-8.2, -.9, 5.4), .14, stone)
+rod((-5.5, -.9, 4.9), (-5.5, -.9, 3.6), .04, wood); blk(-5.9, -5.1, 3.2, 4.0, -1.2, -.6, lamp)
+lamp((-5.5, -1.4, 3.6), 350)
+rod((-2.6, -.8, .55), (-3.2, 1.6, .6), .2, wood)
+# a few fallen bricks and a tuft of grass at the foot of the wall
+for i in range(5): blk(random.uniform(-4, 4), random.uniform(-4, 4) + .8, 0, .35, -2.8 + random.uniform(-.5, .5), -2.2 + random.uniform(-.5, .5), brick2).rotation_euler.z = random.uniform(-.4, .4)
+for i in range(8):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=.25, radius2=.02, depth=.7)
+    mk(bm, clay((.1, .22, .08)), (random.uniform(-9, 9), random.uniform(-3.5, 3.5), .35))
+for col, w, p in (((1, .55, .3), 5, (-26, -16, 11)), ((.4, .5, 1), 2.4, (24, 20, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; S.collection.objects.link(o)
+    o.rotation_euler = (V((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+S.world = bpy.data.worlds.new("eve"); S.world.use_nodes = True
+next(n for n in S.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .015, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); S.collection.objects.link(co)
+t = V((0, 0, 3.5)); co.location = t + V((12, -40, 25))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); S.camera = co
+```

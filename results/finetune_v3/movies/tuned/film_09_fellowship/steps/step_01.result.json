@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.7,
+ "error": "TypeError: rod() got an unexpected keyword argument 'top'",
+ "error_line": "rod(2.6, 1.6, 6.5, 7, black, (bx, by, 6.1), top=1.0)",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 111,
+ "n_lights": 0,
+ "n_materials": 14,
+ "own_camera": false,
+ "render_error": null
+}

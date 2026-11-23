@@ -1,0 +1,86 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(535)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def fabric(rgb, glow=0):
+    m = bpy.data.materials.new("f"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if glow: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    return m
+lawn, lawn2, red, cream, wicker, wicker2, cloth, wood, leaf, leaf2, apple, bread, candle = (fabric((.08, .2, .07)), fabric((.12, .26, .09)), fabric((.55, .06, .06)), fabric((.6, .55, .42)),
+    fabric((.45, .27, .1)), fabric((.3, .17, .07)), fabric((.7, .68, .6)), fabric((.25, .15, .08)), fabric((.1, .3, .08)), fabric((.2, .38, .1)), fabric((.7, .08, .06)), fabric((.6, .4, .15)), fabric((1, .75, .3), 14))
+def part(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return part(bm, m, at, (rx, 0, rz))
+def pot(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return part(bm, m, at, rot)
+def orb(at, r, m, sq=1, sub=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return part(bm, m, at)
+def twig(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return part(bm, m)
+def glim(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("g", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("g", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=13, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.2, .2)))
+    else: v.co.z += random.uniform(-.08, .08)
+    v.co.z -= 1.5
+part(bm, lawn)
+for i in range(14): orb((random.uniform(-10, 10), random.uniform(-10, 10), 0), random.uniform(.5, 1.0), lawn2, .25)
+# the blanket: 14 x 14 checker of 1.0 tiles, slightly raised, with fringe tassels at the ends
+for i in range(14):
+    for j in range(14):
+        slab((-7 + i, -7 + j, .02), (.98, .98, .08), red if (i + j) % 2 else cream)
+for k in range(14):
+    for x in (-7.7, 7.7): slab((x, -7 + k + .5, .02), (.3, .12, .12), cream if k % 2 else red)
+# wicker basket: tapered body, lid, cross straps, handle, a cloth tucked inside
+bx, by = -1.5, -1
+pot((bx, by, .1), 1.5, 1.5, 8, wicker, 1.2); pot((bx, by, 1.55), 1.25, .35, 8, wicker2, 1.0)
+for k in range(4):
+    a = k * math.pi / 2 + .4
+    slab((bx + math.cos(a) * 1.38, by + math.sin(a) * 1.38, .2), (.22, .1, 1.4), wicker2, a + math.pi / 2)
+twig((bx - 1.2, by, 1.8), (bx, by, 3.2), .14, wicker2); twig((bx, by, 3.2), (bx + 1.2, by, 1.8), .14, wicker2)
+slab((bx + .3, by + .3, 1.7), (.9, .9, .12), cloth, .5)
+# a plate with bread, a jug, a bottle, a cup and a candle on a small board
+slab((3.5, -1.5, .1), (2.2, 2.2, .1), cloth, .3)
+for k in range(3): orb((3.2 + k * .4, -1.8 + k * .1, .5), .38, bread, .7)
+pot((4.4, -.6, .1), .45, 1.0, 7, cloth, .3); pot((4.4, -.6, 1.0), .3, .4, 7, cloth, .45)
+pot((2.6, -.6, .1), .22, 1.3, 6, fabric((.1, .3, .12)), .2); pot((2.6, -.6, 1.3), .12, .4, 6, fabric((.1, .3, .12)), .05)
+pot((3.0, -.2, .1), .3, .5, 6, cream, .35)
+slab((4.2, -2.2, .1), (.5, .5, .15), wood); pot((4.2, -2.2, .25), .08, .8, 5, candle)
+glim('POINT', (1, .7, .3), 350, (4.2, -2.2, 1.4))
+# a thermos, a folded napkin, and a book on the blanket
+pot((-4.5, 1.5, .1), .4, 1.5, 8, fabric((.5, .1, .1)), .35); pot((-4.5, 1.5, 1.6), .3, .25, 8, wood, .3)
+slab((-5.5, -2.5, .1), (1.4, 1.0, .12), cream, .4); slab((-5.5, -2.5, .22), (1.3, .9, .1), red, .4)
+slab((-2.5, 3.5, .1), (1.4, 1.0, .15), fabric((.15, .2, .4)), -.3)
+# a tree trunk and leafy crown behind, plus a few tufts and daisies
+pot((9, 7, 0), .6, 5.5, 6, wood, .35)
+for k in range(5): orb((9 + random.uniform(-1.8, 1.8), 7 + random.uniform(-1.8, 1.8), 6.5 + random.uniform(0, 1.5)), random.uniform(1.5, 2.2), leaf if k % 2 else leaf2, .85)
+for k in range(16):
+    x, y = random.uniform(-11, 11), random.uniform(-11, 11)
+    if abs(x) < 8.5 and abs(y) < 8.5 or math.hypot(x - 9, y - 7) < 3.5: continue
+    pot((x, y, 0), .08, .5, 4, leaf2); orb((x, y, .55), .22, cream, .6)
+# golden hour: low warm key from the left, soft blue rim from behind
+glim('SUN', (1, .65, .3), 5.5, (-26, -14, 11), (0, 0, 1)); glim('SUN', (.4, .5, 1), 2.2, (24, 24, 14), (0, 0, 1))
+w = bpy.data.worlds.new("gold"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .02, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((-6, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

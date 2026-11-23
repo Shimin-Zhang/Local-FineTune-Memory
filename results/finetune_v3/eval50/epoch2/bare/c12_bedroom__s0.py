@@ -1,0 +1,85 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1266)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def paint(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .85
+    if glow:
+        p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    M[name] = m
+for k, c in (("plank", (.28, .17, .1)), ("plank2", (.22, .13, .08)), ("wall", (.2, .2, .26)), ("trim", (.12, .08, .06)), ("frame", (.14, .09, .06)),
+             ("blanket", (.55, .12, .16)), ("sheet", (.65, .62, .55)), ("pillow", (.7, .68, .6)), ("rug", (.1, .2, .3)), ("rug2", (.5, .35, .1)),
+             ("wood", (.3, .18, .1)), ("cloth", (.15, .3, .3)), ("moon", (.5, .6, 1)), ("star", (.8, .85, 1)), ("plant", (.1, .3, .12)), ("pot", (.5, .25, .15))):
+    paint(k, c)
+paint("lamp", (1, .6, .2), 14); paint("bulb", (1, .75, .4), 20)
+def add(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("b"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("b", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(M[k]); return o
+def blk(at, s, k, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, k, at, rot)
+def tube(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, k, at, rot)
+def ball(at, r, k, s=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], v.co.z * s[2]))
+    return add(bm, k, at)
+def light(kind, col, w, at, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = col; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+
+# floor slab is the base: tapered underside, planked top
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 16, v.co.y * 14, v.co.z * 2 - 1))
+    if v.co.z < 0: v.co = Vector((v.co.x * .6 + random.uniform(-.5, .5), v.co.y * .6 + random.uniform(-.5, .5), v.co.z - random.uniform(0, 1.5)))
+add(bm, "trim")
+for i in range(16): blk((-7.5 + i * 1.0, 0, 0), (.95, 13.6, .12), "plank" if i % 3 else "plank2")
+# two walls: back wall with window, left wall
+blk((0, 7.0, 0), (16, .5, 8.5), "wall"); blk((-8.0, 0, 0), (.5, 14, 8.5), "wall")
+blk((0, 6.7, 0), (16, .2, .5), "trim"); blk((-7.7, 0, 0), (.2, 14, .5), "trim")
+blk((-3.0, 6.72, 2.6), (5.2, .15, 4.2), "trim"); blk((-3.0, 6.7, 2.8), (4.6, .1, 3.8), "moon")
+blk((-3.0, 6.6, 2.8), (.12, .1, 3.8), "trim"); blk((-3.0, 6.6, 4.6), (4.6, .1, .12), "trim")
+ball((-1.8, 6.55, 5.6), .55, "star", (1, 1, .9)); ball((-4.2, 6.55, 3.6), .1, "star"); ball((-2.2, 6.55, 3.2), .07, "star"); ball((-3.4, 6.55, 5.9), .08, "star")
+blk((-3.0, 6.4, 2.6), (5.6, 1.0, .2), "trim")
+# rug
+blk((1.5, -1.5, .12), (8.0, 5.2, .06), "rug"); blk((1.5, -1.5, .18), (6.6, 4.0, .05), "rug2"); blk((1.5, -1.5, .23), (5.2, 2.8, .05), "rug")
+# bed: frame, headboard, mattress, blanket, pillows, footboard
+bx, by = 3.0, 3.0
+blk((bx, by, .3), (5.0, 7.4, .9), "frame"); blk((bx, by + 3.6, 1.0), (5.0, .5, 3.2), "frame"); blk((bx, by - 3.6, 1.0), (5.0, .5, 1.4), "frame")
+blk((bx, by, 1.2), (4.6, 7.0, .8), "sheet")
+blk((bx, by - .8, 2.0), (4.7, 4.4, .4), "blanket"); blk((bx, by - .8, 2.4), (4.7, 4.4, .1), "blanket")
+for dx in (-1.2, 1.2): blk((bx + dx, by + 2.4, 2.0), (2.0, 1.2, .6), "pillow", (0, 0, 0))
+blk((bx, by - 2.4, 2.4), (4.0, .5, .15), "cloth")
+# nightstand with lamp
+nx, ny = -1.2, 4.0
+blk((nx, ny, .3), (1.8, 1.8, 1.6), "wood"); blk((nx, ny - .85, 1.0), (1.2, .08, .6), "trim"); blk((nx, ny - .85, 1.05), (.5, .1, .1), "lamp")
+tube((nx, ny, 1.9), .1, 1.2, 5, "trim"); tube((nx, ny, 3.1), .55, .9, 7, "lamp", .3)
+blk((nx + .5, ny - .5, 1.9), (.8, .5, .12), "cloth")
+light("POINT", (1, .6, .2), 450, (nx, ny - .5, 3.4))
+# wardrobe with doors and handles
+wx, wy = -5.6, 4.8
+blk((wx, wy, 0), (3.6, 1.8, 6.2), "wood"); blk((wx, wy, 6.2), (3.9, 2.0, .3), "trim")
+for dx in (-.9, .9): blk((wx + dx, wy - .92, .2), (1.7, .1, 5.6), "cloth"); tube((wx + dx * .9 + (dx > 0 and -.25 or .25), wy - 1.0, 2.8), .08, .1, 5, "lamp", rot=(math.pi / 2, 0, 0))
+# chair, book stack, plant
+blk((-6.4, -2.2, 0), (1.4, 1.4, 1.0), "cloth"); blk((-6.4, -2.9, 1.0), (1.4, .2, 1.6), "cloth")
+for i, c in enumerate(("rug2", "rug", "cloth")): blk((-6.0, -1.6, 1.0 + i * .2), (1.0, .7, .18), c, (0, 0, i * .4))
+tube((-6.8, 5.4, 0), .5, .8, 6, "pot", .4); tube((-6.8, 5.4, .8), .1, 1.2, 5, "trim")
+for i in range(5): ball((-6.8 + random.uniform(-.5, .5), 5.4 + random.uniform(-.5, .5), 2.2 + i * .3), .5, "plant", (1, 1, .8))
+# moonlight through window, warm lamp glow
+light("SUN", (.55, .65, 1), 3.5, (-14, 14, 9), (0, 0, 1)); light("SUN", (.3, .5, .9), 1.2, (16, -8, 6), (0, 0, 2))
+w = bpy.data.worlds.new("night"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .012, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 3)); co.location = t + Vector((16, -50, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

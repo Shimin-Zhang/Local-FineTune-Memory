@@ -1,0 +1,117 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 1,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 2,
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "LavaRockMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 6,
+   "principled_base_color": [
+    0.05,
+    0.03,
+    0.02
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "EMISSION",
+    "MIX_SHADER",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 50.0,
+   "color": [
+    1.0,
+    0.3,
+    0.1
+   ],
+   "location": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "AREA",
+   "energy": 20.0,
+   "color": [
+    0.5,
+    0.4,
+    0.3
+   ],
+   "location": [
+    0.0,
+    0.0,
+    3.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   3.0,
+   -3.0,
+   2.0
+  ],
+  "direction": [
+   -0.6124,
+   0.6124,
+   -0.5
+  ],
+  "up": [
+   -0.3536,
+   0.3536,
+   0.866
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  2.079,
+  2.189,
+  2.203
+ ],
+ "scene_center": [
+  0.0318,
+  -0.0212,
+  0.009
+ ],
+ "scene_radius": 1.8688,
+ "process": "exit 0",
+ "seconds": 0.6,
+ "image": false
+}

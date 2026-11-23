@@ -1,0 +1,90 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(899)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def marble(rgb, em=0):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .55
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+flag, flag2, stone, white, dark, gold, flame = (marble((.12, .12, .15)), marble((.08, .08, .11)), marble((.2, .19, .2)), marble((.75, .74, .72)), marble((.04, .04, .05)), marble((.7, .5, .12)), marble((1, .5, .1), 16))
+def shape(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(at, d, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return shape(bm, m, at, (0, 0, rz))
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return shape(bm, m, at, rot)
+def bar(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return shape(bm, m)
+def orb(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return shape(bm, m, at)
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=12, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .3)))
+shape(bm, flag2)
+for i in range(8):
+    for j in range(8):
+        x, y = -7 + i * 2, -7 + j * 2
+        if math.hypot(x, y) < 11: box((x + 1, y + 1, 0), (1.95, 1.95, .06), flag if (i + j) % 2 else flag2)
+# stepped plinth with a glowing inlay line
+for k, (w, d, h) in enumerate(((9, 9, .6), (7.6, 7.6, .6), (6.2, 6.2, .5))): box((0, 0, k * .55 + .06), (w, d, h), stone)
+for s in (-1, 1):
+    box((s * 3.0, 0, 1.6), (.15, 6.4, .1), gold); box((0, s * 3.0, 1.6), (6.4, .15, .1), gold)
+# the statue: draped torso, head, shield, spear, raised arm with a torch
+Z = 1.76
+cyl((0, 0, Z), 2.0, .6, 8, white, 1.7)
+cyl((0, 0, Z + .6), 1.7, 2.4, 8, white, 1.0)
+cyl((0, 0, Z + 3.0), 1.0, .5, 8, white, .7)
+for i in range(5):
+    a = i * 1.26
+    box((math.cos(a) * 1.15, math.sin(a) * 1.15, Z + .7), (.5, .25, 2.0), stone, a)
+orb((0, 0, Z + 4.1), .75, white, 1.2)
+cyl((0, 0, Z + 4.55), .55, .25, 6, gold, .45)
+bar((.7, 0, Z + 3.2), (2.4, -.3, Z + 4.8), .4, white)
+bar((2.4, -.3, Z + 4.8), (2.4, -.3, Z + 6.0), .35, white)
+cyl((2.4, -.3, Z + 6.0), .5, .5, 6, gold, .3)
+orb((2.4, -.3, Z + 6.8), .5, flame, 1.3)
+bar((-1.0, 0, Z + 3.0), (-1.0, 0, Z + 5.4), .4, white)
+cyl((-1.0, 0, Z + 5.4), .3, .5, 5, flame, .1)
+bar((-1.0, 0, Z + 5.4), (-1.0, 0, Z + 5.9), .12, gold)
+bar((.9, 0, Z + 3.2), (.9, -.9, Z + .2), .4, white)
+cyl((1.2, -1.6, Z + .2), 1.0, .2, 8, white, rot=(math.pi / 2, 0, 0))
+cyl((1.2, -1.75, Z + .2), .4, .2, 6, gold, rot=(math.pi / 2, 0, 0))
+bar((-1.6, .8, Z + .3), (-1.6, .8, Z + 7.4), .12, white)
+cyl((-1.6, .8, Z + 7.4), .12, .6, 4, gold, .01)
+lamp('POINT', (1, .5, .1), 500, (2.4, -.3, Z + 6.8)); lamp('POINT', (1, .5, .1), 250, (-1.0, 0, Z + 5.8))
+# braziers and benches flanking the plinth
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        x, y = sx * 5.6, sy * 5.6
+        cyl((x, y, 0), .35, 1.3, 6, stone, .25); cyl((x, y, 1.3), .8, .4, 6, dark, .5)
+        orb((x, y, 2.0), .5, flame, 1.3); lamp('POINT', (1, .5, .1), 260, (x, y, 2.3))
+    box((sx * 5.2, 0, 0), (.8, 4.2, .8), stone); box((sx * 5.2, 0, .8), (1.0, 4.4, .2), flag)
+# three-point key on the statue: cool key, warm rim, violet fill
+lamp('SUN', (.55, .7, 1), 6, (-24, -20, 12), (0, 0, 5))
+lamp('SUN', (1, .55, .25), 2.4, (22, 20, 10), (0, 0, 5))
+lamp('SUN', (.7, .35, 1), 1.8, (-10, 26, 8), (0, 0, 5))
+w = bpy.data.worlds.new("night"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .012, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 5.5)); co.location = t + Vector((6, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

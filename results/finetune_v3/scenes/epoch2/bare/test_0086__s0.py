@@ -1,0 +1,93 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1717)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+ink = {}
+def dye(k, c, e=0, r=.9):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*c, 1); b.inputs["Roughness"].default_value = r
+    if e: b.inputs["Emission Color"].default_value = (*c, 1); b.inputs["Emission Strength"].default_value = e
+    ink[k] = m
+dye("moss", (.07, .14, .08)); dye("moss2", (.1, .18, .09)); dye("soil", (.12, .09, .07)); dye("gate", (.5, .06, .05)); dye("gate2", (.4, .05, .05))
+dye("stone", (.3, .3, .32)); dye("cedar", (.04, .13, .09)); dye("cedar2", (.06, .17, .1)); dye("bark", (.15, .1, .08)); dye("shrine", (.35, .08, .07))
+dye("gold", (.9, .6, .15)); dye("paper", (1, .75, .35), 14); dye("rock", (.16, .17, .18)); dye("lantern", (1, .45, .12), 16); dye("mushroom", (1, .3, .4), 8)
+def put(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(ink[k]); return o
+def blk(at, s, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return put(bm, k, at, (0, 0, rz))
+def cone(at, r, h, n, k, r2=0, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, k, at, rot)
+def boulder(at, r, k, sq=.7):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(.8, 1.2), v.co.y * random.uniform(.8, 1.2), v.co.z * sq))
+    return put(bm, k, at, (0, 0, random.uniform(0, 6)))
+def lamp(at, c, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+def hill(x, y): return 1.1 * y * y / 36 + .35 * x * x / 160
+# the hillside is one extruded grid: moss on top, rough soil underneath
+bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=10, y_segments=10, size=1)
+for v in bm.verts: v.co = Vector((v.co.x * 14, v.co.y * 10, 0)); v.co.z = hill(v.co.x, v.co.y) + random.uniform(-.1, .1)
+bmesh.ops.extrude_edge_only(bm, edges=[e for e in bm.edges if e.is_boundary])
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * .7 + random.uniform(-1, 1), v.co.y * .7 + random.uniform(-1, 1), -2.5 + random.uniform(-.8, .4)))
+put(bm, "moss")
+# the zigzag path climbing the slope: stone steps, each with its own little red gate
+path = []
+for i in range(12):
+    y = -8 + i * 1.4; x = 2.6 * math.sin(i * .9) - 1.0
+    path.append((x, y)); z = hill(x, y)
+    blk((x, y, z - .1), (2.6, 1.5, .5), "stone", top=.9)
+    for sx in (-1, 1):
+        cone((x + sx * 1.2, y, z + .4), .13, 2.0, 5, "gate" if i % 2 else "gate2", .1)
+    blk((x, y, z + 2.3), (2.9, .22, .22), "gate"); blk((x, y, z + 2.0), (2.7, .16, .14), "gate2")
+    if i % 3 == 0: lamp((x, y - 1.2, z + 1.5), (1, .35, .1), 120)
+# stone foxes guarding the path, tails curled, ears tall
+for fx, fy, face in ((-4.6, -3.5, 1), (4.4, 1.5, -1), (-4.2, 6.5, 1), (4.6, -7.5, -1)):
+    z = hill(fx, fy)
+    blk((fx, fy, z), (1.7, .9, .9), "stone", face * .3, .8); blk((fx + face * 1.0, fy, z + .6), (.8, .6, .7), "stone", face * .3)
+    for s in (-1, 1): cone((fx + face * 1.1, fy + s * .22, z + 1.2), .14, .5, 3, "stone")
+    cone((fx - face * 1.0, fy, z + .4), .2, .9, 5, "stone", .08, (0, face * -.8, 0))
+# the hidden shrine at the top: stone steps, two stone lanterns, a red hall with a paper window
+sx, sy = -1.0, 8.2; sz = hill(sx, sy)
+for k in range(3): blk((sx, sy - 2.6 + k * .8, sz - .1 + k * .25), (4.2 - k * .3, 1.0, .3), "stone")
+blk((sx, sy, sz + .6), (4.4, 3.2, 2.4), "shrine", 0, .95); blk((sx, sy, sz + 3.0), (5.2, 4.0, .35), "bark", 0, .8)
+cone((sx, sy, sz + 3.35), 3.6, 1.3, 4, "bark", .3, (0, 0, math.pi / 4))
+blk((sx, sy - 1.65, sz + 1.0), (1.4, .1, 1.2), "paper"); lamp((sx, sy - 2.4, sz + 1.6), (1, .7, .3), 900)
+for lx in (-2.8, 2.8):
+    cone((sx + lx, sy - 2.4, sz + .6), .22, 1.2, 6, "rock", .18); blk((sx + lx, sy - 2.4, sz + 1.8), (.7, .7, .55), "lantern", 0, .8)
+    cone((sx + lx, sy - 2.4, sz + 2.35), .7, .4, 6, "rock", .05); lamp((sx + lx, sy - 2.4, sz + 2.0), (1, .5, .15), 250)
+# cedars: dark green tiers on a short trunk, bigger on the upper slope
+for i in range(26):
+    x, y = random.uniform(-12, 12), random.uniform(-9, 9.5)
+    if abs(x - 2.6 * math.sin((y + 8) / 1.4 * .9) + 1.0) < 3 and y < 7.5: continue
+    if abs(x - sx) < 4 and abs(y - sy) < 4.5: continue
+    z = hill(x, y); h = random.uniform(2.6, 4.4) * (1 + .25 * y / 10)
+    cone((x, y, z), .22, h * .4, 5, "bark", .16)
+    for t in range(3): cone((x, y, z + h * .3 + t * h * .22), 1.7 - t * .5, h * .4, 7, "cedar" if t % 2 else "cedar2", .1)
+# glowing mushrooms in the shade and a few boulders
+for i in range(10):
+    x, y = random.uniform(-11, 11), random.uniform(-9, 4); z = hill(x, y)
+    cone((x, y, z), .12, .5, 5, "paper", .08); cone((x, y, z + .45), .38, .22, 6, "mushroom", .05)
+for i in range(8): boulder((random.uniform(-11, 11), random.uniform(-9, 9), 0), random.uniform(.4, .9), "rock")
+# misty dawn: cool lavender key from the left, warm peach rim from behind
+for c, w, at in (((.6, .65, 1), 4.5, (-26, -16, 14)), ((1, .6, .4), 2.4, (22, 22, 10))):
+    s = bpy.data.lights.new("sun", "SUN"); s.color = c; s.energy = w
+    o = bpy.data.objects.new("sun", s); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("mist"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.025, .03, .05, 1)
+cm = bpy.data.cameras.new("cam"); cm.lens = 80; cm.clip_end = 500
+co = bpy.data.objects.new("cam", cm); sc.collection.objects.link(co)
+aim = Vector((0, 0, 3.5)); co.location = aim + Vector((-6, -56, 34))
+co.rotation_euler = (aim - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

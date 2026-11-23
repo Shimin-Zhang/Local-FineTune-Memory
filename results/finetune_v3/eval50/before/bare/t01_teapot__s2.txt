@@ -1,0 +1,150 @@
+```python
+import bpy
+import math
+
+# Clear default scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Create the Tea Pot ---
+# Add a UV Sphere for the body
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=64, ring_count=32, location=(0, 0, 0.5))
+body = bpy.context.active_object
+body.name = "Teapot_Body"
+# Scale it slightly to be more teapot-like
+body.scale = (1.0, 1.0, 0.8)
+bpy.ops.object.transform_apply(scale=True)
+
+# Add a Cylinder for the handle
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=1.2, location=(1.1, 0, 0.8), rotation=(0, math.radians(90), 0))
+handle = bpy.context.active_object
+handle.name = "Teapot_Handle"
+# Make it a curve/tube instead of a solid cylinder for a better handle look
+# Actually, let's use a torus segment for the handle
+bpy.ops.object.delete(use_global=False)
+bpy.ops.mesh.primitive_torus_add(major_radius=0.4, minor_radius=0.08, major_segments=32, minor_segments=16, location=(1.2, 0, 0.8))
+handle = bpy.context.active_object
+handle.name = "Teapot_Handle"
+# Rotate to make it vertical and position it
+handle.rotation_euler = (math.radians(90), 0, 0)
+# Move it to the side
+handle.location = (1.1, 0, 0.8)
+
+# Add a Cylinder for the spout
+bpy.ops.mesh.primitive_cone_add(radius1=0.15, radius2=0.05, depth=0.8, location=(-1.0, 0, 0.9), rotation=(0, math.radians(-45), 0))
+spout = bpy.context.active_object
+spout.name = "Teapot_Spout"
+
+# Add a Cylinder for the lid
+bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.1, location=(0, 0, 1.35))
+lid = bpy.context.active_object
+lid.name = "Teapot_Lid"
+
+# Add a small sphere for the lid knob
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(0, 0, 1.45))
+knob = bpy.context.active_object
+knob.name = "Teapot_Knob"
+
+# --- Create Purple Material for the Teapot ---
+purple_mat = bpy.data.materials.new(name="Purple_Teapot")
+purple_mat.use_nodes = True
+nodes = purple_mat.node_tree.nodes
+links = purple_mat.node_tree.links
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.4, 0.0, 0.6, 1.0)  # Purple
+bsdf.inputs["Roughness"].default_value = 0.3
+
+# Assign purple material to all teapot parts
+for obj in [body, handle, spout, lid, knob]:
+    obj.data.materials.clear()
+    obj.data.materials.append(purple_mat)
+
+# --- Create Clouds ---
+# We'll create several small spheres clustered together to form cloud shapes
+cloud_mat = bpy.data.materials.new(name="Cloud_White")
+cloud_mat.use_nodes = True
+cloud_nodes = cloud_mat.node_tree.nodes
+cloud_links = cloud_mat.node_tree.links
+cloud_bsdf = cloud_nodes["Principled BSDF"]
+cloud_bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)  # White
+cloud_bsdf.inputs["Roughness"].default_value = 0.8
+
+# Function to create a cloud at a given position
+def create_cloud(location, scale=1.0):
+    cloud_objs = []
+    # Central puff
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15 * scale, location=location)
+    c1 = bpy.context.active_object
+    cloud_objs.append(c1)
+    # Side puffs
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.12 * scale, location=(location[0] + 0.1 * scale, location[1], location[2]))
+    c2 = bpy.context.active_object
+    cloud_objs.append(c2)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1 * scale, location=(location[0] - 0.1 * scale, location[1], location[2]))
+    c3 = bpy.context.active_object
+    cloud_objs.append(c3)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08 * scale, location=(location[0], location[1] + 0.08 * scale, location[2]))
+    c4 = bpy.context.active_object
+    cloud_objs.append(c4)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08 * scale, location=(location[0], location[1] - 0.08 * scale, location[2]))
+    c5 = bpy.context.active_object
+    cloud_objs.append(c5)
+    
+    # Assign material and join
+    for obj in cloud_objs:
+        obj.data.materials.clear()
+        obj.data.materials.append(cloud_mat)
+    
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in cloud_objs:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = cloud_objs[0]
+    bpy.ops.object.join()
+    cloud = bpy.context.active_object
+    cloud.name = "Cloud"
+    return cloud
+
+# Place clouds on the teapot body
+# Cloud 1 - on the front
+create_cloud((0, 0.9, 0.5), scale=1.2)
+# Cloud 2 - on the right side
+create_cloud((0.8, 0.3, 0.6), scale=1.0)
+# Cloud 3 - on the left side
+create_cloud((-0.8, 0.3, 0.6), scale=1.0)
+# Cloud 4 - on the back
+create_cloud((0, -0.9, 0.5), scale=1.2)
+# Cloud 5 - smaller one on top
+create_cloud((0.3, 0, 1.1), scale=0.8)
+# Cloud 6 - another small one
+create_cloud((-0.3, 0.2, 1.0), scale=0.7)
+
+# --- Add Lighting ---
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+
+# World background
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes["Background"]
+bg_node.inputs["Color"].default_value = (0.7, 0.8, 1.0, 1.0)  # Light blue sky
+bg_node.inputs["Strength"].default_value = 1.0
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(4, -4, 3))
+camera = bpy.context.active_object
+camera.name = "Camera"
+# Point camera at the teapot
+direction = (0, 0, 0.8) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = camera
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+```

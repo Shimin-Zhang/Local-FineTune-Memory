@@ -1,0 +1,91 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1159)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def mk(rgb, em=0, ru=.85, me=0):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = ru; n.inputs["Metallic"].default_value = me
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+cobble, cobble2, iron, timber, timber2, slate, slate2, brick, brick2, lampglow, kiosk, roof, white = (mk(c) for c in (
+    (.12, .11, .12), (.09, .08, .1), (.05, .07, .09), (.3, .19, .1), (.2, .13, .08), (.1, .12, .17), (.17, .1, .13), (.28, .12, .1), (.2, .15, .15), (.1, .6, 1), (.3, .08, .08), (.2, .1, .07), (.4, .38, .34)))
+lamp = mk((1, .6, .2), 22); win = mk((1, .65, .25), 8); steam = mk((.6, .65, .7), 1.5); dark = mk((.02, .02, .03))
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0), top=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at, rot)
+def strut(a, b, w, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * w, v.co.y * w, (v.co.z + .5) * d.length)) + a
+    return put(bm, m)
+def glim(c, w, at):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 14 + random.uniform(-1, 1), v.co.y * 10 + random.uniform(-1, 1), -3.5 + random.uniform(-.8, .5)))
+    else: v.co = Vector((v.co.x * 20, v.co.y * 14, 0))
+put(bm, cobble)
+for i in range(14): blk((-8.6 + i * 1.3, -6.5, 0), (1.25, 2.6, .08), cobble2 if i % 2 else cobble)
+# the elevated track: piers, girders, sleepers, rails
+for x in (-7, -2.5, 2.5, 7):
+    blk((x, 2, 0), (1.2, 1.4, 3.2), iron, top=.85); blk((x, 2, 3.2), (1.6, 1.8, .3), iron)
+for y in (1.2, 2.8): strut((-7.6, y, 3.6), (7.6, y, 3.6), .22, iron)
+for i in range(24): blk((-7.4 + i * .64, 2, 3.5), (.25, 2.0, .18), timber)
+for y in (1.5, 2.5): blk((0, y, 3.68), (15.2, .12, .12), iron, top=.9)
+# the station platform with canopy on posts
+blk((0, 5.2, 3.4), (12, 2.8, .5), timber2); blk((0, 5.2, 3.9), (11.6, 2.4, .1), timber)
+for x in (-5, -1.5, 2, 5.5): strut((x, 6.3, 3.9), (x, 6.3, 5.6), .12, iron)
+for x in (-5, -1.5, 2, 5.5): blk((x, 4.9, 3.9), (.12, 2.6, .9), timber)
+blk((0, 5.2, 5.6), (12.6, 2.4, .12), slate, rot=(.08, 0, 0))
+blk((0, 6.3, 3.9), (12.4, .12, 1.7), slate2)
+blk((0, 6.1, 4.0), (3.0, .1, .9), win); blk((-3.8, 6.1, 4.0), (1.2, .1, .5), lamp)
+glim((1, .6, .25), 350, (0, 5.0, 4.5))
+# stair down to the street with rails
+for i in range(11): blk((-8.2, 5.0 - i * .28, 3.4 - i * .34), (2.2, .3, .34), timber2)
+for s in (-1, 1):
+    strut((-8.2 + s * 1.0, 5.1, 3.8), (-8.2 + s * 1.0, -2.1, 1.1), .07, iron)
+    for i in range(0, 11, 3): strut((-8.2 + s * 1.0, 5.0 - i * .28, 3.4 - i * .34 + .1), (-8.2 + s * 1.0, 5.0 - i * .28, 3.4 - i * .34 + 1.0), .05, iron)
+# news kiosk with striped awning and glowing window
+blk((4.5, -4.2, 0), (2.6, 2.0, 2.4), kiosk); blk((4.5, -5.25, .9), (1.8, .1, 1.0), lamp)
+blk((4.5, -5.4, 2.4), (3.0, .8, .12), white, rot=(.25, 0, 0)); blk((4.5, -4.2, 2.4), (2.8, 2.2, .2), roof, top=.8)
+glim((1, .6, .2), 260, (4.5, -5.8, 1.4))
+# gas lamps on the street
+for x, y in ((-3, -5.5), (1, -5.5), (-6, -3.5), (7.5, -3.0)):
+    cyl((x, y, 0), .08, 3.4, 5, iron); cyl((x, y, 3.4), .3, .5, 6, lamp, .22); cyl((x, y, 3.9), .25, .12, 6, iron, .05)
+    glim((1, .6, .2), 200, (x, y, 3.7))
+# the rooftops: chimneys, dormers, water tank
+for x, y, w, d, h, m in ((-5, 7, 5, 3.5, 3.0, brick), (1, 7.5, 5, 3.5, 2.2, brick2), (6.5, 7, 4, 3, 3.4, brick), (-8.5, -1.5, 3, 3, 2.4, brick2)):
+    blk((x, y, 0), (w, d, h), m); blk((x, y, h), (w + .3, d + .3, .3), roof, top=.9)
+    for k in range(2): blk((x - w / 3 + k * w / 3, y, h + .3), (.5, .5, 1.2), brick2)
+    blk((x + w / 4, y - d / 2 - .05, h * .55), (.8, .1, .9), win)
+    blk((x - w / 4, y - d / 2 - .05, h * .55), (.8, .1, .9), win)
+cyl((-3, 7.5, 3.0), .9, 1.6, 7, timber); cyl((-3, 7.5, 4.6), 1.0, .2, 7, roof, .1)
+# a steam train on the track
+blk((1.0, 2.0, 3.8), (8.0, 1.8, 1.5), dark, top=.95); cyl((4.4, 2.0, 4.2), .7, 2.0, 7, dark, rot=(0, math.pi / 2, 0))
+blk((1.0, 2.0, 5.3), (7.6, 1.5, .12), slate2); blk((-2.8, 2.0, 4.2), (1.6, 1.5, .9), win)
+cyl((4.6, 2.0, 5.2), .15, 1.6, 5, dark); cyl((4.6, 2.0, 6.8), .5, .8, 6, steam, .1)
+for x in (-1.5, 1.0, 3.5): cyl((x, 1.0, 3.7), .35, .2, 7, iron, rot=(math.pi / 2, 0, 0)); cyl((x, 3.0, 3.7), .35, .2, 7, iron, rot=(math.pi / 2, 0, 0))
+for c, w, p in (((.55, .65, 1), 4.5, (-24, -18, 12)), ((.8, .4, .7), 2.2, (22, 24, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .02, .05, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 1.5, 2.5)); co.location = t + Vector((10, -52, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

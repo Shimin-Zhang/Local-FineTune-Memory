@@ -1,0 +1,91 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation",
+ "error_line": "direction = (0, 0, 0.5) - camera.location",
+ "n_renderable_objects": 6,
+ "object_types": {
+  "CAMERA": 1,
+  "MESH": 6
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Blue_Car",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.0,
+    0.0,
+    0.8
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Black_Wheel",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   5.0,
+   -5.0,
+   3.0
+  ],
+  "direction": [
+   0.0,
+   0.0,
+   -1.0
+  ],
+  "up": [
+   0.0,
+   1.0,
+   0.0
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  3.0,
+  1.4,
+  1.25
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.625
+ ],
+ "scene_radius": 1.7694,
+ "process": "exit 0",
+ "seconds": 0.5,
+ "image": false
+}

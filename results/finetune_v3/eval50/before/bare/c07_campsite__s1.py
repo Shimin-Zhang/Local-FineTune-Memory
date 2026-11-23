@@ -1,0 +1,165 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up basic scene
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 64
+
+# Add a sun light
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), math.radians(45))
+
+# Add a world background
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.5, 0.7, 1.0, 1.0)  # Sky blue
+    bg_node.inputs[1].default_value = 1.0
+
+# --- Materials ---
+def create_material(name, color, roughness=0.8):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    return mat
+
+mat_ground = create_material("Ground", (0.3, 0.5, 0.2, 1.0), 0.9)
+mat_tent = create_material("Tent", (0.8, 0.3, 0.1, 1.0), 0.7)
+mat_fire = create_material("Fire", (1.0, 0.5, 0.1, 1.0), 0.5)
+mat_log = create_material("Log", (0.4, 0.25, 0.15, 1.0), 0.9)
+mat_trunk = create_material("Trunk", (0.3, 0.2, 0.1, 1.0), 0.9)
+mat_leaves = create_material("Leaves", (0.1, 0.4, 0.1, 1.0), 0.8)
+mat_stone = create_material("Stone", (0.5, 0.5, 0.5, 1.0), 0.9)
+
+# --- Ground ---
+bpy.ops.mesh.primitive_plane_add(size=50, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.data.materials.append(mat_ground)
+ground.name = "Ground"
+
+# --- Tent ---
+# Simple tent: a triangular prism (two triangles for front/back, rectangular bottom)
+# We'll use a cone with 4 vertices as a pyramid, then scale it to look like a tent
+bpy.ops.mesh.primitive_cone_add(vertices=4, radius=2, depth=2.5, location=(0, 0, 1.25))
+tent = bpy.context.active_object
+tent.name = "Tent"
+tent.rotation_euler = (0, 0, math.radians(45))
+tent.data.materials.append(mat_tent)
+# Flatten the top a bit
+tent.scale = (1, 1, 0.8)
+
+# --- Campfire ---
+# Fire pit: a small cylinder of stones
+bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=0.2, location=(5, 0, 0.1))
+fire_pit = bpy.context.active_object
+fire_pit.name = "FirePit"
+fire_pit.data.materials.append(mat_stone)
+
+# Fire: a small cone to represent flames
+bpy.ops.mesh.primitive_cone_add(vertices=8, radius=0.4, depth=0.8, location=(5, 0, 0.6))
+fire = bpy.context.active_object
+fire.name = "Fire"
+fire.data.materials.append(mat_fire)
+# Make it emissive
+fire_mat = fire.data.materials[0]
+bsdf = fire_mat.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Emission Color"].default_value = (1.0, 0.5, 0.1, 1.0)
+bsdf.inputs["Emission Strength"].default_value = 2.0
+
+# Add a point light for the fire
+bpy.ops.object.light_add(type='POINT', location=(5, 0, 1.0))
+fire_light = bpy.context.active_object
+fire_light.name = "FireLight"
+fire_light.data.energy = 50
+fire_light.data.color = (1.0, 0.5, 0.1)
+
+# --- Log Bench ---
+# Two logs as the seat, and two smaller logs as legs
+# Log 1 (seat)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=3, location=(5, 2, 0.4), rotation=(0, math.radians(90), 0))
+log1 = bpy.context.active_object
+log1.name = "LogBench_Seat1"
+log1.data.materials.append(mat_log)
+
+# Log 2 (seat) - slightly offset
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=3, location=(5, 2.5, 0.4), rotation=(0, math.radians(90), 0))
+log2 = bpy.context.active_object
+log2.name = "LogBench_Seat2"
+log2.data.materials.append(mat_log)
+
+# Legs (smaller logs)
+for x_offset in [-1.2, 1.2]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.4, location=(5 + x_offset, 2.25, 0.2), rotation=(0, math.radians(90), 0))
+    leg = bpy.context.active_object
+    leg.name = f"LogBench_Leg_{x_offset}"
+    leg.data.materials.append(mat_log)
+
+# --- Pine Trees ---
+def create_pine_tree(location, scale=1.0):
+    """Create a simple pine tree with a trunk and layered cone foliage."""
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2 * scale, depth=2 * scale, location=(location[0], location[1], 1 * scale))
+    trunk = bpy.context.active_object
+    trunk.name = f"PineTree_Trunk_{location[0]:.1f}_{location[1]:.1f}"
+    trunk.data.materials.append(mat_trunk)
+    
+    # Foliage: 3 stacked cones
+    foliage_heights = [1.5, 2.2, 2.8]
+    foliage_radii = [1.2, 0.9, 0.6]
+    for i, (h, r) in enumerate(zip(foliage_heights, foliage_radii)):
+        bpy.ops.mesh.primitive_cone_add(vertices=12, radius=r * scale, depth=1.5 * scale, 
+                                        location=(location[0], location[1], (1 + i * 0.8) * scale))
+        foliage = bpy.context.active_object
+        foliage.name = f"PineTree_Foliage_{i}_{location[0]:.1f}_{location[1]:.1f}"
+        foliage.data.materials.append(mat_leaves)
+    
+    return trunk
+
+# Place trees around the campsite
+tree_positions = [
+    (-8, -8, 1.2),
+    (-10, 0, 1.0),
+    (-8, 8, 1.1),
+    (0, -10, 1.3),
+    (10, -8, 1.0),
+    (12, 0, 1.2),
+    (10, 8, 1.1),
+    (-5, -12, 1.0),
+    (5, -12, 1.2),
+    (-12, -5, 1.1),
+    (-12, 5, 1.0),
+    (12, 5, 1.3),
+    (12, -5, 1.0),
+    (0, 12, 1.1),
+    (-6, 10, 1.2),
+    (6, 10, 1.0),
+]
+
+for pos in tree_positions:
+    create_pine_tree(pos, scale=pos[2])
+
+# Add a few more scattered trees further out
+random.seed(42)
+for _ in range(10):
+    x = random.uniform(-20, 20)
+    y = random.uniform(-20, 20)
+    # Avoid the center campsite area
+    if abs(x) < 6 and abs(y) < 6:
+        continue
+    scale = random.uniform(0.8, 1.5)
+    create_pine_tree((x, y, scale), scale=scale)
+
+print("Campsite created successfully!")

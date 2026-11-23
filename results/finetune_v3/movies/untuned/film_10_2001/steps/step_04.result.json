@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 4.4,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene built successfully!\nObjects in scene: 222\n",
+ "state_saved": true,
+ "n_objects": 219,
+ "n_lights": 2,
+ "n_materials": 99,
+ "own_camera": true,
+ "render_error": null
+}

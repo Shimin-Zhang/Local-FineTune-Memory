@@ -1,0 +1,74 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1230)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, em=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (r, g, b, 1); n.inputs["Roughness"].default_value = .5
+    if em: n.inputs["Emission Color"].default_value = (r, g, b, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+road, kerb, asphalt, blue, dark, tyre, chrome, head, tail = (paint(*c) for c in (
+    (.07, .07, .09), (.3, .3, .32), (.04, .04, .05), (.05, .3, .8), (.03, .03, .04), (.015, .015, .02), (.6, .65, .7), (1, .9, .6, 14), (1, .08, .05, 12)))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, at, rot)
+def disc(at, r, w, m, axis, n=8):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r, depth=w)
+    return add(bm, m, at, (0, math.pi / 2, 0) if axis == "x" else (math.pi / 2, 0, 0) if axis == "y" else (0, 0, 0))
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# street slab: asphalt on top, rough tapered underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 26, v.co.y * 16, v.co.z * 2.6 - 1.3))
+    if v.co.z < 0: v.co = Vector((v.co.x * .6 + random.uniform(-1, 1), v.co.y * .6 + random.uniform(-1, 1), v.co.z - random.uniform(0, 1.6)))
+add(bm, asphalt)
+box((0, -6.2, 0), (26, .6, .25), kerb); box((0, 6.2, 0), (26, .6, .25), kerb)
+for i in range(7): box((-10 + i * 3.4, 0, .02), (1.8, .22, .02), kerb)
+# the car: tapered body, cabin, glass, spoiler, mirrors, lights
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 7.4, v.co.y * 3.2, (v.co.z + .5) * 1.5))
+    if v.co.z > .7: v.co.y *= .72
+    if v.co.x > 0: v.co.z += .08 * (v.co.x / 3.7)
+add(bm, blue, (0, 0, .9))
+box((0, 0, 2.4), (4.0, 2.6, 1.3), blue)
+box((0, 0, 2.6), (3.6, 2.2, .9), dark)
+box((-2.02, 0, 2.65), (.1, 1.9, .8), dark); box((2.02, 0, 2.65), (.1, 1.9, .8), dark)
+box((0, -1.32, 2.65), (3.5, .1, .8), dark); box((0, 1.32, 2.65), (3.5, .1, .8), dark)
+box((-3.6, 0, 2.4), (.25, 2.4, .12), dark)
+box((-3.7, 0, 2.5), (.1, .1, .5), dark); box((-3.7, 0, 2.5), (.1, 2.4, .1), dark)
+for s in (-1, 1):
+    box((3.72, s * 1.1, 1.55), (.12, .7, .35), head); box((-3.72, s * 1.1, 1.55), (.12, .7, .35), tail)
+    box((s * 2.2, 0, 2.4), (.8, 2.9, .12), chrome)
+    box((s * 1.8, s * 1.7, 2.3), (.4, .5, .3), blue)
+glow((4.8, 0, 1.6), (1, .9, .6), 900); glow((-4.8, 0, 1.6), (1, .1, .05), 300)
+# four black wheels: tyre, rim, hub, each with its axle line
+for x, y in ((-2.4, -1.6), (-2.4, 1.6), (2.4, -1.6), (2.4, 1.6)):
+    disc((x, y, .85), .85, .7, tyre, "y", 10); disc((x, y, .85), .5, .74, chrome, "y", 8); disc((x, y, .85), .15, .78, dark, "y", 5)
+# street lamp, bollards, a bench and a bin for scale
+box((10.5, -5.2, 0), (.3, .3, 5.0), chrome); box((10.5, -5.2, 5.0), (1.4, .4, .3), chrome)
+box((10.5, -5.2, 4.7), (1.2, .3, .2), head); glow((10.5, -5.2, 4.3), (1, .85, .5), 600)
+for x in (-9, -6, 6, 9): box((x, -4.2, 0), (.4, .4, .8), kerb)
+box((-9, 4.6, 0), (2.4, .8, .15), blue); box((-9, 4.6, .7), (2.4, .15, .6), blue)
+for s in (-1, 1): box((-9 + s * 1.0, 4.6, 0), (.15, .7, .7), chrome)
+disc((-6, 4.8, .8), .45, 1.4, dark, "z", 8)
+# night street: cool key from the left, sodium-orange rim from behind
+for c, w, p in (((.55, .7, 1), 5, (-24, -14, 10)), ((1, .55, .2), 2.2, (22, 18, 9))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("night"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .012, .03, 1)
+cm = bpy.data.cameras.new("cam"); cm.lens = 85; cm.clip_end = 500
+co = bpy.data.objects.new("cam", cm); sc.collection.objects.link(co)
+aim = Vector((0, 0, 1.2)); co.location = Vector((-6, -46, 24))
+co.rotation_euler = (aim - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

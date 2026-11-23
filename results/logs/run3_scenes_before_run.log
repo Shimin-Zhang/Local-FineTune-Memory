@@ -1,0 +1,100 @@
+test_0007__s0.py             exit 0       4.6s image=True objects=0 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Transmission" not found'
+test_0001__s0.py             exit 0       4.7s image=True objects=0 viewport_only_materials=0 error=AttributeError: bpy_prop_collection: attribute "clear" not found
+test_0000__s0.py             exit 0       4.7s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0003__s0.py             exit 0       4.8s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0005__s0.py             exit 0       5.2s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 241)
+test_0002__s0.py             exit 0       5.9s image=True objects=33 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "Medium High Contrast" not found in ('None', 'AgX - Punchy', 'AgX - Greyscale', 'AgX - Very High Contrast', 'AgX - High Contrast', 'AgX - Medium High Contrast', 'AgX - Base Contrast', 'AgX - Medium Low Contrast', 'AgX - Low Contrast', 'AgX - Very Low Contrast')
+test_0004__s0.py             exit 0       7.4s image=True objects=88 viewport_only_materials=0 error=None
+test_0006__s0.py             exit 0       7.9s image=True objects=50 viewport_only_materials=0 error=None
+test_0009__s0.py             exit 0       4.5s image=True objects=1 viewport_only_materials=0 error=SyntaxError: unterminated string literal (detected at line 258) (script.py, line 258)
+test_0011__s0.py             exit 0       4.6s image=True objects=83 viewport_only_materials=0 error=None
+test_0008__s0.py             exit 0       5.0s image=True objects=1 viewport_only_materials=0 error=SyntaxError: invalid syntax (script.py, line 282)
+test_0010__s0.py             exit 0       5.0s image=True objects=7 viewport_only_materials=0 error=AttributeError: Calling operator "bpy.ops.mesh.transform" error, could not be found
+test_0012__s0.py             exit 0       6.3s image=True objects=122 viewport_only_materials=0 error=None
+test_0014__s0.py             exit 0       4.2s image=True objects=0 viewport_only_materials=0 error=AttributeError: bpy_prop_collection: attribute "clear" not found
+test_0013__s0.py             exit 0       6.5s image=True objects=37 viewport_only_materials=0 error=None
+test_0015__s0.py             exit 0       5.1s image=True objects=5 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "rings" unrecognized
+test_0019__s0.py             exit 0       3.4s image=True objects=0 viewport_only_materials=0 error=AttributeError: bpy_prop_collection: attribute "clear" not found
+test_0016__s0.py             exit 0       5.2s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 289)
+test_0017__s0.py             exit 0       5.2s image=True objects=19 viewport_only_materials=0 error=None
+test_0021__s0.py             exit 0       3.4s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0020__s0.py             exit 0       4.3s image=True objects=40 viewport_only_materials=0 error=None
+test_0018__s0.py             exit 0       7.0s image=True objects=34 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "radius" unrecognized
+test_0024__s0.py             exit 0       4.7s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 265)
+test_0023__s0.py             exit 0       5.6s image=True objects=96 viewport_only_materials=0 error=None
+test_0025__s0.py             exit 0       4.5s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 270)
+test_0026__s0.py             exit 0       5.6s image=True objects=6 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "radius" unrecognized
+test_0028__s0.py             exit 0       4.4s image=True objects=0 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "BLENDER_EEVEE_NEXT" not found in ('BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES')
+test_0027__s0.py             exit 0       5.7s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 284)
+test_0022__s0.py             exit 0       9.0s image=True objects=200 viewport_only_materials=0 error=None
+test_0030__s0.py             exit 0       5.3s image=True objects=44 viewport_only_materials=0 error=None
+test_0032__s0.py             exit 0       4.6s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '[' was never closed (script.py, line 286)
+test_0035__s0.py             exit 0       2.9s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0031__s0.py             exit 0       5.2s image=True objects=66 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "Medium High Contrast" not found in ('None', 'AgX - Punchy', 'AgX - Greyscale', 'AgX - Very High Contrast', 'AgX - High Contrast', 'AgX - Medium High Contrast', 'AgX - Base Contrast', 'AgX - Medium Low Contrast', 'AgX - Low Contrast', 'AgX - Very Low Contrast')
+test_0029__s0.py             exit 0       8.8s image=True objects=132 viewport_only_materials=0 error=TypeError: unsupported operand type(s) for -: 'tuple' and 'tuple'
+test_0038__s0.py             exit 0       3.0s image=True objects=5 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "rings" unrecognized
+test_0033__s0.py             exit 0       6.4s image=True objects=129 viewport_only_materials=0 error=None
+test_0037__s0.py             exit 0       3.6s image=True objects=67 viewport_only_materials=0 error=RuntimeError: Error: Node type Material Output undefined
+test_0039__s0.py             exit 0       3.3s image=True objects=0 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "vertices" unrecognized
+test_0045__s0.py             exit 0       3.3s image=True objects=0 viewport_only_materials=0 error=AttributeError: bpy_prop_collection: attribute "new" not found
+test_0040__s0.py             exit 0       7.0s image=True objects=110 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 2
+test_0044__s0.py             exit 0       4.2s image=True objects=2 viewport_only_materials=0 error=ValueError: The mesh must be in editmode
+test_0041__s0.py             exit 0       5.7s image=True objects=40 viewport_only_materials=6 error=None
+test_0043__s0.py             exit 0       6.8s image=True objects=61 viewport_only_materials=0 error=None
+test_0034__s0.py             exit 0      13.7s image=True objects=236 viewport_only_materials=0 error=None
+test_0049__s0.py             exit 0       4.4s image=True objects=1 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 5
+test_0051__s0.py             exit 0       4.1s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0046__s0.py             exit 0       7.9s image=True objects=44 viewport_only_materials=0 error=None
+test_0036__s0.py             exit 0      16.7s image=True objects=259 viewport_only_materials=0 error=RuntimeError: Error: Node type Background undefined
+test_0048__s0.py             exit 0       7.2s image=True objects=167 viewport_only_materials=0 error=None
+test_0050__s0.py             exit 0       4.8s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 380)
+test_0047__s0.py             exit 0       7.4s image=True objects=166 viewport_only_materials=0 error=None
+test_0052__s0.py             exit 139     2.8s image=False objects=42 viewport_only_materials=0 error=None
+test_0042__s0.py             exit 0      14.5s image=True objects=197 viewport_only_materials=0 error=None
+test_0057__s0.py             exit 0       3.2s image=True objects=1 viewport_only_materials=0 error=SyntaxError: invalid syntax (script.py, line 353)
+test_0056__s0.py             exit 0       4.2s image=True objects=0 viewport_only_materials=0 error=AttributeError: 'Material' object has no attribute 'shadow_method'
+test_0053__s0.py             exit 0       5.8s image=True objects=66 viewport_only_materials=0 error=None
+test_0055__s0.py             exit 0       6.2s image=True objects=67 viewport_only_materials=0 error=None
+test_0058__s0.py             exit 0       6.6s image=True objects=31 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "radius" unrecognized
+test_0059__s0.py             exit 0       6.8s image=True objects=3 viewport_only_materials=0 error=AttributeError: 'Mesh' object has no attribute 'clear'
+test_0062__s0.py             exit 0       3.5s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0054__s0.py             exit 0       7.9s image=True objects=91 viewport_only_materials=0 error=None
+test_0060__s0.py             exit 0       5.2s image=True objects=112 viewport_only_materials=0 error=None
+test_0065__s0.py             exit 0       3.6s image=True objects=0 viewport_only_materials=0 error=AttributeError: bpy_prop_collection: attribute "clear" not found
+test_0061__s0.py             exit 0       9.2s image=True objects=128 viewport_only_materials=0 error=None
+test_0068__s0.py             exit 0       4.8s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 255)
+test_0066__s0.py             exit 0       5.7s image=True objects=7 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "radius" unrecognized
+test_0064__s0.py             exit 0       8.9s image=True objects=175 viewport_only_materials=0 error=None
+test_0067__s0.py             exit 0       8.0s image=True objects=41 viewport_only_materials=0 error=None
+test_0070__s0.py             exit 0       5.4s image=True objects=27 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "radius" unrecognized
+test_0073__s0.py             exit 0       3.1s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0072__s0.py             exit 0       3.3s image=True objects=2 viewport_only_materials=0 error=RuntimeError: Operator bpy.ops.object.transform_apply.poll() failed, context is incorrect
+test_0071__s0.py             exit 0       6.7s image=True objects=106 viewport_only_materials=0 error=None
+test_0069__s0.py             exit 0      11.1s image=True objects=217 viewport_only_materials=0 error=TypeError: Converting py args to operator properties: enum "Hemi" not found in ('POINT', 'SUN', 'SPOT', 'AREA')
+test_0076__s0.py             exit 0       4.7s image=True objects=76 viewport_only_materials=0 error=None
+test_0078__s0.py             exit 0       4.7s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0074__s0.py             exit 0       6.1s image=True objects=39 viewport_only_materials=0 error=AttributeError: Calling operator "bpy.ops.mesh.primitive_curve_add" error, could not be found
+test_0077__s0.py             exit 0       7.2s image=True objects=120 viewport_only_materials=0 error=None
+test_0080__s0.py             exit 0       4.1s image=True objects=32 viewport_only_materials=0 error=None
+test_0082__s0.py             exit 0       3.3s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0079__s0.py             exit 0       4.6s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 310)
+test_0081__s0.py             exit 0       4.8s image=True objects=63 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+test_0083__s0.py             exit 0       5.9s image=True objects=123 viewport_only_materials=0 error=None
+test_0075__s0.py             exit 0      12.1s image=True objects=250 viewport_only_materials=0 error=AttributeError: 'RenderSettings' object has no attribute 'use_shadows'
+test_0084__s0.py             exit 0       4.8s image=True objects=52 viewport_only_materials=0 error=None
+test_0085__s0.py             exit 0       5.1s image=True objects=1 viewport_only_materials=0 error=SyntaxError: unterminated f-string literal (detected at line 308) (script.py, line 308)
+test_0089__s0.py             exit 0       3.2s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0087__s0.py             exit 0       6.4s image=True objects=73 viewport_only_materials=0 error=IndexError: bpy_prop_collection[index]: index 0 out of range, size 0
+test_0088__s0.py             exit 0       5.3s image=True objects=0 viewport_only_materials=0 error=AttributeError: 'Material' object has no attribute 'emission_color'
+test_0090__s0.py             exit 0       3.4s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0091__s0.py             exit 0       3.6s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '[' was never closed (script.py, line 218)
+test_0086__s0.py             exit 0       7.8s image=True objects=65 viewport_only_materials=0 error=None
+test_0092__s0.py             exit 0       4.0s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 238)
+test_0096__s0.py             exit 0       4.2s image=True objects=37 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "NISHITA" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')
+test_0098__s0.py             exit 0       4.5s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0099__s0.py             exit 0       4.3s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0093__s0.py             exit 0       6.9s image=True objects=18 viewport_only_materials=0 error=None
+test_0095__s0.py             exit 0       8.4s image=True objects=121 viewport_only_materials=0 error=NameError: name 'cage_end' is not defined
+test_0097__s0.py             exit 0       9.0s image=True objects=89 viewport_only_materials=0 error=None
+test_0094__s0.py             exit 0      10.3s image=True objects=10 viewport_only_materials=0 error=None
+test_0063__s0.py             exit 0      36.2s image=True objects=535 viewport_only_materials=0 error=None

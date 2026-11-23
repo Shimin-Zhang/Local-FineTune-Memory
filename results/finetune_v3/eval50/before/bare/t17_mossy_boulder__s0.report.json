@@ -1,0 +1,75 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: 'Mesh' object has no attribute 'use_auto_smooth'",
+ "error_line": "boulder.data.use_auto_smooth = False if hasattr(boulder.data, 'use_auto_smooth') else None",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "MossMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 6,
+   "principled_base_color": [
+    0.15,
+    0.35,
+    0.08
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE",
+    "TEX_NOISE"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "RockMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 6,
+   "principled_base_color": [
+    0.35,
+    0.3,
+    0.25
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE",
+    "TEX_NOISE"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.502,
+  2.158,
+  1.725
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.5,
+ "image": true
+}

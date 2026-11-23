@@ -1,0 +1,285 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# --- MATERIALS ---
+def get_material(name, color, metallic=0.0, roughness=0.6):
+    mat = bpy.data.materials.get(name)
+    if mat is None:
+        mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Metallic"].default_value = metallic
+        bsdf.inputs["Roughness"].default_value = roughness
+    return mat
+
+water_mat = get_material("Water", (0.0, 0.3, 0.5, 1.0), metallic=0.1, roughness=0.2)
+wood_dark = get_material("WoodDark", (0.15, 0.08, 0.04, 1.0), metallic=0.0, roughness=0.7)
+wood_light = get_material("WoodLight", (0.4, 0.25, 0.1, 1.0), metallic=0.0, roughness=0.6)
+red_paint = get_material("RedPaint", (0.8, 0.1, 0.1, 1.0), metallic=0.1, roughness=0.4)
+green_paint = get_material("GreenPaint", (0.1, 0.6, 0.2, 1.0), metallic=0.1, roughness=0.4)
+gold_paint = get_material("GoldPaint", (0.9, 0.7, 0.2, 1.0), metallic=0.8, roughness=0.3)
+skin_mat = get_material("Skin", (0.8, 0.6, 0.5, 1.0), metallic=0.0, roughness=0.8)
+cloth_red = get_material("ClothRed", (0.7, 0.1, 0.1, 1.0), metallic=0.0, roughness=0.9)
+cloth_blue = get_material("ClothBlue", (0.1, 0.2, 0.6, 1.0), metallic=0.0, roughness=0.9)
+cloth_yellow = get_material("ClothYellow", (0.8, 0.7, 0.1, 1.0), metallic=0.0, roughness=0.9)
+cloth_green = get_material("ClothGreen", (0.1, 0.5, 0.2, 1.0), metallic=0.0, roughness=0.9)
+stone_mat = get_material("Stone", (0.4, 0.4, 0.4, 1.0), metallic=0.0, roughness=0.9)
+flag_red = get_material("FlagRed", (0.9, 0.1, 0.1, 1.0), metallic=0.0, roughness=0.8)
+flag_blue = get_material("FlagBlue", (0.1, 0.2, 0.8, 1.0), metallic=0.0, roughness=0.8)
+flag_yellow = get_material("FlagYellow", (0.9, 0.8, 0.1, 1.0), metallic=0.0, roughness=0.8)
+flag_green = get_material("FlagGreen", (0.1, 0.7, 0.2, 1.0), metallic=0.0, roughness=0.8)
+roof_mat = get_material("Roof", (0.2, 0.1, 0.05, 1.0), metallic=0.0, roughness=0.8)
+paper_mat = get_material("Paper", (0.9, 0.9, 0.8, 1.0), metallic=0.0, roughness=0.9)
+
+# --- WORLD ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.6, 0.7, 0.9, 1.0)
+    bg_node.inputs[1].default_value = 1.0
+
+# --- LIGHTING ---
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 3.0
+sun_data.color = (1.0, 0.95, 0.85)
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = Euler((math.radians(45), math.radians(15), 0))
+
+# --- RIVER (flat plane) ---
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 0, 0))
+river = bpy.context.object
+river.name = "River"
+river.data.materials.append(water_mat)
+# Subdivide for waves
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+# Add slight wave displacement via simple deform or just leave flat for now
+# Use a simple sine wave modifier
+mod = river.modifiers.new("Wave", 'SIMPLE_DEFORM')
+mod.deform_method = 'BEND'
+mod.angle = math.radians(5)
+mod.deform_axis = 'Z'
+
+# --- HELPER: Create a simple dragon head ---
+def create_dragon_head(name, location, rotation, scale, mat_body, mat_accent):
+    # Main head - elongated box
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    head = bpy.context.object
+    head.name = name + "_Head"
+    head.scale = (scale * 0.3, scale * 0.8, scale * 0.4)
+    head.rotation_euler = rotation
+    head.data.materials.append(mat_body)
+    
+    # Snout
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(location[0] + math.sin(rotation[2]) * scale * 0.5, 
+                                                       location[1] + math.cos(rotation[2]) * scale * 0.5, 
+                                                       location[2]))
+    snout = bpy.context.object
+    snout.name = name + "_Snout"
+    snout.scale = (scale * 0.2, scale * 0.5, scale * 0.3)
+    snout.rotation_euler = rotation
+    snout.data.materials.append(mat_accent)
+    
+    # Horns
+    for i, side in enumerate([-1, 1]):
+        bpy.ops.mesh.primitive_cone_add(radius1=scale*0.1, radius2=scale*0.02, depth=scale*0.5, 
+                                        location=(location[0] + side * scale * 0.2 * math.cos(rotation[2]),
+                                                  location[1] + side * scale * 0.2 * math.sin(rotation[2]),
+                                                  location[2] + scale * 0.3))
+        horn = bpy.context.object
+        horn.name = name + f"_Horn{i}"
+        horn.rotation_euler = (rotation[0] + math.radians(20), rotation[1], rotation[2])
+        horn.data.materials.append(mat_accent)
+    
+    # Eyes
+    for i, side in enumerate([-1, 1]):
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=scale*0.05, 
+                                            location=(location[0] + side * scale * 0.15 * math.cos(rotation[2]),
+                                                      location[1] + side * scale * 0.15 * math.sin(rotation[2]),
+                                                      location[2] + scale * 0.1))
+        eye = bpy.context.object
+        eye.name = name + f"_Eye{i}"
+        eye.data.materials.append(gold_paint)
+    
+    return head
+
+# --- HELPER: Create a dragon boat ---
+def create_dragon_boats(name, location, rotation, scale, hull_mat, head_mat, accent_mat):
+    # Hull - long tapered box
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    hull = bpy.context.object
+    hull.name = name + "_Hull"
+    hull.scale = (scale * 0.5, scale * 4.0, scale * 0.3)
+    hull.rotation_euler = rotation
+    hull.data.materials.append(hull_mat)
+    
+    # Taper the hull (make it narrower at the ends)
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.mesh.subdivide(number_cuts=10)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    
+    # Dragon head at the front (positive Y direction in local space)
+    head_loc = (location[0] + math.sin(rotation[2]) * scale * 4.2,
+                location[1] + math.cos(rotation[2]) * scale * 4.2,
+                location[2] + scale * 0.2)
+    create_dragon_head(name, head_loc, rotation, scale * 1.5, head_mat, accent_mat)
+    
+    # Tail at the back
+    tail_loc = (location[0] - math.sin(rotation[2]) * scale * 4.2,
+                location[1] - math.cos(rotation[2]) * scale * 4.2,
+                location[2] + scale * 0.1)
+    bpy.ops.mesh.primitive_cone_add(radius1=scale*0.2, radius2=scale*0.05, depth=scale*1.0,
+                                    location=tail_loc)
+    tail = bpy.context.object
+    tail.name = name + "_Tail"
+    tail.rotation_euler = (rotation[0] + math.radians(90), rotation[1], rotation[2])
+    tail.data.materials.append(accent_mat)
+    
+    # Drummer in the bow
+    drummer_loc = (location[0] + math.sin(rotation[2]) * scale * 2.0,
+                   location[1] + math.cos(rotation[2]) * scale * 2.0,
+                   location[2] + scale * 0.5)
+    
+    # Drummer body
+    bpy.ops.mesh.primitive_cylinder_add(radius=scale*0.15, depth=scale*0.4, location=drummer_loc)
+    drummer_body = bpy.context.object
+    drummer_body.name = name + "_DrummerBody"
+    drummer_body.data.materials.append(cloth_red)
+    
+    # Drummer head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=scale*0.12, 
+                                         location=(drummer_loc[0], drummer_loc[1], drummer_loc[2] + scale*0.25))
+    drummer_head = bpy.context.object
+    drummer_head.name = name + "_DrummerHead"
+    drummer_head.data.materials.append(skin_mat)
+    
+    # Drum
+    drum_loc = (drummer_loc[0] + math.sin(rotation[2]) * scale * 0.3,
+                drummer_loc[1] + math.cos(rotation[2]) * scale * 0.3,
+                drummer_loc[2] + scale * 0.1)
+    bpy.ops.mesh.primitive_cylinder_add(radius=scale*0.2, depth=scale*0.15, location=drum_loc)
+    drum = bpy.context.object
+    drum.name = name + "_Drum"
+    drum.rotation_euler = (math.radians(90), 0, rotation[2])
+    drum.data.materials.append(wood_dark)
+    
+    # Rowers (simplified)
+    for i in range(8):
+        rower_y = -scale * 3.0 + i * scale * 0.7
+        rower_loc = (location[0], location[1] + rower_y, location[2] + scale * 0.3)
+        
+        # Body
+        bpy.ops.mesh.primitive_cylinder_add(radius=scale*0.1, depth=scale*0.3, location=rower_loc)
+        rower_body = bpy.context.object
+        rower_body.name = name + f"_Rower{i}Body"
+        rower_body.data.materials.append(cloth_blue if i % 2 == 0 else cloth_yellow)
+        
+        # Head
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=scale*0.08, 
+                                            location=(rower_loc[0], rower_loc[1], rower_loc[2] + scale*0.2))
+        rower_head = bpy.context.object
+        rower_head.name = name + f"_Rower{i}Head"
+        rower_head.data.materials.append(skin_mat)
+        
+        # Oar
+        oar_loc = (rower_loc[0] + scale * 0.2, rower_loc[1], rower_loc[2] - scale * 0.1)
+        bpy.ops.mesh.primitive_cylinder_add(radius=scale*0.02, depth=scale*0.8, location=oar_loc)
+        oar = bpy.context.object
+        oar.name = name + f"_Oar{i}"
+        oar.rotation_euler = (math.radians(30), 0, rotation[2])
+        oar.data.materials.append(wood_light)
+    
+    return hull
+
+# --- CREATE TWO DRAGON BOATS ---
+# Boat 1 (Red) - left side
+boat1_rot = Euler((0, 0, math.radians(10)))
+create_dragon_boats("Boat1", (-5, 0, 0.2), boat1_rot, 1.0, red_paint, red_paint, gold_paint)
+
+# Boat 2 (Green) - right side
+boat2_rot = Euler((0, 0, math.radians(-5)))
+create_dragon_boats("Boat2", (5, 0, 0.2), boat2_rot, 1.0, green_paint, green_paint, gold_paint)
+
+# --- FINISH LINE PAVILION ---
+pavilion_loc = (0, 25, 0)
+
+# Base platform
+bpy.ops.mesh.primitive_cube_add(size=1, location=(pavilion_loc[0], pavilion_loc[1], 0.5))
+base = bpy.context.object
+base.name = "PavilionBase"
+base.scale = (8, 4, 0.5)
+base.data.materials.append(stone_mat)
+
+# Pillars
+pillar_positions = [(-3.5, -1.5), (3.5, -1.5), (-3.5, 1.5), (3.5, 1.5)]
+for i, (px, py) in enumerate(pillar_positions):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=4, 
+                                        location=(pavilion_loc[0] + px, pavilion_loc[1] + py, 2))
+    pillar = bpy.context.object
+    pillar.name = f"PavilionPillar{i}"
+    pillar.data.materials.append(wood_dark)
+
+# Roof
+bpy.ops.mesh.primitive_cone_add(radius1=6, radius2=0, depth=3, 
+                                location=(pavilion_loc[0], pavilion_loc[1], 5))
+roof = bpy.context.object
+roof.name = "PavilionRoof"
+roof.scale = (1, 0.7, 1)
+roof.data.materials.append(roof_mat)
+
+# Banner across the top
+bpy.ops.mesh.primitive_plane_add(size=1, location=(pavilion_loc[0], pavilion_loc[1], 4))
+banner = bpy.context.object
+banner.name = "FinishBanner"
+banner.scale = (7, 0.5, 1)
+banner.rotation_euler = (0, 0, 0)
+banner.data.materials.append(gold_paint)
+
+# --- CROWDED BANKS WITH FLAGS ---
+# Left bank
+for i in range(30):
+    x = -15 + random.uniform(-2, 2)
+    z = random.uniform(0.5, 2.0)
+    y = random.uniform(-10, 20)
+    
+    # Person body
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.6, location=(x, y, z))
+    person = bpy.context.object
+    person.name = f"LeftBankPerson{i}"
+    colors = [cloth_red, cloth_blue, cloth_yellow, cloth_green]
+    person.data.materials.append(random.choice(colors))
+    
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.12, location=(x, y, z + 0.4))
+    head = bpy.context.object
+    head.name = f"LeftBankPersonHead{i}"
+    head.data.materials.append(skin_mat)
+    
+    # Flag (some people hold flags)
+    if i % 3 == 0:
+        flag_loc = (x + 0.3, y, z + 0.5)
+        bpy.ops.mesh.primitive_plane_add(size=0.5, location=flag_loc)
+        flag = bpy.context.object
+        flag.name = f"LeftBankFlag{i}"
+        flag.rotation_euler = (math.radians(10), 0, random.uniform(0, 360))
+        flag.data.materials.append(random.choice([flag_red, flag_blue, flag_yellow, flag_green]))
+        
+        # Flag pole
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.8, location=(x + 0.3, y, z + 0

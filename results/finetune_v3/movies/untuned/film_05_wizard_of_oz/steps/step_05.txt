@@ -1,0 +1,92 @@
+```python
+import bpy, math, random
+
+# Remove the horizontal fence rails that cross the road
+for obj in list(bpy.data.objects):
+    if obj.name.startswith("Cylinder") and abs(obj.location.z - 0.7) < 0.1 and abs(obj.location.x) < 4:
+        if obj.dimensions.x > 5:  # horizontal rails
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+# Add more poppies for density
+m_poppy = bpy.data.materials.get("Poppy")
+m_stem = bpy.data.materials.get("Stem")
+m_leaf = bpy.data.materials.get("Leaf")
+if m_poppy and m_stem:
+    random.seed(99)
+    for i in range(100):
+        s = random.choice([-1,1])
+        x = s*random.uniform(2.8,18); y = random.uniform(-45,45)
+        h = random.uniform(.5,1.2)
+        bpy.ops.mesh.primitive_cylinder_add(radius=.03, depth=h, location=(x,y,h/2))
+        bpy.context.active_object.data.materials.append(m_stem)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=.12, location=(x,y,h+.08))
+        hd = bpy.context.active_object; hd.scale=(1,1,.6); hd.data.materials.append(m_poppy)
+
+# Add a small basket for Dorothy
+m_basket = bpy.data.materials.get("Basket") or bpy.data.materials.new("Basket")
+m_basket.use_nodes = True
+m_basket.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (.6,.4,.2,1)
+m_basket.node_tree.nodes['Principled BSDF'].inputs['Roughness'].default_value = .8
+
+bpy.ops.mesh.primitive_cylinder_add(radius=.15, depth=.2, location=(-1.2,-15.5,.3))
+bk = bpy.context.active_object; bk.scale=(1,1,.8); bk.data.materials.append(m_basket)
+
+# Add a small signpost near the road
+m_sign = bpy.data.materials.get("SignWood") or bpy.data.materials.new("SignWood")
+m_sign.use_nodes = True
+m_sign.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (.5,.3,.15,1)
+m_sign.node_tree.nodes['Principled BSDF'].inputs['Roughness'].default_value = .8
+
+bpy.ops.mesh.primitive_cylinder_add(radius=.05, depth=1.5, location=(3.5,-20,.75))
+sp = bpy.context.active_object; sp.data.materials.append(m_sign)
+bpy.ops.mesh.primitive_cube_add(size=.5, location=(3.5,-20,1.3))
+sg = bpy.context.active_object; sg.scale=(1,.3,.5); sg.data.materials.append(m_sign)
+
+# Add more clouds
+m_cloud = bpy.data.materials.get("Cloud")
+if m_cloud:
+    for i in range(8):
+        cx = random.uniform(-50,50); cyy = random.uniform(-30,50); cz = random.uniform(28,45)
+        for j in range(3):
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(2,4), location=(cx+random.uniform(-3,3), cyy+random.uniform(-2,2), cz+random.uniform(-1,1)))
+            cp = bpy.context.active_object; cp.scale=(1,.6,.5); cp.data.materials.append(m_cloud)
+
+# Add a few more trees
+m_trunk = bpy.data.materials.get("Trunk")
+m_tree = bpy.data.materials.get("Tree")
+if m_trunk and m_tree:
+    for i in range(8):
+        s = random.choice([-1,1]); tx = s*random.uniform(20,40); ty = random.uniform(-45,45)
+        th = random.uniform(3,6)
+        bpy.ops.mesh.primitive_cylinder_add(radius=.3, depth=th, location=(tx,ty,th/2))
+        bpy.context.active_object.data.materials.append(m_trunk)
+        for k in range(4):
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(1.5,2.5), location=(tx+random.uniform(-1,1), ty+random.uniform(-1,1), th+random.uniform(0,2)))
+            bpy.context.active_object.data.materials.append(m_tree)
+
+# Add small flowers (white daisies) scattered
+m_daisy = bpy.data.materials.get("Daisy") or bpy.data.materials.new("Daisy")
+m_daisy.use_nodes = True
+m_daisy.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (1,1,1,1)
+m_daisy.node_tree.nodes['Principled BSDF'].inputs['Roughness'].default_value = .5
+
+m_daisy_center = bpy.data.materials.get("DaisyCenter") or bpy.data.materials.new("DaisyCenter")
+m_daisy_center.use_nodes = True
+m_daisy_center.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (1,.9,.1,1)
+
+random.seed(77)
+for i in range(60):
+    s = random.choice([-1,1])
+    x = s*random.uniform(3,20); y = random.uniform(-40,40)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=.05, location=(x,y,.05))
+    fl = bpy.context.active_object; fl.scale=(1,1,.3); fl.data.materials.append(m_daisy)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=.02, location=(x,y,.08))
+    fc = bpy.context.active_object; fc.data.materials.append(m_daisy_center)
+
+# Adjust camera slightly to frame better
+cam = bpy.data.objects.get("Cam")
+if cam:
+    cam.location = (0, -24, 3.5)
+    cam.rotation_euler = (math.radians(83), 0, 0)
+    cam.data.lens = 45
+```

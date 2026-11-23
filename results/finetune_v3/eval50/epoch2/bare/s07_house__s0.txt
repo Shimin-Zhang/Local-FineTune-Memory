@@ -1,0 +1,86 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1915)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+mats = {}
+def tint(name, rgb, glow=0, rough=.9):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if glow:
+        p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    mats[name] = m
+for k, v in dict(grass=(.1, .2, .1), soil=(.12, .08, .06), plaster=(.55, .5, .42), trim=(.4, .38, .34), roof=(.5, .08, .06), roof2=(.38, .06, .05),
+                 door=(.3, .14, .06), chimney=(.35, .2, .15), trunk=(.2, .12, .07), leaf=(.08, .22, .1), leaf2=(.12, .28, .1), rock=(.3, .3, .32), path=(.4, .35, .28),
+                 hedge=(.06, .16, .08), fence=(.35, .3, .25)).items(): tint(k, v)
+tint("pane", (1, .65, .25), glow=14); tint("lamp", (1, .7, .3), glow=16)
+def put(bm, key, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("h"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("h", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(mats[key]); return o
+def wall(at, s, key, rz=0, tilt=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, key, at, (tilt, 0, rz))
+def tube(at, r, h, n, key, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, key, at, rot)
+def blob(at, r, key, sq=1, j=.2):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= 1 + random.uniform(-j, j); v.co.z *= sq
+    return put(bm, key, at)
+def shine(at, rgb, w):
+    L = bpy.data.lights.new("s", "POINT"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=13, depth=3)
+for v in bm.verts:
+    v.co.x *= 1.1
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    v.co.z -= 1.5
+put(bm, "grass")
+wall((0, 0, .02), (17, 14, .1), "soil")
+# the house: plaster body, stone plinth, trim band, chimney
+wall((0, 0, 0), (9, 6.4, .5), "trim"); wall((0, 0, .5), (8.2, 5.6, 3.6), "plaster")
+wall((0, -2.82, 4.1), (8.6, .2, .3), "trim")
+wall((2.6, 1.5, 4.1), (1.2, 1.2, 3.4), "chimney"); wall((2.6, 1.5, 7.4), (1.5, 1.5, .3), "rock")
+# red gable roof: two sloped slabs, ridge cap, eave overhang
+for s in (-1, 1): wall((0, s * 1.9, 4.9), (9.6, 4.4, .3), "roof", tilt=s * -.62)
+wall((0, 0, 6.5), (9.8, .5, .35), "roof2")
+wall((0, -2.9, 4.5), (8.4, .1, .5), "roof2")
+# brown door with frame, steps and a hanging lantern
+wall((0, -2.85, .5), (1.7, .2, 2.9), "trim"); wall((0, -2.95, .5), (1.3, .15, 2.5), "door")
+wall((0, -2.95, 1.6), (.08, .1, 1.8), "trim")
+wall((0, -3.9, 0), (2.4, 1.4, .25), "rock"); wall((0, -4.4, 0), (2.4, .6, .12), "rock")
+wall((1.3, -3.0, 2.3), (.3, .3, .4), "lamp"); shine((1.3, -3.4, 2.6), (1, .65, .25), 350)
+# two windows with frames, muntins, sills and glowing panes
+for wx in (-2.6, 2.6):
+    wall((wx, -2.85, 1.5), (1.7, .2, 1.7), "trim"); wall((wx, -2.95, 1.7), (1.3, .1, 1.3), "pane")
+    wall((wx, -3.0, 2.3), (1.4, .1, .1), "trim"); wall((wx, -3.0, 2.3), (.1, .1, 1.4), "trim")
+    wall((wx, -3.1, 1.4), (2.0, .5, .15), "trim")
+    shine((wx, -3.6, 2.3), (1, .65, .25), 300)
+# garden: path, hedges, fence, trees, rocks, flower bed
+for i in range(6): wall((0 + random.uniform(-.2, .2), -4.6 - i * 1.0, .05), (1.8, .9, .06), "path")
+for hx in (-5.5, 5.5): wall((hx, -2.8, 0), (1.2, 1.2, 1.0), "hedge", j=.15)
+for i in range(9):
+    for y in (-6.5, 6.5): wall((-8 + i * 2, y, 0), (.15, .15, 1.0), "fence")
+for y in (-6.5, 6.5): wall((0, y, .8), (17, .1, .12), "fence")
+for tx, ty, k in ((-8.5, 2, 0), (9, 3, 1), (7, -5, 0), (-9, -4, 1)):
+    tube((tx, ty, 0), .35, 2.4, 5, "trunk", .25)
+    blob((tx, ty, 3.6), 2.0, "leaf" if k else "leaf2", 1.1); blob((tx + .5, ty, 4.8), 1.4, "leaf2" if k else "leaf", 1)
+for i in range(8): blob((random.uniform(-9, 9), random.uniform(-8, 8), .2), random.uniform(.3, .6), "rock", .7)
+for i in range(7): blob((-6.5 + i * .6, -5.2, .2), .22, "roof", .8, .1)
+# blue-hour light: cool key from the left, violet rim, warm windows
+for col, w, at in (((.5, .65, 1), 4.5, (-26, -18, 11)), ((.7, .4, .9), 2, (22, 22, 12))):
+    s = bpy.data.lights.new("sun", "SUN"); s.color = col; s.energy = w
+    o = bpy.data.objects.new("sun", s); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("blue"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .02, .05, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3.2)); co.location = t + Vector((9, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

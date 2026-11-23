@@ -1,0 +1,311 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# --- Setup ---
+bpy.ops.object.select_all(action='DESELECT')
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Materials ---
+def create_material(name, color, roughness=0.8):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    return mat
+
+mat_red = create_material("GateRed", (0.8, 0.1, 0.1, 1.0), 0.6)
+mat_stone = create_material("Stone", (0.5, 0.5, 0.5, 1.0), 0.9)
+mat_cedar = create_material("CedarBark", (0.2, 0.15, 0.1, 1.0), 0.9)
+mat_cedar_leaf = create_material("CedarLeaf", (0.1, 0.3, 0.1, 1.0), 0.7)
+mat_shrine = create_material("ShrineWood", (0.4, 0.3, 0.2, 1.0), 0.5)
+mat_path = create_material("PathDirt", (0.3, 0.25, 0.2, 1.0), 1.0)
+
+# --- Helper: Create a small torii-style gate ---
+def create_gate(location, rotation_euler, scale=1.0):
+    # Two vertical posts
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05 * scale, depth=1.2 * scale, location=(0, 0, 0.6 * scale))
+    post1 = bpy.context.object
+    post1.location = (-0.4 * scale, 0, 0.6 * scale)
+    post1.data.materials.append(mat_red)
+    
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05 * scale, depth=1.2 * scale, location=(0, 0, 0.6 * scale))
+    post2 = bpy.context.object
+    post2.location = (0.4 * scale, 0, 0.6 * scale)
+    post2.data.materials.append(mat_red)
+    
+    # Top beam (kasagi)
+    bpy.ops.mesh.primitive_cube_add(size=1)
+    beam = bpy.context.object
+    beam.scale = (1.1 * scale, 0.08 * scale, 0.08 * scale)
+    beam.location = (0, 0, 1.2 * scale)
+    beam.data.materials.append(mat_red)
+    
+    # Lower beam (nuki)
+    bpy.ops.mesh.primitive_cube_add(size=1)
+    nuki = bpy.context.object
+    nuki.scale = (0.9 * scale, 0.06 * scale, 0.06 * scale)
+    nuki.location = (0, 0, 0.8 * scale)
+    nuki.data.materials.append(mat_red)
+    
+    # Join gate parts
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in [post1, post2, beam, nuki]:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = post1
+    bpy.ops.object.join()
+    gate = bpy.context.object
+    gate.location = location
+    gate.rotation_euler = rotation_euler
+    return gate
+
+# --- Helper: Create a stone fox (kitsune) ---
+def create_stone_fox(location, rotation_euler, scale=1.0):
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3 * scale, location=(0, 0, 0.3 * scale))
+    body = bpy.context.object
+    body.scale = (1.0, 1.4, 0.8)
+    body.data.materials.append(mat_stone)
+    
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.18 * scale, location=(0, 0.35 * scale, 0.5 * scale))
+    head = bpy.context.object
+    head.data.materials.append(mat_stone)
+    
+    # Ears
+    bpy.ops.mesh.primitive_cone_add(radius1=0.08 * scale, depth=0.15 * scale, location=(-0.1 * scale, 0.3 * scale, 0.65 * scale))
+    ear1 = bpy.context.object
+    ear1.rotation_euler = (math.radians(-20), 0, 0)
+    ear1.data.materials.append(mat_stone)
+    
+    bpy.ops.mesh.primitive_cone_add(radius1=0.08 * scale, depth=0.15 * scale, location=(0.1 * scale, 0.3 * scale, 0.65 * scale))
+    ear2 = bpy.context.object
+    ear2.rotation_euler = (math.radians(-20), 0, 0)
+    ear2.data.materials.append(mat_stone)
+    
+    # Tail
+    bpy.ops.mesh.primitive_cone_add(radius1=0.1 * scale, depth=0.4 * scale, location=(0, -0.4 * scale, 0.3 * scale))
+    tail = bpy.context.object
+    tail.rotation_euler = (math.radians(120), 0, 0)
+    tail.data.materials.append(mat_stone)
+    
+    # Legs (simple cylinders)
+    for x in [-0.15, 0.15]:
+        for y in [-0.2, 0.2]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.05 * scale, depth=0.25 * scale, location=(x * scale, y * scale, 0.125 * scale))
+            leg = bpy.context.object
+            leg.data.materials.append(mat_stone)
+    
+    # Join fox parts
+    bpy.ops.object.select_all(action='DESELECT')
+    parts = [body, head, ear1, ear2, tail] + [bpy.context.object for _ in range(4)]
+    # Actually let's just select all stone objects we just created
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in bpy.context.scene.objects:
+        if obj.type == 'MESH' and obj.data.materials and obj.data.materials[0] == mat_stone:
+            obj.select_set(True)
+    if bpy.context.selected_objects:
+        bpy.context.view_layer.objects.active = body
+        bpy.ops.object.join()
+        fox = bpy.context.object
+    else:
+        fox = body
+    
+    fox.location = location
+    fox.rotation_euler = rotation_euler
+    return fox
+
+# --- Helper: Create a cedar tree ---
+def create_cedar_tree(location, scale=1.0):
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15 * scale, depth=3.0 * scale, location=(0, 0, 1.5 * scale))
+    trunk = bpy.context.object
+    trunk.data.materials.append(mat_cedar)
+    
+    # Foliage layers (cones)
+    for i in range(5):
+        h = 1.0 + i * 0.5
+        r = 1.2 - i * 0.15
+        bpy.ops.mesh.primitive_cone_add(radius1=r * scale, radius2=0, depth=1.0 * scale, location=(0, 0, h * scale))
+        cone = bpy.context.object
+        cone.data.materials.append(mat_cedar_leaf)
+    
+    # Join tree
+    bpy.ops.object.select_all(action='DESELECT')
+    for obj in bpy.context.scene.objects:
+        if obj.type == 'MESH' and obj.data.materials and (obj.data.materials[0] in [mat_cedar, mat_cedar_leaf]):
+            # Only select the ones we just made (check location proximity)
+            if (obj.location - Vector(location)).length < 5:
+                obj.select_set(True)
+    if bpy.context.selected_objects:
+        bpy.context.view_layer.objects.active = trunk
+        bpy.ops.object.join()
+        tree = bpy.context.object
+    else:
+        tree = trunk
+    
+    tree.location = location
+    return tree
+
+# --- Create the hillside path ---
+# Define a curved path going up a hillside
+path_points = []
+num_path_points = 50
+for i in range(num_path_points):
+    t = i / (num_path_points - 1)
+    # Curved path
+    x = math.sin(t * math.pi * 0.8) * 8 * (1 - t * 0.3)
+    z = t * 15  # Height increases
+    y = t * 20  # Distance along slope
+    path_points.append(Vector((x, y, z)))
+
+# Create path mesh
+bpy.ops.mesh.primitive_plane_add(size=1)
+path_mesh = bpy.context.object
+path_mesh.name = "HillsidePath"
+path_mesh.data.materials.append(mat_path)
+
+# Subdivide and deform path to follow terrain
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Move vertices to follow path
+me = path_mesh.data
+for v in me.vertices:
+    idx = int(v.co.x * 10 + 10)  # Map x to path index
+    if 0 <= idx < len(path_points) - 1:
+        t = v.co.x / 2  # Normalize
+        idx = int(t * (len(path_points) - 1))
+        idx = min(max(idx, 0), len(path_points) - 1)
+        p = path_points[idx]
+        v.co.z = p.z + random.uniform(-0.1, 0.1)
+        v.co.y = p.y + v.co.y * 0.5
+        v.co.x = p.x + v.co.x * 0.5
+
+# Scale path
+path_mesh.scale = (1, 1, 1)
+
+# --- Place gates along the path ---
+random.seed(42)
+gate_positions = []
+for i in range(15):
+    t = (i + 1) / 16
+    idx = int(t * (len(path_points) - 1))
+    idx = min(max(idx, 0), len(path_points) - 1)
+    p = path_points[idx]
+    # Add some random offset
+    offset_x = random.uniform(-0.5, 0.5)
+    offset_y = random.uniform(-0.5, 0.5)
+    gate_pos = Vector((p.x + offset_x, p.y + offset_y, p.z))
+    # Rotation to face along path
+    if idx < len(path_points) - 1:
+        next_p = path_points[idx + 1]
+        direction = (next_p - p).normalized()
+        rot_z = math.atan2(direction.x, direction.y)
+    else:
+        rot_z = 0
+    gate_positions.append((gate_pos, Euler((0, 0, rot_z), 'XYZ')))
+    
+    gate = create_gate(gate_pos, Euler((0, 0, rot_z), 'XYZ'), scale=0.8)
+
+# --- Place stone foxes ---
+fox_positions = []
+for i in range(8):
+    t = (i + 0.5) / 9
+    idx = int(t * (len(path_points) - 1))
+    idx = min(max(idx, 0), len(path_points) - 1)
+    p = path_points[idx]
+    # Place foxes to the side of the path
+    side = random.choice([-1, 1])
+    offset_x = side * random.uniform(1.5, 3.0)
+    offset_y = random.uniform(-0.5, 0.5)
+    fox_pos = Vector((p.x + offset_x, p.y + offset_y, p.z))
+    # Face toward path
+    direction = (p - fox_pos).normalized()
+    rot_z = math.atan2(direction.x, direction.y)
+    fox_positions.append((fox_pos, Euler((0, 0, rot_z), 'XYZ')))
+    
+    fox = create_stone_fox(fox_pos, Euler((0, 0, rot_z), 'XYZ'), scale=0.7)
+
+# --- Create the hidden shrine at the top ---
+shrine_pos = path_points[-1] + Vector((0, 2, 0))
+
+# Shrine base
+bpy.ops.mesh.primitive_cube_add(size=1)
+shrine_base = bpy.context.object
+shrine_base.scale = (2, 2, 0.5)
+shrine_base.location = shrine_pos + Vector((0, 0, 0.25))
+shrine_base.data.materials.append(mat_shrine)
+
+# Shrine pillars
+for x in [-0.8, 0.8]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=2.0, location=(shrine_pos.x + x, shrine_pos.y, shrine_pos.z + 1.0))
+    pillar = bpy.context.object
+    pillar.data.materials.append(mat_shrine)
+
+# Shrine roof
+bpy.ops.mesh.primitive_cone_add(radius1=1.5, radius2=0, depth=1.0, location=(shrine_pos.x, shrine_pos.y, shrine_pos.z + 2.5))
+roof = bpy.context.object
+roof.data.materials.append(mat_shrine)
+
+# Join shrine parts
+bpy.ops.object.select_all(action='DESELECT')
+shrine_parts = [shrine_base] + [bpy.context.object for _ in range(3)]
+# Select all shrine-related objects
+bpy.ops.object.select_all(action='DESELECT')
+for obj in bpy.context.scene.objects:
+    if obj.type == 'MESH' and obj.data.materials and obj.data.materials[0] == mat_shrine:
+        if (obj.location - shrine_pos).length < 5:
+            obj.select_set(True)
+if bpy.context.selected_objects:
+    bpy.context.view_layer.objects.active = shrine_base
+    bpy.ops.object.join()
+
+# --- Create cedar forest around the path ---
+for i in range(40):
+    # Random position around the path
+    t = random.uniform(0, 1)
+    idx = int(t * (len(path_points) - 1))
+    idx = min(max(idx, 0), len(path_points) - 1)
+    p = path_points[idx]
+    # Offset from path
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(3, 8)
+    tree_x = p.x + math.cos(angle) * dist
+    tree_y = p.y + math.sin(angle) * dist
+    tree_z = p.z + random.uniform(-0.5, 0.5)
+    scale = random.uniform(0.8, 1.5)
+    
+    tree = create_cedar_tree(Vector((tree_x, tree_y, tree_z)), scale)
+
+# --- Camera setup ---
+cam_location = Vector((0, -10, 5))
+bpy.ops.object.camera_add(location=cam_location)
+camera = bpy.context.object
+camera.rotation_euler = Euler((math.radians(70), 0, 0), 'XYZ')
+bpy.context.scene.camera = camera
+
+# --- Lighting ---
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.object
+sun.data.energy = 3
+sun.rotation_euler = Euler((math.radians(45), math.radians(30), 0), 'XYZ')
+
+# --- World background ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+bg.inputs[0].default_value = (0.7, 0.8, 0.9, 1.0)
+bg.inputs[1].default_value = 1.0
+```

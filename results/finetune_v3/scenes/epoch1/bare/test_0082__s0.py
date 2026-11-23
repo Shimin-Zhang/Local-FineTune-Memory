@@ -1,0 +1,90 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1657)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+S = {}
+def dye(k, c, e=0):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = .9
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    S[k] = m
+for k, c in dict(floor1=(.22, .12, .07), floor2=(.16, .09, .05), wall=(.2, .13, .09), wood=(.14, .08, .05), sack=(.45, .36, .22), sack2=(.3, .24, .17),
+                 brass=(.6, .4, .1), dark=(.03, .02, .02), chilli=(.7, .04, .03), string=(.3, .22, .1), glass=(.25, .3, .22), cloth=(.1, .2, .2)).items(): dye(k, c)
+for k, c in dict(turmeric=(.9, .5, .03), paprika=(.8, .12, .04), cumin=(.4, .22, .08), saffron=(.8, .25, .02), indigo=(.1, .15, .5), mint=(.2, .6, .3),
+                 saffron2=(.9, .35, .05), salt=(.8, .8, .75), black=(.04, .03, .03), cardamom=(.3, .5, .15), rose=(.7, .25, .35), ochre=(.6, .35, .08)).items(): dye(k, c, 1.2)
+dye("shaft", (1, .85, .5), 3); dye("lamp", (1, .6, .2), 14)
+def add(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(S[k]); return o
+def slab(at, d, k, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return add(bm, k, at, rot)
+def can(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, k, at, rot)
+def ball(at, r, k, sq=1.0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return add(bm, k, at)
+def link(a, b, t, k):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return add(bm, k)
+def beam(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("b", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("b", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# floor of two woods on a rough keel
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=4.5, radius2=9.2, depth=2.2)
+for v in bm.verts:
+    v.co.x *= 1.2; v.co.z -= 1.1
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.3, .2)))
+add(bm, "floor2")
+for i in range(10): slab((-7.2 + i * 1.6, 0, 0), (1.5, 10.4, .12), "floor1" if i % 2 else "floor2")
+# two walls: back and left, with a window frame on the left wall
+slab((0, 5.6, 0), (14.4, .8, 7.4), "wall"); slab((-7.2, 0, 0), (.8, 11.2, 7.4), "wall")
+slab((-6.7, 0, 2.6), (.2, 3.6, 3.2), "shaft"); slab((-6.8, 0, 2.4), (.2, 3.9, .25), "wood"); slab((-6.8, 0, 5.8), (.2, 3.9, .25), "wood"); slab((-6.8, 0, 4.0), (.2, .2, 1.8), "wood")
+slab((-6.7, 0, 2.5), (.3, 3.4, .1), "wood")
+# long counter along the back wall
+slab((0, 4.4, 0), (12.6, 1.6, 1.9), "wood"); slab((0, 4.4, 1.9), (13, 1.9, .2), "wood")
+# rows of jars on the counter
+for i in range(11):
+    x = -5.5 + i * 1.1
+    can((x, 4.6, 2.1), .4, .75, 7, "glass", .34); can((x, 4.6, 2.85), .36, .12, 7, "wood"); can((x, 4.6, 2.2), .3, .5, 7, random.choice(("turmeric", "paprika", "indigo", "mint", "saffron2", "salt", "black", "cardamom", "rose", "ochre", "cumin")), .3)
+# brass scales on the counter
+can((-3.6, 4.0, 2.1), .1, 1.1, 6, "brass"); slab((-3.6, 4.0, 3.1), (1.5, .12, .12), "brass")
+for s in (-1, 1):
+    link((-3.6 + s * .7, 4.0, 3.1), (-3.6 + s * .7, 4.0, 2.5), .04, "brass"); can((-3.6 + s * .7, 4.0, 2.35), .4, .15, 8, "brass", .5)
+# open sacks of coloured powders on the floor, with heaped tops
+for i, (x, y, c) in enumerate(((-4.5, 1.2, "turmeric"), (-2.2, 1.0, "paprika"), (0.2, 1.3, "saffron"), (2.6, 1.0, "indigo"), (5.0, 1.2, "mint"))):
+    ball((x, y, .7), 1.15, "sack" if i % 2 else "sack2", .85); ball((x, y, 1.0), .85, c, .45)
+    for a in range(3): slab((x - .6 + a * .6, y - .5, .8), (.5, .3, .1), "sack2", (0, 0, a))
+# grinding mill on a trestle, with a chute and a heap
+for sx in (-1, 1): slab((5.0 + sx * 1.0, -2.8, 0), (.25, .25, 1.3), "wood")
+slab((5.0, -2.8, 1.3), (2.4, 1.4, .2), "wood"); can((5.0, -2.8, 1.5), .65, 1.1, 8, "wood", .55); can((5.0, -2.8, 2.6), .5, .5, 8, "wood", .3)
+link((5.0, -2.8, 2.8), (5.0, -2.8, 3.4), .15, "brass"); slab((5.0, -3.4, 1.6), (.5, .6, .1), "brass", (0, .5, 0)); ball((5.0, -3.9, .35), .55, "cumin", .5)
+# strings of chillies hung from the left wall and from a beam
+slab((-6.0, 0, 6.8), (1.2, 11.0, .3), "wood")
+for i in range(7):
+    y = -4.6 + i * 1.55; link((-6.0, y, 6.8), (-6.0, y, 5.0), .06, "string")
+    for j in range(4): can((-6.0 + random.uniform(-.15, .15), y + random.uniform(-.1, .1), 5.0 - j * .5), .16, .5, 5, "chilli", .05)
+# hanging brass lamp with a warm glow
+link((0, 2.0, 7.4), (0, 2.0, 6.0), .06, "dark"); can((0, 2.0, 5.2), .5, .8, 6, "brass", .35); can((0, 2.0, 5.3), .25, .4, 6, "lamp")
+beam("POINT", (1, .6, .2), 700, (0, 2.0, 5.0))
+# a crate and a stool
+slab((-5.6, -3.0, 0), (1.8, 1.8, 1.2), "wood"); slab((-5.6, -3.0, 1.2), (2.0, 2.0, .15), "wood"); ball((-5.6, -3.0, 1.6), .5, "paprika", .5)
+can((1.0, -3.6, 0), .45, 1.0, 6, "wood", .4); can((1.0, -3.6, 1.0), .55, .15, 6, "wood")
+# the afternoon shaft of sun: strong amber key from the window, indigo rim
+beam("SUN", (1, .78, .45), 6, (-20, -8, 14), (0, 0, 1)); beam("SUN", (.3, .4, 1), 2.2, (18, 14, 9), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .015, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.5)); co.location = t + Vector((26, -38, 26))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

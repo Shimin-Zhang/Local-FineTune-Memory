@@ -1,0 +1,92 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1915)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+S = {}
+def tone(k, rgb, e=0, r=.9):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = r
+    if e: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = e
+    S[k] = m
+for k, c in (("wet", (.2, .16, .12)), ("dry", (.36, .28, .2)), ("castle", (.5, .36, .24)), ("castle2", (.4, .28, .2)), ("sea", (.05, .2, .28)),
+             ("foam", (.8, .85, .85)), ("rope", (.7, .65, .5)), ("post", (.3, .18, .1)), ("cloth", (.8, .8, .8)), ("flag1", (.8, .1, .1)), ("flag2", (.1, .3, .7)), ("flag3", (.9, .7, .1))): tone(k, c)
+tone("lamp", (1, .75, .35), 14); tone("judge", (.5, .1, .1)); tone("skin", (.6, .4, .3)); tone("suit", (.1, .12, .2))
+def add(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(S[k]); return o
+def blk(at, d, k, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return add(bm, k, at, rot)
+def cone(at, r1, r2, h, n, k, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, k, at, rot)
+def blob(at, r, k, sq=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2]))
+    return add(bm, k, at)
+def flagpole(x, y, h, k, tilt=0):
+    cone((x, y, 0), .05, .04, h, 5, "post"); blk((x + .45, y, h - .6), (.9, .04, .55), k, (0, 0, tilt))
+def lamp(at, c, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13.5, depth=3.2)
+for v in bm.verts:
+    v.co.x *= 1.25; v.co.y *= .85
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .2)))
+    v.co.z -= 1.6
+add(bm, "wet")
+blk((0, 2.8, -.02), (24, 12, .12), "dry"); blk((0, -5.2, -.02), (24, 5.4, .1), "sea")
+for i in range(12): blk((-10 + i * 1.8 + random.uniform(-.3, .3), -2.4 + random.uniform(-.3, .3), 0), (1.6, .3, .08), "foam", (0, 0, random.uniform(-.2, .2)))
+# three sand sculptures: a castle, a dragon and a lighthouse
+cx, cy = -6.5, 2.6
+for sx in (-1, 1):
+    for sy in (-1, 1): cone((cx + sx * 1.8, cy + sy * 1.5, 0), 1.0, .9, 2.4, 6, "castle")
+    cone((cx + sx * 1.8, cy + sy * 1.5, 2.4), 1.0, .1, 1.2, 6, "castle2")
+cone((cx, cy, 0), 1.5, 1.4, 3.2, 6, "castle"); cone((cx, cy, 3.2), 1.4, .2, 1.8, 6, "castle2")
+blk((cx, cy - 1.4, 0), (.9, .3, 1.0), "post"); blk((cx - .9, cy - 1.3, 1.0), (1.8, .3, .3), "post")
+cone((cx + 3.0, cy - .5, 0), .5, .4, 1.2, 6, "castle2"); blob((cx + 3.2, cy - .5, 1.6), .6, "castle", (1.4, 1, .8))
+cone((cx + 4.4, cy - .5, 1.0), .35, .02, 1.6, 5, "castle2", (0, math.pi / 2, 0))
+dx, dy = 0, 2.2
+for i in range(5): blob((dx - 2.4 + i * 1.2, dy, 1.0 + math.sin(i * 1.2) * .3), 1.1 - i * .1, "castle", (1.3, .9, .8))
+cone((dx - 3.6, dy, 1.8), .9, .1, 1.6, 5, "castle2", (0, -math.pi / 2, 0)); cone((dx - 4.4, dy, 2.0), .35, .05, 1.0, 5, "castle", (0, -math.pi / 2, 0))
+for i in range(4): cone((dx - 2 + i * 1.2, dy, 1.5), .2, .02, 1.0, 5, "castle2", (0, 0, 0))
+lx, ly = 6.5, 2.6
+cone((lx, ly, 0), 1.8, 1.2, 3.5, 8, "castle"); cone((lx, ly, 3.5), 1.3, .9, 1.6, 8, "castle2"); cone((lx, ly, 5.1), .9, .9, .3, 8, "post")
+cone((lx, ly, 5.4), .7, .7, 1.0, 8, "lamp"); cone((lx, ly, 6.4), .8, .05, 1.0, 8, "post")
+lamp((lx, ly, 5.9), (1, .75, .35), 700)
+for x, y, h, k in ((-9.5, 4.2, 3.2, "flag1"), (-4, 4.8, 3.6, "flag2"), (3, 4.8, 3.4, "flag3"), (9.5, 4.2, 3.2, "flag1"), (-9.5, 1.0, 3.0, "flag2"), (9.5, 1.0, 3.0, "flag3")): flagpole(x, y, h, k)
+# rope barrier with posts and a judge's table
+for i in range(11):
+    x = -9.5 + i * 1.9; cone((x, -1.2, 0), .09, .07, 1.0, 5, "post")
+    if i < 10: blk((x + .95, -1.2, .7), (1.9, .05, .08), "rope", (0, 0, .06))
+tx, ty = 0, -2.2
+blk((tx, ty, .7), (3.2, 1.2, .12), "cloth")
+for sx in (-1.4, 1.4):
+    for sy in (-.5, .5): blk((tx + sx, ty + sy, 0), (.12, .12, .7), "post")
+blk((tx - 1.0, ty, .82), (.6, .5, .12), "judge"); blk((tx - .5, ty, .82), (.08, .08, .3), "judge"); cone((tx + .8, ty, .82), .22, .22, .3, 6, "cloth"); cone((tx + .8, ty, 1.12), .12, .05, .3, 5, "judge")
+for sx in (-1.5, 1.5):
+    cone((tx + sx, ty + 1.0, 0), .12, .1, 1.1, 5, "post"); cone((tx + sx, ty + 1.0, 1.1), .22, .22, .5, 6, "judge"); blob((tx + sx, ty + 1.0, 1.9), .26, "skin")
+    cone((tx + sx, ty + 1.0, 2.1), .3, .2, .12, 6, "judge")
+for k in range(2):
+    jx, jy = 8.0 + k * 1.0, 5.5
+    cone((jx, jy, 0), .25, .2, .9, 6, "suit"); blob((jx, jy, 1.2), .3, "skin"); cone((jx, jy, 1.4), .3, .2, .12, 6, "flag2")
+    blk((jx + .3, jy, 1.0), (.2, .08, .5), "post", (0, 0, 0))
+# the tide: a low swell of water and foam lapping the sculptures
+for i in range(7):
+    x = -9 + i * 3; blob((x, -3.6, .05), 1.5, "sea", (1.6, .5, .18))
+for i in range(10): blob((-10 + i * 2.2, -2.7 + random.uniform(-.3, .3), .1), .6, "foam", (1.4, .5, .25))
+for c, w, p in (((1, .6, .45), 5.5, (-26, -12, 8)), ((.4, .5, .9), 2.2, (22, 22, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .015, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((16, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

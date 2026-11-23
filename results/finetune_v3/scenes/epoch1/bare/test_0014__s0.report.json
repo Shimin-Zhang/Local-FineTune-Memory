@@ -1,0 +1,75 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 2",
+ "error_line": "o = bpy.data.objects.new(\"f\", me); o.location, o.rotation_euler = at, rot",
+ "n_renderable_objects": 6,
+ "object_types": {
+  "MESH": 6
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "sand",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.3,
+    0.27,
+    0.22
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "sea",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.06,
+    0.17,
+    0.24
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  28.766,
+  30.0,
+  3.98
+ ],
+ "scene_center": [
+  0.1171,
+  0.0,
+  -1.8702
+ ],
+ "scene_radius": 20.8765,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.2,
+ "image": true
+}

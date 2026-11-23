@@ -1,0 +1,79 @@
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a yellow material
+yellow_mat = bpy.data.materials.new(name="RubberDuckYellow")
+yellow_mat.use_nodes = True
+nodes = yellow_mat.node_tree.nodes
+links = yellow_mat.node_tree.links
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (1.0, 0.85, 0.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.3
+bsdf.inputs["Specular IOR Level"].default_value = 0.5
+
+# Helper: create a UV sphere and set material
+def make_sphere(name, radius, location, scale=(1,1,1)):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=32, ring_count=16)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = scale
+    obj.data.materials.append(yellow_mat)
+    bpy.ops.object.shade_smooth()
+    return obj
+
+# Body
+body = make_sphere("Body", 1.0, (0, 0, 0), scale=(1.0, 1.2, 0.85))
+
+# Head
+head = make_sphere("Head", 0.55, (0, 0.9, 0.75), scale=(1.0, 1.0, 1.0))
+
+# Beak (front)
+beak = make_sphere("Beak", 0.2, (0, 1.45, 0.65), scale=(1.2, 0.8, 0.5))
+
+# Left eye
+eye_l = make_sphere("Eye_L", 0.06, (-0.22, 1.35, 0.95), scale=(1, 1, 1))
+# Make eyes black
+black_mat = bpy.data.materials.new(name="EyeBlack")
+black_mat.use_nodes = True
+black_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0, 0, 0, 1)
+black_mat.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.1
+eye_l.data.materials.clear()
+eye_l.data.materials.append(black_mat)
+
+# Right eye
+eye_r = make_sphere("Eye_R", 0.06, (0.22, 1.35, 0.95), scale=(1, 1, 1))
+eye_r.data.materials.clear()
+eye_r.data.materials.append(black_mat)
+
+# Wing (left)
+wing_l = make_sphere("Wing_L", 0.35, (-0.85, 0.1, 0.1), scale=(0.6, 1.2, 0.5))
+
+# Wing (right)
+wing_r = make_sphere("Wing_R", 0.35, (0.85, 0.1, 0.1), scale=(0.6, 1.2, 0.5))
+
+# Tail
+tail = make_sphere("Tail", 0.3, (0, -1.1, 0.3), scale=(0.7, 0.8, 0.5))
+
+# Add a simple light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+sun.data.energy = 3.0
+
+# Set up camera
+bpy.ops.object.camera_add(location=(0, -4, 2), rotation=(math.radians(70), 0, 0))
+cam = bpy.context.active_object
+bpy.context.scene.camera = cam
+
+# Center view
+bpy.ops.object.select_all(action='DESELECT')
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        obj.select_set(True)
+bpy.context.view_layer.objects.active = body
+bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')

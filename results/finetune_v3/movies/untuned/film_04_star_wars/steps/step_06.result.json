@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 5.5,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene refined with birds, mesas, rocks, and better lighting!\n",
+ "state_saved": true,
+ "n_objects": 155,
+ "n_lights": 3,
+ "n_materials": 34,
+ "own_camera": true,
+ "render_error": null
+}

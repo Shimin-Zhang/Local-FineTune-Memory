@@ -1,0 +1,286 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, noise
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Helpers ---
+def set_mat(obj, color, roughness=0.8, metal=0.0):
+    mat = bpy.data.materials.new(name=f"mat_{obj.name}")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metal
+    obj.data.materials.append(mat)
+
+def add_box(name, loc, scale=(1,1,1), rot=(0,0,0), color=(0.4,0.4,0.4)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = scale
+    set_mat(obj, color)
+    return obj
+
+def add_cyl(name, loc, r=0.5, depth=1, rot=(0,0,0), color=(0.4,0.4,0.4), verts=16):
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=depth, location=loc, rotation=rot, vertices=verts)
+    obj = bpy.context.active_object
+    obj.name = name
+    set_mat(obj, color)
+    return obj
+
+def add_cone(name, loc, r=1, depth=2, rot=(0,0,0), color=(0.4,0.4,0.4), verts=16):
+    bpy.ops.mesh.primitive_cone_add(radius1=r, radius2=0, depth=depth, location=loc, rotation=rot, vertices=verts)
+    obj = bpy.context.active_object
+    obj.name = name
+    set_mat(obj, color)
+    return obj
+
+def add_plane(name, loc, scale=(1,1), rot=(0,0,0), color=(0.4,0.4,0.4)):
+    bpy.ops.mesh.primitive_plane_add(size=1, location=loc, rotation=rot)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = scale
+    set_mat(obj, color)
+    return obj
+
+def add_ico(name, loc, r=1, color=(0.4,0.4,0.4), subdivisions=2):
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=r, location=loc, subdivisions=subdivisions)
+    obj = bpy.context.active_object
+    obj.name = name
+    set_mat(obj, color)
+    return obj
+
+# --- Autumn palette ---
+STONE = (0.55, 0.52, 0.48)
+STONE_DARK = (0.42, 0.39, 0.35)
+WOOD = (0.35, 0.22, 0.12)
+WOOD_DARK = (0.25, 0.15, 0.08)
+ROOF_RED = (0.55, 0.15, 0.08)
+ROOF_ORANGE = (0.7, 0.3, 0.05)
+GOLD = (0.8, 0.6, 0.2)
+AUTUMN_LEAVES = [(0.75, 0.35, 0.05), (0.85, 0.45, 0.1), (0.6, 0.25, 0.05), (0.9, 0.55, 0.15), (0.7, 0.3, 0.08)]
+FIRE_ORANGE = (1.0, 0.4, 0.05)
+FIRE_YELLOW = (1.0, 0.7, 0.1)
+SKY = (0.6, 0.7, 0.85)
+GROUND_GREEN = (0.3, 0.45, 0.15)
+GROUND_BROWN = (0.45, 0.3, 0.15)
+
+# --- Lighting ---
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs[0].default_value = (*SKY, 1.0)
+bg.inputs[1].default_value = 0.6
+
+sun = bpy.data.lights.new("Sun", type='SUN')
+sun.energy = 3.0
+sun.color = (1.0, 0.9, 0.7)
+sun_obj = bpy.data.objects.new("Sun", sun)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(50), math.radians(20), math.radians(30))
+
+# --- Ground plane (autumn) ---
+bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, -0.5))
+ground = bpy.context.active_object
+ground.name = "Ground"
+# Subdivide and add noise for terrain
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=40)
+bpy.ops.object.mode_set(mode='OBJECT')
+# Displace
+mod = ground.modifiers.new("Displace", 'DISPLACE')
+tex = bpy.data.textures.new("GroundTex", type='CLOUDS')
+tex.noise_scale = 3.0
+mod.texture = tex
+mod.strength = 2.5
+mod.mid_level = 0.5
+bpy.ops.object.modifier_apply(modifier="Displace")
+set_mat(ground, GROUND_BROWN, roughness=0.9)
+
+# --- Ridge line definition (parametric curve) ---
+# The ridge goes roughly east-west with some north-south variation
+def ridge_point(t):
+    # t in [0,1], maps to x in [-20, 20]
+    x = -20 + 40 * t
+    y = 5 * math.sin(t * math.pi * 1.5) + 3 * math.sin(t * math.pi * 3)
+    z = 4 + 3 * math.sin(t * math.pi) + 1.5 * math.sin(t * math.pi * 2)
+    return Vector((x, y, z))
+
+# --- Stone Wall following the ridge ---
+wall_segments = 60
+wall_height = 3.0
+wall_thickness = 0.8
+
+for i in range(wall_segments):
+    t0 = i / wall_segments
+    t1 = (i + 1) / wall_segments
+    p0 = ridge_point(t0)
+    p1 = ridge_point(t1)
+    mid = (p0 + p1) / 2
+    seg_len = (p1 - p0).length
+    angle = math.atan2(p1.y - p0.y, p1.x - p0.x)
+
+    # Wall segment box
+    add_box(
+        f"Wall_{i}",
+        loc=mid,
+        scale=(seg_len * 1.02, wall_thickness, wall_height),
+        rot=(0, 0, angle),
+        color=STONE
+    )
+
+    # Crenellations (merlons) on top
+    if i % 2 == 0:
+        merlon = add_box(
+            f"Merlon_{i}",
+            loc=(mid.x, mid.y, mid.z + wall_height / 2 + 0.4),
+            scale=(seg_len * 0.4, wall_thickness * 0.8, 0.8),
+            rot=(0, 0, angle),
+            color=STONE_DARK
+        )
+
+    # Occasional tower/buttress
+    if i % 10 == 5:
+        tower = add_cyl(
+            f"WallTower_{i}",
+            loc=(mid.x, mid.y, mid.z + 1.5),
+            r=1.5, depth=4, color=STONE_DARK, verts=8
+        )
+        # Tower cap
+        add_cone(
+            f"WallTowerCap_{i}",
+            loc=(mid.x, mid.y, mid.z + 4.5),
+            r=1.8, depth=1.5, color=ROOF_RED, verts=8
+        )
+
+# --- South Gate Pavilion ---
+# Place at the lowest/southernmost point of the ridge
+south_idx = int(wall_segments * 0.5)  # middle
+gate_pos = ridge_point(0.5)
+gate_pos.y -= 2  # slightly south
+
+# Gate arch (two pillars + lintel)
+pillar_l = add_cyl(f"GatePillarL", loc=(gate_pos.x - 2, gate_pos.y, gate_pos.z + 1.5), r=0.6, depth=3, color=STONE_DARK, verts=8)
+pillar_r = add_cyl(f"GatePillarR", loc=(gate_pos.x + 2, gate_pos.y, gate_pos.z + 1.5), r=0.6, depth=3, color=STONE_DARK, verts=8)
+lintel = add_box(f"GateLintel", loc=(gate_pos.x, gate_pos.y, gate_pos.z + 3.2), scale=(4.5, 1.0, 0.6), color=STONE_DARK)
+
+# Pavilion roof (traditional curved style approximated with stacked boxes)
+roof_base = add_box(f"GateRoofBase", loc=(gate_pos.x, gate_pos.y, gate_pos.z + 4.0), scale=(5.0, 1.5, 0.5), color=WOOD_DARK)
+roof_mid = add_box(f"GateRoofMid", loc=(gate_pos.x, gate_pos.y, gate_pos.z + 4.6), scale=(4.0, 1.2, 0.4), color=ROOF_RED)
+roof_top = add_cone(f"GateRoofTop", loc=(gate_pos.x, gate_pos.y, gate_pos.z + 5.2), r=2.5, depth=1.2, color=ROOF_RED, verts=4)
+roof_top.rotation_euler = (0, 0, math.radians(45))
+
+# Gate floor
+add_plane(f"GateFloor", loc=(gate_pos.x, gate_pos.y, gate_pos.z - 0.1), scale=(5, 3), color=STONE)
+
+# --- Signal Fire Station ---
+# Place on the northern side of the ridge
+fire_pos = ridge_point(0.25)
+fire_pos.y += 3
+
+# Base platform
+add_cyl(f"FireBase", loc=(fire_pos.x, fire_pos.y, fire_pos.z), r=2.5, depth=0.5, color=STONE, verts=8)
+
+# Fire pit
+add_cyl(f"FirePit", loc=(fire_pos.x, fire_pos.y, fire_pos.z + 0.3), r=1.0, depth=0.3, color=WOOD_DARK, verts=8)
+
+# Fire (glowing icosphere)
+fire = add_ico(f"SignalFire", loc=(fire_pos.x, fire_pos.y, fire_pos.z + 0.8), r=0.6, color=FIRE_ORANGE, subdivisions=2)
+# Emission material for fire
+mat_fire = bpy.data.materials.new("FireMat")
+mat_fire.use_nodes = True
+nodes = mat_fire.node_tree.nodes
+links = mat_fire.node_tree.links
+nodes.clear()
+out = nodes.new("ShaderNodeOutputMaterial")
+emit = nodes.new("ShaderNodeEmission")
+emit.inputs[0].default_value = (*FIRE_YELLOW, 1.0)
+emit.inputs[1].default_value = 5.0
+links.new(emit.outputs[0], out.inputs[0])
+fire.data.materials.clear()
+fire.data.materials.append(mat_fire)
+
+# Watchtower next to fire station
+wt_pos = Vector((fire_pos.x + 3, fire_pos.y + 1, fire_pos.z))
+add_cyl(f"WatchtowerBase", loc=(wt_pos.x, wt_pos.y, wt_pos.z + 2), r=1.0, depth=4, color=WOOD, verts=8)
+add_box(f"WatchtowerPlatform", loc=(wt_pos.x, wt_pos.y, wt_pos.z + 4.2), scale=(2.5, 2.5, 0.3), color=WOOD_DARK)
+add_cone(f"WatchtowerRoof", loc=(wt_pos.x, wt_pos.y, wt_pos.z + 5.2), r=2.0, depth=1.5, color=ROOF_ORANGE, verts=8)
+
+# --- Small Temple ---
+# Place on the eastern end of the ridge
+temple_pos = ridge_point(0.8)
+temple_pos.y += 2
+
+# Temple base
+add_box(f"TempleBase", loc=(temple_pos.x, temple_pos.y, temple_pos.z + 0.3), scale=(4, 3, 0.6), color=STONE)
+
+# Temple columns (4 corners)
+col_positions = [(-1.5, -1.2), (1.5, -1.2), (-1.5, 1.2), (1.5, 1.2)]
+for i, (cx, cy) in enumerate(col_positions):
+    add_cyl(f"TempleCol_{i}", loc=(temple_pos.x + cx, temple_pos.y + cy, temple_pos.z + 1.5), r=0.25, depth=2.4, color=STONE, verts=8)
+
+# Temple roof (stepped pagoda style)
+roof1 = add_box(f"TempleRoof1", loc=(temple_pos.x, temple_pos.y, temple_pos.z + 3.0), scale=(3.5, 2.5, 0.4), color=ROOF_RED)
+roof2 = add_box(f"TempleRoof2", loc=(temple_pos.x, temple_pos.y, temple_pos.z + 3.5), scale=(2.8, 2.0, 0.3), color=ROOF_RED)
+roof3 = add_cone(f"TempleRoofTop", loc=(temple_pos.x, temple_pos.y, temple_pos.z + 4.0), r=2.0, depth=1.0, color=ROOF_RED, verts=4)
+roof3.rotation_euler = (0, 0, math.radians(45))
+
+# Temple door
+add_box(f"TempleDoor", loc=(temple_pos.x, temple_pos.y - 1.2, temple_pos.z + 1.2), scale=(0.8, 0.1, 1.5), color=WOOD_DARK)
+
+# --- Autumn Trees scattered around ---
+random.seed(42)
+for i in range(40):
+    # Place trees on the ground, avoiding the wall line
+    tx = random.uniform(-25, 25)
+    ty = random.uniform(-15, 15)
+    # Check distance from ridge
+    closest_t = max(0, min(1, (tx + 20) / 40))
+    ridge_p = ridge_point(closest_t)
+    dist_to_ridge = math.sqrt((tx - ridge_p.x)**2 + (ty - ridge_p.y)**2)
+    if dist_to_ridge < 4:
+        continue
+
+    # Get approximate ground height (use noise)
+    tz = -0.5 + 2.5 * (noise.noise(Vector((tx * 0.1, ty * 0.1, 0))) * 0.5 + 0.5)
+
+    # Trunk
+    trunk_h = random.uniform(2, 4)
+    add_cyl(f"Trunk_{i}", loc=(tx, ty, tz + trunk_h / 2), r=0.15, depth=trunk_h, color=WOOD_DARK, verts=6)
+
+    # Foliage (autumn colored icosphere)
+    leaf_color = random.choice(AUTUMN_LEAVES)
+    foliage_r = random.uniform(1.0, 2.0)
+    add_ico(f"Foliage_{i}", loc=(tx, ty, tz + trunk_h + foliage_r * 0.5), r=foliage_r, color=leaf_color, subdivisions=1)
+
+# --- Some autumn leaf particles on the ground (small planes) ---
+for i in range(30):
+    lx = random.uniform(-20, 20)
+    ly = random.uniform(-10, 10)
+    lz = -0.45
+    leaf_color = random.choice(AUTUMN_LEAVES)
+    add_plane(f"Leaf_{i}", loc=(lx, ly, lz), scale=(0.3, 0.3), rot=(random.uniform(0, 0.3), random.uniform(0, 0.3), random.uniform(0, 6.28)), color=leaf_color)
+
+# --- Camera setup ---
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam_obj = bpy.data.objects.new("Camera", cam_data)
+bpy.context.collection.objects.link(cam_obj)
+cam_obj.location = (25, -20, 15)
+cam_obj.rotation_euler = (math.radians(65), 0, math.radians(30))
+bpy.context.scene.camera = cam_obj
+
+# --- Render settings ---
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+bpy.context.scene.cycles.samples = 64
+bpy.context.scene.cycles.use_denoising = True
+
+print("Mountain fortress scene created successfully!")

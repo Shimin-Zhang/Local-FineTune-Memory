@@ -1,0 +1,53 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: module 'math' has no attribute 'random'",
+ "error_line": "offset_x = (i - 1) * 0.15 + (math.random() - 0.5) * 0.05",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Purple_Material",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.4,
+    0.0,
+    0.5
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.525,
+  1.6,
+  1.77
+ ],
+ "scene_center": [
+  0.1823,
+  0.0,
+  0.185
+ ],
+ "scene_radius": 1.7368,
+ "process": "exit 0",
+ "seconds": 0.5,
+ "image": false
+}

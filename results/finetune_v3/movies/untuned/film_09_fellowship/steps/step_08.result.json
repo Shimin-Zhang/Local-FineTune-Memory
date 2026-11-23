@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 4.2,
+ "error": null,
+ "error_line": null,
+ "printed": "Final fix: black background, camera repositioned, lights boosted, more fire/smoke/embers, mouth light added\n",
+ "state_saved": true,
+ "n_objects": 573,
+ "n_lights": 8,
+ "n_materials": 21,
+ "own_camera": true,
+ "render_error": null
+}

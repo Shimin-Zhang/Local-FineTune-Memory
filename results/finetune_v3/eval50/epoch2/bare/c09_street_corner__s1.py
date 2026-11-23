@@ -1,0 +1,66 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1135)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, e=0, ro=.9):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (r, g, b, 1); n.inputs["Roughness"].default_value = ro
+    if e: n.inputs["Emission Color"].default_value = (r, g, b, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    o.data.materials.append(m); sc.collection.objects.link(o); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def rod(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at, rot)
+def shine(at, c, w):
+    L = bpy.data.lights.new("s", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+tar, kerb, line, brick, brick2, plaster, slate, slate2 = paint(.05, .05, .07), paint(.3, .3, .33), paint(.8, .8, .75), paint(.35, .1, .08), paint(.28, .08, .07), paint(.4, .33, .25), paint(.1, .1, .15), paint(.14, .1, .12)
+glass, iron, green, wood, mail, bulb = paint(1, .72, .3, 6), paint(.04, .04, .05), paint(.05, .25, .12), paint(.25, .15, .08), paint(.5, .06, .06), paint(1, .85, .5, 18)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=5, radius2=12, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.3, .2)))
+    v.co.z -= 1.5
+put(bm, tar)
+blk((0, -6.2, 0), (17, 5.6, .12), tar); blk((-6.2, 0, 0), (5.6, 17, .12), tar)
+blk((0, -3.1, 0), (17, .5, .25), kerb); blk((-3.1, 0, 0), (.5, 17, .25), kerb)
+for i in range(9): blk((-1.6 + i * .8, -6.2, .12), (.4, 3.6, .02), line)
+for i in range(9): blk((-6.2, -1.6 + i * .8, .12), (3.6, .4, .02), line)
+# two buildings on the corner, each with a flat roof parapet and lit windows
+for x0, y0, w, d, h, m, roof in ((-2.2, 3.6, 7, 6, 7, brick, slate), (5.4, 3.6, 6, 6, 5.4, plaster, slate2)):
+    blk((x0, y0, 0), (w, d, h), m); blk((x0, y0, h), (w + .3, d + .3, .3), roof)
+    for r in range(3):
+        for c in range(3):
+            wx = x0 - w / 2 + 1.3 + c * (w - 2.6) / 2
+            blk((wx, y0 - d / 2 - .02, 1.4 + r * 1.9), (1.0, .1, 1.1), glass if (r + c) % 3 else paint(.1, .1, .15))
+    blk((x0 + w / 4, y0 - d / 2 - .05, 0), (1.1, .1, 1.8), paint(.1, .08, .06))
+    shine((x0, y0 - d / 2 - 1.2, 3.4), (1, .7, .3), 160)
+blk((-1.2, 3.6, 7.3), (1.0, 1.0, 1.4), brick2)
+# street lamp on the kerb, mailbox, bench, bin
+rod((1.2, -2.7, 0), .18, .3, 6, iron); rod((1.2, -2.7, .3), .09, 4.4, 6, iron, .07)
+blk((1.2, -2.7, 4.7), (.5, .5, .5), bulb); shine((1.2, -2.7, 4.7), (1, .8, .45), 700)
+rod((-2.7, -2.5, 0), .08, 1.0, 5, iron); rod((-2.7, -2.5, 1.0), .35, .7, 6, mail, .3)
+blk((-2.7, -2.82, 1.3), (.2, .05, .3), paint(.9, .9, .9))
+for sx in (-1, 1): blk((6 + sx * .8, -2.5, .5), (.1, .8, .1), wood); blk((6 + sx * .8, -2.1, .9), (.1, .1, .5), wood)
+blk((6, -2.4, .6), (2, .6, .1), wood); blk((6, -2.05, .9), (2, .1, .5), wood)
+rod((3.4, -2.5, 0), .3, .8, 7, green, .26); blk((3.4, -2.5, .8), (.7, .7, .06), paint(.1, .1, .1))
+# night: cold blue key from the left, amber rim from behind
+for c, w, p in (((.5, .6, 1), 4, (-24, -14, 10)), ((1, .55, .3), 2, (18, 20, 9))):
+    L = bpy.data.lights.new("sun", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("sun", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("night"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .012, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co); sc.camera = co
+co.location = (14, -40, 28)
+co.rotation_euler = (Vector((0, 1, 3)) - co.location).to_track_quat('-Z', 'Y').to_euler()

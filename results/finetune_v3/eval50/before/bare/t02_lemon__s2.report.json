@@ -1,0 +1,71 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: 'NoneType' object has no attribute 'shading'",
+ "error_line": "bpy.context.space_data.shading.type = 'MATERIAL'",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 1,
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "LemonMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 9,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "VALTORGB",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 1000.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    4.08,
+    1.01,
+    5.9
+   ]
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.013,
+  2.033,
+  2.822
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 5.8,
+ "image": true
+}

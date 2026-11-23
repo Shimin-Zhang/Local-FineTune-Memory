@@ -1,0 +1,287 @@
+import bpy
+import math
+import bmesh
+from mathutils import Vector
+
+# Clear existing mesh objects
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Create the vase using a curve for the profile
+# Define profile points for a vase shape
+profile_points = [
+    (0.0, 0.0),       # bottom center
+    (0.4, 0.0),       # bottom edge
+    (0.5, 0.05),      # slight flare
+    (0.55, 0.15),
+    (0.6, 0.3),
+    (0.65, 0.5),
+    (0.7, 0.7),
+    (0.72, 0.9),
+    (0.7, 1.1),
+    (0.65, 1.3),
+    (0.6, 1.45),
+    (0.55, 1.55),
+    (0.5, 1.65),
+    (0.45, 1.75),
+    (0.42, 1.85),
+    (0.4, 1.95),
+    (0.38, 2.0),      # top rim
+    (0.35, 2.05),     # slight inward at top
+]
+
+# Create a Bezier curve for the profile
+curve_data = bpy.data.curves.new(name="VaseProfile", type='CURVE')
+curve_data.dimensions = '3D'
+spline = curve_data.splines.new('BEZIER')
+spline.bezier_points.add(len(profile_points) - 1)
+
+for i, (x, y) in enumerate(profile_points):
+    bp = spline.bezier_points[i]
+    bp.co = (x, y, 0)
+    bp.handle_left_type = 'AUTO'
+    bp.handle_right_type = 'AUTO'
+
+curve_obj = bpy.data.objects.new("VaseProfile", curve_data)
+bpy.context.collection.objects.link(curve_obj)
+
+# Convert curve to mesh
+bpy.context.view_layer.objects.active = curve_obj
+bpy.ops.object.select_all(action='DESELECT')
+curve_obj.select_set(True)
+bpy.ops.object.convert(target='MESH')
+
+vase_obj = bpy.context.active_object
+vase_obj.name = "FrostedGlassVase"
+
+# Spin the profile around the Y-axis to create the vase
+# First, we need to create a new mesh by revolving the profile
+# Let's use bmesh to create the vase properly
+
+# Delete the converted mesh and start fresh with bmesh
+bpy.data.objects.remove(vase_obj, do_unlink=True)
+
+# Create vase using bmesh - revolve profile around Z-axis
+mesh = bpy.data.meshes.new("VaseMesh")
+vase_obj = bpy.data.objects.new("FrostedGlassVase", mesh)
+bpy.context.collection.objects.link(vase_obj)
+
+bm = bmesh.new()
+bm.from_mesh(mesh)
+
+# Profile points (radius, height)
+profile = [
+    (0.0, 0.0),
+    (0.35, 0.0),
+    (0.45, 0.02),
+    (0.5, 0.08),
+    (0.55, 0.2),
+    (0.6, 0.35),
+    (0.65, 0.5),
+    (0.7, 0.7),
+    (0.73, 0.9),
+    (0.72, 1.1),
+    (0.68, 1.3),
+    (0.62, 1.45),
+    (0.55, 1.58),
+    (0.48, 1.7),
+    (0.42, 1.8),
+    (0.38, 1.9),
+    (0.35, 2.0),
+    (0.33, 2.05),
+    (0.32, 2.1),
+]
+
+num_segments = 64
+vertices = []
+faces = []
+
+# Create vertices for each profile point at each segment
+for seg_i in range(num_segments + 1):
+    angle = 2 * math.pi * seg_i / num_segments
+    for r, h in profile:
+        x = r * math.cos(angle)
+        y = r * math.sin(angle)
+        z = h
+        vertices.append((x, y, z))
+
+# Create faces
+num_profile = len(profile)
+for seg_i in range(num_segments):
+    for prof_i in range(num_profile - 1):
+        v1 = seg_i * num_profile + prof_i
+        v2 = seg_i * num_profile + prof_i + 1
+        v3 = (seg_i + 1) * num_profile + prof_i + 1
+        v4 = (seg_i + 1) * num_profile + prof_i
+        faces.append((v1, v2, v3, v4))
+
+# Create bottom cap
+bottom_center = (0, 0, 0)
+bottom_ring = []
+for seg_i in range(num_segments):
+    bottom_ring.append(seg_i * num_profile)
+
+# Create top cap
+top_ring = []
+for seg_i in range(num_segments):
+    top_ring.append(seg_i * num_profile + num_profile - 1)
+
+# Add vertices and faces to bmesh
+bm.verts.ensure_lookup_table()
+for v in vertices:
+    bm.verts.new(v)
+bm.verts.ensure_lookup_table()
+
+for f in faces:
+    try:
+        bm.faces.new([bm.verts[i] for i in f])
+    except:
+        pass
+
+# Create bottom face
+try:
+    bm.faces.new([bm.verts[i] for i in bottom_ring])
+except:
+    pass
+
+# Create top face
+try:
+    bm.faces.new([bm.verts[i] for i in top_ring])
+except:
+    pass
+
+# Recalculate normals
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+bm.to_mesh(mesh)
+bm.free()
+
+# Add Subdivision Surface modifier for smoothness
+subsurf = vase_obj.modifiers.new(name="Subdivision", type='SUBSURF')
+subsurf.levels = 2
+subsurf.render_levels = 3
+
+# Smooth shading
+bpy.context.view_layer.objects.active = vase_obj
+bpy.ops.object.select_all(action='DESELECT')
+vase_obj.select_set(True)
+bpy.ops.object.shade_smooth()
+
+# Create frosted glass material
+material = bpy.data.materials.new(name="FrostedGlass")
+material.use_nodes = True
+
+nodes = material.node_tree.nodes
+links = material.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+output_node = nodes.new(type='ShaderNodeOutputMaterial')
+output_node.location = (400, 0)
+
+# Principled BSDF for glass
+bsdf_node = nodes.new(type='ShaderNodeBsdfPrincipled')
+bsdf_node.location = (100, 0)
+
+# Set glass properties
+bsdf_node.inputs['Base Color'].default_value = (0.9, 0.95, 1.0, 1.0)
+bsdf_node.inputs['Roughness'].default_value = 0.4  # Frosted effect
+bsdf_node.inputs['Transmission Weight'].default_value = 1.0
+bsdf_node.inputs['IOR'].default_value = 1.45  # Glass IOR
+bsdf_node.inputs['Thickness'].default_value = 0.05
+
+# Add a slight noise texture for frosted effect
+noise_node = nodes.new(type='ShaderNodeTexNoise')
+noise_node.location = (-300, 0)
+noise_node.inputs['Scale'].default_value = 50.0
+noise_node.inputs['Detail'].default_value = 8.0
+
+# Map noise to roughness
+map_range_node = nodes.new(type='ShaderNodeMapRange')
+map_range_node.location = (-100, 0)
+map_range_node.inputs['From Min'].default_value = 0.0
+map_range_node.inputs['From Max'].default_value = 1.0
+map_range_node.inputs['To Min'].default_value = 0.3
+map_range_node.inputs['To Max'].default_value = 0.5
+
+# Link nodes
+links.new(noise_node.outputs['Fac'], map_range_node.inputs['Value'])
+links.new(map_range_node.outputs['Result'], bsdf_node.inputs['Roughness'])
+links.new(bsdf_node.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign material to vase
+vase_obj.data.materials.append(material)
+
+# Set up a simple scene with lighting
+# Add a sun light
+sun_data = bpy.data.lights.new(name="Sun", type='SUN')
+sun_data.energy = 3.0
+sun_data.angle = math.radians(5)
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Add a world background
+world = bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+for node in world_nodes:
+    world_nodes.remove(node)
+
+bg_node = world_nodes.new(type='ShaderNodeBackground')
+bg_node.location = (0, 0)
+bg_node.inputs['Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+bg_node.inputs['Strength'].default_value = 0.5
+
+world_output = world_nodes.new(type='ShaderNodeOutputWorld')
+world_output.location = (200, 0)
+
+world_links.new(bg_node.outputs['Background'], world_output.inputs['Surface'])
+
+# Add a simple ground plane
+ground_mesh = bpy.data.meshes.new("Ground")
+ground_obj = bpy.data.objects.new("Ground", ground_mesh)
+bpy.context.collection.objects.link(ground_obj)
+
+bm_ground = bmesh.new()
+bmesh.ops.create_grid(bm_ground, x_segments=1, y_segments=1, size=10)
+bm_ground.to_mesh(ground_mesh)
+bm_ground.free()
+
+ground_mat = bpy.data.materials.new(name="GroundMat")
+ground_mat.use_nodes = True
+ground_nodes = ground_mat.node_tree.nodes
+ground_links = ground_mat.node_tree.links
+for node in ground_nodes:
+    ground_nodes.remove(node)
+
+ground_bsdf = ground_nodes.new(type='ShaderNodeBsdfPrincipled')
+ground_bsdf.location = (0, 0)
+ground_bsdf.inputs['Base Color'].default_value = (0.3, 0.3, 0.3, 1.0)
+ground_bsdf.inputs['Roughness'].default_value = 0.8
+
+ground_output = ground_nodes.new(type='ShaderNodeOutputMaterial')
+ground_output.location = (200, 0)
+ground_links.new(ground_bsdf.outputs['BSDF'], ground_output.inputs['Surface'])
+
+ground_obj.data.materials.append(ground_mat)
+
+# Position camera
+camera_data = bpy.data.cameras.new(name="Camera")
+camera_obj = bpy.data.objects.new("Camera", camera_data)
+bpy.context.collection.objects.link(camera_obj)
+camera_obj.location = (3, -3, 2)
+camera_obj.rotation_euler = (math.radians(70), 0, math.radians(45))
+
+bpy.context.scene.camera = camera_obj
+
+# Set render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True

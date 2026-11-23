@@ -1,0 +1,79 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1632)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+mem = {}
+def tint(name, rgb, em=0, rough=.9):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    mem[name] = m
+for k, c in (("turf", (.06, .12, .09)), ("step", (.22, .23, .24)), ("ring", (.33, .33, .34)), ("carve", (.06, .06, .07)), ("pool", (.02, .05, .09)), ("bark", (.14, .1, .08)), ("leaf", (.1, .16, .1)), ("lamp", (.7, .75, .8))): tint(k, c)
+tint("water", (.1, .4, .5), 1.4, .1); tint("flame", (1, .6, .15), 12)
+def make(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); me.materials.append(mem[k]); return o
+def slab(x, y, z, w, d, h, k, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return make(bm, k, (x, y, z), (0, 0, rz))
+def tube(x, y, z, r, h, n, k, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, k, (x, y, z))
+def ball(x, y, z, r, k, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return make(bm, k, (x, y, z))
+def light(x, y, z, c, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = (x, y, z); sc.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=7, radius2=14, depth=3)
+for v in bm.verts:
+    v.co.x *= 1.15; v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+make(bm, "turf")
+for i in range(5): slab(0, 0, i * .35, 4.4 + (4 - i) * 1.4, 4.4 + (4 - i) * 1.4, .35, "step")
+for i in range(6): slab(-3.3 - i * .6, -6.6 - i * .3, 0, .6, .35, .35 - i * .05, "step"); slab(3.3 + i * .6, -6.6 - i * .3, 0, .6, .35, .35 - i * .05, "step")
+tube(0, 0, 1.7, 2.3, .15, 10, "ring"); tube(0, 0, 1.8, 1.9, .1, 10, "water"); light(0, 0, 2.6, (.3, .7, .8), 350)
+for ring, r, h in enumerate((3.8, 5.0, 6.2)):
+    n = 12 + ring * 3
+    for i in range(n):
+        a = i * 2 * math.pi / n
+        slab(math.cos(a) * r, math.sin(a) * r, 1.75, 1.05, .55, h, "ring", a + math.pi / 2)
+        for j in range(4):
+            aa = a + math.pi / 2 + (j - 1.5) * .1
+            slab(math.cos(aa) * (r + .28), math.sin(aa) * (r + .28), 1.9 + h * .5, .08, .05, h * .3, "carve", aa)
+for i in range(4):
+    a = i * math.pi / 2 + math.pi / 4
+    for k in range(7):
+        rr = 8.6 + k * .9
+        slab(math.cos(a) * rr, math.sin(a) * rr, 0, .9, 1.0, .12, "step", a + math.pi / 2)
+for i in range(8):
+    a = i * math.pi / 4 + math.pi / 8
+    x, y = math.cos(a) * 7.4, math.sin(a) * 7.4
+    tube(x, y, 1.7, .22, .6, 6, "bark"); ball(x, y, 2.6, 1.0, "leaf", 1.1)
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        x, y = sx * 10.4, sy * 9.0
+        tube(x, y, 0, .08, 2.4, 5, "lamp"); slab(x, y, 2.4, .5, .5, .5, "lamp"); light(x, y, 2.6, (.8, .85, 1), 160)
+        slab(x, y, 0, .8, .8, .3, "step")
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(8.5, 12.5)
+    if abs(math.sin(a)) > .9 or abs(math.cos(a)) > .9: continue
+    ball(math.cos(a) * r * 1.1, math.sin(a) * r, .2, random.uniform(.3, .6), "leaf", .7)
+for c, w, p in (((.5, .65, 1), 4.5, (-24, -14, 11)), ((.7, .45, .9), 2.2, (22, 22, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .04, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80; cm.clip_end = 500
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+tg = Vector((0, 0, 1.5)); co.location = tg + Vector((6, -52, 32))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

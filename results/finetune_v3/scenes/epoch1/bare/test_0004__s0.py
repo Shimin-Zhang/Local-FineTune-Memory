@@ -1,0 +1,95 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1237)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tint(rgb, glow=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+grass, dirt, pine, oak, white, red, yellow, blue, orange, dark, skin, coat, beacon = (tint(c) for c in (
+    (.1, .17, .07), (.2, .13, .08), (.05, .13, .1), (.2, .12, .07), (.7, .7, .68), (.65, .08, .06), (.7, .5, .05), (.1, .2, .5), (.7, .25, .05), (.04, .04, .05), (.6, .4, .3), (.2, .3, .15), (1, .05, .03)))
+beacon = tint((1, .05, .03), 30)
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, at, rot)
+def pole(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def ball(at, r, m, squash=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= squash
+    return add(bm, m, at)
+def plane(x, y, z, yaw, size, body, wing):
+    c, s = math.cos(yaw), math.sin(yaw)
+    def P(a, b, w, t, k=0):
+        return cube((x + c * a - s * b, y + s * a + c * b, z + k), (t, w, t), body if k == 0 else wing, (0, 0, yaw))
+    P(0, 0, .35, .35, .05); P(.2, 0, .9, .1, .25); P(-.5, 0, .9, .1, .2); P(-.3, 0, .3, .1, .22)
+    P(.1, 0, 1.0 * size, .06, .35); P(-.4, 0, .35 * size, .05, .3)
+def lamp(c, w, at):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+# the field: a grass slab with a dirt pit at the front and a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=14, depth=3.5)
+for v in bm.verts:
+    v.co.x *= 1.15
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.2, .3)))
+    v.co.z -= 1.75
+add(bm, grass)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=4.6, radius2=4.6, depth=.12)
+add(bm, dirt, (0, -4.5, .06))
+for i in range(14):
+    a = i * .45
+    ball((math.cos(a) * 4.9, -4.5 + math.sin(a) * 4.9, .1), .25, pine, .7)
+# trestle table with model planes, a battery, a radio and a lamp
+for sx in (-1.4, 1.4):
+    for sy in (-.35, .35): cube((-6 + sx, 2 + sy, 0), (.12, .12, 1.1), oak)
+cube((-6, 2, 1.1), (3.4, 1.0, .12), oak)
+for i in range(4): plane(-7.3 + i * .9, 2, 1.35, .2 * i, 1.0, (red, yellow, blue, orange)[i], white)
+cube((-5.2, 2.3, 1.22), (.5, .35, .25), dark); cube((-6.8, 2.3, 1.22), (.6, .35, .3), red)
+pole((-6, 2.5, 1.22), .05, .5, 5, dark); ball((-6, 2.5, 1.85), .2, beacon); lamp((1, .1, .05), 350, (-6, 2.5, 1.9))
+# the bench with three pilots, a thermos and a bag
+cube((2.5, 5.5, .7), (3.6, .8, .15), oak)
+for sx in (-1.5, 1.5): cube((2.5 + sx, 5.5, 0), (.15, .7, .7), oak)
+for i, x in enumerate((1.2, 2.6, 4.0)):
+    pole((x, 5.5, .85), .22, .9, 6, coat, .17); ball((x, 5.5, 2.0), .22, skin)
+    pole((x, 5.5, 2.2), .26, .12, 6, (red, blue, orange)[i], .12)
+pole((5.2, 5.5, .85), .1, .5, 6, red); cube((.4, 5.4, .85), (.7, .5, .5), pine)
+# the pit: a low frame with a transmitter and a pit crew's stand
+for sx in (-1, 1):
+    for sy in (-1, 1): cube((sx * 2.2, -4.5 + sy * 1.2, 0), (.12, .12, 1.0), oak)
+cube((0, -4.5, 1.0), (4.6, 2.6, .1), oak)
+cube((-1.5, -4.5, 1.1), (.7, .4, .35), dark); cube((-1.5, -4.5, 1.45), (.5, .2, .15), red)
+for k in range(3): cube((.8 + k * .5, -4.5, 1.1), (.1, .1, .5), dark).rotation_euler.x = .5
+pole((0, -4.5, 1.1), .04, 1.6, 5, dark); cube((0, -4.5, 2.6), (.8, .1, .1), dark)
+# a small control hut, a fuel can, a windsock pole and trees
+cube((8.5, 4.5, 0), (2.4, 2.0, 1.6), white); cube((8.5, 4.5, 1.6), (2.8, 2.4, .2), red)
+cube((8.5, 3.4, .8), (.9, .08, .8), dark); cube((7.3, 4.5, .8), (.08, .8, .8), dark)
+pole((7.5, 2.5, 0), .1, 1.0, 6, dark); cube((7.5, 2.5, 1.0), (.8, .8, .6), red)
+for x, y, h in ((-10, 7, 4.5), (-12, 3, 3.5), (11, -1, 4), (-9, -8, 3.5), (12, 8, 4.5)):
+    pole((x, y, 0), .3, 1.0, 5, oak)
+    for k in range(3): pole((x, y, 1.0 + k * 1.0), 1.5 - k * .4, 1.6, 7, pine, .1)
+# tiny planes in the evening sky, larger than life
+for x, y, z, yaw, c in ((-4, 6, 8, .6, red), (3, -2, 9, 3.4, yellow), (7, 8, 7, 2.2, blue), (-8, -3, 10, 1.2, orange), (0, 12, 6, 5, red)):
+    plane(x, y, z, yaw, 1.6, c, white)
+for i in range(5): ball((random.uniform(-12, 12), random.uniform(-10, 10), .1), .2, dirt, .6)
+# long low evening light: amber sun from the left, cool violet rim behind
+for c, w, p in (((1, .5, .2), 6, (-34, -14, 9)), ((.4, .35, .9), 2.2, (26, 30, 14))):
+    s = bpy.data.lights.new("s", "SUN"); s.color = c; s.energy = w
+    o = bpy.data.objects.new("s", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("eve"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.04, .015, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 4)); co.location = t + Vector((8, -66, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler()
+sc.camera = co

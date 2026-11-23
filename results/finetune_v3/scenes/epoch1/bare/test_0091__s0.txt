@@ -1,0 +1,113 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1854)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def mk(rgb, em=0, ru=.9):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = ru
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+dirt, concrete, brick, brick2 = mk((.22, .15, .1)), mk((.36, .35, .35)), mk((.45, .15, .1)), mk((.33, .1, .08))
+steel, steel2, yellow, white = mk((.1, .12, .14), 0, .5), mk((.2, .22, .25), 0, .5), mk((.8, .55, .05)), mk((.7, .7, .68))
+window, lamp, hut, tyre = mk((1, .7, .3), 7), mk((1, .85, .5), 14), mk((.15, .3, .4)), mk((.02, .02, .02))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, d, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return add(bm, m, at, rot)
+def strut(a, b, t, m):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return add(bm, m)
+def post(at, r, h, m, n=6, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at)
+def beam(at, col, w):
+    L = bpy.data.lights.new("b", "POINT"); L.color, L.energy = col, w
+    o = bpy.data.objects.new("b", L); o.location = at; sc.collection.objects.link(o)
+# ground: a rough slab of earth with a ragged underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=14.5, depth=3.4)
+for v in bm.verts:
+    v.co.z -= 1.7
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.2, .3)))
+    else: v.co.z += random.uniform(-.06, .06)
+add(bm, dirt)
+# the half-built block: ground floor in brick, first floor concrete frame, second floor only a few columns and a slab
+for i in range(7):
+    for j in range(4):
+        if (i + j) % 3 == 1: continue
+        slab((-6.5 + i * 1.0, -3.5 + j * 1.0, .0), (.95, .95, 2.8), brick if (i + j) % 2 else brick2)
+for i in range(7):
+    for j in range(4):
+        slab((-6.5 + i * 1.0, -3.5 + j * 1.0, 2.8), (.95, .95, .35), concrete)
+for i in range(4):
+    for j in range(3):
+        slab((-6.5 + i * 1.0, -3.5 + j * 1.0, 3.15), (.95, .95, .35), concrete)
+for i in range(5):
+    for j in range(4):
+        if i < 3 and j < 3: slab((-6.5 + i * 1.0, -3.5 + j * 1.0, 3.5), (.95, .95, 2.6), concrete)
+for i in range(4):
+    for j in range(3):
+        slab((-6.5 + i * 1.0, -3.5 + j * 1.0, 6.1), (.95, .95, .35), concrete)
+slab((-3.5, -1.5, 3.15), (7.4, 4.2, .3), concrete)
+# scaffolding on the back face, with a plank deck and a ladder
+for z in (0, 2.8, 5.5):
+    for x in (-6.5, -3.5, -1.0):
+        strut((x, 1.4, z), (x, 1.4, z + 2.7), .09, steel2)
+    for y in (1.4,):
+        for k in range(4): strut((-6.9 + k * 2.4, y, z), (-6.9 + k * 2.4 + 2.4, y, z), .09, steel2)
+for k in range(5): slab((-6.0 + k * 1.5, 1.4, 2.75), (1.4, 1.2, .08), brick2)
+for k in range(10): strut((-2.0, 1.0, k * .6), (-2.0, 1.0, k * .6 + .6), .06, steel2)
+# tower crane: base, mast of lattice, slew, jib, counter-jib, counterweights, cab, tie bars, trolley, hook and a brick pallet
+slab((3.5, 5.5, 0), (2.2, 2.2, .6), concrete)
+for k in range(12):
+    z = .6 + k * 1.4
+    for sx in (-.5, .5):
+        for sy in (-.5, .5): strut((3.5 + sx, 5.5 + sy, z), (3.5 + sx, 5.5 + sy, z + 1.4), .1, yellow)
+    strut((3.0, 5.0, z), (4.0, 6.0, z + 1.4), .06, yellow); strut((4.0, 5.0, z), (3.0, 6.0, z + 1.4), .06, yellow)
+slab((3.5, 5.5, 17.4), (1.6, 1.6, 1.2), yellow)
+strut((3.5, 5.5, 18.2), (-8.5, 5.5, 18.2), .25, yellow); strut((3.5, 5.5, 18.2), (7.5, 5.5, 18.2), .25, yellow)
+strut((3.5, 5.5, 18.2), (3.5, 5.5, 21.0), .2, yellow)
+strut((3.5, 5.5, 21.0), (-8.5, 5.5, 18.2), .06, steel2); strut((3.5, 5.5, 21.0), (7.5, 5.5, 18.2), .06, steel2)
+for k in range(3): slab((6.2 + k * .8, 5.5, 17.2), (.7, 1.2, 1.0), concrete)
+slab((2.8, 5.5, 18.6), (1.0, 1.0, .9), white); slab((2.8, 5.5, 19.3), (1.1, 1.1, .15), steel2)
+slab((-3.0, 5.5, 17.9), (.8, .8, .5), steel2)
+strut((-3.0, 5.5, 17.9), (-3.0, 5.5, 10.0), .05, steel)
+slab((-3.0, 5.5, 9.6), (.8, .8, .4), yellow)
+slab((-3.0, 5.5, 8.2), (1.4, 1.4, .25), steel2)
+for i in range(3):
+    for j in range(3): slab((-3.4 + i * .45, 5.1 + j * .45, 8.45), (.4, .4, .35), brick)
+beam((-3.0, 5.0, 10.5), (1, .85, .5), 220)
+# site hut with a lamp on its roof, a wheelbarrow, a brick stack and a fence
+slab((8.0, -5.0, 0), (3.0, 2.0, 2.0), hut); slab((8.0, -5.0, 2.0), (3.4, 2.4, .2), steel2)
+slab((6.5, -5.0, .8), (.1, .9, 1.1), window); slab((9.4, -5.0, .8), (.1, .9, 1.1), window)
+post((8.0, -5.0, 2.2), .06, 1.0, steel2, 4); slab((8.0, -5.0, 3.2), (.5, .5, .4), lamp)
+beam((8.0, -5.0, 3.4), (1, .85, .5), 500)
+slab((-9.5, 5.5, 0), (2.4, 1.6, .5), white)
+for k in range(6):
+    for j in range(3): slab((-9.5 + k * .35, 5.5, .5 + j * .35), (.3, 1.4, .32), brick)
+for k in range(10):
+    x = -10.5 + k * 2.3
+    post((x, -9.5, 0), .06, 1.0, steel2, 4)
+    strut((x, -9.5, .9), (x + 2.3, -9.5, .9), .06, steel2)
+for i in range(5): slab((-10 + i * .5, -7.5, 0), (.4, .4, .4 + .0), brick2)
+# dusk: low orange key from the left, violet rim from behind, warm lamps on site
+for col, w, at in (((1, .45, .2), 5.5, (-30, -16, 10)), ((.5, .3, .9), 2.2, (24, 28, 14))):
+    s = bpy.data.lights.new("s", "SUN"); s.color, s.energy = col, w
+    o = bpy.data.objects.new("s", s); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .015, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 8)); co.location = t + Vector((26, -72, 46))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

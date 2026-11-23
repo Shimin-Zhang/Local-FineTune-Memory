@@ -1,0 +1,240 @@
+import bpy
+import math
+
+# Clear default scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Create a curve for the candy cane shape
+# A candy cane is essentially a J-shape / hook
+# We'll use a Bezier curve
+
+curve_data = bpy.data.curves.new(name="CandyCaneCurve", type='CURVE')
+curve_data.dimensions = '3D'
+curve_data.resolution_u = 24
+
+spline = curve_data.splines.new('BEZIER')
+spline.bezier_points.add(3)  # 4 points total
+
+# Define the J-shape points
+# Point 0: bottom of the straight part
+# Point 1: middle of the straight part
+# Point 2: top of the straight part / start of curve
+# Point 3: end of the hook
+
+# Straight part goes up, then curves over
+# Let's make it:
+# - Start at bottom (0, 0, 0)
+# - Go up to (0, 0, 4)
+# - Curve to (2, 0, 4) at top
+# - End at (2, 0, 2) going down
+
+bp0 = spline.bezier_points[0]
+bp0.co = (0, 0, 0)
+bp0.handle_left = (0, 0, -0.5)
+bp0.handle_right = (0, 0, 1)
+
+bp1 = spline.bezier_points[1]
+bp1.co = (0, 0, 3)
+bp1.handle_left = (0, 0, 2.5)
+bp1.handle_right = (0, 0, 3.5)
+
+bp2 = spline.bezier_points[2]
+bp2.co = (0, 0, 4)
+bp2.handle_left = (0, 0, 3.5)
+bp2.handle_right = (1, 0, 4)
+
+bp3 = spline.bezier_points[3]
+bp3.co = (2, 0, 3)
+bp3.handle_left = (2, 0, 3.5)
+bp3.handle_right = (2, 0, 2.5)
+
+# Set the curve to have a bevel (tube)
+curve_data.bevel_depth = 0.15
+curve_data.bevel_resolution = 12
+curve_data.use_fill_caps = True
+
+# Create the object
+candy_cane_obj = bpy.data.objects.new("CandyCane", curve_data)
+bpy.context.collection.objects.link(candy_cane_obj)
+
+# Convert to mesh for easier texturing
+bpy.context.view_layer.objects.active = candy_cane_obj
+candy_cane_obj.select_set(True)
+bpy.ops.object.convert(target='MESH')
+candy_cane_obj = bpy.context.view_layer.objects.active
+
+# Now create the spiral stripe texture using a material with nodes
+mat = bpy.data.materials.new(name="CandyCaneMaterial")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+nodes.clear()
+
+# Create nodes
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (600, 0)
+
+# We'll use a combination of:
+# - Geometry position to create spiral pattern
+# - Separate XYZ to get Z coordinate for spiral
+# - Math nodes to create stripes
+
+# Get position
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-800, 0)
+
+# Separate XYZ
+sep_xyz = nodes.new('ShaderNodeSeparateXYZ')
+sep_xyz.location = (-600, 0)
+links.new(tex_coord.outputs['Object'], sep_xyz.inputs['Vector'])
+
+# We need to create a spiral: use angle around the Y axis (or the tube axis) + Z position
+# For a candy cane, the spiral goes along the length
+# Use Z position + an angular component
+
+# Actually, let's use a simpler approach: 
+# Use the object's UV or position to create stripes
+# The simplest way: use a wave texture or math-based stripes along the length
+
+# Let's use the Z coordinate (length along the cane) to create stripes
+# And combine with an angular component for the spiral
+
+# Get the angle around the tube axis
+# We can approximate using atan2 of X and Y relative to the tube center
+# But since the tube follows a curve, this is complex.
+
+# Simpler approach: Use a procedural wave texture mapped to object coordinates
+# Create a wave texture with bands along the Z axis, then add a twist
+
+# Let's use a different approach: 
+# Create stripes based on (Z + angle) where angle is the azimuth around the tube
+
+# For simplicity, let's use a wave texture with a twist
+wave = nodes.new('ShaderNodeTexWave')
+wave.location = (-400, 0)
+wave.wave_type = 'BANDS'
+wave.bands_direction = 'Z'
+wave.inputs['Scale'].default_value = 10.0
+wave.inputs['Distortion'].default_value = 5.0
+wave.inputs['Detail'].default_value = 2.0
+wave.inputs['Detail Scale'].default_value = 1.0
+wave.inputs['Detail Distortion'].default_value = 1.0
+
+# Actually, let's do a proper spiral using math nodes
+# The spiral pattern: stripe = sin(Z * frequency + angle_around_tube)
+
+# To get angle around the tube, we need the local frame of the tube
+# This is complex. Let's use a simpler visual approximation:
+# Use a wave texture with distortion to simulate the spiral
+
+# Better approach: Use a checker/wave pattern mapped in a way that creates spiral
+# Let's use object coordinates and create a spiral mathematically
+
+# Clear and redo with a cleaner approach
+nodes.clear()
+
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (800, 0)
+
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.location = (500, 0)
+links.new(bsdf.outputs['BSDF'], output_node.inputs['Surface'])
+
+# TexCoord
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-1000, 0)
+
+# Separate XYZ from object coords
+sep_xyz = nodes.new('ShaderNodeSeparateXYZ')
+sep_xyz.location = (-800, 0)
+links.new(tex_coord.outputs['Object'], sep_xyz.inputs['Vector'])
+
+# For the spiral, we use:
+# stripe_value = sin(z * k + atan2(x, y) * m)
+# But x,y are in object space, and the tube is curved...
+
+# Let's use a simpler but effective approach:
+# Use a wave texture with bands along Z, and add some distortion
+# This will look like a spiral when viewed
+
+wave = nodes.new('ShaderNodeTexWave')
+wave.location = (-600, 0)
+wave.wave_type = 'BANDS'
+wave.bands_direction = 'Z'
+wave.inputs['Scale'].default_value = 8.0
+wave.inputs['Distortion'].default_value = 3.0
+wave.inputs['Detail'].default_value = 1.0
+wave.inputs['Detail Scale'].default_value = 1.0
+wave.inputs['Detail Distortion'].default_value = 1.0
+links.new(tex_coord.outputs['Object'], wave.inputs['Vector'])
+
+# Map the wave output to create two colors (red and white)
+# Use a color ramp to create sharp stripes
+color_ramp = nodes.new('ShaderNodeValToRGB')
+color_ramp.location = (-300, 0)
+links.new(wave.outputs['Color'], color_ramp.inputs['Fac'])
+
+# Set up color ramp for sharp red/white stripes
+# The wave outputs values 0-1, we want to map to red and white
+# Use a constant interpolation for sharp edges
+color_ramp.color_ramp.interpolation = 'CONSTANT'
+
+# Remove default elements and add two: white at 0.0, red at 0.5
+# Default has 2 elements: element[0] at 0.0, element[1] at 1.0
+# Set element[0] to white, element[1] to red, and set element[1] position to 0.5
+elem0 = color_ramp.color_ramp.elements[0]
+elem0.position = 0.0
+elem0.color = (1.0, 1.0, 1.0, 1.0)  # White
+
+elem1 = color_ramp.color_ramp.elements[1]
+elem1.position = 0.5
+elem1.color = (0.8, 0.0, 0.0, 1.0)  # Red
+
+# Connect color ramp to BSDF base color
+links.new(color_ramp.outputs['Color'], bsdf.inputs['Base Color'])
+
+# Set some material properties
+bsdf.inputs['Roughness'].default_value = 0.3
+bsdf.inputs['Specular'].default_value = 0.5
+
+# Assign material to the object
+candy_cane_obj.data.materials.clear()
+candy_cane_obj.data.materials.append(mat)
+
+# Add some lighting
+# Create a point light
+light_data = bpy.data.lights.new(name="KeyLight", type='POINT')
+light_data.energy = 500
+light_data.color = (1.0, 1.0, 1.0)
+light_obj = bpy.data.objects.new("KeyLight", light_data)
+light_obj.location = (3, 3, 5)
+bpy.context.collection.objects.link(light_obj)
+
+# Add a second light
+light_data2 = bpy.data.lights.new(name="FillLight", type='POINT')
+light_data2.energy = 200
+light_data2.color = (0.9, 0.9, 1.0)
+light_obj2 = bpy.data.objects.new("FillLight", light_data2)
+light_obj2.location = (-2, 2, 3)
+bpy.context.collection.objects.link(light_obj2)
+
+# Set up camera
+camera_data = bpy.data.cameras.new(name="Camera")
+camera_data.lens = 50
+camera_obj = bpy.data.objects.new("Camera", camera_data)
+camera_obj.location = (3, -5, 3)
+camera_obj.rotation_euler = (math.radians(70), 0, math.radians(20))
+bpy.context.collection.objects.link(camera_obj)
+
+# Set camera as active
+bpy.context.scene.camera = camera_obj
+
+# Set viewport to camera view
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+        area.spaces[0].region_3d.view_perspective = 'CAMERA'
+
+print("Candy cane created!")

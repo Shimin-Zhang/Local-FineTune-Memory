@@ -1,0 +1,223 @@
+```python
+import bpy
+import math
+import mathutils
+import random
+
+# --- Clean Scene ---
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+for collection in [bpy.data.meshes, bpy.data.materials, bpy.data.lights, bpy.data.cameras, bpy.data.worlds]:
+    for item in collection:
+        if item.users == 0:
+            collection.remove(item)
+
+# --- Materials ---
+def make_mat(name, color, roughness=0.8, metallic=0.0, emit=None, emit_strength=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    if emit is not None:
+        bsdf.inputs["Emission Color"].default_value = (*emit, 1.0)
+        bsdf.inputs["Emission Strength"].default_value = emit_strength
+    return mat
+
+mat_white   = make_mat("White",   (0.95, 0.95, 0.93), 0.6)
+mat_wall    = make_mat("Wall",    (0.75, 0.65, 0.50), 0.9)
+mat_floor   = make_mat("Floor",   (0.55, 0.45, 0.35), 0.95)
+mat_dome    = make_mat("Dome",    (0.92, 0.92, 0.90), 0.4)
+mat_cross   = make_mat("Cross",   (0.85, 0.85, 0.83), 0.3)
+mat_palm_trunk = make_mat("PalmTrunk", (0.45, 0.35, 0.25), 0.95)
+mat_palm_leaf  = make_mat("PalmLeaf",  (0.30, 0.50, 0.20), 0.8)
+mat_bell_frame = make_mat("BellFrame", (0.50, 0.45, 0.40), 0.85)
+mat_bell       = make_mat("Bell",    (0.60, 0.50, 0.30), 0.4, metallic=0.7)
+mat_ground   = make_mat("Ground",  (0.50, 0.40, 0.30), 0.98)
+
+# --- Helper ---
+def add_cube(name, loc, size, mat, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    obj.data.materials.append(mat)
+    return obj
+
+def add_cylinder(name, loc, r, depth, mat, rot=(0,0,0), verts=32):
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=depth, location=loc, rotation=rot, vertices=verts)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(mat)
+    return obj
+
+def add_uv_sphere(name, loc, r, mat, segments=32, rings=16):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=loc, segments=segments, rings=rings)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(mat)
+    return obj
+
+# --- Ground ---
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(mat_ground)
+
+# --- Main Church Body ---
+# Central nave
+add_cube("Nave", (0, 0, 2.5), (8, 6, 5), mat_wall)
+# Side wings (transept)
+add_cube("WestWing", (-5, 0, 2.0), (4, 5, 4), mat_wall)
+add_cube("EastWing",  (5, 0, 2.0), (4, 5, 4), mat_wall)
+
+# --- Dome (white) ---
+# Drum
+add_cylinder("Drum", (0, 0, 5.5), 2.5, 1.5, mat_white, verts=32)
+# Dome
+bpy.ops.mesh.primitive_uv_sphere_add(radius=2.8, location=(0, 0, 6.25), segments=48, rings=24)
+dome = bpy.context.active_object
+dome.name = "Dome"
+dome.scale = (1, 1, 0.75)
+dome.data.materials.append(mat_dome)
+# Remove lower half of dome sphere
+import bmesh
+me = dome.data
+bm = bmesh.new()
+bm.from_mesh(me)
+for v in bm.verts:
+    if v.co.z < 0:
+        bm.verts.remove(v)
+bm.to_mesh(me)
+bm.free()
+
+# Cross on top of dome
+add_cylinder("CrossVert", (0, 0, 8.4), 0.08, 0.8, mat_cross, verts=8)
+add_cylinder("CrossHoriz", (0, 0, 8.55), 0.08, 0.5, mat_cross, rot=(0, math.radians(90), 0), verts=8)
+
+# --- Bell Frame (small, on west side) ---
+# Two posts
+add_cube("BellPostL", (-8, 0, 1.5), (0.2, 0.2, 3), mat_bell_frame)
+add_cube("BellPostR", (-8, 1.5, 1.5), (0.2, 0.2, 3), mat_bell_frame)
+# Top beam
+add_cube("BellBeam", (-8, 0.75, 3.1), (0.2, 1.9, 0.2), mat_bell_frame)
+# Bell
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.35, location=(-8, 0.75, 2.6), segments=24, rings=12)
+bell = bpy.context.active_object
+bell.name = "Bell"
+bell.scale = (1, 1, 1.3)
+bell.data.materials.append(mat_bell)
+# Bell clapper
+add_cylinder("Clapper", (-8, 0.75, 2.2), 0.04, 0.3, mat_bell, verts=8)
+
+# --- Walled Forecourt (east side) ---
+# Floor of forecourt
+add_cube("ForecourtFloor", (10, 0, 0.05), (6, 8, 0.1), mat_floor)
+# Walls
+add_cube("FCWallN",  (10,  4, 1.5), (6, 0.3, 3), mat_wall)
+add_cube("FCWallS",  (10, -4, 1.5), (6, 0.3, 3), mat_wall)
+add_cube("FCWallE",  (13,  0, 1.5), (0.3, 8, 3), mat_wall)
+# West wall with gap for entrance
+add_cube("FCWallW_top", (7, 0, 2.5), (0.3, 8, 1), mat_wall)
+add_cube("FCWallW_L",   (7, -2.5, 1.0), (0.3, 3, 2), mat_wall)
+add_cube("FCWallW_R",   (7,  2.5, 1.0), (0.3, 3, 2), mat_wall)
+
+# --- Palm Trees ---
+def add_palm(loc, height=6, lean=0.1):
+    # Trunk
+    trunk = add_cylinder("PalmTrunk", (loc[0], loc[1], height/2), 0.15, height, mat_palm_trunk, verts=12)
+    # Slight lean
+    trunk.rotation_euler = (lean, 0, random.uniform(0, 2*math.pi))
+    # Leaves
+    top = mathutils.Vector((loc[0] + math.sin(lean)*height*0.5, loc[1], height))
+    for i in range(8):
+        angle = i * (2*math.pi/8) + random.uniform(-0.2, 0.2)
+        bpy.ops.mesh.primitive_plane_add(size=1, location=(
+            top.x + math.cos(angle)*1.2,
+            top.y + math.sin(angle)*1.2,
+            top.z - 0.3
+        ))
+        leaf = bpy.context.active_object
+        leaf.name = f"PalmLeaf_{i}"
+        leaf.scale = (1.8, 0.4, 1)
+        leaf.rotation_euler = (
+            random.uniform(0.3, 0.8),
+            angle,
+            random.uniform(0, 2*math.pi)
+        )
+        leaf.data.materials.append(mat_palm_leaf)
+
+# Place palms around forecourt and near church
+add_palm((12, 3, 0), height=5.5)
+add_palm((12, -3, 0), height=6.0)
+add_palm((6, 4, 0), height=5.0)
+add_palm((6, -4, 0), height=5.5)
+add_palm((-4, 4, 0), height=6.0)
+add_palm((-4, -4, 0), height=5.0)
+
+# --- Lighting: Dusty Sunset ---
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(30, -20, 15))
+sun = bpy.context.active_object
+sun.name = "SunsetSun"
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.55, 0.25)
+sun.rotation_euler = (math.radians(60), 0, math.radians(140))
+
+# Fill / ambient warm
+bpy.ops.object.light_add(type='AREA', location=(0, 0, 20))
+fill = bpy.context.active_object
+fill.name = "Fill"
+fill.data.energy = 50
+fill.data.color = (1.0, 0.7, 0.4)
+fill.data.size = 30
+
+# --- World: Dusty Sunset Sky ---
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+wnodes = world.node_tree.nodes
+wlinks = world.node_tree.links
+wnodes.clear()
+
+# Sky texture with sunset colors
+bg = wnodes.new('ShaderNodeBackground')
+sky = wnodes.new('ShaderNodeTexSky')
+sky.sky_type = 'NISHITA'
+sky.sun_elevation = math.radians(5)
+sky.sun_rotation = math.radians(140)
+sky.sun_intensity = 2.0
+sky.altitude = 1000
+sky.air_density = 2.0
+sky.dust_density = 8.0
+sky.ozone_density = 3.0
+
+out = wnodes.new('ShaderNodeOutputWorld')
+wlinks.new(sky.outputs['Color'], bg.inputs['Color'])
+bg.inputs['Strength'].default_value = 0.6
+wlinks.new(bg.outputs['Background'], out.inputs['Surface'])
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(20, -18, 8))
+cam = bpy.context.active_object
+cam.name = "Camera"
+# Point at church center
+direction = mathutils.Vector((0, 0, 3)) - cam.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = cam
+cam.data.lens = 35
+cam.data.sensor_width = 36
+
+# --- Render Settings ---
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.view_settings.view_transform = 'Filmic'
+scene.view_settings.look = 'Medium High Contrast'
+scene.view_settings.exposure = 0.3
+```

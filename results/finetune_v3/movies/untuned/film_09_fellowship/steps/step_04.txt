@@ -1,0 +1,226 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is too dark. Let's fix lighting and camera.
+
+# 1. Increase fire light energy significantly
+fire_light = bpy.data.objects.get("Fire_Light")
+if fire_light:
+    fire_light.data.energy = 2000
+    fire_light.data.shadow_soft_size = 1.0
+
+# Increase torch lights
+for i in range(4):
+    tl = bpy.data.objects.get(f"Torch_Light_{i}")
+    if tl:
+        tl.data.energy = 200
+
+# Increase rim light
+rim_light = bpy.data.objects.get("Rim_Light")
+if rim_light:
+    rim_light.data.energy = 500
+
+# Increase ambient sun
+sun = bpy.data.objects.get("Ambient_Sun")
+if sun:
+    sun.data.energy = 2.0
+
+# 2. Reduce volume scatter density - it's making everything black
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    nodes = world.node_tree.nodes
+    vol_scatter = None
+    for node in nodes:
+        if node.type == 'VOLUME_SCATTER':
+            vol_scatter = node
+            break
+    if vol_scatter:
+        vol_scatter.inputs['Density'].default_value = 0.005  # Much lower
+
+# 3. Adjust camera to see the scene better
+camera = bpy.data.objects.get("Main_Camera")
+if camera:
+    # Reposition camera to get a better view
+    camera.location = (-6, 4, 3)
+    target = Vector((1.0, 0, 1.5))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+
+# 4. Make sure emission materials are actually glowing
+# Boost fire emission
+mat_fire = bpy.data.materials.get("Fire")
+if mat_fire:
+    bsdf = mat_fire.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Emission Strength"].default_value = 15.0
+
+mat_fire_inner = bpy.data.materials.get("FireInner")
+if mat_fire_inner:
+    bsdf = mat_fire_inner.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Emission Strength"].default_value = 25.0
+
+mat_balrog_fire = bpy.data.materials.get("BalrogFire")
+if mat_balrog_fire:
+    bsdf = mat_balrog_fire.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Emission Strength"].default_value = 20.0
+
+mat_balrog_eye = bpy.data.materials.get("BalrogEye")
+if mat_balrog_eye:
+    bsdf = mat_balrog_eye.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Emission Strength"].default_value = 30.0
+
+mat_glow = bpy.data.materials.get("Glow")
+if mat_glow:
+    bsdf = mat_glow.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Emission Strength"].default_value = 10.0
+
+# 5. Add more visible fire - larger fireballs
+for i in range(8):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(0.3, 1.5)
+    x = 4.5 - 1.5 + dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    z = 0.2 + random.uniform(0.2, 2.0)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(0.15, 0.35), location=(x, y, z))
+    fire = bpy.context.object
+    fire.name = f"FireBig_{i}"
+    fire.data.materials.append(mat_fire_inner if random.random() > 0.4 else mat_fire)
+
+# 6. Add a large fire glow plane under Balrog
+mat_glow = bpy.data.materials.get("Glow")
+if mat_glow:
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(4.5, 0, 0.25))
+    glow = bpy.context.object
+    glow.name = "Balrog_FloorGlow"
+    glow.scale = (3.0, 2.5, 1)
+    glow.data.materials.append(mat_glow)
+    bpy.ops.object.transform_apply(scale=True)
+
+# 7. Add stone pillars at the ends of the bridge (architectural detail)
+mat_stone_pillar = bpy.data.materials.get("PillarStone")
+if mat_stone_pillar:
+    # Left end pillars
+    for y in [-1.5, 1.5]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=3, location=(-6, y, 1.5))
+        pillar = bpy.context.object
+        pillar.name = f"BridgeEnd_Pillar_L_{y}"
+        pillar.data.materials.append(mat_stone_pillar)
+        
+        # Pillar cap
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(-6, y, 3.1))
+        cap = bpy.context.object
+        cap.name = f"BridgeEnd_Cap_L_{y}"
+        cap.scale = (0.7, 0.7, 0.15)
+        cap.data.materials.append(mat_stone_pillar)
+        bpy.ops.object.transform_apply(scale=True)
+    
+    # Right end pillars
+    for y in [-1.5, 1.5]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=3, location=(6, y, 1.5))
+        pillar = bpy.context.object
+        pillar.name = f"BridgeEnd_Pillar_R_{y}"
+        pillar.data.materials.append(mat_stone_pillar)
+        
+        # Pillar cap
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(6, y, 3.1))
+        cap = bpy.context.object
+        cap.name = f"BridgeEnd_Cap_R_{y}"
+        cap.scale = (0.7, 0.7, 0.15)
+        cap.data.materials.append(mat_stone_pillar)
+        bpy.ops.object.transform_apply(scale=True)
+
+# 8. Add engraved runes on the bridge (small emissive marks)
+mat_rune = bpy.data.materials.get("Glow")
+if mat_rune:
+    for i in range(6):
+        x = -4 + i * 1.5
+        y = random.uniform(-0.5, 0.5)
+        bpy.ops.mesh.primitive_plane_add(size=0.15, location=(x, y, 0.21))
+        rune = bpy.context.object
+        rune.name = f"Bridge_Rune_{i}"
+        rune.rotation_euler = (0, 0, random.uniform(0, 3.14))
+        rune.data.materials.append(mat_rune)
+
+# 9. Add more Gandalf detail - belt
+mat_belt = bpy.data.materials.get("MetalDark")
+if mat_belt:
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.28, minor_radius=0.03, location=(-1.5, 0, 0.2 + 1.2))
+    belt = bpy.context.object
+    belt.name = "Gandalf_Belt"
+    belt.rotation_euler = (math.radians(90), 0, 0)
+    belt.data.materials.append(mat_belt)
+
+# 10. Add Gandalf's hands (small spheres at end of arms)
+mat_skin = bpy.data.materials.get("Skin")
+if mat_skin:
+    # Left hand (on staff)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=(-1.5 + 0.45, 0 - 0.15, 0.2 + 1.5))
+    hand_l = bpy.context.object
+    hand_l.name = "Gandalf_Hand_L"
+    hand_l.data.materials.append(mat_skin)
+    
+    # Right hand (on sword)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=(-1.5 + 0.45, 0 + 0.15, 0.2 + 1.5))
+    hand_r = bpy.context.object
+    hand_r.name = "Gandalf_Hand_R"
+    hand_r.data.materials.append(mat_skin)
+
+# 11. Add Balrog's tail
+mat_balrog_body = bpy.data.materials.get("BalrogBody")
+if mat_balrog_body:
+    bpy.ops.mesh.primitive_cone_add(radius1=0.3, radius2=0.05, depth=2.0, location=(4.5 + 1.0, 0, 0.2 + 0.5))
+    tail = bpy.context.object
+    tail.name = "Balrog_Tail"
+    tail.rotation_euler = (0, math.radians(60), 0)
+    tail.data.materials.append(mat_balrog_body)
+
+# 12. Add embers floating in the air
+mat_ember = bpy.data.materials.get("FireInner")
+if mat_ember:
+    for i in range(15):
+        x = random.uniform(-2, 5)
+        y = random.uniform(-2, 2)
+        z = random.uniform(0.5, 4)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(0.02, 0.05), location=(x, y, z))
+        ember = bpy.context.object
+        ember.name = f"Ember_{i}"
+        ember.data.materials.append(mat_ember)
+
+# 13. Add a second camera angle - wide shot
+bpy.ops.object.camera_add(location=(-8, 6, 4))
+cam2 = bpy.context.object
+cam2.name = "Wide_Camera"
+target2 = Vector((1.0, 0, 1.0))
+direction2 = target2 - cam2.location
+rot_quat2 = direction2.to_track_quat('Z', 'Y')
+cam2.rotation_euler = rot_quat2.to_euler()
+
+# 14. Add a third camera - close up on Gandalf
+bpy.ops.object.camera_add(location=(-3, 1.5, 2.0))
+cam3 = bpy.context.object
+cam3.name = "Gandalf_Closeup"
+target3 = Vector((-1.5, 0, 1.8))
+direction3 = target3 - cam3.location
+rot_quat3 = direction3.to_track_quat('Z', 'Y')
+cam3.rotation_euler = rot_quat3.to_euler()
+
+# Set main camera back
+bpy.context.scene.camera = bpy.data.objects.get("Main_Camera")
+
+# 15. Adjust render settings for better visibility
+scene = bpy.context.scene
+scene.cycles.samples = 256
+scene.cycles.use_denoising = True
+scene.view_settings.exposure = 1.5  # Brighten the image
+scene.view_settings.gamma = 1.0
+
+print("Lighting fixed, camera adjusted, more detail added: pillars, runes, belt, hands, tail, embers, multiple cameras")
+```

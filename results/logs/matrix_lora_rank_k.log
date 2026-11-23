@@ -1,0 +1,11 @@
+matrix lora_rank: 10 probes, 0 already done
+[1/10] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=chunked  -> ok  peak 4.75 GiB 9.1s 
+[2/10] Qwen3.5-9B-Base qlora ckpt=1 2x2048 loss=chunked  -> ok  peak 9.51 GiB 16.1s 
+[3/10] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=chunked  -> ok  peak 4.80 GiB 9.2s 
+[4/10] Qwen3.5-9B-Base qlora ckpt=1 2x2048 loss=chunked  -> ok  peak 9.63 GiB 16.3s 
+[5/10] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=chunked  -> ok  peak 4.90 GiB 9.3s 
+[6/10] Qwen3.5-9B-Base qlora ckpt=1 2x2048 loss=chunked  -> ok  peak 9.87 GiB 16.3s 
+[7/10] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=chunked  -> ok  peak 5.49 GiB 9.4s 
+[8/10] Qwen3.5-9B-Base qlora ckpt=1 2x2048 loss=chunked  -> ok  peak 11.37 GiB 17.1s 
+[9/10] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=chunked  -> ok  peak 8.64 GiB 10.6s 
+[10/10] Qwen3.5-9B-Base qlora ckpt=1 2x2048 loss=chunked  -> ok  peak 20.04 GiB 19.8s 

@@ -1,0 +1,122 @@
+```python
+import bpy
+import math
+import mathutils
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the watermelon body (UV Sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=64, ring_count=32, location=(0, 0, 0))
+watermelon = bpy.context.active_object
+watermelon.name = "Watermelon"
+
+# Slightly flatten the sphere to look more like a watermelon
+watermelon.scale = (1.0, 1.0, 0.85)
+bpy.ops.object.transform_apply(scale=True)
+
+# Create a material for the watermelon rind
+mat = bpy.data.materials.new(name="WatermelonRind")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+nodes.clear()
+
+# Output node
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (600, 0)
+
+# Principled BSDF
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.location = (300, 0)
+bsdf.inputs['Roughness'].default_value = 0.3
+
+# Create stripes using a wave texture
+# We'll use the object's coordinates to create stripes
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-600, 0)
+
+# Separate XYZ to get the Y coordinate (or use a mapping)
+# Actually, let's use a wave texture based on the object's local coordinates
+# We want stripes going around the watermelon (like longitudinal stripes)
+
+# Use a mapping to orient the stripes
+mapping = nodes.new('ShaderNodeMapping')
+mapping.location = (-400, 0)
+mapping.inputs['Vector'].default_value = (0, 0, 0)
+mapping.inputs['Scale'].default_value = (1, 1, 1)
+mapping.inputs['Rotation'].default_value = (0, 0, 0)
+
+# Wave texture for stripes
+wave = nodes.new('ShaderNodeTexWave')
+wave.location = (-200, 0)
+wave.wave_type = 'BANDS'
+wave.bands_direction = 'Z'  # Stripes along the Z axis (top to bottom)
+wave.inputs['Scale'].default_value = 8.0  # Number of stripes
+wave.inputs['Distortion'].default_value = 0.0
+wave.inputs['Detail'].default_value = 0.0
+wave.inputs['Detail Scale'].default_value = 0.0
+wave.inputs['Detail Distortion'].default_value = 0.0
+
+# ColorRamp to create two colors (dark green and light green)
+color_ramp = nodes.new('ShaderNodeValToRGB')
+color_ramp.location = (0, 0)
+color_ramp.color_ramp.interpolation = 'CONSTANT'
+
+# Set up the color stops
+# Stop 0: Light green
+stop0 = color_ramp.color_ramp.elements[0]
+stop0.position = 0.0
+stop0.color = (0.2, 0.6, 0.1, 1.0)  # Light green
+
+# Stop 1: Dark green
+stop1 = color_ramp.color_ramp.elements[1]
+stop1.position = 0.5
+stop1.color = (0.05, 0.3, 0.05, 1.0)  # Dark green
+
+# Connect nodes
+links.new(tex_coord.outputs['Object'], mapping.inputs['Vector'])
+links.new(mapping.outputs['Vector'], wave.inputs['Vector'])
+links.new(wave.outputs['Color'], color_ramp.inputs['Fac'])
+links.new(color_ramp.outputs['Color'], bsdf.inputs['Base Color'])
+links.new(bsdf.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign material to watermelon
+watermelon.data.materials.append(mat)
+
+# Add a slight bump for texture
+bump = nodes.new('ShaderNodeBump')
+bump.location = (100, -200)
+bump.inputs['Strength'].default_value = 0.05
+links.new(wave.outputs['Color'], bump.inputs['Height'])
+links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+
+# Set up a simple lighting and camera
+# Add a sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 5))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+sun.data.energy = 3.0
+
+# Add a camera
+bpy.ops.object.camera_add(location=(0, -4, 1.5))
+camera = bpy.context.active_object
+camera.rotation_euler = (math.radians(75), 0, 0)
+bpy.context.scene.camera = camera
+
+# Set up a simple world background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.8, 0.8, 0.8, 1.0)
+    bg_node.inputs[1].default_value = 1.0
+
+print("Watermelon created!")
+```

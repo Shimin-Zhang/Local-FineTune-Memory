@@ -1,0 +1,101 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1864)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def col(rgb, glow=0):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .8
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+sand, sand2, ship, hull, cable, orange, steel, fin, lamp, fish, eye = (col(c) for c in (
+    (.22, .17, .1), (.3, .24, .16), (.2, .24, .26), (.12, .14, .16), (.5, .08, .05), (.8, .35, .05), (.3, .32, .34), (.45, .4, .3), (.2, .2, .22), (.55, .2, .12), (.02, .02, .02)))
+lampg = col((.7, .95, 1), 30); bulb = col((1, .95, .8), 14)
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(w, d, h, m, at, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return add(bm, m, at, rot)
+def tube(r, h, n, m, at, rot=(0, 0, 0), r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    return add(bm, m, at, rot)
+def lump(r, m, at, sq=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2]))
+    return add(bm, m, at)
+def link(a, b, r, m):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=r, radius2=r, depth=d.length)
+    for v in bm.verts: v.co.z += d.length / 2
+    return add(bm, m, a, d.to_track_quat('Z', 'Y').to_euler())
+def ray(x, y, z, s, m):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=.08, radius2=s, depth=1.6)
+    for v in bm.verts: v.co.x *= .35
+    return add(bm, m, (x, y, z), (0, 0, 0))
+def fish(x, y, z, m, a):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=.18, radius2=.02, depth=.55)
+    for v in bm.verts: v.co.z *= .6
+    return add(bm, m, (x, y, z), (0, 0, a))
+def beam(x, y, z, c, w):
+    L = bpy.data.lights.new("b", "SPOT"); L.color, L.energy, L.spot_size, L.spot_blend = c, w, .7, .5
+    o = bpy.data.objects.new("b", L); o.location = (x, y, z); sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 0)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# sandy slope: a grid of dunes rising to the back, rough on top
+bm = bmesh.new(); bmesh.ops.create_grid(bm, x_segments=10, y_segments=10, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 10, v.co.y * 8, (v.co.y + 1) * .35))
+    v.co.z += random.uniform(-.1, .1) + (.08 if v.co.y > 0 else 0)
+add(bm, sand, (0, 0, 0))
+for i in range(12):
+    x, y = random.uniform(-8, 8), random.uniform(-7, 7)
+    lump(random.uniform(.6, 1.4), sand2, (x, y, (y + 1) * .35 + .1), (1.4, 1, .25))
+# the ship above: hull, deck, bridge and mast, drawn oversized so it reads
+hx, hy, hz = 0, 5.6, 4.0
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 8, v.co.y * 3, (v.co.z + .5) * 1.6))
+    if v.co.x > 3.5: v.co.y *= .5
+add(bm, hull, (hx, hy, hz))
+box(7, 2.2, .3, ship, (hx - .3, hy, hz + 1.6)); box(2.4, 2, 1.2, ship, (hx + 1.8, hy, hz + 1.9)); box(.2, .2, 2.4, steel, (hx - 3, hy, hz + 1.9))
+box(1.2, .8, .8, orange, (hx - 1.8, hy, hz + 1.9)); box(1.4, 1.4, .3, orange, (hx - 2.8, hy, hz + 2.6))
+box(2.4, .15, .6, lampg, (hx + 3.1, hy, hz + 1.0))
+# the thick cable: a sagging run of segments from the ship's stern down the slope to the ROV
+pts = [Vector((-1.5, 4.0, 4.0))]
+for i in range(1, 11):
+    t = i / 10; pts.append(Vector((-1.5 + t * 3.5, 4.0 - t * 6.0, 4.0 - t * 4.6 - .6 * math.sin(t * 3))))
+for a, b in zip(pts, pts[1:]): link(a, b, .22, cable)
+# the ROV: body, four arms with tool heads, a lamp dome, a thruster and a trailing tether
+rx, ry, rz = 2.0, -2.0, .4
+box(1.6, 1.1, 1.0, orange, (rx, ry, rz)); box(1.6, .1, .5, steel, (rx, ry - .6, rz + .2)); box(1.6, .1, .5, steel, (rx, ry + .6, rz + .2))
+for sx in (-.5, .5):
+    for sy in (-.7, .7): link((rx + sx, ry + sy, rz), (rx + sx * 1.6, ry + sy * 1.6, rz - .5), .08, steel)
+    link((rx + sx, ry, rz - .5), (rx + sx, ry, rz - 1.0), .15, steel)
+tube(.35, .5, 6, lampg, (rx, ry - .7, rz + .5), (math.pi / 2, 0, 0)); tube(.3, .5, 6, orange, (rx, ry + .7, rz + .5), (math.pi / 2, 0, 0))
+tube(.3, .4, 6, steel, (rx, ry, rz + 1.2)); tube(.15, .8, 5, cable, (rx, ry, rz + 1.9))
+beam(rx, ry - 1.2, rz + .5, (.7, .95, 1), 1400)
+# curious rays circling the ROV, and a shoal of fish caught in its beam
+for i, (a, z) in enumerate(((.6, 2.4), (2.6, 1.6), (4.2, 3.2), (5.4, 2.0), (1.2, 3.8))):
+    x, y = rx + 3.2 * math.cos(a), ry + 3.0 * math.sin(a)
+    ray(x, y, z, .9, fin)
+    for s in (-.3, .3): lump(.1, fin, (x + s * .5, y + .9, z + .3))
+for i in range(9):
+    fish(rx + random.uniform(-1.4, 1.4), ry - random.uniform(1.2, 2.4), rz + random.uniform(-.3, 1.4), fish, random.uniform(0, 6.28))
+# kelp, a boulder and a coral patch for depth
+for x, y in ((-6, -5), (-4.5, -3), (6.5, -4), (7, 1)):
+    for k in range(3): tube(.07, 2.2, 4, col((.1, .3, .12)), (x + k * .2, y, (y + 1) * .35 + 1.1), (random.uniform(-.2, .2), random.uniform(-.2, .2), 0))
+lump(1.0, sand2, (-6.5, -1, .6), (1.3, 1, .8)); lump(.5, col((.7, .25, .3)), (5, 4, 1.6), (1, 1, 1.4))
+# deep water: teal key from the left, faint violet rim, the ROV lamp is the local light
+for c, w, p in (((.1, .45, .5), 4.5, (-24, -14, 9)), ((.5, .25, .6), 2, (20, 22, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 0)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.005, .02, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2)); co.location = t + Vector((6, -40, 24))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,168 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is looking great! Let's do a final polish:
+# 1. Add a subtle blue rim light on the left side of Stay Puft
+# 2. Add a few more people in the crowd
+# 3. Add some more atmospheric elements
+# 4. Add a few more street details
+# 5. Improve the overall color balance
+# 6. Add a few more building details
+# 7. Add some more varied car colors
+# 8. Add a few more people on the sidewalks
+# 9. Add some more atmospheric dust
+# 10. Final camera and lighting adjustment
+
+# Add a blue rim light on the left
+blue_rim_data = bpy.data.lights.new("BlueRimLight", type='SPOT')
+blue_rim_data.energy = 30
+blue_rim_data.color = (0.3, 0.5, 1.0)
+blue_rim_data.spot_size = math.radians(45)
+blue_rim_data.spot_blend = 0.5
+blue_rim_data.shadow_soft_size = 1.0
+blue_rim_obj = bpy.data.objects.new("BlueRimLight", blue_rim_data)
+blue_rim_obj.location = (-10, 5, 6)
+blue_rim_obj.rotation_euler = (math.radians(90), math.radians(30), 0)
+bpy.context.collection.objects.link(blue_rim_obj)
+
+# Add a warm rim light on the right
+warm_rim_data = bpy.data.lights.new("WarmRimLight", type='SPOT')
+warm_rim_data.energy = 20
+warm_rim_data.color = (1.0, 0.7, 0.4)
+warm_rim_data.spot_size = math.radians(45)
+warm_rim_data.spot_blend = 0.5
+warm_rim_data.shadow_soft_size = 1.0
+warm_rim_obj = bpy.data.objects.new("WarmRimLight", warm_rim_data)
+warm_rim_obj.location = (10, 5, 6)
+warm_rim_obj.rotation_euler = (math.radians(90), math.radians(-30), 0)
+bpy.context.collection.objects.link(warm_rim_obj)
+
+# Add a few more people in the crowd
+for i in range(10):
+    x = random.uniform(-6, 6)
+    y = random.uniform(-10, 10)
+    if abs(x) < 2:
+        continue
+    z = 0.8
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.22, location=(x, y, z))
+    person = bpy.context.active_object
+    person.name = f"FinalPerson_{i}"
+    person.scale = (0.6, 0.6, 1.0)
+    cloth_colors = [
+        (0.5, 0.2, 0.2, 1.0), (0.2, 0.3, 0.5, 1.0), (0.3, 0.5, 0.3, 1.0),
+        (0.6, 0.5, 0.2, 1.0), (0.4, 0.2, 0.5, 1.0), (0.2, 0.4, 0.4, 1.0),
+    ]
+    color = random.choice(cloth_colors)
+    mat_person = bpy.data.materials.new(f"FinalPerson_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0), (0.5, 0.3, 0.2, 1.0)]
+    skin = random.choice(skin_colors)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(x, y, 1.1))
+    phead = bpy.context.active_object
+    phead.name = f"FinalPerson_{i}_Head"
+    mat_phead = bpy.data.materials.new(f"FinalPerson_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = skin
+    phead.data.materials.append(mat_phead)
+
+# Add a few more atmospheric dust particles
+for i in range(15):
+    x = random.uniform(-3, 3)
+    y = random.uniform(-5, 5)
+    z = random.uniform(0.2, 1.5)
+    size = random.uniform(0.01, 0.03)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    dust = bpy.context.active_object
+    dust.name = f"FinalDust_{i}"
+    mat_dust = bpy.data.materials.new(f"FinalDust_{i}_mat")
+    mat_dust.use_nodes = True
+    bsdf = mat_dust.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.3, 0.3, 0.3, 1.0)
+    bsdf.inputs['Roughness'].default_value = 1.0
+    dust.data.materials.append(mat_dust)
+
+# Add a few more building windows
+for i in range(15):
+    side = random.choice([-1, 1])
+    x = side * (12 + random.uniform(0, 3))
+    y = random.uniform(-50, 50)
+    z = random.uniform(2, 20)
+    bpy.ops.mesh.primitive_cube_add(size=0.2, location=(x - side * 0.2, y, z))
+    win = bpy.context.active_object
+    win.name = f"LastWin_{i}"
+    if random.random() > 0.5:
+        mat_win = bpy.data.materials.new(f"LastWin_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (1.0, 0.9, 0.5, 1.0)
+        bsdf.inputs['Emission Color'].default_value = (1.0, 0.8, 0.4, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = 0.6
+    else:
+        mat_win = bpy.data.materials.new(f"LastWin_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (0.02, 0.02, 0.06, 1.0)
+    win.data.materials.append(mat_win)
+
+# Add a few more stars
+for i in range(15):
+    x = random.uniform(-40, 40)
+    y = random.uniform(-40, -5)
+    z = random.uniform(25, 50)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.04, location=(x, y, z))
+    star = bpy.context.active_object
+    star.name = f"FinalStar_{i}"
+    mat_star = bpy.data.materials.new(f"FinalStar_{i}_mat")
+    mat_star.use_nodes = True
+    bsdf = mat_star.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Strength'].default_value = 2.0
+    star.data.materials.append(mat_star)
+
+# Final camera adjustment
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, -16, 2.2)
+    camera.rotation_euler = (math.radians(90), 0, 0)
+    camera.data.lens = 28
+
+# Adjust the world background to be slightly less dark
+world = bpy.data.worlds.get("World")
+if world:
+    world_node_tree = world.node_tree
+    for node in world_node_tree.nodes:
+        if node.type == 'BACKGROUND':
+            node.inputs['Color'].default_value = (0.03, 0.03, 0.06, 1.0)
+            node.inputs['Strength'].default_value = 0.15
+
+# Add a very subtle ambient occlusion feel by adding a slight darkening at the edges
+# (This is done through the camera and lighting, not actual AO)
+
+# Final lighting balance
+# Reduce the main moonlight slightly
+moonlight = bpy.data.objects.get("Moonlight")
+if moonlight:
+    moonlight.data.energy = 0.4
+
+# Increase the fill light slightly
+fill_light = bpy.data.objects.get("FillLight")
+if fill_light:
+    fill_light.data.energy = 40
+
+# Increase the warm fill slightly
+warm_fill = bpy.data.objects.get("WarmFill")
+if warm_fill:
+    warm_fill.data.energy = 25
+
+print("Scene is complete with final polish!")
+```

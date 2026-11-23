@@ -1,0 +1,364 @@
+```python
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear default scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create materials
+# Gold material with brushed metal properties
+gold_mat = bpy.data.materials.new(name="BrushedGold")
+gold_mat.use_nodes = True
+nodes = gold_mat.node_tree.nodes
+links = gold_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Principled BSDF
+principled = nodes.new('ShaderNodeBsdfPrincipled')
+principled.location = (0, 0, 0)
+principled.inputs['Base Color'].default_value = (0.85, 0.65, 0.13, 1.0)
+principled.inputs['Metallic'].default_value = 1.0
+principled.inputs['Roughness'].default_value = 0.35
+principled.inputs['Anisotropic'].default_value = 0.8
+principled.inputs['Anisotropic Rotation'].default_value = 0.0
+
+# Add noise texture for brushed effect
+noise = nodes.new('ShaderNodeTexNoise')
+noise.location = (-400, 200, 0)
+noise.inputs['Scale'].default_value = 50.0
+noise.inputs['Detail'].default_value = 8.0
+noise.inputs['Roughness'].default_value = 0.7
+
+# Mapping node to stretch noise for brushed look
+mapping = nodes.new('ShaderNodeMapping')
+mapping.location = (-600, 200, 0)
+mapping.inputs['Scale'].default_value = (1.0, 10.0, 1.0)  # Stretch along Y for brushed effect
+
+# Texture coordinate
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-800, 200, 0)
+
+# Connect: TexCoord -> Mapping -> Noise -> Principled Roughness
+links.new(tex_coord.outputs['Object'], mapping.inputs['Vector'])
+links.new(mapping.outputs['Vector'], noise.inputs['Vector'])
+links.new(noise.outputs['Fac'], principled.inputs['Roughness'])
+
+# Output
+output = nodes.new('ShaderNodeOutputMaterial')
+output.location = (300, 0, 0)
+links.new(principled.outputs['BSDF'], output.inputs['Surface'])
+
+# Darker gold for base
+dark_gold_mat = bpy.data.materials.new(name="DarkGold")
+dark_gold_mat.use_nodes = True
+nodes_d = dark_gold_mat.node_tree.nodes
+links_d = dark_gold_mat.node_tree.links
+for node in nodes_d:
+    nodes_d.remove(node)
+
+principled_d = nodes_d.new('ShaderNodeBsdfPrincipled')
+principled_d.location = (0, 0, 0)
+principled_d.inputs['Base Color'].default_value = (0.65, 0.45, 0.08, 1.0)
+principled_d.inputs['Metallic'].default_value = 1.0
+principled_d.inputs['Roughness'].default_value = 0.25
+
+output_d = nodes_d.new('ShaderNodeOutputMaterial')
+output_d.location = (300, 0, 0)
+links_d.new(principled_d.outputs['BSDF'], output_d.inputs['Surface'])
+
+# Create trophy cup using curves/surfaces
+
+# 1. Create the cup body (bowl) using a spin/screw approach
+# We'll create a profile curve and spin it
+
+# Create a new mesh for the cup body
+bpy.ops.mesh.primitive_cylinder_add(radius=1.0, depth=0.1, location=(0, 0, 0))
+cup_base = bpy.context.active_object
+cup_base.name = "CupBase"
+
+# Actually, let's build the trophy more carefully using individual parts
+
+# Delete the test cylinder
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create trophy cup body using a lathe/spin technique
+# Define profile points for the cup bowl
+profile_points = [
+    (0.0, 1.2),      # top center
+    (0.15, 1.18),
+    (0.3, 1.12),
+    (0.45, 1.0),
+    (0.55, 0.85),
+    (0.6, 0.7),
+    (0.62, 0.55),
+    (0.6, 0.4),
+    (0.55, 0.3),
+    (0.48, 0.22),
+    (0.4, 0.18),
+    (0.3, 0.16),
+    (0.2, 0.15),
+    (0.1, 0.15),
+    (0.0, 0.15),     # bottom center
+]
+
+# Create a mesh from profile and spin
+mesh = bpy.data.meshes.new("CupBody")
+object = bpy.data.objects.new("CupBody", mesh)
+bpy.context.collection.objects.link(object)
+
+# Build the lathe mesh
+import bmesh
+
+bm = bmesh.new()
+
+# Create vertices along the profile
+profile_verts = []
+for r, z in profile_points:
+    if r > 0.001:
+        # Create a ring of vertices
+        num_segs = 64
+        for i in range(num_segs):
+            angle = 2 * math.pi * i / num_segs
+            x = r * math.cos(angle)
+            y = r * math.sin(angle)
+            v = bm.verts.new((x, y, z))
+            profile_verts.append(v)
+    else:
+        # Center point
+        v = bm.verts.new((0, 0, z))
+        profile_verts.append(v)
+
+# Create faces between consecutive rings
+num_segs = 64
+for i in range(len(profile_points) - 1):
+    r1, z1 = profile_points[i]
+    r2, z2 = profile_points[i + 1]
+    
+    if r1 > 0.001 and r2 > 0.001:
+        for j in range(num_segs):
+            j_next = (j + 1) % num_segs
+            v1 = profile_verts[i * num_segs + j]
+            v2 = profile_verts[i * num_segs + j_next]
+            v3 = profile_verts[(i + 1) * num_segs + j_next]
+            v4 = profile_verts[(i + 1) * num_segs + j]
+            try:
+                bm.faces.new((v1, v2, v3, v4))
+            except:
+                pass
+    elif r1 > 0.001 and r2 <= 0.001:
+        # Connect ring to center point
+        center_v = profile_verts[(i + 1) * num_segs]
+        for j in range(num_segs):
+            j_next = (j + 1) % num_segs
+            v1 = profile_verts[i * num_segs + j]
+            v2 = profile_verts[i * num_segs + j_next]
+            try:
+                bm.faces.new((v1, v2, center_v))
+            except:
+                pass
+    elif r1 <= 0.001 and r2 > 0.001:
+        # Connect center point to ring
+        center_v = profile_verts[i * num_segs]
+        for j in range(num_segs):
+            j_next = (j + 1) % num_segs
+            v1 = profile_verts[(i + 1) * num_segs + j]
+            v2 = profile_verts[(i + 1) * num_segs + j_next]
+            try:
+                bm.faces.new((center_v, v1, v2))
+            except:
+                pass
+
+bm.to_mesh(mesh)
+bm.free()
+
+# Smooth shading
+for poly in mesh.polygons:
+    poly.use_smooth = True
+
+# Assign gold material
+object.data.materials.append(gold_mat)
+
+# 2. Create the handle
+# Use a torus segment for the handle
+bpy.ops.mesh.primitive_torus_add(
+    major_radius=0.35,
+    minor_radius=0.06,
+    major_segments=48,
+    minor_segments=16,
+    location=(0.75, 0, 0.6)
+)
+handle = bpy.context.active_object
+handle.name = "Handle"
+
+# Rotate and position the handle
+handle.rotation_euler = (math.radians(90), 0, 0)
+handle.location = (0.65, 0, 0.6)
+
+# Scale to make it look like a trophy handle
+handle.scale = (1.0, 1.0, 1.3)
+
+for poly in handle.data.polygons:
+    poly.use_smooth = True
+
+handle.data.materials.append(gold_mat)
+
+# 3. Create the stem
+bpy.ops.mesh.primitive_cylinder_add(
+    radius=0.08,
+    depth=0.5,
+    location=(0, 0, 0.4)
+)
+stem = bpy.context.active_object
+stem.name = "Stem"
+
+for poly in stem.data.polygons:
+    poly.use_smooth = True
+
+stem.data.materials.append(gold_mat)
+
+# 4. Create the base
+bpy.ops.mesh.primitive_cylinder_add(
+    radius=0.35,
+    depth=0.1,
+    location=(0, 0, 0.05)
+)
+base = bpy.context.active_object
+base.name = "Base"
+
+for poly in base.data.polygons:
+    poly.use_smooth = True
+
+base.data.materials.append(dark_gold_mat)
+
+# 5. Create a decorative ring on the stem
+bpy.ops.mesh.primitive_torus_add(
+    major_radius=0.1,
+    minor_radius=0.02,
+    major_segments=32,
+    minor_segments=12,
+    location=(0, 0, 0.35)
+)
+ring = bpy.context.active_object
+ring.name = "StemRing"
+
+for poly in ring.data.polygons:
+    poly.use_smooth = True
+
+ring.data.materials.append(gold_mat)
+
+# 6. Create a top rim decoration
+bpy.ops.mesh.primitive_torus_add(
+    major_radius=0.58,
+    minor_radius=0.025,
+    major_segments=48,
+    minor_segments=12,
+    location=(0, 0, 1.15)
+)
+rim = bpy.context.active_object
+rim.name = "TopRim"
+
+for poly in rim.data.polygons:
+    poly.use_smooth = True
+
+rim.data.materials.append(gold_mat)
+
+# 7. Add a small ball on top of the stem (optional decorative element)
+bpy.ops.mesh.primitive_uv_sphere_add(
+    radius=0.06,
+    segments=32,
+    ring_count=16,
+    location=(0, 0, 0.68)
+)
+ball = bpy.context.active_object
+ball.name = "StemBall"
+
+for poly in ball.data.polygons:
+    poly.use_smooth = True
+
+ball.data.materials.append(gold_mat)
+
+# Set up lighting
+# Key light
+light_data = bpy.data.lights.new(name="KeyLight", type='SUN')
+light_data.energy = 3.0
+light_data.color = (1.0, 0.95, 0.85)
+light_obj = bpy.data.objects.new(name="KeyLight", object_data=light_data)
+bpy.context.collection.objects.link(light_obj)
+light_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Fill light
+fill_data = bpy.data.lights.new(name="FillLight", type='SUN')
+fill_data.energy = 1.5
+fill_data.color = (0.9, 0.9, 1.0)
+fill_obj = bpy.data.objects.new(name="FillLight", object_data=fill_data)
+bpy.context.collection.objects.link(fill_obj)
+fill_obj.rotation_euler = (math.radians(60), math.radians(-45), 0)
+
+# Rim light
+rim_light_data = bpy.data.lights.new(name="RimLight", type='SUN')
+rim_light_data.energy = 2.0
+rim_light_data.color = (1.0, 0.9, 0.7)
+rim_light_obj = bpy.data.objects.new(name="RimLight", object_data=rim_light_data)
+bpy.context.collection.objects.link(rim_light_obj)
+rim_light_obj.rotation_euler = (math.radians(30), math.radians(180), 0)
+
+# Set up camera
+cam_data = bpy.data.cameras.new(name="TrophyCam")
+cam_data.lens = 85
+cam_obj = bpy.data.objects.new(name="TrophyCam", object_data=cam_data)
+bpy.context.collection.objects.link(cam_obj)
+cam_obj.location = (2.5, -2.5, 1.5)
+
+# Point camera at the trophy
+direction = Vector((0, 0, 0.7)) - cam_obj.location
+cam_obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+# Set camera as active
+bpy.context.scene.camera = cam_obj
+
+# Set up world for better reflections
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+
+# Clear world nodes
+for node in world_nodes:
+    world_nodes.remove(node)
+
+# Background
+bg = world_nodes.new('ShaderNodeBackground')
+bg.location = (0, 0, 0)
+bg.inputs['Color'].default_value = (0.05, 0.05, 0.08, 1.0)
+bg.inputs['Strength'].default_value = 1.0
+
+# Output
+world_output = world_nodes.new('ShaderNodeOutputWorld')
+world_output.location = (300, 0, 0)
+world_links.new(bg.outputs['Background'], world_output.inputs['Surface'])
+
+# Set render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+
+# Select all trophy parts for easy identification
+trophy_parts = [object, handle, stem, base, ring, rim, ball]
+for part in trophy_parts:
+    part.select_set(True)
+bpy.context.view_layer.objects.active = object
+
+print("Brushed gold trophy cup created successfully!")
+```

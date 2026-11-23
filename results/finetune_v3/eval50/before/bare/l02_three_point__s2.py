@@ -1,0 +1,153 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Remove default camera if exists
+if "Camera" in bpy.data.objects:
+    bpy.data.objects.remove(bpy.data.objects["Camera"], do_unlink=True)
+
+# Create materials
+# White marble-like material
+white_mat = bpy.data.materials.new(name="WhiteMarble")
+white_mat.use_nodes = True
+nodes = white_mat.node_tree.nodes
+links = white_mat.node_tree.links
+
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.95, 0.95, 0.95, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.3
+bsdf.inputs["Metallic"].default_value = 0.0
+
+# Dark pedestal material
+dark_mat = bpy.data.materials.new(name="DarkPedestal")
+dark_mat.use_nodes = True
+bsdf2 = dark_mat.node_tree.nodes.get("Principled BSDF")
+bsdf2.inputs["Base Color"].default_value = (0.15, 0.15, 0.15, 1.0)
+bsdf2.inputs["Roughness"].default_value = 0.5
+
+# Ground plane
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(dark_mat)
+
+# Pedestal - box
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 1))
+pedestal = bpy.context.active_object
+pedestal.name = "Pedestal"
+pedestal.scale = (1.5, 1.5, 2)
+bpy.ops.object.transform_apply(scale=True)
+pedestal.data.materials.append(dark_mat)
+
+# Statue parts (white)
+# Torso - cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=1.2, location=(0, 0, 2.6))
+torso = bpy.context.active_object
+torso.name = "Torso"
+torso.data.materials.append(white_mat)
+
+# Head - sphere
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(0, 0, 3.5))
+head = bpy.context.active_object
+head.name = "Head"
+head.data.materials.append(white_mat)
+
+# Left arm - cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.8, location=(-0.5, 0, 2.7))
+left_arm = bpy.context.active_object
+left_arm.name = "LeftArm"
+left_arm.rotation_euler = (0, math.radians(20), 0)
+left_arm.data.materials.append(white_mat)
+
+# Right arm - cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.8, location=(0.5, 0, 2.7))
+right_arm = bpy.context.active_object
+right_arm.name = "RightArm"
+right_arm.rotation_euler = (0, math.radians(-20), 0)
+right_arm.data.materials.append(white_mat)
+
+# Left leg - cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.0, location=(-0.2, 0, 1.5))
+left_leg = bpy.context.active_object
+left_leg.name = "LeftLeg"
+left_leg.data.materials.append(white_mat)
+
+# Right leg - cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.0, location=(0.2, 0, 1.5))
+right_leg = bpy.context.active_object
+right_leg.name = "RightLeg"
+right_leg.data.materials.append(white_mat)
+
+# Base of statue (small cylinder on pedestal)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=0.1, location=(0, 0, 2.05))
+statue_base = bpy.context.active_object
+statue_base.name = "StatueBase"
+statue_base.data.materials.append(white_mat)
+
+# Three-point lighting setup
+
+# Key light - main light, bright, from front-left
+key_light_data = bpy.data.lights.new(name="KeyLight", type='SUN')
+key_light_data.energy = 5.0
+key_light_data.color = (1.0, 0.95, 0.9)  # slightly warm
+key_light = bpy.data.objects.new(name="KeyLight", object_data=key_light_data)
+bpy.context.collection.objects.link(key_light)
+key_light.location = (-5, -5, 8)
+key_light.rotation_euler = (math.radians(45), math.radians(30), math.radians(45))
+
+# Fill light - softer, from front-right
+fill_light_data = bpy.data.lights.new(name="FillLight", type='SUN')
+fill_light_data.energy = 1.5
+fill_light_data.color = (0.9, 0.95, 1.0)  # slightly cool
+fill_light = bpy.data.objects.new(name="FillLight", object_data=fill_light_data)
+bpy.context.collection.objects.link(fill_light)
+fill_light.location = (5, -5, 6)
+fill_light.rotation_euler = (math.radians(45), math.radians(-30), math.radians(-45))
+
+# Rim/Back light - strong, from behind and above
+rim_light_data = bpy.data.lights.new(name="RimLight", type='SUN')
+rim_light_data.energy = 3.0
+rim_light_data.color = (1.0, 1.0, 1.0)  # white
+rim_light = bpy.data.objects.new(name="RimLight", object_data=rim_light_data)
+bpy.context.collection.objects.link(rim_light)
+rim_light.location = (0, 8, 10)
+rim_light.rotation_euler = (math.radians(-60), 0, 0)
+
+# Add a subtle ambient light for fill
+ambient_data = bpy.data.lights.new(name="Ambient", type='SUN')
+ambient_data.energy = 0.3
+ambient_data.color = (0.8, 0.85, 1.0)
+ambient = bpy.data.objects.new(name="Ambient", object_data=ambient_data)
+bpy.context.collection.objects.link(ambient)
+ambient.rotation_euler = (math.radians(90), 0, 0)
+
+# Camera
+bpy.ops.object.camera_add(location=(0, -8, 3))
+camera = bpy.context.active_object
+camera.name = "Camera"
+# Point camera at the statue
+direction = bpy.data.objects["Head"].location - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set as active camera
+bpy.context.scene.camera = camera
+
+# Set render engine
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+
+# World settings - dark background for drama
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.02, 0.02, 0.03, 1.0)
+    bg_node.inputs[1].default_value = 1.0

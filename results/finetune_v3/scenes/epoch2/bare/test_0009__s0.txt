@@ -1,0 +1,93 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1144)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+P = {}
+def dye(name, rgb, em=0, rough=.9):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    P[name] = m
+for k, c in dict(bank=(.1, .14, .06), mud=(.12, .08, .05), pond=(.03, .13, .15), stone=(.3, .3, .3), stone2=(.2, .22, .22), reed=(.25, .3, .08),
+                 reed2=(.35, .28, .1), pad=(.08, .3, .1), pad2=(.12, .35, .1), frog=(.15, .4, .08), belly=(.5, .5, .25), nymph=(.35, .3, .15),
+                 wing=(.6, .75, .8), body=(.1, .35, .45), body2=(.5, .1, .1), bud=(.9, .3, .5), eye=(.9, .1, .1)).items(): dye(k, c)
+dye("pond", (.03, .13, .15), rough=.05); dye("lumen", (.3, .9, .8), em=3); dye("fly", (.2, 1, .6), em=14); dye("fly2", (.3, .7, 1), em=12)
+def form(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("f"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("f", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(P[m]); return o
+def cube(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return form(bm, m, at, rot)
+def stem(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=t, radius2=t * .6, depth=d.length)
+    for v in bm.verts: v.co = q @ Vector((v.co.x, v.co.y, v.co.z + d.length / 2)) + a
+    return form(bm, m)
+def ball(at, r, m, sq=1, sub=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return form(bm, m, at)
+def shine(kind, c, w, at, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=11.5, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .2)))
+form(bm, "bank")
+# the pond: a sunken dark disc with a rim of mud and a glowing line of lily-light under the surface
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=7.2, radius2=7.2, depth=.3)
+for v in bm.verts: v.co.x *= 1.2; v.co.y *= .9
+form(bm, "pond", (0, 0, .02))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=7.5, radius2=7.5, depth=.15)
+for v in bm.verts: v.co.x *= 1.2
+form(bm, "mud", (0, 0, .02)).scale.y = .9
+for i in range(6):
+    a = i * 1.05 + .4
+    ball((math.cos(a) * 5.2, math.sin(a) * 3.8, .05), .5, "lumen", .15)
+shine("POINT", (.3, .9, .8), 450, (0, 0, 1.2))
+# reeds and cattails ring the pond, bending in the breeze
+for i in range(46):
+    a = random.uniform(0, 6.28); r = random.uniform(7.4, 10.6)
+    x, y = math.cos(a) * r * 1.1, math.sin(a) * r * .85
+    if y < -7 and abs(x) < 5: continue
+    h = random.uniform(2.2, 4.2); lean = random.uniform(-.5, .5)
+    top = (x + lean, y, h)
+    stem((x, y, 0), top, .07, random.choice(("reed", "reed2")))
+    if i % 4 == 0: ball((top[0], top[1], top[2] - .1), .22, "bud", 2.2)
+# lily pads, a blooming flower, and the frog on a stone
+for i, (x, y, r) in enumerate(((-2.5, 1.2, 1.5), (1.2, -1.5, 1.3), (3.2, 2.2, 1.1), (-.8, -3.0, 1.0), (4.4, -1.8, .9), (-4.2, -1.0, 1.0))):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=r, radius2=r, depth=.08)
+    form(bm, "pad" if i % 2 else "pad2", (x, y, .12))
+    cube((x + r * .5, y, .12), (r * .9, .08, .1), "pond")
+stem((-2.5, 1.2, .12), (-2.5, 1.2, .9), .05, "pad2"); ball((-2.5, 1.2, 1.1), .45, "bud", 1)
+for k in range(5): ball((-2.5 + math.cos(k * 1.26) * .45, 1.2 + math.sin(k * 1.26) * .45, 1.0), .16, "bud", 1)
+ball((6.2, -4.6, .0), 1.5, "stone", .8, 2); ball((6.9, -4.2, .1), .9, "stone2", .8, 2)
+fx, fy = 6.2, -4.6
+ball((fx, fy, 1.5), .8, "frog", .75); ball((fx, fy - .2, 1.2), .55, "belly", .8)
+for s in (-1, 1): ball((fx + s * .55, fy + .55, 2.0), .26, "eye", 1); ball((fx + s * .55, fy + .7, 2.0), .13, "body2", 1)
+for s in (-1, 1): cube((fx + s * .5, fy - .7, 1.2), (.3, .7, .15), "frog", (0, 0, s * .3)); cube((fx + s * .4, fy + .6, 1.3), (.28, .5, .15), "frog", (0, 0, s * .5))
+# nymphs crawling out of the water on the bank, and dragonflies hovering with lit wings
+for i, (x, y, a) in enumerate(((8.5, 1.5, .5), (8.2, -1.0, 1.2), (-8.0, 2.5, 3.6), (-7.5, -3.5, 2.2), (2.0, 6.6, 1.0), (-1.5, 6.8, 4.5))):
+    for k in range(3): ball((x + math.cos(a) * k * .25, y + math.sin(a) * k * .25, .15), .22 - k * .04, "nymph", 1)
+    for s in (-1, 1): stem((x, y, .15), (x + s * .35, y, .45), .03, "nymph")
+for i, (x, y, z, c) in enumerate(((-3.5, 0, 4.2, "fly"), (3.0, -2.5, 3.6, "fly2"), (0.5, 3.0, 5.0, "fly"), (-5.5, -3.5, 4.4, "fly2"))):
+    stem((x, y, z), (x + .9, y, z - .1), .09, c)
+    for s in (-1, 1):
+        for k in (0, 1): cube((x + .2 + k * .5, y + s * .4, z + .05), (.55, .2, .03), "wing", (0, 0, s * .3))
+    shine("POINT", (.2, 1, .6) if c == "fly" else (.3, .7, 1), 40, (x, y, z))
+# moonlit night: cool key from the left, teal rim from behind
+shine("SUN", (.55, .65, 1), 4.5, (-22, -14, 9), (0, 0, 1)); shine("SUN", (.2, .8, .7), 2, (16, 22, 10), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .015, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((8, -46, 26))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

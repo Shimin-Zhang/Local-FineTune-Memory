@@ -1,0 +1,106 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1576)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+hall = {}
+def alloy(name, rgb, glow=0, metal=0, rough=.8):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough; b.inputs["Metallic"].default_value = metal
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    hall[name] = m
+for k, v in dict(deck=(.12, .13, .16), deck2=(.08, .09, .11), wall=(.16, .18, .22), panel=(.25, .27, .3), belt=(.04, .04, .05), steel=(.3, .33, .38), pipe=(.4, .2, .08),
+                 rock=(.22, .2, .2), rock2=(.3, .26, .22), ingot=(.7, .4, .08), orange=(.9, .3, .05), teal=(.1, .5, .5), dark=(.03, .03, .04)).items(): alloy(k, v, metal=.5 if k == "steel" else .2, rough=.5)
+alloy("molten", (1, .35, .05), 14); alloy("beacon", (1, .1, .05), 20); alloy("lamp", (1, .6, .2), 10)
+def cast(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("h"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("h", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(hall[k]); return o
+def blk(x, y, z, w, d, h, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * f, v.co.y * d * f, (v.co.z + .5) * h))
+    return cast(bm, k, (x, y, z), (0, 0, rz))
+def tube(x, y, z, r, h, n, k, rot=(0, 0, 0), r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return cast(bm, k, (x, y, z), rot)
+def beam(a, b, w, k):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * w, v.co.y * w, (v.co.z + .5) * (b - a).length)) + a
+    return cast(bm, k)
+def lamp(x, y, z, rgb, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = rgb, w
+    o = bpy.data.objects.new("l", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# deck plate floor in two tones
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 17 + random.uniform(-1, 1), v.co.y * 14 + random.uniform(-1, 1), -3 + random.uniform(-1, .5)))
+    else: v.co = Vector((v.co.x * 22, v.co.y * 18, 0))
+cast(bm, "deck2")
+for i in range(11):
+    for j in range(9):
+        blk(-9.5 + i * 2, -8 + j * 2, 0, 1.9, 1.9, .12, "deck" if (i + j) % 2 else "deck2")
+# two walls only, with ribs and pipes
+blk(0, 8.8, 0, 22, .5, 6.5, "wall"); blk(-10.8, 0, 0, .5, 18, 6.5, "wall")
+for i in range(8): blk(-9.5 + i * 2.8, 8.5, 0, .5, .3, 6.5, "panel")
+for i in range(8): blk(-10.5, -7.5 + i * 2.2, 0, .3, .5, 6.5, "panel")
+for z in (3.2, 4.4):
+    tube(-10.4, 0, z, .22, 17, 6, "pipe", (0, math.pi / 2, 0))
+for i in range(5): blk(-8 + i * 4, 8.4, 5.4, 3, .2, .6, "lamp")
+lamp(-4, 7.5, 5.0, (1, .6, .2), 450); lamp(4, 7.5, 5.0, (1, .6, .2), 450)
+# conveyor belt with rollers, legs and ore lumps
+for i in range(5):
+    blk(-8 + i * 1.3, -5, .7, 1.2, 1.8, .25, "belt")
+    for sy in (-1, 1): tube(-8 + i * 1.3, -5 + sy * 1.0, .5, .22, 1.8, 6, "steel", (math.pi / 2, 0, 0))
+for i in range(4):
+    for sy in (-1, 1): blk(-7.4 + i * 1.9, -5 + sy * .8, 0, .2, .2, .7, "steel")
+for i in range(6):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.3, .5))
+    for v in bm.verts: v.co *= random.uniform(.8, 1.3)
+    cast(bm, "rock" if i % 2 else "rock2", (-8 + i * 1.3, -5 + random.uniform(-.3, .3), 1.2))
+# crusher: hopper, body, jaw teeth, discharge chute and a hazard beacon
+blk(0, 0, 0, 5, 4.2, .4, "panel"); blk(0, 0, .4, 4.4, 3.6, 2.6, "steel", top=.9)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=2.6, radius2=1.2, depth=2.0)
+for v in bm.verts: v.co.z += 1.0
+cast(bm, "panel", (0, 0, 3.0), (0, 0, math.pi / 4))
+blk(0, 0, 5.0, 2.4, 2.4, .3, "dark")
+for sx in (-1, 1):
+    for k in range(5):
+        blk(sx * 1.4, -1.9 + k * .9, .4, .25, .3, .8, "dark")
+blk(0, -2.6, .3, 2.2, 1.2, .5, "dark"); blk(0, -3.6, 0, 1.8, 1.6, .3, "steel")
+tube(2.4, 1.6, 3.0, .3, 1.2, 6, "orange"); tube(2.4, 1.6, 4.2, .45, .6, 6, "beacon", r2=.4)
+lamp(2.4, 1.6, 4.6, (1, .1, .05), 450)
+# molten furnace: brick body, glowing mouth, tap, slag trough and stack
+blk(8, 3, 0, 5, 5, 4.2, "rock2", top=.9); blk(8, 3, 4.2, 5.6, 5.6, .4, "rock")
+blk(8, .4, 1.0, 2.4, .2, 1.6, "molten"); blk(8, .2, .8, 3.0, .3, .3, "dark"); blk(8, .2, 2.6, 3.0, .3, .3, "dark")
+lamp(8, -.6, 1.8, (1, .35, .05), 1600)
+blk(8, -.4, 0, 1.2, .6, .5, "dark"); blk(8, -.4, .5, .8, .3, .2, "molten")
+blk(8, -1.8, 0, 1.4, 2.4, .35, "dark"); blk(8, -1.8, .35, .8, 2.0, .1, "molten")
+tube(9.5, 5.0, 4.6, .6, 2.4, 6, "steel", r2=.4); tube(9.5, 5.0, 7.0, .45, .3, 6, "orange")
+tube(6.4, 5.0, 4.6, .35, 1.6, 6, "steel", r2=.25)
+# ingot stacks on racks, and a control panel with a beacon
+for sx in (-1, 1):
+    for sy in (-1, 1): blk(-6.5 + sx * 1.2, 3.2 + sy * .9, 0, .15, .15, 1.0, "steel")
+    blk(-6.5, 3.2, 1.0, 2.6, 2.0, .1, "steel")
+for r in range(3):
+    for c in range(4): blk(-7.2 + c * .5, 3.2, 1.1 + r * .45, .4, 1.5, .4, "ingot")
+blk(-6.5, 5.6, 0, 2.4, .8, 1.4, "panel"); blk(-6.5, 5.15, .9, 1.8, .1, .7, "teal"); tube(-5.6, 5.8, 1.4, .18, .4, 6, "beacon"); lamp(-6.5, 5.0, 1.2, (.2, .9, .9), 150)
+for i in range(3): tube(-3.5 + i * .8, 6.5, 0, .35, 1.4, 7, "orange", r2=.3); blk(-3.5 + i * .8, 6.5, 1.4, .7, .1, .1, "dark")
+# hazard stripes on the floor edge
+for i in range(14): blk(-9.5 + i * 1.5, -8.6, .12, .7, .5, .04, "orange" if i % 2 else "dark")
+for col, w, p in (((.65, .72, 1), 4.5, (-24, -16, 9)), ((1, .45, .2), 2.2, (22, 20, 10))):
+    s = bpy.data.lights.new("sun", "SUN"); s.color, s.energy = col, w
+    o = bpy.data.objects.new("sun", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("hall"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .015, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2)); co.location = t + Vector((14, -54, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

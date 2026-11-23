@@ -1,0 +1,198 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# --- Setup ---
+bpy.ops.object.select_all(action='DESELECT')
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Clear scene
+for obj in bpy.data.objects:
+    bpy.data.objects.remove(obj, do_unlink=True)
+for mesh in bpy.data.meshes:
+    if mesh.users == 0:
+        bpy.data.meshes.remove(mesh)
+
+# --- Materials ---
+def create_material(name, color, roughness=0.6):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    return mat
+
+# Colors
+wood_light = create_material("Wood_Light", (0.6, 0.4, 0.2, 1.0))
+wood_dark = create_material("Wood_Dark", (0.3, 0.2, 0.1, 1.0))
+water_mat = create_material("Water", (0.1, 0.4, 0.6, 1.0), 0.1)
+sky_mat = create_material("Sky", (0.5, 0.8, 1.0, 1.0))
+paint_colors = [
+    create_material("Paint_Red", (0.9, 0.2, 0.2, 1.0)),
+    create_material("Paint_Blue", (0.2, 0.4, 0.9, 1.0)),
+    create_material("Paint_Yellow", (0.9, 0.8, 0.2, 1.0)),
+    create_material("Paint_Green", (0.2, 0.7, 0.3, 1.0)),
+    create_material("Paint_Orange", (0.9, 0.5, 0.1, 1.0)),
+    create_material("Paint_Purple", (0.6, 0.2, 0.8, 1.0)),
+    create_material("Paint_Teal", (0.1, 0.6, 0.6, 1.0)),
+]
+
+# --- Helper Functions ---
+def add_box(name, size, location, material, rotation=(0, 0, 0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(material)
+    return obj
+
+def add_cylinder(name, radius, depth, location, material, rotation=(0, 0, 0), vertices=16):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, rotation=rotation, vertices=vertices)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(material)
+    return obj
+
+def create_palafito(x, z, color_mat, house_width=4, house_depth=4, house_height=3, stilt_height=4):
+    """Create a single palafito house with stilts, ladder, boat, and walkway."""
+    base_y = 0  # Water level
+    
+    # Stilts
+    stilt_positions = [
+        (-house_width/2 + 0.5, -house_depth/2 + 0.5),
+        (house_width/2 - 0.5, -house_depth/2 + 0.5),
+        (-house_width/2 + 0.5, house_depth/2 - 0.5),
+        (house_width/2 - 0.5, house_depth/2 - 0.5),
+    ]
+    for i, (sx, sz) in enumerate(stilt_positions):
+        add_cylinder(f"Stilt_{x}_{z}_{i}", 0.15, stilt_height, (x + sx, stilt_height/2, z + sz), wood_dark)
+    
+    # Platform
+    platform_y = stilt_height
+    add_box(f"Platform_{x}_{z}", (house_width + 1, house_depth + 1, 0.3), (x, platform_y, z), wood_dark)
+    
+    # House body
+    house_y = platform_y + house_height/2 + 0.15
+    add_box(f"House_{x}_{z}", (house_width, house_height, house_depth), (x, house_y, z), color_mat)
+    
+    # Roof
+    roof_y = platform_y + house_height + 0.15 + 1.5
+    # Simple pyramid roof using a cone
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=house_width * 0.8, radius2=0, depth=3, location=(x, roof_y, z), rotation=(0, math.radians(45), 0))
+    roof = bpy.context.active_object
+    roof.name = f"Roof_{x}_{z}"
+    roof.data.materials.append(wood_dark)
+    
+    # Door
+    door_width = 1
+    door_height = 2
+    door_y = platform_y + door_height/2 + 0.15
+    add_box(f"Door_{x}_{z}", (door_width, door_height, 0.1), (x, door_y, z - house_depth/2 - 0.05), wood_dark)
+    
+    # Windows
+    window_size = 0.8
+    window_y = platform_y + house_height/2 + 0.15
+    # Front windows
+    add_box(f"Window_L_{x}_{z}", (window_size, window_size, 0.1), (x - house_width/4, window_y, z - house_depth/2 - 0.05), create_material(f"Glass_{x}_{z}_L", (0.8, 0.9, 1.0, 1.0), 0.1))
+    add_box(f"Window_R_{x}_{z}", (window_size, window_size, 0.1), (x + house_width/4, window_y, z - house_depth/2 - 0.05), create_material(f"Glass_{x}_{z}_R", (0.8, 0.9, 1.0, 1.0), 0.1))
+    
+    # Ladder
+    ladder_x = x + house_width/2 + 0.5
+    ladder_z = z
+    ladder_height = stilt_height + 0.5
+    # Rails
+    add_box(f"Ladder_Rail_L_{x}_{z}", (0.1, ladder_height, 0.1), (ladder_x - 0.3, ladder_height/2, ladder_z), wood_light)
+    add_box(f"Ladder_Rail_R_{x}_{z}", (0.1, ladder_height, 0.1), (ladder_x + 0.3, ladder_height/2, ladder_z), wood_light)
+    # Rungs
+    num_rungs = 5
+    for i in range(num_rungs):
+        rung_y = ladder_height * (i + 0.5) / num_rungs
+        add_box(f"Ladder_Rung_{i}_{x}_{z}", (0.7, 0.1, 0.1), (ladder_x, rung_y, ladder_z), wood_light)
+    
+    # Boat
+    boat_x = x - house_width/2 - 2
+    boat_z = z + house_depth/2 + 1
+    # Hull (scaled cube)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(boat_x, 0.2, boat_z))
+    boat = bpy.context.active_object
+    boat.name = f"Boat_{x}_{z}"
+    boat.scale = (1.5, 0.5, 2)
+    bpy.ops.object.transform_apply(scale=True)
+    boat.data.materials.append(color_mat)
+    # Simple interior
+    add_box(f"Boat_Interior_{x}_{z}", (1.2, 0.3, 1.8), (boat_x, 0.2, boat_z), wood_light)
+    
+    # Plank walkway connecting to platform
+    walkway_length = 2
+    walkway_x = x + house_width/2 + 0.5
+    walkway_z = z
+    add_box(f"Walkway_{x}_{z}", (0.8, 0.1, walkway_length), (walkway_x, platform_y - 0.1, walkway_z), wood_light)
+    # Walkway supports
+    for i in range(2):
+        support_z = walkway_z - walkway_length/2 + i * walkway_length
+        add_cylinder(f"Walkway_Support_{i}_{x}_{z}", 0.1, stilt_height, (walkway_x, stilt_height/2, support_z), wood_dark)
+
+# --- Create Cove Layout ---
+# Arrange palafitos in a cove shape
+positions = [
+    (-8, -5),
+    (-4, -8),
+    (0, -10),
+    (4, -8),
+    (8, -5),
+    (10, 0),
+    (8, 5),
+    (-8, 5),
+    (-10, 0),
+]
+
+for i, (px, pz) in enumerate(positions):
+    color = paint_colors[i % len(paint_colors)]
+    create_palafito(px, pz, color)
+
+# --- Water Surface ---
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, -0.1, 0))
+water = bpy.context.active_object
+water.name = "Water"
+water.data.materials.append(water_mat)
+
+# --- Sky/Background ---
+# Add a large background plane
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 50, -50), rotation=(math.radians(90), 0, 0))
+sky = bpy.context.active_object
+sky.name = "Sky_Background"
+sky.data.materials.append(sky_mat)
+
+# --- Lighting ---
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(10, 30, 10))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(20), 0)
+
+# Ambient light
+bpy.ops.object.light_add(type='AREA', location=(0, 20, 0))
+ambient = bpy.context.active_object
+ambient.name = "Ambient"
+ambient.data.energy = 50
+ambient.data.size = 20
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(0, 15, 25))
+cam = bpy.context.active_object
+cam.name = "Camera"
+# Point camera at center
+direction = Vector((0, 0, 0)) - cam.location
+cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+bpy.context.scene.camera = cam
+
+# --- Render Settings ---
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+
+print("Palafitos cove created successfully!")

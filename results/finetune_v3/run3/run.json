@@ -1,0 +1,36 @@
+{
+ "args": {
+  "model": ".models/Qwen3.8-27B",
+  "train": "results/finetune_v3/train.jsonl",
+  "val": "results/finetune_v3/val.jsonl",
+  "out": "results/finetune_v3/run3",
+  "epochs": 2,
+  "tokens_per_step": 2048,
+  "max_batch": 24,
+  "max_example_tokens": 4096,
+  "lr": 0.0001,
+  "warmup_steps": 30,
+  "rank": 16,
+  "dropout": 0.05,
+  "targets": "q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj",
+  "clip": 1.0,
+  "loss_chunk": 128,
+  "max_steps": 0,
+  "val_every": 500,
+  "seed": 0,
+  "save_every": 500
+ },
+ "versions": {
+  "torch": "2.14.1+cu126",
+  "transformers": "5.22.2",
+  "peft": "0.21.2",
+  "bitsandbytes": "0.50.2"
+ },
+ "kernels": {
+  "linear_attention": "fla",
+  "causal_conv": "causal_conv1d"
+ },
+ "gpu": "NVIDIA GeForce RTX 4090",
+ "trainable_parameters": 79691776,
+ "model_class": "Qwen3_5ForCausalLM"
+}

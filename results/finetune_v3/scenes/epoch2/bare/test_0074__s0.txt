@@ -1,0 +1,120 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1364)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+mats = {}
+def dye(name, rgb, glow=0, rough=.9):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    mats[name] = m
+dye("bank", (.1, .13, .07)); dye("water", (.03, .12, .13), .4, .15); dye("board", (.28, .17, .1)); dye("board2", (.2, .12, .08))
+dye("block", (.25, .2, .17)); dye("roof", (.1, .1, .12)); dye("moss", (.12, .25, .12)); dye("oak", (.2, .12, .08))
+dye("oakleaf", (.07, .17, .08)); dye("lantern", (1, .6, .2), 14); dye("boat", (.5, .12, .08)); dye("cane", (.35, .3, .12)); dye("chair", (.5, .45, .35))
+def make(bm, mat, loc=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = loc, rot
+    sc.collection.objects.link(o); o.data.materials.append(mats[mat]); return o
+def slab(mat, x, y, z, w, d, h, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return make(bm, mat, (x, y, z), (0, 0, rz))
+def pole(mat, x, y, z, r1, r2, h, n=6):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, mat, (x, y, z))
+def limb(mat, a, b, r):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=r, radius2=r * .7, depth=d.length)
+    for v in bm.verts: v.co = q @ (v.co + Vector((0, 0, d.length / 2))) + a
+    return make(bm, mat)
+def glow(col, e, p):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = col, e
+    o = bpy.data.objects.new("g", L); o.location = p; sc.collection.objects.link(o)
+# land and bayou: a rough base, water in front, a raised bank behind
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 18, v.co.y * 12, -3.2)) + Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, .3)))
+    else: v.co = Vector((v.co.x * 22, v.co.y * 16, 0))
+make(bm, "bank")
+slab("water", 0, -3.8, .02, 21, 7, .12)
+slab("bank", 0, 4.2, 0, 21, 7, 1.1)
+# the house on blocks, narrow and deep, with a deep porch at the front
+hx, hy = -1.5, 3.5
+for bx in (-2.2, 2.2):
+    for by in (-2.8, 2.8): slab("block", hx + bx, hy + by, 1.1, .9, .9, 1.0)
+slab("board2", hx, hy, 2.1, 6.2, 7.6, .25)
+slab("board", hx, hy + 1.2, 2.35, 5.2, 5.2, 3.4)
+for i in range(10): slab("board2" if i % 2 else "board", hx - 2.6 + i * .55, hy + 1.2, 2.35, .06, 5.3, 3.4)
+slab("board", hx - 2.5, hy - 1.5, 2.35, .3, 3.0, 3.4); slab("board", hx + 2.5, hy - 1.5, 2.35, .3, 3.0, 3.4)
+for sx in (-1, 1):
+    slab("board", hx + sx * 2.5, hy - 3.0, 2.35, 3.0, .25, 3.4)
+for i in range(14): slab("board2" if i % 2 else "board", hx - 3.4 + i * .5, hy - 4.6, 2.35, .06, 3.2, 3.4)
+slab("board", hx - 3.6, hy - 4.6, 2.35, .3, 3.4, 3.4); slab("board", hx + 3.6, hy - 4.6, 2.35, .3, 3.4, 3.4)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 6.6, v.co.y * 6.4, (v.co.z + .5) * 1.6))
+    if v.co.z > .8: v.co.y = 0
+make(bm, "roof", (hx, hy + 1.2, 5.75))
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 8.0, v.co.y * 4.0, (v.co.z + .5) * .8))
+    if v.co.z > .4: v.co.y = 0
+make(bm, "roof", (hx, hy - 4.6, 5.75))
+# door, window, steps, porch posts
+slab("board2", hx, hy - 1.38, 2.4, 1.2, .1, 2.6); slab("board2", hx + 1.7, hy - 1.38, 3.6, 1.2, .1, 1.4)
+slab("lantern", hx + 1.7, hy - 1.45, 3.7, .8, .06, 1.0)
+for i in range(3): slab("block", hx, hy - 6.4 - i * .6, 1.1 + i * .3, 2.2, .6, .3)
+for i in range(5):
+    px = hx - 3.2 + i * 1.6
+    pole("board2", px, hy - 6.2, 2.35, .1, .1, 3.4, 5)
+slab("board2", hx, hy - 6.2, 5.6, 7.0, .2, .2)
+# rocking chair on the porch, bigger than life
+cx, cy = hx + 1.2, hy - 3.6
+for s in (-.4, .4):
+    limb("chair", (cx - .5, cy + s, 2.6), (cx + .5, cy + s, 2.6), .06); limb("chair", (cx - .4, cy + s, 2.4), (cx - .4, cy + s, 3.3), .06)
+    limb("chair", (cx + .5, cy + s, 2.6), (cx + .5, cy + s, 3.6), .06)
+slab("chair", cx, cy, 2.7, 1.0, 1.0, .12)
+# oaks with hanging moss, and cypress knees in the bayou
+for ox, oy in ((-8.5, 5.5), (8.0, 4.5)):
+    pole("oak", ox, oy, 1.1, 1.0, .6, 5.5, 6)
+    for k in range(5):
+        a = k * 1.25 + ox
+        limb("oak", (ox, oy, 6.0), (ox + math.cos(a) * 3.2, oy + math.sin(a) * 3.2, 7.2 - k % 2), .3)
+        bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=2.0)
+        for v in bm.verts: v.co *= random.uniform(.8, 1.2)
+        make(bm, "oakleaf", (ox + math.cos(a) * 3.2, oy + math.sin(a) * 3.2, 7.6 - k % 2))
+    for k in range(8):
+        a = k * .8 + oy
+        limb("moss", (ox + math.cos(a) * 2.4, oy + math.sin(a) * 2.4, 7.4), (ox + math.cos(a) * 2.4, oy + math.sin(a) * 2.4, 5.0 + (k % 3) * .4), .06)
+for k in range(10):
+    pole("oak", random.uniform(-9, 9), random.uniform(-7, -1), .05, .15, .2, .5, 5)
+# a skiff on the bayou, with a lantern and oars
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 3.6, v.co.y * 1.3, (v.co.z + .5) * .8))
+    if abs(v.co.x) > 1.5: v.co.y *= .3
+    if v.co.z > .4: v.co.y *= 1.25
+make(bm, "boat", (3.5, -4.5, .1), (0, 0, .3))
+slab("board2", 3.5, -4.5, .9, .3, 1.2, .1, .3); slab("board2", 3.5, -4.5, .5, .3, 1.2, .1, .3)
+pole("lantern", 5.2, -4.0, .1, .15, .15, .5, 6); glow((1, .6, .2), 200, (5.2, -4.0, 1.0))
+limb("board", (3.5, -4.5, 1.0), (2.4, -5.8, .1), .05)
+# reeds along the bank and a faintly glowing bayou
+for i in range(18):
+    x = random.uniform(-9, 9); y = random.uniform(-7.2, -1.0)
+    if abs(x - 3.5) < 3: continue
+    pole("cane", x, y, .05, .06, .02, random.uniform(.8, 1.6), 4)
+for col, e, p in (((1, .55, .3), 4.5, (-22, -14, 6)), ((.3, .6, .8), 2.2, (20, 20, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = col, e
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("bayou"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .03, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3)); co.location = t + Vector((6, -52, 32))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

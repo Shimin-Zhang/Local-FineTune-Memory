@@ -1,0 +1,208 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Create collections
+scene = bpy.context.scene
+for col_name in ["Spires", "Waterfalls", "Throne", "Snowdrifts", "Aurora"]:
+    if col_name not in scene.collection.children:
+        col = bpy.data.collections.new(col_name)
+        scene.collection.children.link(col)
+
+def get_col(name):
+    return bpy.data.collections[name]
+
+# --- Materials ---
+# Ice material
+ice_mat = bpy.data.materials.new("Ice")
+ice_mat.use_nodes = True
+bsdf = ice_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.7, 0.85, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.1
+bsdf.inputs["Transmission Weight"].default_value = 0.8
+bsdf.inputs["IOR"].default_value = 1.31
+
+# Snow material
+snow_mat = bpy.data.materials.new("Snow")
+snow_mat.use_nodes = True
+bsdf = snow_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.95, 0.97, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.9
+
+# Water material
+water_mat = bpy.data.materials.new("FrozenWater")
+water_mat.use_nodes = True
+bsdf = water_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.8, 0.9, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.05
+bsdf.inputs["Transmission Weight"].default_value = 0.9
+
+# --- Spire Creation ---
+def create_spire(location, height=20, radius=1.5, name="Spire"):
+    bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=radius, radius2=0.1, depth=height, location=location)
+    spire = bpy.context.active_object
+    spire.name = name
+    spire.data.materials.append(ice_mat)
+    # Move to Spires collection
+    for col in spire.users_collection:
+        col.objects.unlink(spire)
+    get_col("Spires").objects.link(spire)
+    return spire
+
+# Central spire
+create_spire((0, 0, 10), height=40, radius=3, name="CentralSpire")
+
+# Ring of spires
+num_spires = 12
+ring_radius = 25
+for i in range(num_spires):
+    angle = i * (2 * math.pi / num_spires)
+    x = ring_radius * math.cos(angle)
+    y = ring_radius * math.sin(angle)
+    h = random.uniform(15, 30)
+    r = random.uniform(1.0, 2.0)
+    create_spire((x, y, h/2), height=h, radius=r, name=f"Spire_{i}")
+
+# --- Frozen Waterfalls (Walls) ---
+def create_waterfall_wall(location, name="Waterfall"):
+    # Create a curved plane for the waterfall
+    bpy.ops.mesh.primitive_plane_add(size=1, location=location)
+    wall = bpy.context.active_object
+    wall.name = name
+    wall.scale = (5, 15, 1)
+    wall.rotation_euler = (0, 0, 0)
+    
+    # Add subdivision for wave effect
+    mod = wall.modifiers.new("Subdiv", 'SUBSURF')
+    mod.levels = 3
+    mod.render_levels = 3
+    
+    # Displace for frozen wave look
+    mod2 = wall.modifiers.new("Displace", 'DISPLACE')
+    mod2.strength = 0.5
+    mod2.direction = 'Z'
+    
+    wall.data.materials.append(water_mat)
+    for col in wall.users_collection:
+        col.objects.unlink(wall)
+    get_col("Waterfalls").objects.link(wall)
+    return wall
+
+# Create waterfall walls around the perimeter
+for i in range(8):
+    angle = i * (2 * math.pi / 8) + math.pi/8
+    x = 20 * math.cos(angle)
+    y = 20 * math.sin(angle)
+    create_waterfall_wall((x, y, 7.5), name=f"Waterfall_{i}")
+
+# --- Throne Court ---
+# Central platform
+bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=10, depth=1, location=(0, 0, 0.5))
+platform = bpy.context.active_object
+platform.name = "ThronePlatform"
+platform.data.materials.append(ice_mat)
+for col in platform.users_collection:
+    col.objects.unlink(platform)
+get_col("Throne").objects.link(platform)
+
+# Throne
+bpy.ops.mesh.primitive_cube_add(size=2, location=(0, -5, 2))
+throne = bpy.context.active_object
+throne.name = "Throne"
+throne.scale = (1.5, 1, 2)
+throne.data.materials.append(ice_mat)
+for col in throne.users_collection:
+    col.objects.unlink(throne)
+get_col("Throne").objects.link(throne)
+
+# Throne back
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -6.5, 3))
+back = bpy.context.active_object
+back.name = "ThroneBack"
+back.scale = (1.5, 0.5, 2.5)
+back.data.materials.append(ice_mat)
+for col in back.users_collection:
+    col.objects.unlink(back)
+get_col("Throne").objects.link(back)
+
+# --- Snowdrifts ---
+def create_snowdrift(location, name="Snowdrift"):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1, location=location)
+    drift = bpy.context.active_object
+    drift.name = name
+    drift.scale = (random.uniform(2, 5), random.uniform(2, 5), random.uniform(0.5, 1.5))
+    drift.data.materials.append(snow_mat)
+    for col in drift.users_collection:
+        col.objects.unlink(drift)
+    get_col("Snowdrifts").objects.link(drift)
+    return drift
+
+# Ring of snowdrifts
+num_drifts = 20
+drift_radius = 35
+for i in range(num_drifts):
+    angle = i * (2 * math.pi / num_drifts)
+    x = drift_radius * math.cos(angle)
+    y = drift_radius * math.sin(angle)
+    create_snowdrift((x, y, 0), name=f"Snowdrift_{i}")
+
+# --- Aurora (Lighting) ---
+# Create area lights for aurora effect
+aurora_colors = [
+    (0.0, 1.0, 0.5, 1.0),   # Green
+    (0.5, 0.0, 1.0, 1.0),   # Purple
+    (0.0, 0.5, 1.0, 1.0),   # Blue
+]
+
+for i in range(3):
+    angle = i * (2 * math.pi / 3)
+    x = 50 * math.cos(angle)
+    y = 50 * math.sin(angle)
+    z = 30
+    
+    bpy.ops.object.light_add(type='AREA', location=(x, y, z))
+    light = bpy.context.active_object
+    light.name = f"Aurora_{i}"
+    light.data.color = aurora_colors[i][:3]
+    light.data.energy = 5000
+    light.data.size = 20
+    light.rotation_euler = (math.pi/4, 0, angle + math.pi)
+    
+    for col in light.users_collection:
+        col.objects.unlink(light)
+    get_col("Aurora").objects.link(light)
+
+# Main sun/moon light
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 50))
+sun = bpy.context.active_object
+sun.name = "Moonlight"
+sun.data.energy = 2
+sun.data.color = (0.8, 0.9, 1.0)
+sun.rotation_euler = (math.pi/6, 0, 0)
+
+# World settings for night sky
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+    scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.02, 0.02, 0.05, 1.0)
+bg.inputs["Strength"].default_value = 1.0
+
+# Camera
+bpy.ops.object.camera_add(location=(0, 60, 15))
+cam = bpy.context.active_object
+cam.name = "MainCamera"
+cam.rotation_euler = (math.pi/2.5, 0, 0)
+scene.camera = cam
+
+# Render settings
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.5,
+ "error": "ValueError: too many values to unpack (expected 25)",
+ "error_line": "sand, grass, rock1, rock2, rock3, rock4, mane, cub, dark, tail, acacia, leaf, acacia2, leaf2, hippo, giraffe, zebra, zebrow, elephant, elephant2, bird, lion, lion2, lion3, lion4 = (",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 0,
+ "n_lights": 0,
+ "n_materials": 0,
+ "own_camera": false,
+ "render_error": null
+}

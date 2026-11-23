@@ -1,0 +1,172 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 39,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 2,
+  "MESH": 39
+ },
+ "default_cube_still_there": true,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Wood",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 11,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MAPPING",
+    "MIX_RGB",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "TEX_WAVE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "DarkWood",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 11,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MAPPING",
+    "MIX_RGB",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "TEX_WAVE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Ground",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.3,
+    0.25,
+    0.2
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "direction": [
+    -0.5734,
+    0.5535,
+    -0.604
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "SUN",
+   "energy": 1.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "direction": [
+    0.4821,
+    0.8245,
+    -0.2962
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   3.5,
+   -3.5,
+   2.5
+  ],
+  "direction": [
+   -0.6409,
+   0.6409,
+   -0.4226
+  ],
+  "up": [
+   -0.2988,
+   0.2988,
+   0.9063
+  ],
+  "angle": 0.6911
+ },
+ "left_out_of_framing": "Plane",
+ "bbox_size": [
+  2.345,
+  2.03,
+  1.96
+ ],
+ "scene_center": [
+  -0.2025,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.8345,
+ "process": "exit 0",
+ "seconds": 0.6,
+ "image": false
+}

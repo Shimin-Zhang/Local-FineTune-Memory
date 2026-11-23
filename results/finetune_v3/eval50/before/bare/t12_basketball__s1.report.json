@@ -1,0 +1,52 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: Converting py args to operator properties:: keyword \"resolution\" unrecognized",
+ "error_line": "bpy.ops.curve.primitive_bezier_circle_add(radius=1.0, resolution=64)",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "BasketballMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 7,
+   "principled_base_color": [
+    0.75,
+    0.25,
+    0.05
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MAPPING",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 5.0,
+ "image": true
+}

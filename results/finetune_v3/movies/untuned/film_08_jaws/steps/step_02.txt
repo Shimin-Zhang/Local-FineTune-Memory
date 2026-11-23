@@ -1,0 +1,258 @@
+```python
+import bpy, math, random
+from mathutils import Vector
+
+# Clean up
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# World
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+bg.inputs[0].default_value = (0.08, 0.15, 0.3, 1.0)
+bg.inputs[1].default_value = 1.0
+
+# Camera
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam = bpy.data.objects.new("Camera", cam_data)
+bpy.context.collection.objects.link(cam)
+bpy.context.scene.camera = cam
+cam.location = (12, -8, 3)
+cam.rotation_euler = (math.radians(80), 0, math.radians(15))
+
+# Sun
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 4
+sun = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun)
+sun.rotation_euler = (math.radians(55), math.radians(15), math.radians(20))
+
+# Fill light
+fill_data = bpy.data.lights.new("Fill", type='AREA')
+fill_data.energy = 50
+fill_data.size = 10
+fill = bpy.data.objects.new("Fill", fill_data)
+bpy.context.collection.objects.link(fill)
+fill.location = (-5, 5, 8)
+fill.rotation_euler = (math.radians(45), 0, 0)
+
+def new_mat(name, color, rough=0.5, metal=0.0, alpha=1.0, blend=False):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    b = m.node_tree.nodes.get("Principled BSDF")
+    b.inputs["Base Color"].default_value = (*color, 1.0)
+    b.inputs["Roughness"].default_value = rough
+    b.inputs["Metallic"].default_value = metal
+    if alpha < 1.0:
+        b.inputs["Alpha"].default_value = alpha
+        m.blend_method = 'BLEND'
+    return m
+
+# Ocean
+ocean_verts, ocean_faces = [], []
+size, res = 100, 50
+for i in range(res+1):
+    for j in range(res+1):
+        x = -size/2 + i*size/res
+        z = -size/2 + j*size/res
+        w = 0.4*math.sin(x*0.15)*math.cos(z*0.12) + 0.2*math.sin(x*0.4+z*0.3)
+        ocean_verts.append((x, w, z))
+for i in range(res):
+    for j in range(res):
+        a=i*(res+1)+j; b=a+1; c=a+res+1; d=c+1
+        ocean_faces.append((a,b,d,c))
+ocean = bpy.data.objects.new("Ocean", bpy.data.meshes.new("Ocean"))
+ocean.data.from_pydata(ocean_verts, [], ocean_faces)
+bpy.context.collection.objects.link(ocean)
+ocean.data.materials.append(new_mat("OceanMat", (0.02,0.1,0.22), 0.15, 0.3))
+
+# Boat hull
+hull_v, hull_f = [], []
+L, W, H = 7, 2, 1.2
+secs = 10
+for s in range(secs+1):
+    t = s/secs
+    x = -L/2 + t*L
+    taper = min(1.0, t/0.15, (1-t)/0.15) if t<0.15 or t>0.85 else 1.0
+    w = W/2*taper; h = H*(0.4+0.6*taper)
+    hull_v += [(x,-h,0),(x,-h*0.5,-w),(x,0,-w),(x,0,w),(x,-h*0.5,w)]
+for s in range(secs):
+    b1=s*5; b2=(s+1)*5
+    for k in range(5):
+        hull_f.append((b1+k,b1+(k+1)%5,b2+(k+1)%5,b2+k))
+hull = bpy.data.objects.new("Hull", bpy.data.meshes.new("Hull"))
+hull.data.from_pydata(hull_v, [], hull_f)
+bpy.context.collection.objects.link(hull)
+hull.location = (0, 0.3, 0)
+hull.data.materials.append(new_mat("HullWood", (0.3,0.2,0.1), 0.85))
+
+# Deck
+deck = bpy.data.objects.new("Deck", bpy.data.meshes.new("Deck"))
+deck.data.from_pydata([(-L*0.45,0.3,-W*0.45),(-L*0.45,0.3,W*0.45),(L*0.45,0.3,W*0.45),(L*0.45,0.3,-W*0.45)],[],[(0,1,2,3)])
+bpy.context.collection.objects.link(deck)
+deck.location = (0, 0.8, 0)
+deck.data.materials.append(new_mat("DeckWood", (0.4,0.3,0.18), 0.9))
+
+# Cabin
+cw, cl, ch = 1.2, 2, 1
+cab_v = [(-cl/2,0,-cw/2),(-cl/2,0,cw/2),(-cl/2,ch,cw/2),(-cl/2,ch,-cw/2),(cl/2,0,-cw/2),(cl/2,0,cw/2),(cl/2,ch,cw/2),(cl/2,ch,-cw/2)]
+cab_f = [(0,1,2,3),(4,5,6,7),(0,4,7,3),(1,2,6,5),(3,2,6,7),(0,1,5,4)]
+cabin = bpy.data.objects.new("Cabin", bpy.data.meshes.new("Cabin"))
+cabin.data.from_pydata(cab_v, [], cab_f)
+bpy.context.collection.objects.link(cabin)
+cabin.location = (-1.5, 1.1, 0)
+cabin.data.materials.append(new_mat("CabinWood", (0.45,0.35,0.22), 0.85))
+
+# Mast
+mast = bpy.data.objects.new("Mast", bpy.data.meshes.new("Mast"))
+mast.data.from_pydata([(-0.04,0,-0.04),(-0.04,0,0.04),(-0.04,4,0.04),(-0.04,4,-0.04),(0.04,0,-0.04),(0.04,0,0.04),(0.04,4,0.04),(0.04,4,-0.04)],[],[(0,1,2,3),(4,5,6,7),(0,4,7,3),(1,2,6,5),(3,2,6,7),(0,1,5,4)])
+bpy.context.collection.objects.link(mast)
+mast.location = (1, 1.1, 0)
+mast.data.materials.append(new_mat("MastWood", (0.35,0.25,0.12), 0.8))
+
+# Shark body
+shark_v, shark_f = [], []
+sl, smw, smh = 5.5, 0.7, 0.55
+prof = [(0,0,0),(0.05,0.3,0.2),(0.1,0.6,0.4),(0.15,0.8,0.6),(0.2,0.9,0.7),(0.3,1,0.8),(0.4,1,0.75),(0.5,0.95,0.7),(0.6,0.85,0.6),(0.7,0.7,0.5),(0.8,0.5,0.35),(0.85,0.35,0.25),(0.9,0.25,0.2),(0.95,0.15,0.15),(1,0.05,0.05)]
+for t,wf,hf in prof:
+    x = -sl/2 + t*sl
+    w = smw*wf; h = smh*hf
+    for k in range(8):
+        a = k*math.pi/4
+        shark_v.append((x, h*math.sin(a), w*math.cos(a)))
+for i in range(len(prof)-1):
+    b1=i*8; b2=(i+1)*8
+    for k in range(8):
+        shark_f.append((b1+k,b1+(k+1)%8,b2+(k+1)%8,b2+k))
+shark_v.append((-sl/2,0,0)); ni=len(shark_v)-1
+for k in range(8): shark_f.append((ni,k,(k+1)%8))
+shark_v.append((sl/2,0,0)); ti=len(shark_v)-1
+for k in range(8):
+    k1=(len(prof)-1)*8+k; k2=(len(prof)-1)*8+(k+1)%8
+    shark_f.append((ti,k2,k1))
+shark = bpy.data.objects.new("Shark", bpy.data.meshes.new("Shark"))
+shark.data.from_pydata(shark_v, [], shark_f)
+bpy.context.collection.objects.link(shark)
+shark.location = (4, -0.3, 0)
+shark.rotation_euler = (math.radians(20), 0, 0)
+shark.data.materials.append(new_mat("SharkSkin", (0.4,0.45,0.48), 0.35, 0.1))
+
+# Dorsal fin
+df = bpy.data.objects.new("DorsalFin", bpy.data.meshes.new("DorsalFin"))
+df.data.from_pydata([(-0.6,0.3,-0.02),(-0.6,0.7,-0.02),(-0.2,0.8,-0.02),(0.2,0.6,-0.02),(0.4,0.3,-0.02),(-0.6,0.3,0.02),(-0.6,0.7,0.02),(-0.2,0.8,0.02),(0.2,0.6,0.02),(0.4,0.3,0.02)],[],[(0,1,2,3,4,5),(5,4,3,2,1,6)])
+bpy.context.collection.objects.link(df)
+df.location = (3.5, 0.2, 0)
+df.data.materials.append(new_mat("SharkSkin2", (0.4,0.45,0.48), 0.35, 0.1))
+
+# Tail fin
+tf = bpy.data.objects.new("TailFin", bpy.data.meshes.new("TailFin"))
+tf.data.from_pydata([(0,0,-0.25),(0.4,0.3,0),(0.7,0,0),(0.4,-0.3,0),(0,0,0.25),(0,0,-0.25),(0.4,0.3,0),(0.7,0,0),(0.4,-0.3,0),(0,0,0.25)],[],[(0,1,2,3,4,5),(5,4,3,2,1,6)])
+bpy.context.collection.objects.link(tf)
+tf.location = (6.8, -0.3, 0)
+tf.rotation_euler = (0, math.radians(15), 0)
+tf.data.materials.append(new_mat("SharkSkin3", (0.4,0.45,0.48), 0.35, 0.1))
+
+# Pectoral fins
+for side, sz in [("L",-1),("R",1)]:
+    pf = bpy.data.objects.new(f"PecFin{side}", bpy.data.meshes.new(f"PecFin{side}"))
+    pf.data.from_pydata([(0,0,0),(0.4,-0.1,0.25),(0.7,-0.3,0.4),(0.2,-0.2,0.15),(0,0,0.05),(0.4,-0.1,0.3),(0.7,-0.3,0.45),(0.2,-0.2,0.2)],[],[(0,1,2,3,4),(4,3,2,1,5)])
+    bpy.context.collection.objects.link(pf)
+    pf.location = (3, -0.2, 0.35*sz)
+    pf.rotation_euler = (math.radians(25), 0, math.radians(15*sz))
+    pf.data.materials.append(new_mat("SharkSkin4", (0.4,0.45,0.48), 0.35, 0.1))
+
+# Mouth
+jaw = bpy.data.objects.new("Jaw", bpy.data.meshes.new("Jaw"))
+jaw.data.from_pydata([(-0.4,-0.1,-0.15),(-0.4,-0.1,0.15),(-0.2,-0.3,0.12),(-0.2,-0.3,-0.12),(-0.4,0.1,-0.15),(-0.4,0.1,0.15),(-0.2,-0.1,0.12),(-0.2,-0.1,-0.12)],[],[(0,1,2,3,4),(4,3,2,1,5)])
+bpy.context.collection.objects.link(jaw)
+jaw.location = (1.5, -0.3, 0)
+jaw.rotation_euler = (math.radians(20), 0, 0)
+jaw.data.materials.append(new_mat("JawMat", (0.3,0.3,0.3), 0.5))
+
+# Teeth
+tv, tf2 = [], []
+for i in range(8):
+    t = i/7
+    x = -0.3 + t*0.5
+    z = -0.12 + t*0.24
+    bi = len(tv)
+    tv += [(x,-0.15,z-0.02),(x,-0.15,z+0.02),(x,-0.02,z)]
+    tf2.append((bi,bi+1,bi+2))
+    bi = len(tv)
+    tv += [(x,0.05,z-0.02),(x,0.05,z+0.02),(x,-0.1,z)]
+    tf2.append((bi,bi+1,bi+2))
+teeth = bpy.data.objects.new("Teeth", bpy.data.meshes.new("Teeth"))
+teeth.data.from_pydata(tv, [], tf2)
+bpy.context.collection.objects.link(teeth)
+teeth.location = (1.5, -0.3, 0)
+teeth.rotation_euler = (math.radians(20), 0, 0)
+teeth.data.materials.append(new_mat("TeethMat", (0.9,0.9,0.85), 0.25))
+
+# Eyes
+for side, sz in [("L",-1),("R",1)]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.04, location=(1.8, -0.2, 0.25*sz))
+    eye = bpy.context.active_object
+    eye.name = f"Eye{side}"
+    eye.data.materials.append(new_mat(f"EyeMat{side}", (0.02,0.02,0.02), 0.1, 0.5))
+
+# Splash
+sv, sf = [], []
+for i in range(40):
+    a = random.uniform(0, 2*math.pi)
+    d = random.uniform(0.5, 1.8)
+    x = 4 + d*math.cos(a)
+    z = d*math.sin(a)
+    h = random.uniform(0.3, 1.2)
+    bi = len(sv)
+    sv += [(x,0,z),(x+0.08,0,z+0.08),(x+0.08,h,z+0.08),(x+0.08,0,z-0.08),(x-0.08,0,z+0.08),(x-0.08,h,z+0.08),(x-0.08,0,z-0.08),(x,h*1.1,z)]
+    sf += [(bi,bi+1,bi+2),(bi,bi+2,bi+3),(bi,bi+3,bi+4),(bi,bi+4,bi+5),(bi,bi+5,bi+6),(bi,bi+6,bi+1),(bi+1,bi+2,bi+7),(bi+2,bi+3,bi+7),(bi+3,bi+4,bi+7),(bi+4,bi+5,bi+7),(bi+5,bi+6,bi+7),(bi+6,bi+1,bi+7)]
+splash = bpy.data.objects.new("Splash", bpy.data.meshes.new("Splash"))
+splash.data.from_pydata(sv, [], sf)
+bpy.context.collection.objects.link(splash)
+splash.data.materials.append(new_mat("SplashMat", (0.7,0.85,1.0), 0.0, 0.0, 0.6, True))
+
+# Life preserver
+bpy.ops.mesh.primitive_torus_add(major_radius=0.35, minor_radius=0.08, location=(2, 1.5, 0.4))
+lp = bpy.context.active_object
+lp.name = "LifePreserver"
+lp.data.materials.append(new_mat("LifePres", (0.8,0.1,0.1), 0.6))
+
+# Rope coil
+bpy.ops.mesh.primitive_torus_add(major_radius=0.2, minor_radius=0.04, location=(0.5, 1.2, 0.3))
+rope = bpy.context.active_object
+rope.name = "RopeCoil"
+rope.data.materials.append(new_mat("RopeMat", (0.5,0.4,0.2), 0.9))
+
+# Buoy
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(2.5, 1.0, 0.5))
+buoy = bpy.context.active_object
+buoy.name = "Buoy"
+buoy.data.materials.append(new_mat("BuoyMat", (0.9,0.8,0.1), 0.5))
+
+# Barrel
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.5, location=(-2.5, 1.2, 0.5))
+barrel = bpy.context.active_object
+barrel.name = "Barrel"
+barrel.data.materials.append(new_mat("BarrelMat", (0.4,0.25,0.1), 0.8))
+
+# Add more wave detail near shark
+wave_v, wave_f = [], []
+for i in range(20):
+    a = i * math.pi * 2 / 20
+    r = 1.5
+    x = 4 + r * math.cos(a)
+    z = r * math.sin(a)
+    h = 0.5 + 0.3 * math.sin(a * 3)
+    wave_v.append((x, 0, z))
+    wave_v.append((x, h, z))
+for i in range(20):
+    i2 = (i+1) % 20
+    wave_f.append((i*2, i*2+1, i2*2+1, i2*2))
+wave = bpy.data.objects.new("WaveRing", bpy.data.meshes.new("WaveRing"))
+wave.data.from_pydata(wave_v, [], wave_f)
+bpy.context.collection.objects.link(wave)
+wave.data.materials.append(new_mat("WaveMat", (0.5,0.7,0.9), 0.1, 0.0, 0.7, True))
+```

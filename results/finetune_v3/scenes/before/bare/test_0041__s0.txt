@@ -1,0 +1,199 @@
+```python
+import bpy
+import math
+import bmesh
+from mathutils import Vector, Matrix
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+def create_cylinder(radius, depth, location=(0, 0, 0), segments=64, name="cylinder"):
+    bpy.ops.mesh.primitive_cylinder_add(vertices=segments, radius=radius, depth=depth, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+def create_cube(size, location=(0, 0, 0), name="cube"):
+    bpy.ops.mesh.primitive_cube_add(size=size, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+def create_plane(size, location=(0, 0, 0), name="plane"):
+    bpy.ops.mesh.primitive_plane_add(size=size, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+# --- Materials ---
+mat_turf = bpy.data.materials.new("Turf")
+mat_turf.diffuse_color = (0.2, 0.4, 0.1, 1.0)
+mat_turf.roughness = 0.9
+
+mat_wood = bpy.data.materials.new("Wood")
+mat_wood.diffuse_color = (0.3, 0.2, 0.1, 1.0)
+mat_wood.roughness = 0.7
+
+mat_roof = bpy.data.materials.new("Thatch")
+mat_roof.diffuse_color = (0.5, 0.4, 0.2, 1.0)
+mat_roof.roughness = 0.9
+
+mat_ground = bpy.data.materials.new("Ground")
+mat_ground.diffuse_color = (0.3, 0.25, 0.15, 1.0)
+mat_ground.roughness = 1.0
+
+mat_path = bpy.data.materials.new("Path")
+mat_path.diffuse_color = (0.4, 0.35, 0.25, 1.0)
+mat_path.roughness = 1.0
+
+mat_water = bpy.data.materials.new("Water")
+mat_water.diffuse_color = (0.1, 0.2, 0.3, 1.0)
+mat_water.roughness = 0.2
+
+def assign_material(obj, mat):
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+
+# --- Ground ---
+ground = create_plane(200, location=(0, 0, -0.1), name="Ground")
+assign_material(ground, mat_ground)
+
+# --- Ring Fortress (Turf Bank) ---
+# Outer radius 25, inner radius 20, bank height 3
+outer_r = 25
+inner_r = 20
+bank_h = 3
+
+# Create the turf bank as a torus-like shape (actually a ring of turf)
+# Use a cylinder for outer and subtract inner, or build a mesh
+bpy.ops.mesh.primitive_cylinder_add(vertices=128, radius=outer_r, depth=bank_h, location=(0, 0, bank_h/2))
+outer_cyl = bpy.context.active_object
+outer_cyl.name = "TurfBank_Outer"
+
+bpy.ops.mesh.primitive_cylinder_add(vertices=128, radius=inner_r, depth=bank_h + 0.5, location=(0, 0, bank_h/2))
+inner_cyl = bpy.context.active_object
+inner_cyl.name = "TurfBank_Inner"
+
+# Boolean to create ring
+mod = outer_cyl.modifiers.new("Bool", 'BOOLEAN')
+mod.operation = 'DIFFERENCE'
+mod.object = inner_cyl
+bpy.context.view_layer.objects.active = outer_cyl
+bpy.ops.object.modifier_apply(modifier="Bool")
+inner_cyl.hide_set(True)
+bpy.data.objects.remove(inner_cyl, do_unlink=True)
+
+assign_material(outer_cyl, mat_turf)
+
+# --- Four Gates ---
+# Gates at N, S, E, W (angles 0, 90, 180, 270)
+gate_width = 4
+gate_depth = 2
+gate_angles = [0, math.pi/2, math.pi, 3*math.pi/2]
+
+for i, angle in enumerate(gate_angles):
+    x = outer_r * math.cos(angle)
+    y = outer_r * math.sin(angle)
+    # Gate opening - create a gap by cutting a box
+    gate_box = create_cube(1, location=(x, y, bank_h/2), name=f"Gate{i}")
+    gate_box.scale = (gate_width/2, gate_depth/2, bank_h/2)
+    # Rotate to face outward
+    gate_box.rotation_euler = (0, 0, angle)
+    
+    # Cut through the bank
+    mod = outer_cyl.modifiers.new(f"GateCut{i}", 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = gate_box
+    bpy.context.view_layer.objects.active = outer_cyl
+    bpy.ops.object.modifier_apply(modifier=f"GateCut{i}")
+    bpy.data.objects.remove(gate_box, do_unlink=True)
+    
+    # Gate posts
+    for side in [-1, 1]:
+        offset = gate_width/2 * side
+        px = (outer_r + offset * math.sin(angle)) * math.cos(angle) - (outer_r + offset * math.sin(angle)) * math.sin(angle) * 0
+        # Simpler: compute position
+        angle_perp = angle + math.pi/2
+        px = outer_r * math.cos(angle) + offset * math.cos(angle_perp)
+        py = outer_r * math.sin(angle) + offset * math.sin(angle_perp)
+        post = create_cube(1, location=(px, py, bank_h/2), name=f"GatePost{i}_{side}")
+        post.scale = (0.5, 0.5, bank_h/2)
+        post.rotation_euler = (0, 0, angle)
+        assign_material(post, mat_wood)
+
+# --- Cross Streets ---
+# Four streets from center to each gate
+street_width = 3
+street_length = inner_r
+
+for i, angle in enumerate(gate_angles):
+    # Street from center to inner edge of bank
+    sx = (inner_r/2) * math.cos(angle)
+    sy = (inner_r/2) * math.sin(angle)
+    street = create_cube(1, location=(sx, sy, 0.05), name=f"Street{i}")
+    street.scale = (street_width/2, street_length/2, 0.05)
+    street.rotation_euler = (0, 0, angle)
+    assign_material(street, mat_path)
+
+# Central plaza
+plaza = create_cylinder(radius=5, depth=0.1, location=(0, 0, 0.05), segments=64, name="Plaza")
+assign_material(plaza, mat_path)
+
+# --- Longhouses ---
+# Groups of longhouses arranged in quadrants
+# Each quadrant has 3-4 longhouses
+longhouse_len = 12
+longhouse_wid = 5
+longhouse_h = 3
+
+def create_longhouse(x, y, angle, name):
+    # Base
+    base = create_cube(1, location=(x, y, longhouse_h/2), name=f"{name}_base")
+    base.scale = (longhouse_wid/2, longhouse_len/2, longhouse_h/2)
+    base.rotation_euler = (0, 0, angle)
+    assign_material(base, mat_wood)
+    
+    # Roof (triangular prism approximation with a scaled cube)
+    roof = create_cube(1, location=(x, y, longhouse_h + 1), name=f"{name}_roof")
+    roof.scale = (longhouse_wid/2 * 0.9, longhouse_len/2 * 0.95, 1)
+    roof.rotation_euler = (0, 0, angle)
+    assign_material(roof, mat_roof)
+    
+    return base
+
+# Quadrant centers
+quadrant_angles = [math.pi/4, 3*math.pi/4, 5*math.pi/4, 7*math.pi/4]
+dist_from_center = 12
+
+for q_idx, q_angle in enumerate(quadrant_angles):
+    for h_idx in range(3):
+        # Offset within quadrant
+        offset_angle = q_angle + (h_idx - 1) * 0.4
+        hx = dist_from_center * math.cos(offset_angle)
+        hy = dist_from_center * math.sin(offset_angle)
+        # Longhouse faces center
+        house_angle = offset_angle + math.pi/2
+        create_longhouse(hx, hy, house_angle, f"LH_q{q_idx}_{h_idx}")
+
+# --- Water moat outside (optional, for Viking feel) ---
+moat_outer = 30
+moat_inner = outer_r + 1
+bpy.ops.mesh.primitive_cylinder_add(vertices=128, radius=moat_outer, depth=0.5, location=(0, 0, -0.25))
+moat_outer_cyl = bpy.context.active_object
+moat_outer_cyl.name = "Moat_Outer"
+
+bpy.ops.mesh.primitive_cylinder_add(vertices=128, radius=moat_inner, depth=0.6, location=(0, 0, -0.25))
+moat_inner_cyl = bpy.context.active_object
+moat_inner_cyl.name = "Moat_Inner"
+
+mod = moat_outer_cyl.modifiers.new("MoatBool", 'BOOLEAN')
+mod.operation = 'DIFFERENCE'
+mod.object = moat_inner_cyl
+bpy.context.view_layer.objects.active = moat_outer_cyl
+bpy.ops.object.modifier_apply(modifier="MoatBool")
+bpy.data.objects.remove(moat_inner_cyl, do_unlink=True)
+assign_material(moat_outer_cyl, mat_water)
+
+print("Viking ring fortress constructed successfully.")
+```

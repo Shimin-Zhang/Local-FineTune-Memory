@@ -1,0 +1,102 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: unsupported operand type(s) for /: 'Material' and 'int'",
+ "error_line": "obj.scale = (thickness/2, thickness/2, length/2)",
+ "n_renderable_objects": 31,
+ "object_types": {
+  "MESH": 31
+ },
+ "default_cube_still_there": true,
+ "materials": [
+  {
+   "name": "WoodDark",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 7,
+   "principled_base_color": [
+    0.25,
+    0.15,
+    0.08
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MIX",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE",
+    "TEX_WAVE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "WoodMedium",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 7,
+   "principled_base_color": [
+    0.35,
+    0.22,
+    0.12
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MIX",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE",
+    "TEX_WAVE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "WoodLight",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 7,
+   "principled_base_color": [
+    0.45,
+    0.3,
+    0.18
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MIX",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE",
+    "TEX_WAVE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.2,
+  2.38,
+  1.0
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.7,
+ "image": true
+}

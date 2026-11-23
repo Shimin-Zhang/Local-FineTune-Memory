@@ -1,0 +1,67 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: Converting py args to operator properties:: keyword \"segments\" unrecognized",
+ "error_line": "bpy.ops.mesh.primitive_cone_add(radius1=0.08, radius2=0.0, depth=0.3, location=(0, 0.6, 3.7), rotation=(math.radians(90), 0, 0), segments=16)",
+ "n_renderable_objects": 5,
+ "object_types": {
+  "MESH": 5
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "Snow",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.95,
+    0.95,
+    0.95
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Black",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.02,
+    0.02,
+    0.02
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.4,
+  2.4,
+  4.3
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.0,
+ "image": true
+}

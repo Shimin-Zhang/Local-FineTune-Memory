@@ -1,0 +1,140 @@
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear existing mesh objects
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Create a UV sphere for the lemon base
+bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=1.0, location=(0, 0, 0))
+lemon = bpy.context.active_object
+lemon.name = "Lemon"
+
+# Scale to lemon shape (elongated)
+lemon.scale = (1.0, 1.0, 1.4)
+bpy.ops.object.transform_apply(scale=True)
+
+# Add a subsurf modifier for smoothness
+subsurf = lemon.modifiers.new("Subsurf", 'SUBSURF')
+subsurf.levels = 2
+subsurf.render_levels = 2
+
+# Add Displace modifier for bumpy texture
+# Create a texture for displacement
+tex = bpy.data.textures.new("BumpTex", type='CLOUDS')
+tex.noise_scale = 0.15
+tex.noise_depth = 4
+
+displace = lemon.modifiers.new("Displace", 'DISPLACE')
+displace.texture = tex
+displace.strength = 0.08
+displace.mid_level = 0.5
+displace.direction = 'NORMAL'
+
+# Add another finer bump layer
+tex2 = bpy.data.textures.new("FineBump", type='CLOUDS')
+tex2.noise_scale = 0.05
+tex2.noise_depth = 3
+
+displace2 = lemon.modifiers.new("FineDisplace", 'DISPLACE')
+displace2.texture = tex2
+displace2.strength = 0.03
+displace2.mid_level = 0.5
+displace2.direction = 'NORMAL'
+
+# Apply modifiers
+bpy.context.view_layer.objects.active = lemon
+bpy.ops.object.modifier_apply(modifier="Subsurf")
+bpy.ops.object.modifier_apply(modifier="Displace")
+bpy.ops.object.modifier_apply(modifier="FineDisplace")
+
+# Recalculate normals
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.normals_make_consistent(inside=False)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Create a material for the lemon
+mat = bpy.data.materials.new("LemonMaterial")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Principled BSDF
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.location = (300, 0)
+
+# Texture coordinate
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-600, 0)
+
+# Noise texture for color variation
+noise = nodes.new('ShaderNodeTexNoise')
+noise.location = (-400, 100)
+noise.inputs['Scale'].default_value = 8.0
+noise.inputs['Detail'].default_value = 6.0
+
+# ColorRamp for lemon color
+ramp = nodes.new('ShaderNodeValToRGB')
+ramp.location = (-200, 100)
+ramp.color_ramp.elements[0].color = (0.95, 0.85, 0.1, 1.0)  # Yellow
+ramp.color_ramp.elements[1].color = (0.9, 0.75, 0.05, 1.0)  # Slightly darker yellow
+
+# Bump node for surface detail
+bump = nodes.new('ShaderNodeBump')
+bump.location = (-200, -200)
+bump.inputs['Strength'].default_value = 0.3
+bump.inputs['Distance'].default_value = 0.05
+
+# Fine noise for bump
+fine_noise = nodes.new('ShaderNodeTexNoise')
+fine_noise.location = (-400, -200)
+fine_noise.inputs['Scale'].default_value = 30.0
+fine_noise.inputs['Detail'].default_value = 8.0
+
+# Roughness variation
+roughness_noise = nodes.new('ShaderNodeTexNoise')
+roughness_noise.location = (-400, -400)
+roughness_noise.inputs['Scale'].default_value = 10.0
+roughness_noise.inputs['Detail'].default_value = 4.0
+
+roughness_ramp = nodes.new('ShaderNodeValToRGB')
+roughness_ramp.location = (-200, -400)
+roughness_ramp.color_ramp.elements[0].color = (0.3, 0.3, 0.3, 1.0)
+roughness_ramp.color_ramp.elements[1].color = (0.5, 0.5, 0.5, 1.0)
+
+# Links
+links.new(tex_coord.outputs['Object'], noise.inputs['Vector'])
+links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
+links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+
+links.new(tex_coord.outputs['Object'], fine_noise.inputs['Vector'])
+links.new(fine_noise.outputs['Fac'], bump.inputs['Height'])
+links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+
+links.new(tex_coord.outputs['Object'], roughness_noise.inputs['Vector'])
+links.new(roughness_noise.outputs['Fac'], roughness_ramp.inputs['Fac'])
+links.new(roughness_ramp.outputs['Color'], bsdf.inputs['Roughness'])
+
+# Output
+output = nodes.new('ShaderNodeOutputMaterial')
+output.location = (600, 0)
+links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+# Assign material
+lemon.data.materials.append(mat)
+
+# Add a slight specular highlight
+bsdf.inputs['Specular IOR Level'].default_value = 0.5
+
+# Set viewport shading to material preview
+bpy.context.space_data.shading.type = 'MATERIAL'
+
+print("Bumpy textured lemon created!")

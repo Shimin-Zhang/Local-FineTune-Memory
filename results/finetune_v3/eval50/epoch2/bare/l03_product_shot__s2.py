@@ -1,0 +1,77 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(832)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def finish(rgb, em=0, rough=.5, metal=0):
+    m = bpy.data.materials.new("f"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough; n.inputs["Metallic"].default_value = metal
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+white, white2, gold, cap, pink, rose, deep, amber, glass, ink, tag = (finish((.5, .5, .52)), finish((.3, .3, .32)), finish((.8, .55, .15), rough=.3, metal=.6), finish((.85, .85, .82), rough=.4),
+    finish((1, .3, .5), 1.2, .1), finish((.9, .35, .45), 1.2, .1), finish((.35, .03, .12), .4, .1), finish((1, .45, .08), .8, .1), finish((.75, .8, .85), 0, .05), finish((.1, .08, .08)), finish((.8, .78, .7)))
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("b"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("b", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def block(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return make(bm, m, at, rot)
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at, rot)
+def glowlight(at, col, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# round studio plinth: white top, tapered underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=7, radius2=12, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-.8, .8), random.uniform(-.8, .8), random.uniform(-1, .2)))
+    v.co.z -= 1.5
+make(bm, white2)
+cyl((0, 0, -.05), 11.9, .1, 12, white)
+# the bottle: faceted glass body, deep rose liquid, gold collar, neck, cap
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts: v.co = Vector((v.co.x * 5.4, v.co.y * 3.6, (v.co.z + .5) * 6.2))
+for v in bm.verts:
+    if v.co.z > 3: v.co.x *= .8
+make(bm, glass, (0, 0, 0))
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts: v.co = Vector((v.co.x * 4.8, v.co.y * 3.0, (v.co.z + .5) * 5.2))
+for v in bm.verts:
+    if v.co.z > 2.6: v.co.x *= .8
+make(bm, rose, (0, 0, .3))
+for z in (1.0, 3.2): block((0, -1.6, z), (3.6, .12, .5), pink)
+cyl((0, 0, 6.2), 1.5, .6, 6, gold)
+cyl((0, 0, 6.8), .9, 1.0, 6, glass)
+cyl((0, 0, 7.8), 1.7, 2.2, 6, cap, r2=1.5)
+cyl((0, 0, 10.0), 1.5, .3, 6, gold, r2=1.3)
+# label plate on the front
+block((0, -1.82, 2.0), (3.2, .1, 2.2), tag)
+block((0, -1.9, 3.0), (2.0, .05, .25), ink)
+block((0, -1.9, 2.4), (1.4, .05, .15), ink)
+# a second smaller bottle lying behind, and a spray atomiser
+cyl((-6, 3, .4), 1.1, 4.0, 6, glass); cyl((-6, 3, .5), .95, 3.2, 6, amber); cyl((-6, 3, 4.4), .5, 1.2, 6, cap)
+cyl((6.5, 2.5, .3), .5, 3.0, 6, glass); cyl((6.5, 2.5, .4), .4, 2.4, 6, deep); cyl((6.5, 2.5, 3.3), .45, .8, 6, gold)
+# petals scattered on the plinth
+for i in range(16):
+    a = random.uniform(0, 6.28); r = random.uniform(3.5, 9)
+    x, y = r * math.cos(a), r * math.sin(a)
+    if abs(x) < 4 and abs(y) < 3.5: continue
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.3, .5))
+    for v in bm.verts: v.co.z *= .3
+    make(bm, random.choice((pink, rose, white)), (x, y, .08), (0, 0, random.uniform(0, 3)))
+# soft light from above, faint cool rim from behind-left, near-black white studio
+for col, w, at in (((1, .95, .9), 5, (0, -6, 30)), ((.55, .65, 1), 2, (-20, 22, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .012, .015, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 4.5)); co.location = t + Vector((8, -52, 32))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

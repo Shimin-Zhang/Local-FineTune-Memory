@@ -1,0 +1,161 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# --- Clean scene ---
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# --- Materials ---
+mat_black = bpy.data.materials.new("BlackMetal")
+mat_black.use_nodes = True
+bsdf = mat_black.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.02, 0.02, 0.02, 1.0)
+bsdf.inputs["Metallic"].default_value = 0.8
+bsdf.inputs["Roughness"].default_value = 0.4
+
+mat_paper = bpy.data.materials.new("Paper")
+mat_paper.use_nodes = True
+bsdf_p = mat_paper.node_tree.nodes["Principled BSDF"]
+bsdf_p.inputs["Base Color"].default_value = (0.95, 0.92, 0.85, 1.0)
+bsdf_p.inputs["Roughness"].default_value = 0.9
+
+mat_coal = bpy.data.materials.new("GlowingCoal")
+mat_coal.use_nodes = True
+bsdf_c = mat_coal.node_tree.nodes["Principled BSDF"]
+bsdf_c.inputs["Base Color"].default_value = (0.05, 0.05, 0.05, 1.0)
+bsdf_c.inputs["Emission Color"].default_value = (1.0, 0.3, 0.05, 1.0)
+bsdf_c.inputs["Emission Strength"].default_value = 15.0
+
+mat_lamp = bpy.data.materials.new("LampGlass")
+mat_lamp.use_nodes = True
+bsdf_l = mat_lamp.node_tree.nodes["Principled BSDF"]
+bsdf_l.inputs["Base Color"].default_value = (1.0, 1.0, 0.8, 1.0)
+bsdf_l.inputs["Emission Color"].default_value = (1.0, 0.9, 0.6, 1.0)
+bsdf_l.inputs["Emission Strength"].default_value = 8.0
+
+mat_snow = bpy.data.materials.new("Snow")
+mat_snow.use_nodes = True
+bsdf_s = mat_snow.node_tree.nodes["Principled BSDF"]
+bsdf_s.inputs["Base Color"].default_value = (0.98, 0.98, 1.0, 1.0)
+bsdf_s.inputs["Roughness"].default_value = 0.3
+
+# --- Ground (snow) ---
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.data.materials.append(mat_snow)
+
+# --- Brazier on wheels ---
+# Main brazier body (cylindrical)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=1.2, location=(0, 0, 1.2))
+brazier_body = bpy.context.active_object
+brazier_body.data.materials.append(mat_black)
+
+# Brazier rim
+bpy.ops.mesh.primitive_torus_add(major_radius=0.8, minor_radius=0.05, location=(0, 0, 1.8))
+rim = bpy.context.active_object
+rim.data.materials.append(mat_black)
+
+# Dome roaster (half sphere on top)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.75, location=(0, 0, 1.8))
+dome = bpy.context.active_object
+# Cut to keep only top half
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.bisect(plane_co=(0, 0, 1.8), plane_no=(0, 0, -1), clear_inner=True, clear_outer=False)
+bpy.ops.object.mode_set(mode='OBJECT')
+dome.data.materials.append(mat_black)
+
+# Coal bed (glowing) inside brazier
+bpy.ops.mesh.primitive_cylinder_add(radius=0.7, depth=0.3, location=(0, 0, 1.3))
+coal_bed = bpy.context.active_object
+coal_bed.data.materials.append(mat_coal)
+
+# Wheels (4 wheels)
+wheel_positions = [(-0.9, -0.6), (-0.9, 0.6), (0.9, -0.6), (0.9, 0.6)]
+for x, y in wheel_positions:
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.35, minor_radius=0.06, location=(x, y, 0.35))
+    wheel = bpy.context.active_object
+    wheel.rotation_euler = (0, math.radians(90), 0)
+    wheel.data.materials.append(mat_black)
+
+# Axle
+bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=1.8, location=(0, 0, 0.35))
+axle = bpy.context.active_object
+axle.rotation_euler = (math.radians(90), 0, 0)
+axle.data.materials.append(mat_black)
+
+# --- Paper cones (3 cones) ---
+cone_positions = [(-1.5, -1.2), (-1.8, 0.5), (1.5, -1.0)]
+for x, y in cone_positions:
+    bpy.ops.mesh.primitive_cone_add(radius1=0.25, radius2=0.05, depth=0.6, location=(x, y, 0.3))
+    cone = bpy.context.active_object
+    cone.data.materials.append(mat_paper)
+
+# --- Lamp post ---
+# Post
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=4.0, location=(3.0, 2.0, 2.0))
+post = bpy.context.active_object
+post.data.materials.append(mat_black)
+
+# Lamp housing
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.4, location=(3.0, 2.0, 4.2))
+housing = bpy.context.active_object
+housing.data.materials.append(mat_black)
+
+# Glowing lamp glass
+bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.3, location=(3.0, 2.0, 4.2))
+lamp_glass = bpy.context.active_object
+lamp_glass.data.materials.append(mat_lamp)
+
+# Lamp cap
+bpy.ops.mesh.primitive_cone_add(radius1=0.3, radius2=0.05, depth=0.3, location=(3.0, 2.0, 4.5))
+cap = bpy.context.active_object
+cap.data.materials.append(mat_black)
+
+# --- Snow particles (simple scattered small spheres) ---
+random.seed(42)
+for _ in range(150):
+    x = random.uniform(-8, 8)
+    y = random.uniform(-8, 8)
+    z = random.uniform(0.02, 0.08)
+    r = random.uniform(0.015, 0.04)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(x, y, z), segments=8, ring_count=6)
+    snowflake = bpy.context.active_object
+    snowflake.data.materials.append(mat_snow)
+
+# --- Lighting ---
+# World ambient
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.05, 0.08, 0.15, 1.0)
+bg.inputs["Strength"].default_value = 0.3
+
+# Point light from lamp
+bpy.ops.object.light_add(type='POINT', location=(3.0, 2.0, 4.2))
+lamp_light = bpy.context.active_object
+lamp_light.data.energy = 50
+lamp_light.data.color = (1.0, 0.9, 0.6)
+
+# Point light from coals
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 1.5))
+coal_light = bpy.context.active_object
+coal_light.data.energy = 30
+coal_light.data.color = (1.0, 0.3, 0.05)
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(6, 6, 3.5))
+camera = bpy.context.active_object
+camera.rotation_euler = (math.radians(65), 0, math.radians(-45))
+bpy.context.scene.camera = camera
+
+# --- Render settings ---
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False

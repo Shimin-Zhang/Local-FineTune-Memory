@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.8,
+ "error": null,
+ "error_line": null,
+ "printed": "Complete lighting overhaul, new camera, more fire/smoke/embers, Dwarven door, more details\n",
+ "state_saved": true,
+ "n_objects": 468,
+ "n_lights": 7,
+ "n_materials": 21,
+ "own_camera": true,
+ "render_error": null
+}

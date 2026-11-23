@@ -1,0 +1,237 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# --- Clean Scene ---
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+for block in bpy.data.collections:
+    for obj in block.objects:
+        obj.select_set(False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# --- Helper Functions ---
+def add_cube(name, loc, scale, color, roughness=0.5, collection=None):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = scale
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = color
+        bsdf.inputs['Roughness'].default_value = roughness
+    obj.data.materials.append(mat)
+    if collection:
+        for c in obj.users_collection:
+            c.objects.unlink(obj)
+        collection.objects.link(obj)
+    return obj
+
+def add_cylinder(name, loc, radius, depth, color, roughness=0.5, collection=None, rotation=(0,0,0)):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=loc, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = color
+        bsdf.inputs['Roughness'].default_value = roughness
+    obj.data.materials.append(mat)
+    if collection:
+        for c in obj.users_collection:
+            c.objects.unlink(obj)
+        collection.objects.link(obj)
+    return obj
+
+def add_sphere(name, loc, radius, color, roughness=0.5, collection=None):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = color
+        bsdf.inputs['Roughness'].default_value = roughness
+    obj.data.materials.append(mat)
+    if collection:
+        for c in obj.users_collection:
+            c.objects.unlink(obj)
+        collection.objects.link(obj)
+    return obj
+
+def add_plane(name, loc, size, color, roughness=0.5, collection=None, rotation=(0,0,0)):
+    bpy.ops.mesh.primitive_plane_add(size=size, location=loc, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = color
+        bsdf.inputs['Roughness'].default_value = roughness
+    obj.data.materials.append(mat)
+    if collection:
+        for c in obj.users_collection:
+            c.objects.unlink(obj)
+        collection.objects.link(obj)
+    return obj
+
+def add_plant(name, loc, color, height, collection=None):
+    """Add a simple plant (stem + leaves)"""
+    # Stem
+    stem = add_cylinder(name+"_stem", (loc[0], loc[1], loc[2] + height/2), 0.02, height, (0.2, 0.4, 0.1, 1.0), 0.6, collection)
+    # Leaves (small spheres)
+    for i in range(5):
+        h = loc[2] + height * (0.3 + i * 0.15)
+        angle = i * 1.3
+        r = 0.15
+        leaf = add_sphere(f"{name}_leaf{i}", (loc[0] + math.cos(angle)*r, loc[1] + math.sin(angle)*r, h), 0.08, color, 0.4, collection)
+
+# --- Create Collections ---
+scene = bpy.context.scene
+collections = {}
+for name in ["Garden", "Herbs", "DryingRacks", "TeapotArea", "Bees", "Environment"]:
+    col = bpy.data.collections.new(name)
+    scene.collection.children.link(col)
+    collections[name] = col
+
+# --- Ground ---
+ground = add_plane("Ground", (0, 0, 0), 20, (0.3, 0.2, 0.1, 1.0), 0.8, collections["Environment"])
+
+# --- Fenced Plot ---
+fence_color = (0.4, 0.3, 0.2, 1.0)
+fence_posts = []
+fence_w, fence_d = 4, 3
+fence_x = -3
+fence_y = -2
+
+# Posts
+for i in range(5):
+    x = fence_x + i * (fence_w / 4)
+    post = add_cylinder(f"Fence_Post_F_{i}", (x, fence_y, 0.5), 0.05, 1.0, fence_color, 0.6, collections["Garden"])
+for i in range(4):
+    y = fence_y + i * (fence_d / 3)
+    post = add_cylinder(f"Fence_Post_R_{i}", (fence_x + fence_w, y, 0.5), 0.05, 1.0, fence_color, 0.6, collections["Garden"])
+for i in range(5):
+    x = fence_x + i * (fence_w / 4)
+    post = add_cylinder(f"Fence_Post_B_{i}", (x, fence_y + fence_d, 0.5), 0.05, 1.0, fence_color, 0.6, collections["Garden"])
+for i in range(4):
+    y = fence_y + i * (fence_d / 3)
+    post = add_cylinder(f"Fence_Post_L_{i}", (fence_x, y, 0.5), 0.05, 1.0, fence_color, 0.6, collections["Garden"])
+
+# Horizontal rails
+for y in [fence_y, fence_y + fence_d]:
+    rail = add_cylinder(f"Fence_Rail_H_{y}", (fence_x + fence_w/2, y, 0.7), 0.03, fence_w, fence_color, 0.6, collections["Garden"], rotation=(0, math.pi/2, 0))
+    rail = add_cylinder(f"Fence_Rail_H2_{y}", (fence_x + fence_w/2, y, 0.3), 0.03, fence_w, fence_color, 0.6, collections["Garden"], rotation=(0, math.pi/2, 0))
+
+for x in [fence_x, fence_x + fence_w]:
+    rail = add_cylinder(f"Fence_Rail_V_{x}", (x, fence_y + fence_d/2, 0.7), 0.03, fence_d, fence_color, 0.6, collections["Garden"], rotation=(math.pi/2, 0, 0))
+    rail = add_cylinder(f"Fence_Rail_V2_{x}", (x, fence_y + fence_d/2, 0.3), 0.03, fence_d, fence_color, 0.6, collections["Garden"], rotation=(math.pi/2, 0, 0))
+
+# --- Herb Beds ---
+# Mint (left)
+mint_color = (0.1, 0.5, 0.1, 1.0)
+for i in range(6):
+    x = fence_x + 0.5 + (i % 3) * 0.5
+    y = fence_y + 0.5 + (i // 3) * 0.5
+    add_plant(f"Mint_{i}", (x, y, 0), mint_color, 0.4, collections["Herbs"])
+
+# Chamomile (center)
+chamomile_color = (0.9, 0.9, 0.8, 1.0)
+for i in range(6):
+    x = fence_x + 1.8 + (i % 3) * 0.5
+    y = fence_y + 0.5 + (i // 3) * 0.5
+    add_plant(f"Chamomile_{i}", (x, y, 0), chamomile_color, 0.3, collections["Herbs"])
+    # Add small yellow center
+    add_sphere(f"Chamomile_Center_{i}", (x, y, 0.3), 0.03, (1.0, 0.8, 0.1, 1.0), 0.3, collections["Herbs"])
+
+# Lemon Balm (right)
+lemon_balm_color = (0.3, 0.6, 0.2, 1.0)
+for i in range(6):
+    x = fence_x + 3.0 + (i % 3) * 0.4
+    y = fence_y + 0.5 + (i // 3) * 0.5
+    add_plant(f"LemonBalm_{i}", (x, y, 0), lemon_balm_color, 0.35, collections["Herbs"])
+
+# --- Drying Racks under Eave ---
+# Eave (roof overhang)
+eave = add_cube("Eave", (2, 0, 2.5), (2, 1.5, 0.1), (0.5, 0.3, 0.2, 1.0), 0.7, collections["DryingRacks"])
+# Support post
+post = add_cylinder("Eave_Post", (2, -0.5, 1.25), 0.05, 2.5, (0.4, 0.3, 0.2, 1.0), 0.6, collections["DryingRacks"])
+
+# Drying racks (shelves)
+for i in range(3):
+    shelf = add_cube(f"Drying_Shelf_{i}", (2, -0.2 + i*0.3, 1.5 + i*0.5), (1.5, 0.1, 0.05), (0.6, 0.4, 0.2, 1.0), 0.6, collections["DryingRacks"])
+    # Herbs on shelves
+    for j in range(4):
+        herb = add_sphere(f"Dried_Herb_{i}_{j}", (1.5 + j*0.3, -0.2 + i*0.3, 1.55 + i*0.5), 0.05, (0.5, 0.6, 0.3, 1.0), 0.4, collections["DryingRacks"])
+
+# --- Barrel Table with Teapot ---
+# Barrel
+barrel = add_cylinder("Barrel", (5, 0, 0.5), 0.4, 1.0, (0.5, 0.3, 0.1, 1.0), 0.7, collections["TeapotArea"])
+# Barrel top
+barrel_top = add_cylinder("Barrel_Top", (5, 0, 1.0), 0.4, 0.05, (0.6, 0.4, 0.2, 1.0), 0.5, collections["TeapotArea"])
+
+# Teapot
+# Body
+teapot_body = add_sphere("Teapot_Body", (5, 0, 1.15), 0.15, (0.8, 0.8, 0.8, 1.0), 0.2, collections["TeapotArea"])
+# Lid
+teapot_lid = add_cylinder("Teapot_Lid", (5, 0, 1.28), 0.08, 0.03, (0.8, 0.8, 0.8, 1.0), 0.2, collections["TeapotArea"])
+# Spout
+spout = add_cylinder("Teapot_Spout", (5.15, 0, 1.15), 0.02, 0.15, (0.8, 0.8, 0.8, 1.0), 0.2, collections["TeapotArea"], rotation=(0, math.pi/4, 0))
+# Handle
+handle = add_cylinder("Teapot_Handle", (4.85, 0, 1.15), 0.02, 0.15, (0.8, 0.8, 0.8, 1.0), 0.2, collections["TeapotArea"], rotation=(0, -math.pi/4, 0))
+# Knob
+knob = add_sphere("Teapot_Knob", (5, 0, 1.32), 0.02, (0.8, 0.8, 0.8, 1.0), 0.2, collections["TeapotArea"])
+
+# --- Bees ---
+bee_color = (0.9, 0.7, 0.1, 1.0)
+for i in range(8):
+    x = random.uniform(-2, 4)
+    y = random.uniform(-1, 2)
+    z = random.uniform(0.5, 1.5)
+    # Body
+    bee_body = add_sphere(f"Bee_Body_{i}", (x, y, z), 0.03, bee_color, 0.3, collections["Bees"])
+    # Wings
+    wing = add_plane(f"Bee_Wing_{i}_L", (x - 0.03, y, z + 0.02), 0.04, (1, 1, 1, 0.3), 0.1, collections["Bees"], rotation=(0.5, 0, 0))
+    wing = add_plane(f"Bee_Wing_{i}_R", (x + 0.03, y, z + 0.02), 0.04, (1, 1, 1, 0.3), 0.1, collections["Bees"], rotation=(-0.5, 0, 0))
+    # Stripes (small dark spheres)
+    stripe = add_sphere(f"Bee_Stripe_{i}", (x, y, z), 0.025, (0.1, 0.1, 0.1, 1.0), 0.3, collections["Bees"])
+
+# --- Lighting ---
+# Sun
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 3
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+scene.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Fill light
+fill_data = bpy.data.lights.new("Fill", type='AREA')
+fill_data.energy = 100
+fill_data.size = 5
+fill_obj = bpy.data.objects.new("Fill", fill_data)
+scene.collection.objects.link(fill_obj)
+fill_obj.location = (0, 0, 5)
+fill_obj.rotation_euler = (0, 0, 0)
+
+# --- Camera ---
+cam_data = bpy.data.cameras.new("Camera")
+cam_obj = bpy.data.objects.new("Camera", cam_data)
+scene.collection.objects.link(cam_obj)
+cam_obj.location = (0, -8, 3)
+cam_obj.rotation_euler = (math.radians(75), 0, 0)
+scene.camera = cam_obj
+
+# --- World ---
+world = bpy.data.worlds.new("World")
+scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.5, 0.7, 1.0, 1.0)
+    bg_node.inputs[1].default_value = 0.5

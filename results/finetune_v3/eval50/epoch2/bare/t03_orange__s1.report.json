@@ -1,0 +1,75 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: module 'random' has no attribute 'acos'",
+ "error_line": "th, ph = random.uniform(0, 6.28), random.acos(random.uniform(-1, 1))",
+ "n_renderable_objects": 5,
+ "object_types": {
+  "MESH": 5
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "m.001",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.15,
+    0.08,
+    0.045
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "m",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.22,
+    0.12,
+    0.06
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  18.711,
+  18.427,
+  4.624
+ ],
+ "scene_center": [
+  0.0,
+  0.2865,
+  -1.9618
+ ],
+ "scene_radius": 13.3328,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.4,
+ "image": true
+}

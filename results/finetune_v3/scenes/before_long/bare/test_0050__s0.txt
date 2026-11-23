@@ -1,0 +1,337 @@
+```python
+import bpy
+import math
+import bmesh
+from mathutils import Vector, Matrix
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Materials ---
+mat_stone = bpy.data.materials.new(name="AquaStone")
+mat_stone.use_nodes = True
+bsdf = mat_stone.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.7, 0.65, 0.55, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.9
+
+mat_water = bpy.data.materials.new(name="Water")
+mat_water.use_nodes = True
+bsdf_w = mat_water.node_tree.nodes["Principled BSDF"]
+bsdf_w.inputs["Base Color"].default_value = (0.1, 0.3, 0.5, 1.0)
+bsdf_w.inputs["Metallic"].default_value = 0.2
+bsdf_w.inputs["Roughness"].default_value = 0.1
+bsdf_w.inputs["Transmission Weight"].default_value = 0.8
+
+mat_ground = bpy.data.materials.new(name="Ground")
+mat_ground.use_nodes = True
+bsdf_g = mat_ground.node_tree.nodes["Principled BSDF"]
+bsdf_g.inputs["Base Color"].default_value = (0.4, 0.5, 0.3, 1.0)
+bsdf_g.inputs["Roughness"].default_value = 1.0
+
+# --- Helper Functions ---
+def create_arch_unit(length, width, height, arch_r, wall_thick, loc, name="Arch"):
+    """Creates a single pier + arch unit using a boolean cutter for the arch opening."""
+    # 1. Create the main block (Pier + Top)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(loc[0], loc[1], loc[2] + height/2))
+    block = bpy.context.active_object
+    block.name = name
+    block.scale = (length/2, width/2, height/2)
+    bpy.ops.object.transform_apply(scale=True)
+    block.data.materials.append(mat_stone)
+
+    # 2. Create the Arch Cutter
+    # Arch center is at the bottom of the block
+    arch_center = Vector((loc[0], loc[1], loc[2]))
+    bpy.ops.mesh.primitive_cylinder_add(radius=arch_r, depth=width, location=arch_center, rotation=(math.radians(90), 0, 0))
+    cutter = bpy.context.active_object
+    cutter.scale = (1, 1, 1) # Z is the length of the arch (width of aqueduct)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Move cutter so the bottom half is below the pier base
+    cutter.location = (loc[0], loc[1], loc[2]) 
+
+    # 3. Boolean Difference
+    mod = block.modifiers.new("ArchCut", 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = cutter
+    bpy.context.view_layer.objects.active = block
+    bpy.ops.object.modifier_apply(modifier="ArchCut")
+    
+    # Delete cutter
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    
+    return block
+
+def create_valley_ground(width, length, depth, loc):
+    """Creates a V-shaped valley floor."""
+    bpy.ops.mesh.primitive_plane_add(size=1, location=loc)
+    ground = bpy.context.active_object
+    ground.name = "ValleyGround"
+    ground.scale = (width/2, length/2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Edit mesh to create V shape
+    me = ground.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    
+    # We need to subdivide and move vertices
+    # For simplicity, we'll just make a flat plane and rely on the visual of the stream
+    # Or better, create a custom mesh for the valley
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=10, use_grid_fill=False)
+    
+    # Move vertices down to form a valley
+    for v in bm.verts:
+        # Distance from center Y
+        dist = abs(v.co.y)
+        # Simple V profile
+        v.co.z = -depth * (1 - (dist / (length/2)))**2 
+        # Add some noise
+        import random
+        v.co.z += random.uniform(-0.2, 0.2)
+        
+    bm.to_mesh(me)
+    bm.free()
+    
+    ground.data.materials.append(mat_ground)
+    return ground
+
+def create_stream(width, length, loc):
+    """Creates a simple water plane in the valley."""
+    bpy.ops.mesh.primitive_plane_add(size=1, location=loc)
+    stream = bpy.context.active_object
+    stream.name = "Stream"
+    stream.scale = (width/2, length/2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Lower it slightly
+    stream.location.z = loc[2] - 0.5
+    
+    # Subdivide for potential waves (optional, keeping simple for now)
+    stream.data.materials.append(mat_water)
+    return stream
+
+def create_washing_place(loc, size=4):
+    """A rectangular stone basin."""
+    # Basin walls
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    basin = bpy.context.active_object
+    basin.name = "WashingBasin"
+    basin.scale = (size/2, size/2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Hollow it out
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(loc[0], loc[1], loc[2] + 0.5))
+    cutter = bpy.context.active_object
+    cutter.scale = ((size-1)/2, (size-1)/2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    mod = basin.modifiers.new("Hollow", 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = cutter
+    bpy.context.view_layer.objects.active = basin
+    bpy.ops.object.modifier_apply(modifier="Hollow")
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    
+    basin.data.materials.append(mat_stone)
+    
+    # Water inside
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(loc[0], loc[1], loc[2] - 0.2))
+    water = bpy.context.active_object
+    water.name = "WashingWater"
+    water.scale = ((size-1.2)/2, (size-1.2)/2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    water.data.materials.append(mat_water)
+    
+    return basin
+
+def create_bridge(loc, length, width, height, arch_r):
+    """A simple stone bridge over the stream."""
+    # Deck
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(loc[0], loc[1], loc[2] + height/2))
+    deck = bpy.context.active_object
+    deck.name = "BridgeDeck"
+    deck.scale = (length/2, width/2, height/2)
+    bpy.ops.object.transform_apply(scale=True)
+    deck.data.materials.append(mat_stone)
+    
+    # Arch underneath
+    bpy.ops.mesh.primitive_cylinder_add(radius=arch_r, depth=width, location=(loc[0], loc[1], loc[2]), rotation=(math.radians(90), 0, 0))
+    arch_cutter = bpy.context.active_object
+    arch_cutter.scale = (1, 1, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # We need a solid block to cut the arch from
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(loc[0], loc[1], loc[2] - arch_r/2))
+    bridge_base = bpy.context.active_object
+    bridge_base.name = "BridgeBase"
+    bridge_base.scale = (length/2, width/2, arch_r)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    mod = bridge_base.modifiers.new("Arch", 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = arch_cutter
+    bpy.context.view_layer.objects.active = bridge_base
+    bpy.ops.object.modifier_apply(modifier="Arch")
+    bpy.data.objects.remove(arch_cutter, do_unlink=True)
+    bridge_base.data.materials.append(mat_stone)
+    
+    return deck, bridge_base
+
+def create_distribution_tank(loc, size=6):
+    """A large stone tank at the end."""
+    # Main tank
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    tank = bpy.context.active_object
+    tank.name = "DistributionTank"
+    tank.scale = (size/2, size/2, size/2)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Hollow top
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(loc[0], loc[1], loc[2] + size/4))
+    cutter = bpy.context.active_object
+    cutter.scale = ((size-1)/2, (size-1)/2, size/2)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    mod = tank.modifiers.new("Hollow", 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = cutter
+    bpy.context.view_layer.objects.active = tank
+    bpy.ops.object.modifier_apply(modifier="Hollow")
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    
+    tank.data.materials.append(mat_stone)
+    
+    # Water inside
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(loc[0], loc[1], loc[2] + size/4 - 0.5))
+    water = bpy.context.active_object
+    water.name = "TankWater"
+    water.scale = ((size-1.2)/2, (size-1.2)/2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    water.data.materials.append(mat_water)
+    
+    return tank
+
+# --- Scene Setup ---
+# 1. Valley Ground
+valley = create_valley_ground(width=40, length=100, depth=15, loc=(0, 0, 0))
+
+# 2. Stream
+stream = create_stream(width=8, length=100, loc=(0, 0, -5))
+
+# 3. Aqueduct Structure
+# Parameters
+aqueduct_length = 80
+aqueduct_width = 6
+tier1_height = 10
+tier2_height = 8
+arch_radius_t1 = 3
+arch_radius_t2 = 2.5
+num_arches_t1 = 8
+num_arches_t2 = 8
+pier_width = 2
+
+# Calculate spacing
+span_t1 = aqueduct_length / num_arches_t1
+span_t2 = aqueduct_length / num_arches_t2
+
+# Start position (Y axis is length)
+start_y = -aqueduct_length / 2
+
+# Tier 1 (Lower)
+for i in range(num_arches_t1):
+    y_pos = start_y + (i + 0.5) * span_t1
+    x_pos = 0
+    z_pos = 0 # Base at ground level (approx)
+    
+    # The ground is a V-shape, so we need to adjust Z based on Y
+    # Valley depth at center is 15, edges are 0
+    # dist from center Y
+    dist_y = abs(y_pos)
+    valley_depth_at_y = 15 * (1 - (dist_y / 50))**2
+    z_base = -valley_depth_at_y
+    
+    # Create arch unit
+    # We need to handle the fact that the ground isn't flat.
+    # For simplicity in this script, we will place the piers on a flat plane at the average height or just stick them in the ground.
+    # Let's stick them into the ground to ensure connection.
+    create_arch_unit(
+        length=span_t1 - pier_width, # Gap between piers
+        width=aqueduct_width,
+        height=tier1_height,
+        arch_r=arch_radius_t1,
+        wall_thick=pier_width,
+        loc=(x_pos, y_pos, z_base + tier1_height/2),
+        name=f"Aqua_Tier1_{i}"
+    )
+
+# Tier 2 (Upper)
+# This sits on top of Tier 1
+z_tier2_base = tier1_height
+for i in range(num_arches_t2):
+    y_pos = start_y + (i + 0.5) * span_t2
+    x_pos = 0
+    
+    # Z position is on top of Tier 1
+    z_pos = z_tier2_base
+    
+    create_arch_unit(
+        length=span_t2 - pier_width,
+        width=aqueduct_width,
+        height=tier2_height,
+        arch_r=arch_radius_t2,
+        wall_thick=pier_width,
+        loc=(x_pos, y_pos, z_pos + tier2_height/2),
+        name=f"Aqua_Tier2_{i}"
+    )
+
+# 4. Washing Place
+# Located near the stream, on one side
+wash_loc = (10, -20, -8)
+create_washing_place(wash_loc, size=5)
+
+# 5. Stone Bridge
+# Crossing the stream at a specific point
+bridge_loc = (0, 20, -5)
+create_bridge(bridge_loc, length=10, width=4, height=2, arch_r=2)
+
+# 6. Distribution Tank
+# At the end of the aqueduct
+tank_loc = (0, 45, 10) # High up
+create_distribution_tank(tank_loc, size=8)
+
+# --- Camera and Lighting ---
+# Camera
+bpy.ops.object.camera_add(location=(30, -60, 20))
+camera = bpy.context.active_object
+camera.name = "MainCamera"
+# Point at the center of the scene
+target = Vector((0, 0, 10))
+direction = target - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = camera
+
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(10, -10, 20))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), math.radians(15), math.radians(45))
+sun.data.energy = 3.0
+
+# World
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs[0].default_value = (0.5, 0.7, 1.0, 1.0)
+bg.inputs[1].default_value = 1.0
+
+# Render Settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 64
+```

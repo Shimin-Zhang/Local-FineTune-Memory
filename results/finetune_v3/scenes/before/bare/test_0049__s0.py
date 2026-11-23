@@ -1,0 +1,222 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set units
+bpy.context.scene.unit_settings.system = 'METRIC'
+
+# Helper: add a sphere with a specific material
+def add_sphere(location, radius, name="Sphere", color=(1,1,1), roughness=0.5):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=32, ring_count=16)
+    obj = bpy.context.active_object
+    obj.name = name
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    obj.data.materials.append(mat)
+    return obj
+
+# Helper: add a box
+def add_box(location, size, name="Box", color=(1,1,1), roughness=0.5):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    bpy.ops.object.transform_apply(scale=True)
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    obj.data.materials.append(mat)
+    return obj
+
+# Helper: add a cylinder
+def add_cylinder(location, radius, depth, name="Cyl", color=(1,1,1), roughness=0.5):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, vertices=32)
+    obj = bpy.context.active_object
+    obj.name = name
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    obj.data.materials.append(mat)
+    return obj
+
+# Helper: add a cone
+def add_cone(location, radius1, radius2, depth, name="Cone", color=(1,1,1), roughness=0.5):
+    bpy.ops.mesh.primitive_cone_add(radius1=radius1, radius2=radius2, depth=depth, location=location, vertices=32)
+    obj = bpy.context.active_object
+    obj.name = name
+    mat = bpy.data.materials.new(name=name+"_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    obj.data.materials.append(mat)
+    return obj
+
+# --- Wooden Fruit Stand ---
+stand_color = (0.45, 0.30, 0.15, 1.0)
+# Main table
+add_box((0, 0, 0.5), (2.0, 1.0, 0.05), "Stand_Table", stand_color, 0.7)
+# Legs
+for x in [-0.9, 0.9]:
+    for y in [-0.45, 0.45]:
+        add_cylinder((x, y, 0.25), 0.04, 0.5, "Leg", stand_color, 0.7)
+# Back panel
+add_box((0, -0.48, 0.85), (2.0, 0.05, 0.7), "Stand_Back", stand_color, 0.7)
+# Side panels
+add_box((-0.98, 0, 0.85), (0.05, 1.0, 0.7), "Stand_Side_L", stand_color, 0.7)
+add_box((0.98, 0, 0.85), (0.05, 1.0, 0.7), "Stand_Side_R", stand_color, 0.7)
+# Top shelf (slightly raised)
+add_box((0, 0, 1.2), (2.0, 1.0, 0.05), "Stand_Shelf", stand_color, 0.7)
+
+# --- Fruit Pyramids ---
+# Mangoes (orange-yellow ellipsoids)
+mango_color = (0.95, 0.65, 0.1, 1.0)
+mango_pos = (-0.6, 0, 0.55)
+# Bottom row: 4 mangoes
+for i in range(4):
+    x = mango_pos[0] + (i - 1.5) * 0.12
+    add_sphere((x, mango_pos[1], 0.62), 0.06, "Mango", mango_color, 0.4)
+# Middle row: 3 mangoes
+for i in range(3):
+    x = mango_pos[0] + (i - 1.0) * 0.12
+    add_sphere((x, mango_pos[1], 0.74), 0.06, "Mango", mango_color, 0.4)
+# Top: 2 mangoes
+for i in range(2):
+    x = mango_pos[0] + (i - 0.5) * 0.12
+    add_sphere((x, mango_pos[1], 0.86), 0.06, "Mango", mango_color, 0.4)
+# Peak: 1 mango
+add_sphere((mango_pos[0], mango_pos[1], 0.98), 0.06, "Mango", mango_color, 0.4)
+
+# Pineapples (brown body with green top)
+pineapple_body_color = (0.75, 0.55, 0.2, 1.0)
+pineapple_top_color = (0.2, 0.6, 0.15, 1.0)
+pineapple_pos = (0.0, 0, 0.55)
+# Bottom row: 3 pineapples
+for i in range(3):
+    x = pineapple_pos[0] + (i - 1.0) * 0.18
+    # Body
+    add_cylinder((x, pineapple_pos[1], 0.68), 0.07, 0.2, "Pineapple_Body", pineapple_body_color, 0.6)
+    # Top (spiky leaves - simplified as a cone)
+    add_cone((x, pineapple_pos[1], 0.83), 0.05, 0.0, 0.15, "Pineapple_Top", pineapple_top_color, 0.5)
+# Middle row: 2 pineapples
+for i in range(2):
+    x = pineapple_pos[0] + (i - 0.5) * 0.18
+    add_cylinder((x, pineapple_pos[1], 0.88), 0.07, 0.2, "Pineapple_Body", pineapple_body_color, 0.6)
+    add_cone((x, pineapple_pos[1], 1.03), 0.05, 0.0, 0.15, "Pineapple_Top", pineapple_top_color, 0.5)
+# Top: 1 pineapple
+add_cylinder((pineapple_pos[0], pineapple_pos[1], 1.08), 0.07, 0.2, "Pineapple_Body", pineapple_body_color, 0.6)
+add_cone((pineapple_pos[0], pineapple_pos[1], 1.23), 0.05, 0.0, 0.15, "Pineapple_Top", pineapple_top_color, 0.5)
+
+# Dragon Fruit (pink/purple with green scales)
+dragon_color = (0.9, 0.3, 0.5, 1.0)
+dragon_scale_color = (0.3, 0.7, 0.2, 1.0)
+dragon_pos = (0.6, 0, 0.55)
+# Bottom row: 3 dragon fruits
+for i in range(3):
+    x = dragon_pos[0] + (i - 1.0) * 0.14
+    add_sphere((x, dragon_pos[1], 0.63), 0.055, "DragonFruit", dragon_color, 0.5)
+    # Add a few scale bumps
+    for j in range(3):
+        angle = j * 2.094
+        sx = x + 0.03 * math.cos(angle)
+        sy = dragon_pos[1] + 0.03 * math.sin(angle)
+        add_sphere((sx, sy, 0.63), 0.02, "DragonScale", dragon_scale_color, 0.4)
+# Middle row: 2 dragon fruits
+for i in range(2):
+    x = dragon_pos[0] + (i - 0.5) * 0.14
+    add_sphere((x, dragon_pos[1], 0.75), 0.055, "DragonFruit", dragon_color, 0.5)
+    for j in range(3):
+        angle = j * 2.094
+        sx = x + 0.03 * math.cos(angle)
+        sy = dragon_pos[1] + 0.03 * math.sin(angle)
+        add_sphere((sx, sy, 0.75), 0.02, "DragonScale", dragon_scale_color, 0.4)
+# Top: 1 dragon fruit
+add_sphere((dragon_pos[0], dragon_pos[1], 0.87), 0.055, "DragonFruit", dragon_color, 0.5)
+for j in range(3):
+    angle = j * 2.094
+    sx = dragon_pos[0] + 0.03 * math.cos(angle)
+    sy = dragon_pos[1] + 0.03 * math.sin(angle)
+    add_sphere((sx, sy, 0.87), 0.02, "DragonScale", dragon_scale_color, 0.4)
+
+# --- Shade Umbrella ---
+umbrella_pole_color = (0.5, 0.5, 0.5, 1.0)
+umbrella_canopy_color = (0.8, 0.2, 0.2, 1.0)
+# Pole
+add_cylinder((0, 0, 2.0), 0.03, 2.0, "Umbrella_Pole", umbrella_pole_color, 0.3)
+# Canopy (cone)
+add_cone((0, 0, 3.0), 1.2, 0.0, 0.4, "Umbrella_Canopy", umbrella_canopy_color, 0.6)
+# Tip
+add_sphere((0, 0, 3.25), 0.05, "Umbrella_Tip", umbrella_pole_color, 0.3)
+
+# --- Knife-wielding Seller ---
+seller_skin_color = (0.8, 0.6, 0.4, 1.0)
+seller_shirt_color = (0.2, 0.4, 0.7, 1.0)
+seller_pants_color = (0.3, 0.3, 0.3, 1.0)
+seller_pos = (1.8, 0, 0)
+
+# Legs
+for side in [-1, 1]:
+    x = seller_pos[0] + side * 0.1
+    add_cylinder((x, seller_pos[1], 0.4), 0.06, 0.8, "Seller_Leg", seller_pants_color, 0.6)
+# Torso
+add_box((seller_pos[0], seller_pos[1], 1.0), (0.3, 0.2, 0.6), "Seller_Torso", seller_shirt_color, 0.5)
+# Head
+add_sphere((seller_pos[0], seller_pos[1], 1.45), 0.12, "Seller_Head", seller_skin_color, 0.5)
+# Arms
+# Left arm (holding knife)
+add_cylinder((seller_pos[0] - 0.25, seller_pos[1], 1.1), 0.04, 0.5, "Seller_Arm_L", seller_shirt_color, 0.5)
+# Right arm
+add_cylinder((seller_pos[0] + 0.25, seller_pos[1], 1.1), 0.04, 0.5, "Seller_Arm_R", seller_shirt_color, 0.5)
+# Hands
+add_sphere((seller_pos[0] - 0.25, seller_pos[1], 0.85), 0.05, "Seller_Hand_L", seller_skin_color, 0.5)
+add_sphere((seller_pos[0] + 0.25, seller_pos[1], 0.85), 0.05, "Seller_Hand_R", seller_skin_color, 0.5)
+
+# Knife (held in left hand)
+knife_handle_color = (0.2, 0.1, 0.05, 1.0)
+knife_blade_color = (0.8, 0.8, 0.85, 1.0)
+# Handle
+add_box((seller_pos[0] - 0.25, seller_pos[1], 0.85), (0.04, 0.03, 0.12), "Knife_Handle", knife_handle_color, 0.4)
+# Blade
+add_box((seller_pos[0] - 0.25, seller_pos[1], 0.75), (0.02, 0.03, 0.15), "Knife_Blade", knife_blade_color, 0.2)
+
+# --- Lighting ---
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.95, 0.8)
+
+# Ambient light
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 4))
+ambient = bpy.context.active_object
+ambient.name = "Ambient"
+ambient.data.energy = 50.0
+ambient.data.color = (1.0, 1.0, 1.0)
+
+# Camera
+bpy.ops.object.camera_add(location=(3.5, 3.5, 2.0))
+camera = bpy.context.active_object
+camera.name = "Camera"
+# Point camera at the stand
+direction = Vector((0, 0, 0.8)) - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = camera
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False

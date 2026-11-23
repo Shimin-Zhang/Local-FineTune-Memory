@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.4,
+ "error": "AttributeError: 'PointLight' object has no attribute 'distance'",
+ "error_line": "glow.data.distance = 15",
+ "printed": "Bathhouse at: <Vector (0.0000, 5.0000, 5.0000)>\nBridge at: <Vector (0.0000, 80.0000, 1.0000)>\n",
+ "state_saved": true,
+ "n_objects": 232,
+ "n_lights": 7,
+ "n_materials": 116,
+ "own_camera": true,
+ "render_error": null
+}

@@ -1,0 +1,535 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 106,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 18,
+  "MESH": 106
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Stone",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.5,
+    0.48,
+    0.45
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Wood",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.35,
+    0.2,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "DarkWood",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.2,
+    0.12,
+    0.06
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Metal",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.4,
+    0.4,
+    0.45
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Bone",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.9,
+    0.85,
+    0.75
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Glass",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.7,
+    0.8,
+    0.9
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    0.0,
+    0.0,
+    15.2
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 50.0,
+   "color": [
+    1.0,
+    0.95,
+    0.9
+   ],
+   "location": [
+    0.0,
+    0.0,
+    8.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    3.18,
+    3.5
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    3.18,
+    3.5
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    -3.18,
+    3.5
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    -3.18,
+    3.5
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    3.18,
+    5.3
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    3.18,
+    5.3
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    -3.18,
+    5.3
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    -3.18,
+    5.3
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    3.18,
+    7.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    3.18,
+    7.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    -3.18,
+    7.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    -3.18,
+    7.1
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    3.18,
+    8.9
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    3.18,
+    8.9
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    -3.18,
+    -3.18,
+    8.9
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "POINT",
+   "energy": 10.0,
+   "color": [
+    1.0,
+    0.85,
+    0.6
+   ],
+   "location": [
+    3.18,
+    -3.18,
+    8.9
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   8.0,
+   8.0,
+   4.0
+  ],
+  "direction": [
+   -0.6905,
+   -0.6905,
+   -0.2158
+  ],
+  "up": [
+   -0.1526,
+   -0.1526,
+   0.9764
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  24.0,
+  24.0,
+  10.7
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  5.05
+ ],
+ "scene_radius": 17.7939,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 6.7,
+ "image": true
+}

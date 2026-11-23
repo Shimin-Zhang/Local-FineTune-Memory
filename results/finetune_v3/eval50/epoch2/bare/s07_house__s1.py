@@ -1,0 +1,71 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1323)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, e=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (r, g, b, 1); p.inputs["Roughness"].default_value = .85
+    if e: p.inputs["Emission Color"].default_value = (r, g, b, 1); p.inputs["Emission Strength"].default_value = e
+    return m
+lawn, soil, brick, roof, door, glass, trim, stone, wood, tree, trunk, flower = (paint(*c) for c in (
+    (.1, .22, .09), (.14, .1, .08), (.45, .2, .16), (.5, .08, .06), (.28, .14, .07), (1, .65, .25, 14), (.5, .45, .35), (.3, .3, .32), (.2, .12, .07), (.06, .2, .1), (.18, .1, .06), (.8, .3, .4)))
+def mesh(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("h"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("h", me); o.location = at; o.rotation_euler = rot
+    o.data.materials.append(m); sc.collection.objects.link(o); return o
+def blk(at, s, m, rot=(0, 0, 0), peak=False):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    if peak:
+        for v in bm.verts:
+            if v.co.z > 0: v.co.y = 0
+    return mesh(bm, m, at, rot)
+def rod(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, m, at, rot)
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=10, depth=2.4)
+for v in bm.verts:
+    v.co.z -= 1.2
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.4, .2)))
+mesh(bm, soil)
+rod((0, 0, -.05), 9.6, .3, 8, lawn)
+# house: brick walls, red gable roof with overhang, chimney
+blk((0, 1.5, 0), (7, 5, 3.2), brick)
+blk((0, 1.5, 3.2), (7.8, 6.4, 2.4), roof, peak=True)
+blk((0, 1.5, 3.2), (7.9, .3, .2), trim)
+blk((2.2, 3, 4.6), (.9, .9, 2.6), stone)
+blk((2.2, 3, 7.2), (1.1, 1.1, .2), brick)
+# brown door with a step and a porch post, two lit windows with frames and shutters
+blk((0, -1.05, 0), (1.5, .2, 2.3), door); blk((0, -1.4, 0), (2, .8, .2), stone)
+blk((0, -1.2, 2.3), (1.8, .3, .2), trim)
+for sx in (-1, 1):
+    blk((sx * 2.5, -1.05, 1.0), (1.5, .15, 1.4), trim); blk((sx * 2.5, -1.1, 1.1), (1.2, .1, 1.1), glass)
+    blk((sx * 2.5, -1.1, 1.65), (1.2, .08, .08), trim); blk((sx * 2.5, -1.1, 1.1), (.08, .08, 1.1), trim)
+    blk((sx * 3.6, -1.1, 1.0), (.3, .1, 1.4), wood)
+lamp("POINT", (1, .65, .25), 500, (0, -2.6, 1.6))
+# path of slabs to the front, a picket fence, a mailbox
+for i in range(6): blk((0, -2.6 - i * 1.0, .2), (1.5, .8, .1), stone, rot=(0, 0, random.uniform(-.1, .1)))
+for i in range(9):
+    for sy in (-1, 1): blk((-5 + i * 1.25, -4.2 + sy * 1.0, 0), (.2, .2, 1.1), trim)
+    blk((-5 + i * 1.25, -3.2, .5), (1.2, .1, .1), trim)
+blk((4.5, -3.8, 0), (.15, .15, 1.1), wood); blk((4.5, -3.8, 1.1), (.7, .4, .4), wood)
+# garden: flower beds, a tree, a bush, a well
+for i in range(5): rod((-3.5 + i * 1.1, -2.5, 0), .25, .6, 5, flower, r2=.05)
+rod((6, 3, 0), .4, 2.4, 6, trunk)
+for k in range(3): rod((6, 3, 2 + k * .8), 2.2 - k * .5, 1.6, 6, tree, r2=.2)
+rod((-6.5, 4, 0), 1.2, 1.4, 6, tree, r2=.2); rod((-6.5, 4, 0), .3, 1.2, 5, trunk)
+rod((-4, -6.5, 0), .9, .8, 8, stone); rod((-4, -6.5, .8), .7, .1, 8, glass)
+lamp("SUN", (1, .6, .3), 5, (-16, -10, 7), (0, 0, 2)); lamp("SUN", (.4, .5, 1), 2.5, (14, 16, 9), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .015, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.8)); co.location = t + Vector((-8, -36, 21))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

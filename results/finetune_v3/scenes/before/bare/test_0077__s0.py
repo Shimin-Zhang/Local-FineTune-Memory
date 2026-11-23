@@ -1,0 +1,205 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Materials
+def make_mat(name, color, rough=0.8, metal=0.0):
+    mat = bpy.data.materials.get(name)
+    if not mat:
+        mat = bpy.data.materials.new(name)
+        mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (*color, 1)
+        bsdf.inputs['Roughness'].default_value = rough
+        bsdf.inputs['Metallic'].default_value = metal
+    return mat
+
+mat_mud = make_mat("RedMud", (0.55, 0.22, 0.12), 0.95)
+mat_mud_dark = make_mat("RedMudDark", (0.40, 0.15, 0.08), 0.95)
+mat_wood = make_mat("Wood", (0.30, 0.16, 0.07), 0.7)
+mat_wood_dark = make_mat("WoodDark", (0.18, 0.10, 0.04), 0.75)
+mat_leaf = make_mat("Leaf", (0.15, 0.35, 0.10), 0.85)
+mat_trunk = make_mat("Trunk", (0.25, 0.14, 0.06), 0.9)
+mat_ground = make_mat("Ground", (0.45, 0.28, 0.15), 1.0)
+mat_stone = make_mat("Stone", (0.35, 0.30, 0.25), 0.9)
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, 0))
+ground = bpy.context.object
+ground.data.materials.append(mat_ground)
+
+# Helper: wall with relief bumps
+def make_wall(x, y, w, d, h, rot=0, mat=mat_mud):
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, h/2))
+    obj = bpy.context.object
+    obj.scale = (w/2, d/2, h/2)
+    obj.rotation_euler = (0, 0, rot)
+    obj.data.materials.append(mat)
+    # Relief bumps on the outer face
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    # Add bumps on the front face (positive local Y after rotation, but we'll place them in world)
+    return obj
+
+def add_relief_bumps(obj, count=12, size=0.25, mat=mat_mud_dark):
+    # Get obj's bounding box to place bumps on the "front" face
+    # We'll place bumps along the length on one face
+    dims = obj.dimensions
+    # Place bumps on the +Y face (front)
+    for i in range(count):
+        t = (i + 0.5) / count
+        # position along X of the wall
+        px = -dims.x/2 + t * dims.x
+        # on the +Y face
+        py = dims.y/2 + size/2
+        pz = dims.z * 0.5  # middle height
+        bpy.ops.mesh.primitive_cube_add(location=(px, py, pz))
+        bump = bpy.context.object
+        bump.scale = (size, size/2, size*0.6)
+        bump.data.materials.append(mat)
+        # Parent to wall
+        bump.parent = obj
+        bump.matrix_parent_inverse = obj.matrix_world.inverted()
+
+# Courtyard walls (U-shaped, open at front)
+wall_h = 3.0
+wall_t = 0.5
+
+# Back wall
+back = make_wall(0, -10, 20, wall_t, wall_h)
+add_relief_bumps(back, count=16)
+
+# Left wall
+left = make_wall(-10, 0, wall_t, 20, wall_h)
+add_relief_bumps(left, count=16)
+
+# Right wall
+right = make_wall(10, 0, wall_t, 20, wall_h)
+add_relief_bumps(right, count=16)
+
+# Front wall segments (leaving a gap for entrance)
+front_left = make_wall(-6.5, 10, 7, wall_t, wall_h)
+add_relief_bumps(front_left, count=10)
+front_right = make_wall(6.5, 10, 7, wall_t, wall_h)
+add_relief_bumps(front_right, count=10)
+
+# Corner pillars
+for px, py in [(-10, -10), (10, -10), (-10, 10), (10, 10)]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=wall_h+0.5, location=(px, py, (wall_h+0.5)/2))
+    pil = bpy.context.object
+    pil.data.materials.append(mat_mud_dark)
+
+# Sacred tree in the middle
+def make_tree(x, y):
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=4, location=(x, y, 2))
+    trunk = bpy.context.object
+    trunk.data.materials.append(mat_trunk)
+    # Branches
+    random.seed(42)
+    for i in range(8):
+        angle = i * (2 * math.pi / 8) + random.uniform(-0.3, 0.3)
+        length = random.uniform(1.5, 2.5)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=length, location=(0, 0, 0))
+        branch = bpy.context.object
+        branch.data.materials.append(mat_trunk)
+        # Position at top of trunk
+        branch.location = (
+            x + math.cos(angle) * 0.8,
+            y + math.sin(angle) * 0.8,
+            3.5 + random.uniform(0, 0.5)
+        )
+        branch.rotation_euler = (
+            random.uniform(0.5, 1.2),
+            random.uniform(0.5, 1.2),
+            angle
+        )
+    # Canopy (several icospheres)
+    random.seed(43)
+    for i in range(12):
+        r = random.uniform(0.8, 1.5)
+        cx = x + random.uniform(-2, 2)
+        cy = y + random.uniform(-2, 2)
+        cz = 4.5 + random.uniform(0, 1.5)
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=2, location=(cx, cy, cz))
+        leaf = bpy.context.object
+        leaf.data.materials.append(mat_leaf)
+        leaf.scale = (1, 1, 0.7)
+
+make_tree(0, 0)
+
+# Carved wooden stool house (a small hut with a stool-like base)
+def make_stool_house(x, y):
+    # Stool base (legs)
+    leg_h = 1.2
+    leg_r = 0.15
+    for lx, ly in [(-1.2, -1.2), (1.2, -1.2), (-1.2, 1.2), (1.2, 1.2)]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=leg_r, depth=leg_h, location=(x+lx, y+ly, leg_h/2))
+        leg = bpy.context.object
+        leg.data.materials.append(mat_wood_dark)
+    # Seat platform
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, leg_h))
+    seat = bpy.context.object
+    seat.scale = (1.5, 1.5, 0.15)
+    seat.data.materials.append(mat_wood)
+    # Walls of the hut
+    hut_h = 2.0
+    for wx, wy, ww, wd, rot in [
+        (0, -1.5, 3, 0.2, 0),
+        (0, 1.5, 3, 0.2, 0),
+        (-1.5, 0, 0.2, 3, 0),
+        (1.5, 0, 0.2, 3, 0),
+    ]:
+        bpy.ops.mesh.primitive_cube_add(location=(x+wx, y+wy, leg_h + hut_h/2))
+        wall = bpy.context.object
+        wall.scale = (ww/2, wd/2, hut_h/2)
+        wall.data.materials.append(mat_wood)
+    # Roof (pyramid)
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=2.5, radius2=0, depth=1.5, location=(x, y, leg_h + hut_h + 0.75))
+    roof = bpy.context.object
+    roof.rotation_euler = (0, 0, math.pi/4)
+    roof.data.materials.append(mat_wood_dark)
+    # Carved details on walls (small bumps)
+    for wx, wy in [(-0.8, -1.51), (0, -1.51), (0.8, -1.51)]:
+        bpy.ops.mesh.primitive_cube_add(location=(x+wx, y+wy, leg_h + 1.0))
+        carve = bpy.context.object
+        carve.scale = (0.15, 0.05, 0.4)
+        carve.data.materials.append(mat_wood_dark)
+
+make_stool_house(-5, -5)
+
+# Add a few more decorative elements
+# Stone path
+for i in range(8):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.1, location=(0, 10 - i*1.2, 0.05))
+    stone = bpy.context.object
+    stone.data.materials.append(mat_stone)
+
+# Lighting
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.object
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(20), math.radians(30))
+
+# World background
+world = bpy.context.scene.world
+if not world:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.7, 0.6, 0.5, 1)
+    bg.inputs[1].default_value = 0.5
+
+# Camera
+bpy.ops.object.camera_add(location=(15, 15, 8))
+cam = bpy.context.object
+cam.rotation_euler = (math.radians(60), 0, math.radians(-45))
+bpy.context.scene.camera = cam

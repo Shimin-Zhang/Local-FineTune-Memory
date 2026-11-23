@@ -1,0 +1,226 @@
+```python
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Materials ---
+def create_material(name, color, roughness=0.7):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    return mat
+
+mat_red = create_material("Red", (0.6, 0.1, 0.1, 1.0))
+mat_white = create_material("White", (0.95, 0.95, 0.95, 1.0))
+mat_gray = create_material("Gray", (0.5, 0.5, 0.5, 1.0))
+mat_green = create_material("Green", (0.2, 0.5, 0.1, 1.0))
+mat_brown = create_material("Brown", (0.4, 0.25, 0.1, 1.0))
+mat_yellow = create_material("Yellow", (0.9, 0.8, 0.2, 1.0))
+mat_black = create_material("Black", (0.05, 0.05, 0.05, 1.0))
+mat_ground = create_material("Ground", (0.35, 0.6, 0.2, 1.0))
+
+# --- Ground ---
+bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(mat_ground)
+
+# --- Barn ---
+def create_barn():
+    # Main body
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -10, 3))
+    body = bpy.context.active_object
+    body.name = "Barn_Body"
+    body.scale = (8, 6, 3)
+    body.data.materials.append(mat_red)
+
+    # Roof (two angled planes)
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -10, 6.5))
+    roof1 = bpy.context.active_object
+    roof1.name = "Barn_Roof1"
+    roof1.scale = (8.5, 4.5, 1)
+    roof1.rotation_euler = (0, math.radians(30), 0)
+    roof1.location = (0, -12.5, 6.5)
+    roof1.data.materials.append(mat_white)
+
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -10, 6.5))
+    roof2 = bpy.context.active_object
+    roof2.name = "Barn_Roof2"
+    roof2.scale = (8.5, 4.5, 1)
+    roof2.rotation_euler = (0, math.radians(-30), 0)
+    roof2.location = (0, -7.5, 6.5)
+    roof2.data.materials.append(mat_white)
+
+    # Door
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -13.01, 1.5))
+    door = bpy.context.active_object
+    door.name = "Barn_Door"
+    door.scale = (2, 0.1, 1.5)
+    door.data.materials.append(mat_brown)
+
+    # Windows
+    for x in [-3, 3]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, -13.01, 3.5))
+        win = bpy.context.active_object
+        win.name = f"Barn_Window_{x}"
+        win.scale = (1, 0.1, 0.8)
+        win.data.materials.append(mat_white)
+
+create_barn()
+
+# --- Silo ---
+def create_silo():
+    # Cylinder body
+    bpy.ops.mesh.primitive_cylinder_add(radius=2, depth=8, location=(12, -10, 4))
+    silo_body = bpy.context.active_object
+    silo_body.name = "Silo_Body"
+    silo_body.data.materials.append(mat_gray)
+
+    # Cone top
+    bpy.ops.mesh.primitive_cone_add(radius1=2, radius2=0, depth=2, location=(12, -10, 9))
+    silo_top = bpy.context.active_object
+    silo_top.name = "Silo_Top"
+    silo_top.data.materials.append(mat_gray)
+
+create_silo()
+
+# --- Fence ---
+def create_fence():
+    # Fence posts along the front and sides
+    post_height = 1.5
+    post_scale = (0.15, 0.15, post_height / 2)
+
+    # Front fence (along x-axis at y=5)
+    for x in range(-15, 16, 2):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 5, post_height / 2))
+        post = bpy.context.active_object
+        post.name = f"Fence_Post_F_{x}"
+        post.scale = post_scale
+        post.data.materials.append(mat_brown)
+
+    # Left side fence (along y-axis at x=-15)
+    for y in range(-15, 6, 2):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(-15, y, post_height / 2))
+        post = bpy.context.active_object
+        post.name = f"Fence_Post_L_{y}"
+        post.scale = post_scale
+        post.data.materials.append(mat_brown)
+
+    # Right side fence (along y-axis at x=15)
+    for y in range(-15, 6, 2):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(15, y, post_height / 2))
+        post = bpy.context.active_object
+        post.name = f"Fence_Post_R_{y}"
+        post.scale = post_scale
+        post.data.materials.append(mat_brown)
+
+    # Horizontal rails
+    rail_height = 0.1
+    rail_thickness = 0.05
+
+    # Front rails
+    for h in [0.5, 1.0]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 5, h))
+        rail = bpy.context.active_object
+        rail.name = f"Fence_Rail_F_{h}"
+        rail.scale = (15, rail_thickness, rail_height)
+        rail.data.materials.append(mat_brown)
+
+    # Left side rails
+    for h in [0.5, 1.0]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(-15, -5, h))
+        rail = bpy.context.active_object
+        rail.name = f"Fence_Rail_L_{h}"
+        rail.scale = (rail_thickness, 10, rail_height)
+        rail.data.materials.append(mat_brown)
+
+    # Right side rails
+    for h in [0.5, 1.0]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(15, -5, h))
+        rail = bpy.context.active_object
+        rail.name = f"Fence_Rail_R_{h}"
+        rail.scale = (rail_thickness, 10, rail_height)
+        rail.data.materials.append(mat_brown)
+
+create_fence()
+
+# --- Tractor ---
+def create_tractor():
+    # Body
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-5, 0, 1))
+    body = bpy.context.active_object
+    body.name = "Tractor_Body"
+    body.scale = (2, 3, 1)
+    body.data.materials.append(mat_yellow)
+
+    # Cabin
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-5, 0.5, 2.2))
+    cabin = bpy.context.active_object
+    cabin.name = "Tractor_Cabin"
+    cabin.scale = (1.5, 1.5, 0.8)
+    cabin.data.materials.append(mat_yellow)
+
+    # Cabin window
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-5, 1.26, 2.2))
+    window = bpy.context.active_object
+    window.name = "Tractor_Window"
+    window.scale = (1.2, 0.05, 0.6)
+    window.data.materials.append(mat_white)
+
+    # Wheels (4 cylinders)
+    wheel_positions = [
+        (-6.5, -1.5, 0.8),  # Front left
+        (-6.5, 1.5, 0.8),   # Front right
+        (-3.5, -1.5, 0.8),  # Rear left
+        (-3.5, 1.5, 0.8),   # Rear right
+    ]
+    for i, pos in enumerate(wheel_positions):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=0.4, location=pos)
+        wheel = bpy.context.active_object
+        wheel.name = f"Tractor_Wheel_{i}"
+        wheel.rotation_euler = (0, math.radians(90), 0)
+        wheel.data.materials.append(mat_black)
+
+create_tractor()
+
+# --- Hay Bales (3) ---
+def create_hay_bales():
+    bale_positions = [
+        (5, -5, 1),
+        (7, -3, 1),
+        (6, -7, 1),
+    ]
+    for i, pos in enumerate(bale_positions):
+        bpy.ops.mesh.primitive_cylinder_add(radius=1, depth=1.5, location=pos)
+        bale = bpy.context.active_object
+        bale.name = f"Hay_Bale_{i+1}"
+        bale.rotation_euler = (0, math.radians(90), 0)
+        bale.data.materials.append(mat_yellow)
+
+create_hay_bales()
+
+# --- Lighting ---
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(20, 20, 30))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# World background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.5, 0.7, 1.0, 1.0)
+bg.inputs["Strength"].default_value = 0.5
+
+print("Farm scene created successfully!")
+```

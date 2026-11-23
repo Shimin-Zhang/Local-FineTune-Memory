@@ -1,0 +1,91 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1263)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, em=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (r, g, b, 1); n.inputs["Roughness"].default_value = .9
+    if em: n.inputs["Emission Color"].default_value = (r, g, b, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+grass, dirt, red, trim, tin, wood, hay, tyre, steel, grain = (paint(*c) for c in (
+    (.12, .22, .08), (.22, .15, .09), (.45, .08, .06), (.7, .68, .6), (.4, .42, .45), (.3, .2, .12), (.6, .45, .15), (.03, .03, .03), (.5, .5, .55), (.5, .3, .1)))
+window, lamp = paint(1, .65, .25, 9), paint(1, .7, .3, 14)
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0), peak=False):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        if peak and v.co.z > 0: v.co.x = 0
+        v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, rot)
+def drum(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at, rot)
+def ball(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return mk(bm, m, at)
+def shine(at, c, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+# farm field base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=15, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.8, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 2
+mk(bm, grass)
+blk((0, -2, 0), (17, 5, .06), dirt)
+# barn: red board walls, white trim, gambrel roof with a loft window
+blk((-3, 5, 0), (9, 6, 4.2), red)
+blk((-3, 5, 4.2), (9.6, 6.6, 2.6), tin, peak=True)
+blk((-3, 1.98, 0), (3.4, .15, 3.2), trim); blk((-3, 1.95, 0), (2.8, .1, 2.8), wood)
+blk((-3, 1.95, 3.2), (3.4, .1, .3), trim)
+blk((-3, 1.9, 3.5), (1.2, .1, 1.2), window)
+for sx in (-6.6, .6): blk((sx, 1.95, 1.2), (1.1, .1, 1.3), window)
+blk((-3, 5, 6.8), (.4, .4, 1.6), tin)
+shine((-3, 1.2, 4), (1, .65, .25), 700); shine((-3, .6, 1.4), (1, .65, .25), 400)
+# silo: steel drum, banded, domed cap, with a ladder
+drum((6, 6, 0), 2, 9, 10, steel); drum((6, 6, 9), 2.2, 1.6, 10, tin, .3)
+for z in (2, 4, 6, 8): drum((6, 6, z), 2.08, .2, 10, wood)
+blk((6, 3.9, 0), (.12, .12, 5), wood); blk((6.4, 3.9, 0), (.12, .12, 5), wood)
+for i in range(10): blk((6.2, 3.9, .5 + i * .45), (.5, .1, .08), wood)
+# tractor: green body, big rear wheels, cab, exhaust pipe, headlamp
+blk((4, -3, 1.3), (4.2, 2.0, 1.4), paint(.1, .35, .1))
+blk((5.4, -3, 1.3), (1.4, 1.8, 2.6), paint(.1, .35, .1)); blk((5.4, -3, 3.9), (1.8, 2.2, .2), trim)
+blk((5.4, -3, 2.2), (1.5, 1.6, .1), window)
+drum((3, -4.2, 1.4), 1.5, .8, 10, tyre, rot=(math.pi / 2, 0, 0)); drum((3, -1.8, 1.4), 1.5, .8, 10, tyre, rot=(math.pi / 2, 0, 0))
+drum((6.2, -4.2, .8), .8, .6, 8, tyre, rot=(math.pi / 2, 0, 0)); drum((6.2, -1.8, .8), .8, .6, 8, tyre, rot=(math.pi / 2, 0, 0))
+drum((2.6, -3, 2.7), .18, 2.2, 6, steel); blk((2.2, -3, 2.4), (.5, .5, .4), lamp)
+shine((1.4, -3, 2.4), (1, .85, .5), 400)
+# three round hay bales in a row, with a forked cart
+for i in range(3): drum((-8 + i * 2.4, -4 + (i % 2) * .3, 1.1), 1.1, 1.8, 9, hay, rot=(0, math.pi / 2, 0))
+blk((-1.5, 1, .5), (2.4, 1.4, .15), wood)
+for s in (-1, 1): drum((-1.5, 1 + s * .8, .5), .55, .2, 8, tyre, rot=(math.pi / 2, 0, 0))
+# fence round the front yard: posts and rails
+for i in range(11):
+    x = -11 + i * 2.2
+    blk((x, -8.5, 0), (.25, .25, 1.2), wood)
+    if i: blk((x - 1.1, -8.5, .5), (2.2, .1, .12), wood); blk((x - 1.1, -8.5, .95), (2.2, .1, .12), wood)
+for s in (-1, 1):
+    blk((s * 11, -5, 0), (.25, .25, 1.2), wood); blk((s * 11, -5, .5), (.1, 7, .12), wood)
+# windmill on a pole and a stack of logs
+blk((10, -2, 0), (.3, .3, 8), steel)
+for i in range(4): blk((10, -2.2, 8), (.5, .1, 3.2), trim, rot=(0, 0, i * math.pi / 2 + .4)).location.z = 8.2
+drum((10, -2.2, 8), .5, .5, 6, red, rot=(math.pi / 2, 0, 0))
+for i in range(5): drum((-10 + (i % 3) * .6, 1, .3 + (i // 3) * .55), .3, 2.4, 6, wood, rot=(math.pi / 2, 0, 0))
+for col, w, p in (((1, .62, .3), 5, (-26, -14, 10)), ((.4, .55, 1), 2.2, (24, 20, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .02, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3)); co.location = t + Vector((14, -66, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

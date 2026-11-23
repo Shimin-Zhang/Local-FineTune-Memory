@@ -1,0 +1,27 @@
+matrix pilot: 26 probes, 0 already done
+[1/26] Qwen3.5-0.8B-Base full_fp32 ckpt=0 1x512  -> ok  peak 15.07 GB 5.6s
+[2/26] Qwen3.5-0.8B-Base full_fp32 ckpt=1 1x512  -> ok  peak 15.07 GB 5.4s
+[3/26] Qwen3.5-0.8B-Base full_fp32_amp ckpt=0 1x512  -> ok  peak 15.22 GB 5.6s
+[4/26] Qwen3.5-0.8B-Base full_fp32_amp ckpt=1 1x512  -> ok  peak 15.07 GB 5.9s
+[5/26] Qwen3.5-0.8B-Base full_bf16 ckpt=0 1x512  -> ok  peak 9.09 GB 5.5s
+[6/26] Qwen3.5-0.8B-Base full_bf16 ckpt=1 1x512  -> ok  peak 7.61 GB 5.7s
+[7/26] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 1x512  -> ok  peak 6.14 GB 5.6s
+[8/26] Qwen3.5-0.8B-Base lora_bf16 ckpt=1 1x512  -> ok  peak 3.49 GB 5.9s
+[9/26] Qwen3.5-0.8B-Base qlora ckpt=0 1x512  -> ok  peak 5.28 GB 6.8s
+[10/26] Qwen3.5-0.8B-Base qlora ckpt=1 1x512  -> ok  peak 2.73 GB 6.4s
+[11/26] Qwen3.5-0.8B-Base qlora_kbitprep ckpt=0 1x512  -> ok  peak 6.83 GB 6.3s
+[12/26] Qwen3.5-0.8B-Base qlora_kbitprep ckpt=1 1x512  -> ok  peak 3.78 GB 11.5s
+[13/26] Qwen3.5-0.8B-Base full_fp32 ckpt=0 2x2048  -> oom (phase step0_forward) peak 22.66 GB 6.9s
+[14/26] Qwen3.5-0.8B-Base full_fp32 ckpt=1 2x2048  -> oom (phase step1_backward) peak 19.75 GB 6.1s
+[15/26] Qwen3.5-0.8B-Base full_fp32_amp ckpt=0 2x2048  -> oom (phase step0_forward) peak 22.73 GB 4.2s
+[16/26] Qwen3.5-0.8B-Base full_fp32_amp ckpt=1 2x2048  -> oom (phase step1_forward) peak 18.21 GB 5.6s
+[17/26] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x2048  -> oom (phase step0_forward) peak 22.72 GB 4.2s
+[18/26] Qwen3.5-0.8B-Base full_bf16 ckpt=1 2x2048  -> ok  peak 19.05 GB 7.7s
+[19/26] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x2048  -> oom (phase step0_forward) peak 22.66 GB 4.4s
+[20/26] Qwen3.5-0.8B-Base lora_bf16 ckpt=1 2x2048  -> ok  peak 16.14 GB 8.1s
+[21/26] Qwen3.5-0.8B-Base qlora ckpt=0 2x2048  -> oom (phase step0_forward) peak 21.07 GB 4.9s
+[22/26] Qwen3.5-0.8B-Base qlora ckpt=1 2x2048  -> ok  peak 15.38 GB 8.2s
+[23/26] Qwen3.5-0.8B-Base qlora_kbitprep ckpt=0 2x2048  -> oom (phase step0_forward) peak 22.74 GB 4.7s
+[24/26] Qwen3.5-0.8B-Base qlora_kbitprep ckpt=1 2x2048  -> ok  peak 16.60 GB 8.6s
+[25/26] Qwen3.5-0.8B-Base inference ckpt=0 1x2048  -> ok  peak 2.04 GB 4.0s
+[26/26] Qwen3.5-0.8B-Base inference+nf4 ckpt=0 1x2048  -> ok  peak 1.07 GB 4.3s

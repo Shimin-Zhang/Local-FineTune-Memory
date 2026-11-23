@@ -1,0 +1,98 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1956)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+T = {}
+def bog(k, rgb, glow=0):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    T[k] = m
+for k, c, g in [("mud", (.12, .08, .06), 0), ("peat", (.2, .1, .05), 0), ("peat2", (.13, .07, .04), 0), ("river", (.1, .16, .13), 0),
+        ("sedge", (.16, .2, .08), 0), ("heath", (.22, .12, .1), 0), ("plank", (.3, .2, .12), 0), ("stone", (.25, .25, .26), 0),
+        ("thatch", (.35, .26, .12), 0), ("wall", (.4, .36, .3), 0), ("smoke", (.5, .5, .52), 0), ("sail", (.6, .55, .45), 0),
+        ("window", (1, .6, .2), 10), ("lamp", (1, .7, .3), 12)]: bog(k, c, g)
+def lay(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("t"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("t", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(T[k]); return o
+def blk(at, s, k, rot=(0, 0, 0), top=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return lay(bm, k, at, rot)
+def rod(at, r, h, n, k, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return lay(bm, k, at)
+def puff(at, r, k, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return lay(bm, k, at)
+def beam(kind, c, w, at, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=12, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.5
+lay(bm, "mud")
+# the bog river: a winding strip of dark water across the base, with a peat quay along its near bank
+bm = bmesh.new()
+pts = [(-11, -4.5), (-6, -4.0), (-1, -5.2), (4, -4.2), (9, -5.0), (11, -4.4), (11, -1.2), (9, -.6), (4, -1.6), (-1, -.4), (-6, -1.4), (-11, -.8)]
+for p in pts: bm.verts.new((p[0], p[1], .05))
+bm.faces.new(bm.verts)
+lay(bm, "river")
+for i in range(12):
+    x = -10 + i * 1.8; y = -1.0 + math.sin(i * .8) * .25
+    blk((x, y + .2, 0), (1.9, 1.0, .35), "plank", rot=(0, 0, .1 * math.sin(i)))
+# flat boat loaded with turf blocks, moored at the quay
+blk((-2.5, -2.6, .05), (5.0, 1.7, .5), "peat2", top=1.15)
+blk((-2.5, -2.6, .55), (4.2, 1.2, .1), "plank")
+for i in range(6):
+    blk((-4.3 + i * .75, -2.6 + (i % 2 - .5) * .2, .6), (.7, 1.1, .6), "peat" if i % 2 else "peat2", rot=(0, 0, .1 * i))
+blk((-4.3, -2.6, 1.2), (.7, 1.1, .5), "peat2", rot=(0, 0, .2)); blk((.6, -2.6, 1.2), (.7, 1.1, .5), "peat", rot=(0, 0, -.2))
+blk((-5.6, -2.6, .3), (.3, .3, .1), "lamp"); beam("POINT", (1, .7, .3), 120, (-5.6, -2.6, .8))
+rod((-1.5, -2.6, .6), .06, 3.0, 5, "plank"); blk((-1.0, -2.6, 2.5), (1.1, .06, 1.4), "sail", top=.7)
+# the tall stack of peat: courses of blocks stepping inward, with a few loose blocks and a spade
+for c in range(9):
+    n = 6 - c // 2
+    for i in range(n):
+        blk((-8.5 + i * 1.05 + (c % 2) * .5, 3.5, c * .55), (1.0, 1.2, .55), "peat" if (i + c) % 2 else "peat2", rot=(0, 0, .05 * (i - c)))
+blk((-6.2, 2.2, 0), (.9, 1.0, .5), "peat", rot=(0, 0, .5)); blk((-5.5, 1.8, 0), (.9, 1.0, .5), "peat2", rot=(0, 0, .2))
+rod((-6.2, 1.2, 0), .04, 1.4, 4, "plank"); blk((-6.2, 1.2, 1.3), (.3, .05, .3), "stone")
+# the plank bridge over the river: deck, rails, posts
+for i in range(8): blk((5.5 + i * .45, -2.5 + i * .0, .45), (.45, 1.6, .12), "plank", rot=(0, 0, .0))
+for i in range(5):
+    for s in (-.8, .8): blk((5.5 + i * .9, -2.5 + s, .55), (.1, .1, .6), "plank")
+blk((5.5, -1.7, 1.0), (4.2, .06, .06), "plank"); blk((5.5, -3.3, 1.0), (4.2, .06, .06), "plank")
+# the cottage: stone walls, turf-and-thatch roof, chimney with smoke, glowing window and door
+blk((7.5, 4.5, 0), (4.2, 3.4, 2.0), "wall", top=.97)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z > 0: v.co.x = 0
+    v.co = Vector((v.co.x * 5.0, v.co.y * 4.0, (v.co.z + .5) * 1.6))
+lay(bm, "thatch", (7.5, 4.5, 2.0))
+blk((9.0, 5.2, 2.4), (.7, .7, 2.0), "stone", top=.9)
+for i in range(4): puff((9.0 + i * .5, 5.2 + i * .3, 4.8 + i * 1.0), .5 + i * .22, "smoke", 1.0)
+blk((6.2, 2.75, .8), (.9, .1, .9), "window"); blk((8.9, 2.75, 0), (.8, .1, 1.4), "peat2")
+beam("POINT", (1, .6, .2), 450, (6.2, 2.0, 1.0))
+# bog plants: sedges, heath mounds, a few standing stones
+for i in range(26):
+    x, y = random.uniform(-10, 10), random.uniform(1.5, 9) if i % 2 else random.uniform(-9, -7.5)
+    if abs(x - 7.5) < 3.5 and y > 2.5 or abs(x + 8.5) < 4 and y > 1: continue
+    rod((x, y, 0), random.uniform(.15, .3), random.uniform(.5, 1.0), 4, "sedge" if i % 3 else "heath", r2=.02)
+for i in range(5): puff((random.uniform(-10, 10), random.uniform(6, 9), 0), random.uniform(.6, 1.0), "heath", .5)
+# overcast bog evening: pale green-gold key low from the left, cool slate rim from behind
+beam("SUN", (1, .8, .5), 4.5, (-24, -14, 9), (0, 0, 1)); beam("SUN", (.4, .55, .7), 2, (20, 22, 10), (0, 0, 1))
+w = bpy.data.worlds.new("bog"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .03, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((8, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,86 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1602)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+C = {}
+def dye(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .9
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    C[name] = m
+for k, v in dict(sand=(.3, .2, .1), khaki=(.5, .4, .25), khaki2=(.4, .3, .18), canvas=(.6, .55, .4), canvas2=(.45, .4, .3), wood=(.25, .14, .08),
+                 white=(.7, .68, .6), brass=(.7, .5, .15), cloth=(.55, .12, .1), cloth2=(.1, .25, .35), dark=(.04, .03, .03), acacia=(.35, .3, .1), bark=(.2, .12, .08)).items(): dye(k, v)
+dye("lantern", (1, .6, .2), 14); dye("tub", (.9, .9, .85), .4)
+def mk(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(C[k]); return o
+def box(x, y, z, w, d, h, k, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return mk(bm, k, (x, y, z), (rx, 0, rz))
+def drum(x, y, z, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, k, (x, y, z), rot)
+def lamp(x, y, z, c, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# sand base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=15, depth=3.2)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.4, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.6
+mk(bm, "sand")
+# long dining tent: canvas walls, open front, striped awning over the porch
+tx, ty = -2.0, 3.0
+box(tx, ty + 3.2, 0, 11.0, .3, 3.4, "canvas"); box(tx - 5.3, ty, 0, .3, 6.6, 3.4, "canvas2"); box(tx + 5.3, ty, 0, .3, 6.6, 3.4, "canvas2")
+box(tx, ty + 3.2, 3.4, 11.0, 6.8, .25, "canvas2")
+for sx in (-1, 1): box(tx + sx * 5.5, ty - 3.3, 0, .3, .3, 3.4, "wood"); box(tx + sx * 5.5, ty + 3.2, 3.4, .3, .3, .5, "wood")
+for i in range(8): box(tx - 4.2 + i * 1.2, ty - 3.5, 3.0, .6, 1.0, .06, "cloth" if i % 2 else "white", 0, -.3)
+box(tx, ty - 3.5, 3.1, 10.0, .1, .1, "wood", 0, -.3)
+box(tx, ty + 1.0, 0, 7.0, 1.6, 1.0, "white"); box(tx, ty + 1.0, 1.0, 7.4, 1.9, .12, "cloth2")
+for i in range(4):
+    for sy in (-1, 1): box(tx - 2.4 + i * 1.6, ty + 1.0 + sy * 1.0, 0, .12, .12, 1.0, "wood")
+    box(tx - 2.4 + i * 1.6, ty + 1.0, 1.12, .15, .15, .15, "white"); drum(tx - 2.4 + i * 1.6, ty + 1.0, 1.27, .1, .25, 6, "tub")
+for sx in (-1, 1): box(tx + sx * 3.2, ty - 3.0, 3.4, .12, .12, 1.0, "wood"); drum(tx + sx * 3.2, ty - 3.0, 2.3, .3, .6, 6, "lantern", .22); lamp(tx + sx * 3.2, ty - 3.0, 2.6, (1, .6, .2), 500)
+# folding chairs around the table
+for i in range(5):
+    for sy in (-1, 1):
+        x = tx - 2.4 + i * 1.6; y = ty + 1.0 + sy * 1.5
+        box(x, y, .55, .7, .6, .1, "wood"); box(x, y + sy * .28, .65, .7, .08, .8, "wood", 0, -.15 * sy)
+        for sx in (-1, 1): box(x + sx * .3, y, 0, .08, .5, .55, "wood")
+# bath tub on a wooden deck with a towel and a brass tap
+bx, by = 8.0, -1.5
+box(bx, by, 0, 3.2, 2.6, .4, "wood")
+box(bx, by, .4, 2.6, 1.8, 1.0, "tub"); box(bx, by, .4, 2.2, 1.4, .1, "dark")
+drum(bx + 1.5, by, .4, .08, .9, 5, "brass"); box(bx - 1.5, by - 1.3, .4, .9, .5, .1, "cloth2")
+drum(bx - 1.5, by + 1.3, .4, .3, .5, 6, "cloth"); lamp(bx, by, 2.0, (1, .6, .2), 200)
+# gramophone on a trunk with the horn and a crank
+gx, gy = 5.0, 6.5
+box(gx, gy, 0, 2.0, 1.2, .9, "wood"); box(gx, gy, .9, 2.2, 1.4, .1, "cloth2")
+drum(gx - .5, gy, 1.0, .45, .6, 8, "brass", .35); drum(gx - .5, gy, 1.6, .3, .8, 8, "brass", 1.2)
+drum(gx + .5, gy, 1.0, .3, .2, 8, "brass"); box(gx + .9, gy, 1.0, .5, .08, .08, "dark")
+# lantern posts, a cart, crates, and acacia trees
+for x, y in ((-8.0, -2.0), (1.0, -5.0), (9.5, 4.0)):
+    drum(x, y, 0, .12, 2.6, 5, "wood"); drum(x, y, 2.6, .3, .6, 6, "lantern", .22); lamp(x, y, 2.9, (1, .6, .2), 350)
+box(-9.0, 6.0, .7, 2.4, 1.2, .5, "wood"); drum(-9.0, 5.2, .5, .6, .2, 8, "dark", rot=(math.pi / 2, 0, 0)); drum(-9.0, 6.8, .5, .6, .2, 8, "dark", rot=(math.pi / 2, 0, 0))
+for i in range(3): box(-7.0 + i * 1.1, 7.5, 0, 1.0, .9, .8 + .2 * i, "wood")
+for x, y, s in ((-10, -4, 1.2), (10, 9, 1.0), (0, 11, 1.1)):
+    drum(x, y, 0, .3 * s, 2.2 * s, 5, "bark", .2 * s)
+    for k in range(3):
+        a = k * 2.1; box(x + math.cos(a) * 1.2 * s, y + math.sin(a) * 1.2 * s, 2.2 * s, 2.6 * s, .5, .25, "acacia", a)
+    box(x, y, 2.5 * s, 2.4 * s, 2.4 * s, .2, "acacia")
+for col, w, p in (((.9, .5, .25), 5, (-26, -16, 8)), ((.3, .4, .8), 2, (24, 22, 14))):
+    s = bpy.data.lights.new("sun", "SUN"); s.color, s.energy = col, w
+    o = bpy.data.objects.new("sun", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("dusk"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .015, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 2, 1.5)); co.location = t + Vector((6, -58, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

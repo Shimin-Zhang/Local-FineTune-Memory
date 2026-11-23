@@ -1,0 +1,34 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: Converting py args to operator properties:: keyword \"rings\" unrecognized",
+ "error_line": "bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=segments, rings=rings)",
+ "n_renderable_objects": 5,
+ "object_types": {
+  "MESH": 5
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 5,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  6.866,
+  7.782,
+  31.372
+ ],
+ "scene_center": [
+  0.5895,
+  0.3639,
+  15.6862
+ ],
+ "scene_radius": 16.5222,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.0,
+ "image": true
+}

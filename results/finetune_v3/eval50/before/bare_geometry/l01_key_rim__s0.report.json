@@ -1,0 +1,74 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "KeyError: 'bpy_prop_collection[key]: key \"Principled Bsdf\" not found'",
+ "error_line": "bsdf = cube_mat.node_tree.nodes[\"Principled Bsdf\"]",
+ "n_renderable_objects": 3,
+ "object_types": {
+  "MESH": 3
+ },
+ "default_cube_still_there": true,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "FloorMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "SphereMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.2,
+    0.2
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "left_out_of_framing": "Floor",
+ "bbox_size": [
+  3.75,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  -1.125,
+  0.0,
+  1.0
+ ],
+ "scene_radius": 2.3485,
+ "process": "exit 0",
+ "seconds": 0.6,
+ "image": false
+}

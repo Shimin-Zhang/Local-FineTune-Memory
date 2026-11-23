@@ -1,0 +1,90 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1813)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def neon(rgb, em=0, rough=.8, metal=0):
+    m = bpy.data.materials.new("n"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough; p.inputs["Metallic"].default_value = metal
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+paving, kerb, brick, trim, glass = neon((.1, .1, .13), rough=.4), neon((.2, .2, .22)), neon((.2, .12, .16)), neon((.08, .08, .1)), neon((.03, .05, .1))
+holo, holo2, screen, bulb, steel = neon((.2, .9, 1), 12), neon((1, .2, .8), 12), neon((.7, .85, 1), 6), neon((1, .85, .5), 14), neon((.25, .27, .3), rough=.4, metal=.6)
+posters = [neon((.9, .2, .3)), neon((.2, .5, .9)), neon((.9, .7, .1)), neon((.3, .8, .5)), neon((.8, .3, .8))]
+skin, coat1, coat2, coat3, drone = neon((.6, .4, .3)), neon((.5, .1, .15)), neon((.1, .3, .5)), neon((.5, .4, .1)), neon((.1, .12, .15))
+pop = neon((1, .85, .3), 4)
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("o", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(at, s, m, rot=(0, 0, 0), top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return add(bm, m, at, rot)
+def tube(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def ball(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return add(bm, m, at)
+def lite(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=14, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.2, .3)))
+    v.co.z -= 1.5
+add(bm, paving)
+cube((0, -9.5, 0), (22, 2.4, .25), kerb)
+# the cinema: brick block, parapet, roof sign, glowing screen wall, marquee
+cube((0, 5, 0), (16, 8, 6.5), brick, top=.98)
+cube((0, 5, 6.5), (16.6, 8.6, .5), trim)
+cube((0, 5, 7), (10, 1.2, 2.2), trim, top=.9)
+for i in range(7): cube((-4.2 + i * 1.4, 4.35, 7.2), (1.0, .15, 1.6), holo if i % 2 else holo2)
+cube((0, .95, 2.0), (13, .15, 3.4), screen)
+for x in (-6.5, 6.5): cube((x, 1, 0), (1.4, 1.4, 6.5), trim)
+cube((0, -1.6, 0), (14, 3.2, .5), trim)
+cube((0, -1.6, 4.4), (14, 3.4, .6), trim)
+for i in range(16):
+    for y in (-3.2, -.1): ball((0, 0, 0), .22, bulb).location = (-6.6 + i * .9, -1.6 + y, 4.1)
+for x in (-6.8, 6.8): cube((x, -1.6, 4.1), (.4, 3.4, .4), trim)
+cube((0, -.3, 0), (4, .3, 3.6), glass)
+lite("POINT", (.7, .85, 1), 700, (0, 1, 3.5)); lite("POINT", (.2, .9, 1), 500, (0, 3.5, 7.5))
+# ticket booth with a glowing window and a striped awning
+cube((10.2, -2.5, 0), (3, 2.6, 2.6), trim)
+cube((10.2, -2.5, 2.6), (3.6, 3.2, .3), holo2, top=.7)
+cube((10.2, -3.85, 1.0), (2.0, .1, 1.0), bulb)
+for i in range(6): cube((9.0 + i * .5, -4.4, 2.2), (.5, 1.4, .1), holo if i % 2 else trim, rot=(.3, 0, 0))
+lite("POINT", (1, .85, .5), 300, (10.2, -4.6, 1.6))
+# posters on the wall and a lamp-lit queue line on the pavement
+for i in range(5):
+    cube((-6.5 + i * 1.5, .9, 1.0), (1.2, .1, 1.7), posters[i])
+    cube((-6.5 + i * 1.5, .85, 1.2), (.8, .05, .8), trim)
+for i in range(9):
+    x, y = -9 + i * 2.1, -6.5 + math.sin(i * .9) * 1.2
+    tube((x, y, 0), .5, 1.5, 6, (coat1, coat2, coat3)[i % 3], r2=.32); ball((x, y, 1.85), .38, skin)
+    if i % 3 == 0: cube((x + .3, y, 1.2), (.3, .3, .6), posters[i % 5])
+for i in range(4):
+    cube((-8 + i * 5.5, -4.4, 0), (.15, .15, 3.2), steel); cube((-8 + i * 5.5, -4.4, 3.2), (.5, .5, .4), bulb)
+# popcorn vending drones: hovering discs with a glowing basket and a little popcorn mound
+for i, (x, y, z) in enumerate(((-4, -9.5, 3.2), (3, -8.5, 4.0), (9, -9.5, 3.6))):
+    tube((x, y, z), 1.0, .5, 8, drone, r2=.7)
+    for k in range(4):
+        a = k * 1.57; tube((x + math.cos(a) * 1.0, y + math.sin(a) * 1.0, z + .25), .22, .3, 5, steel, rot=(0, math.pi / 2, a))
+    tube((x, y, z - .9), .55, .5, 6, steel, r2=.8); ball((x, y, z - .5), .55, pop)
+    cube((x, y, z - 1.5), (.1, .1, .6), steel)
+    lite("POINT", (1, .8, .3), 220, (x, y, z - 1.8))
+lite("SUN", (.8, .3, 1), 3.2, (-22, -14, 8), (0, 0, 2))
+lite("SUN", (.2, .7, 1), 2.2, (22, 14, 10), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .01, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.5)); co.location = t + Vector((12, -54, 32))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

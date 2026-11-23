@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 36.9,
+ "error": "AttributeError: 'PointLight' object has no attribute 'distance'",
+ "error_line": "tl.data.distance = 12",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1491,
+ "n_lights": 1,
+ "n_materials": 14,
+ "own_camera": true,
+ "render_error": null
+}

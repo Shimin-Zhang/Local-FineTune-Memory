@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.5,
+ "error": null,
+ "error_line": null,
+ "printed": "Fixed: camera in street looking at character, lighting balanced, top fill added, materials tuned, fire escapes and neon signs added, exposure improved\n",
+ "state_saved": true,
+ "n_objects": 403,
+ "n_lights": 31,
+ "n_materials": 41,
+ "own_camera": true,
+ "render_error": null
+}

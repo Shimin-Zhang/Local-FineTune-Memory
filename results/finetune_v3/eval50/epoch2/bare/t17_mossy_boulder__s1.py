@@ -1,0 +1,73 @@
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(427)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def rock(r, g, b, e=0, rough=.9):
+    m = bpy.data.materials.new("r"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (r, g, b, 1); n.inputs["Roughness"].default_value = rough
+    if e: n.inputs["Emission Color"].default_value = (r, g, b, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+def make(bm, m, p=(0, 0, 0), rz=0):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("o", me); o.location = p; o.rotation_euler.z = rz
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def lump(p, s, m, sq=1, sub=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=1)
+    for v in bm.verts: v.co = V((v.co.x * s[0] + random.uniform(-.2, .2) * s[0], v.co.y * s[1] + random.uniform(-.2, .2) * s[1], v.co.z * s[2] * sq))
+    return make(bm, m, p)
+def spike(p, r, h, n, m, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, p)
+def glim(p, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = p; sc.collection.objects.link(o)
+def sunl(p, c, w):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (V((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+mud, stone, stone2 = rock(.12, .1, .07), rock(.22, .24, .24), rock(.14, .16, .17)
+moss, moss2, moss3 = rock(.1, .3, .08), rock(.18, .38, .1), rock(.06, .2, .08)
+bark, cap, cap2, fern = rock(.16, .1, .07), rock(.9, .2, .1), rock(.9, .7, .15), rock(.1, .3, .12)
+mush = rock(.3, 1, .9, 14); spore = rock(.5, 1, .8, 6)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=10.5, depth=3.4)
+for v in bm.verts:
+    v.co.z -= 1.7
+    if v.co.z < -1: v.co += V((random.uniform(-1.3, 1.3), random.uniform(-1.3, 1.3), random.uniform(-1.6, .2)))
+    else: v.co.z += random.uniform(-.1, .1)
+make(bm, mud)
+# the boulder: stacked, overlapping lumps, each a different grey, tilted against each other
+lump((0, 0, 1.6), (6.2, 5.4, 3.4), stone, .95, 2); lump((-2.5, -.5, 3.6), (3.6, 3.2, 2.4), stone2, .9, 2)
+lump((3.0, .8, 3.0), (3.4, 3.0, 2.2), stone, .9, 2); lump((.5, -3.0, 2.2), (3.0, 2.4, 2.0), stone2, .8, 2)
+lump((-4.5, 1.8, 1.4), (2.4, 2.2, 1.6), stone2, .8, 1); lump((5.0, -1.5, 1.3), (2.2, 2.0, 1.5), stone, .8, 1)
+# moss: a green cap over the crown and patches on every shoulder, rough and ragged
+lump((-.5, 0, 5.0), (4.6, 4.0, 1.6), moss, .6, 2); lump((-2.6, -.8, 5.2), (2.6, 2.2, 1.0), moss2, .6, 1)
+lump((3.0, .6, 4.4), (2.4, 2.0, 1.0), moss3, .6, 1); lump((.4, -3.2, 3.4), (2.0, 1.6, .8), moss, .5, 1)
+lump((-4.4, 1.6, 2.5), (1.6, 1.5, .7), moss2, .5, 1); lump((5.0, -1.4, 2.2), (1.4, 1.3, .6), moss, .5, 1)
+for k in range(16):
+    a = random.uniform(0, 6.28); r = random.uniform(3.5, 6.2)
+    lump((r * math.cos(a), r * math.sin(a) * .85, 2.0 + random.uniform(0, 1.5)), (.9, .8, .5), random.choice((moss, moss2, moss3)), .6, 1)
+# glowing mushrooms in a ring at the foot, each with a stem, a cap and a halo of spores
+for k in range(9):
+    a = k * 6.28 / 9 + random.uniform(-.2, .2); r = 7.2 + random.uniform(-.5, .5)
+    x, y = r * math.cos(a), r * math.sin(a) * .85
+    spike((x, y, 0), .12, .9 + random.uniform(0, .4), 5, spore, .08); spike((x, y, .8), .5, .35, 6, mush, .05)
+    glim((x, y, 1.1), (.3, 1, .9), 120)
+# ferns and a few fallen logs at the edge
+for k in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(8.2, 9.4)
+    for j in range(5):
+        b = a + (j - 2) * .35; spike((r * math.cos(a), r * math.sin(a), 0), .12, 1.2, 4, fern, .02).rotation_euler = (math.sin(b) * .9, -math.cos(b) * .9, 0)
+for x, y, rz in ((-7.0, -5.0, .5), (6.5, 6.0, 2.0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=.4, radius2=.4, depth=3.4)
+    make(bm, bark, (x, y, .4), rz).rotation_euler.x = 1.57
+# misty blue-green key from the left, cold moon rim from behind
+sunl((-24, -12, 9), (.55, .85, .75), 4.2); sunl((18, 22, 10), (.4, .5, 1), 2.2)
+w = bpy.data.worlds.new("mist"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .025, .025, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = V((0, 0, 2.5)); co.location = t + V((12, -48, 28))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

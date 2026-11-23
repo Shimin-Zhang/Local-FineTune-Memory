@@ -1,0 +1,120 @@
+```python
+import bpy
+import math
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# --- Terracotta Pot ---
+# Create a cylinder for the pot body
+bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.4, location=(0, 0, 0.2))
+pot_body = bpy.context.active_object
+pot_body.name = "Pot_Body"
+
+# Create a rim (slightly larger cylinder on top)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=0.05, location=(0, 0, 0.425))
+pot_rim = bpy.context.active_object
+pot_rim.name = "Pot_Rim"
+
+# Create a base (smaller cylinder at bottom)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.05, location=(0, 0, 0.025))
+pot_base = bpy.context.active_object
+pot_base.name = "Pot_Base"
+
+# Add soil inside the pot
+bpy.ops.mesh.primitive_cylinder_add(radius=0.28, depth=0.05, location=(0, 0, 0.4))
+soil = bpy.context.active_object
+soil.name = "Soil"
+
+# --- Cactus Body ---
+# Main cactus body (elongated cylinder)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.8, location=(0, 0, 0.8))
+cactus_body = bpy.context.active_object
+cactus_body.name = "Cactus_Body"
+
+# Add a sphere on top to make it rounded
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(0, 0, 1.2))
+cactus_top = bpy.context.active_object
+cactus_top.name = "Cactus_Top"
+
+# Left arm
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.4, location=(-0.25, 0, 0.7))
+left_arm = bpy.context.active_object
+left_arm.name = "Left_Arm"
+left_arm.rotation_euler = (0, math.radians(-30), 0)
+
+# Left arm top
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(-0.35, 0, 0.85))
+left_arm_top = bpy.context.active_object
+left_arm_top.name = "Left_Arm_Top"
+
+# Right arm
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.4, location=(0.25, 0, 0.7))
+right_arm = bpy.context.active_object
+right_arm.name = "Right_Arm"
+right_arm.rotation_euler = (0, math.radians(30), 0)
+
+# Right arm top
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(0.35, 0, 0.85))
+right_arm_top = bpy.context.active_object
+right_arm_top.name = "Right_Arm_Top"
+
+# --- Materials ---
+# Terracotta material
+terracotta_mat = bpy.data.materials.new("Terracotta")
+terracotta_mat.use_nodes = True
+bsdf = terracotta_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.7, 0.3, 0.15, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+
+# Apply terracotta to pot parts
+for obj in [pot_body, pot_rim, pot_base]:
+    obj.data.materials.append(terracotta_mat)
+
+# Soil material
+soil_mat = bpy.data.materials.new("Soil")
+soil_mat.use_nodes = True
+bsdf_soil = soil_mat.node_tree.nodes["Principled BSDF"]
+bsdf_soil.inputs["Base Color"].default_value = (0.15, 0.1, 0.05, 1.0)
+bsdf_soil.inputs["Roughness"].default_value = 1.0
+soil.data.materials.append(soil_mat)
+
+# Cactus green material
+cactus_mat = bpy.data.materials.new("Cactus_Green")
+cactus_mat.use_nodes = True
+bsdf_cactus = cactus_mat.node_tree.nodes["Principled BSDF"]
+bsdf_cactus.inputs["Base Color"].default_value = (0.2, 0.6, 0.2, 1.0)
+bsdf_cactus.inputs["Roughness"].default_value = 0.6
+
+# Apply cactus material to all cactus parts
+for obj in [cactus_body, cactus_top, left_arm, left_arm_top, right_arm, right_arm_top]:
+    obj.data.materials.append(cactus_mat)
+
+# --- Lighting ---
+# Add a sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Add a point light for fill
+bpy.ops.object.light_add(type='POINT', location=(-3, -3, 5))
+point_light = bpy.context.active_object
+point_light.data.energy = 50
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(2, -2, 1.5))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera
+
+# Point camera at the cactus
+direction = bpy.data.objects["Cactus_Body"].location - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set render settings
+bpy.context.scene.render.resolution_x = 800
+bpy.context.scene.render.resolution_y = 600
+bpy.context.scene.render.film_transparent = False
+```

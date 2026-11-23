@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 31.0,
+ "error": null,
+ "error_line": null,
+ "printed": "Camera fixed, wings, benches, lamp posts, more trees and drifts added!\n",
+ "state_saved": true,
+ "n_objects": 1273,
+ "n_lights": 21,
+ "n_materials": 21,
+ "own_camera": true,
+ "render_error": null
+}

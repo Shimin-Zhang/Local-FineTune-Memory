@@ -1,0 +1,1482 @@
+{
+ "test_0000__s0": {
+  "pass": false,
+  "tokens": 2400,
+  "lines": 198,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = base_color]"
+  ],
+  "warnings": []
+ },
+ "test_0001__s0": {
+  "pass": false,
+  "tokens": 3012,
+  "lines": 227,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: bpy_prop_collection: attribute \"clear\" not found  [line: bpy.data.meshes.clear()]"
+  ],
+  "warnings": []
+ },
+ "test_0002__s0": {
+  "pass": false,
+  "tokens": 3355,
+  "lines": 209,
+  "objects": 33,
+  "materials": 9,
+  "lights": 2,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: bpy_struct: item.attr = val: enum \"Medium High Contrast\" not found in ('None', 'AgX - Punchy', 'AgX - Greyscale', 'AgX - Very Hig  [line: scene.view_settings.look = 'Medium High Contrast']",
+   "too long: 3355 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0003__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 310,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0004__s0": {
+  "pass": false,
+  "tokens": 3164,
+  "lines": 249,
+  "objects": 88,
+  "materials": 16,
+  "lights": 1,
+  "edge_share": 0.644,
+  "fill": 1.0,
+  "fails": [
+   "44 object(s) have no material",
+   "cut off by the picture's edge: the scene covers 64% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0005__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 241,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 241)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0006__s0": {
+  "pass": false,
+  "tokens": 3220,
+  "lines": 276,
+  "objects": 50,
+  "materials": 16,
+  "lights": 1,
+  "edge_share": 0.509,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 51% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0007__s0": {
+  "pass": false,
+  "tokens": 2705,
+  "lines": 184,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: KeyError: 'bpy_prop_collection[key]: key \"Transmission\" not found'  [line: bsdf.inputs[\"Transmission\"].default_value = 1.0]"
+  ],
+  "warnings": []
+ },
+ "test_0008__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 282,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: invalid syntax (script.py, line 282)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0009__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 258,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: unterminated string literal (detected at line 258) (script.py, line 258)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0010__s0": {
+  "pass": false,
+  "tokens": 2902,
+  "lines": 234,
+  "objects": 7,
+  "materials": 2,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: Calling operator \"bpy.ops.mesh.transform\" error, could not be found  [line: bpy.ops.mesh.transform(matrix=__import__('mathutils').Matrix.Translation((0,0,1.5)))]"
+  ],
+  "warnings": []
+ },
+ "test_0011__s0": {
+  "pass": false,
+  "tokens": 2744,
+  "lines": 208,
+  "objects": 83,
+  "materials": 8,
+  "lights": 1,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ },
+ "test_0012__s0": {
+  "pass": false,
+  "tokens": 3624,
+  "lines": 251,
+  "objects": 122,
+  "materials": 7,
+  "lights": 2,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)",
+   "too long: 3624 tokens (limit 3300)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ },
+ "test_0013__s0": {
+  "pass": false,
+  "tokens": 2754,
+  "lines": 217,
+  "objects": 37,
+  "materials": 5,
+  "lights": 2,
+  "edge_share": 0.507,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 51% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0014__s0": {
+  "pass": false,
+  "tokens": 2800,
+  "lines": 221,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: bpy_prop_collection: attribute \"clear\" not found  [line: bpy.data.meshes.clear()]"
+  ],
+  "warnings": []
+ },
+ "test_0015__s0": {
+  "pass": false,
+  "tokens": 2952,
+  "lines": 221,
+  "objects": 5,
+  "materials": 3,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"rings\" unrecognized  [line: bpy.ops.mesh.primitive_uv_sphere_add(radius=2.8, location=(0, 0, 6.25), segments=48, rings=24)]"
+  ],
+  "warnings": []
+ },
+ "test_0016__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 289,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 289)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0017__s0": {
+  "pass": false,
+  "tokens": 908,
+  "lines": 88,
+  "objects": 19,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": 0.0,
+  "fill": 0.326,
+  "fails": [
+   "19 object(s) have no material",
+   "no camera of its own"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 33% of the picture); move the camera closer",
+   "no light object (fine only if the scene is lit by glowing materials or the background)"
+  ]
+ },
+ "test_0018__s0": {
+  "pass": false,
+  "tokens": 2451,
+  "lines": 199,
+  "objects": 34,
+  "materials": 7,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized  [line: bpy.ops.mesh.primitive_cone_add(radius=3, depth=3, location=(-8, 5, 1.5), vertices=4)]"
+  ],
+  "warnings": []
+ },
+ "test_0019__s0": {
+  "pass": false,
+  "tokens": 3646,
+  "lines": 253,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: bpy_prop_collection: attribute \"clear\" not found  [line: bpy.data.meshes.clear()]",
+   "too long: 3646 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0020__s0": {
+  "pass": false,
+  "tokens": 2042,
+  "lines": 174,
+  "objects": 40,
+  "materials": 4,
+  "lights": 1,
+  "edge_share": 0.58,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 58% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0021__s0": {
+  "pass": false,
+  "tokens": 3781,
+  "lines": 288,
+  "objects": 0,
+  "materials": 0,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 3781 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0022__s0": {
+  "pass": false,
+  "tokens": 2606,
+  "lines": 198,
+  "objects": 200,
+  "materials": 29,
+  "lights": 2,
+  "edge_share": 0.525,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 52% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0023__s0": {
+  "pass": false,
+  "tokens": 2876,
+  "lines": 201,
+  "objects": 96,
+  "materials": 12,
+  "lights": 2,
+  "edge_share": 0.594,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 59% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0024__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 265,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 265)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0025__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 270,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 270)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0026__s0": {
+  "pass": false,
+  "tokens": 3991,
+  "lines": 321,
+  "objects": 6,
+  "materials": 6,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized  [line: bpy.ops.mesh.primitive_cone_add(vertices=4, radius=1.5 * scale, depth=2 * scale, location=location)]",
+   "too long: 3991 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0027__s0": {
+  "pass": false,
+  "tokens": 4097,
+  "lines": 284,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 284)",
+   "too long: 4097 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0028__s0": {
+  "pass": false,
+  "tokens": 3422,
+  "lines": 314,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: bpy_struct: item.attr = val: enum \"BLENDER_EEVEE_NEXT\" not found in ('BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES')  [line: scene.render.engine = 'BLENDER_EEVEE_NEXT']",
+   "too long: 3422 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0029__s0": {
+  "pass": false,
+  "tokens": 3002,
+  "lines": 236,
+  "objects": 132,
+  "materials": 26,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: unsupported operand type(s) for -: 'tuple' and 'tuple'  [line: direction = (0, 5, 2) - (0, -20, 8)]"
+  ],
+  "warnings": []
+ },
+ "test_0030__s0": {
+  "pass": false,
+  "tokens": 2154,
+  "lines": 208,
+  "objects": 44,
+  "materials": 3,
+  "lights": 4,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ },
+ "test_0031__s0": {
+  "pass": false,
+  "tokens": 3602,
+  "lines": 316,
+  "objects": 66,
+  "materials": 97,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: bpy_struct: item.attr = val: enum \"Medium High Contrast\" not found in ('None', 'AgX - Punchy', 'AgX - Greyscale', 'AgX - Very Hig  [line: bpy.context.scene.view_settings.look = \"Medium High Contrast\"]",
+   "too long: 3602 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0032__s0": {
+  "pass": false,
+  "tokens": 4096,
+  "lines": 292,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '[' was never closed (script.py, line 286)",
+   "too long: 4096 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0033__s0": {
+  "pass": false,
+  "tokens": 2970,
+  "lines": 231,
+  "objects": 129,
+  "materials": 4,
+  "lights": 1,
+  "edge_share": 0.665,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 66% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0034__s0": {
+  "pass": false,
+  "tokens": 2888,
+  "lines": 213,
+  "objects": 236,
+  "materials": 221,
+  "lights": 2,
+  "edge_share": 0.614,
+  "fill": 1.0,
+  "fails": [
+   "15 object(s) have no material",
+   "cut off by the picture's edge: the scene covers 61% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0035__s0": {
+  "pass": false,
+  "tokens": 2466,
+  "lines": 169,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = base_color]"
+  ],
+  "warnings": []
+ },
+ "test_0036__s0": {
+  "pass": false,
+  "tokens": 3874,
+  "lines": 292,
+  "objects": 259,
+  "materials": 259,
+  "lights": 2,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: RuntimeError: Error: Node type Background undefined  [line: bg_node = world_nodes.new(\"Background\")]",
+   "too long: 3874 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0037__s0": {
+  "pass": false,
+  "tokens": 1997,
+  "lines": 161,
+  "objects": 67,
+  "materials": 52,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: RuntimeError: Error: Node type Material Output undefined  [line: output = nodes_haze.new(\"Material Output\")]"
+  ],
+  "warnings": []
+ },
+ "test_0038__s0": {
+  "pass": false,
+  "tokens": 3201,
+  "lines": 266,
+  "objects": 5,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"rings\" unrecognized  [line: bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=segments, rings=rings)]"
+  ],
+  "warnings": []
+ },
+ "test_0039__s0": {
+  "pass": false,
+  "tokens": 2918,
+  "lines": 231,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"vertices\" unrecognized  [line: bpy.ops.mesh.primitive_grid_add(vertices=100, size=100, location=(0, 0, 0))]"
+  ],
+  "warnings": []
+ },
+ "test_0040__s0": {
+  "pass": false,
+  "tokens": 4097,
+  "lines": 285,
+  "objects": 110,
+  "materials": 109,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 2  [line: obj.scale = scale]",
+   "too long: 4097 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0041__s0": {
+  "pass": false,
+  "tokens": 2282,
+  "lines": 197,
+  "objects": 40,
+  "materials": 6,
+  "lights": 0,
+  "edge_share": 0.0,
+  "fill": 0.518,
+  "fails": [
+   "a colour was set where the render ignores it (diffuse_color)",
+   "no camera of its own"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 52% of the picture); move the camera closer",
+   "no light object (fine only if the scene is lit by glowing materials or the background)"
+  ]
+ },
+ "test_0042__s0": {
+  "pass": false,
+  "tokens": 3823,
+  "lines": 237,
+  "objects": 197,
+  "materials": 197,
+  "lights": 2,
+  "edge_share": 0.577,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 58% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3823 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0043__s0": {
+  "pass": false,
+  "tokens": 2803,
+  "lines": 227,
+  "objects": 61,
+  "materials": 61,
+  "lights": 1,
+  "edge_share": 0.449,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 45% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0044__s0": {
+  "pass": false,
+  "tokens": 2910,
+  "lines": 237,
+  "objects": 2,
+  "materials": 1,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: The mesh must be in editmode  [line: bm = bmesh.from_edit_mesh(pit_mesh.data)]"
+  ],
+  "warnings": []
+ },
+ "test_0045__s0": {
+  "pass": false,
+  "tokens": 4097,
+  "lines": 347,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: bpy_prop_collection: attribute \"new\" not found  [line: dam_col = scene.collection.children.new(\"Dam\") if \"Dam\" not in [c.name for c in scene.collection.children] else scene.collection.children[\"Dam\"]]",
+   "too long: 4097 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0046__s0": {
+  "pass": false,
+  "tokens": 2721,
+  "lines": 203,
+  "objects": 44,
+  "materials": 9,
+  "lights": 1,
+  "edge_share": 0.486,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 49% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0047__s0": {
+  "pass": false,
+  "tokens": 2586,
+  "lines": 161,
+  "objects": 166,
+  "materials": 12,
+  "lights": 1,
+  "edge_share": 0.553,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 55% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0048__s0": {
+  "pass": false,
+  "tokens": 2056,
+  "lines": 161,
+  "objects": 167,
+  "materials": 5,
+  "lights": 2,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ },
+ "test_0049__s0": {
+  "pass": false,
+  "tokens": 3674,
+  "lines": 222,
+  "objects": 1,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 5  [line: bsdf.inputs[\"Base Color\"].default_value = (*color, 1.0)]",
+   "too long: 3674 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0050__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 380,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 380)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0051__s0": {
+  "pass": false,
+  "tokens": 3290,
+  "lines": 264,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]"
+  ],
+  "warnings": []
+ },
+ "test_0052__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 332,
+  "objects": 42,
+  "materials": 33,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: exit 139",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0053__s0": {
+  "pass": false,
+  "tokens": 3933,
+  "lines": 312,
+  "objects": 66,
+  "materials": 14,
+  "lights": 3,
+  "edge_share": 0.47,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 47% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3933 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0054__s0": {
+  "pass": false,
+  "tokens": 2575,
+  "lines": 226,
+  "objects": 91,
+  "materials": 6,
+  "lights": 1,
+  "edge_share": 0.816,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 82% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0055__s0": {
+  "pass": false,
+  "tokens": 2672,
+  "lines": 213,
+  "objects": 67,
+  "materials": 6,
+  "lights": 1,
+  "edge_share": 0.602,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 60% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0056__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 390,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'Material' object has no attribute 'shadow_method'  [line: mat_steam.shadow_method = 'NONE']",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0057__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 353,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: invalid syntax (script.py, line 353)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0058__s0": {
+  "pass": false,
+  "tokens": 1730,
+  "lines": 145,
+  "objects": 31,
+  "materials": 5,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized  [line: bpy.ops.mesh.primitive_cone_add(vertices=4, radius=4, depth=2, location=(15, 2, 10))]"
+  ],
+  "warnings": []
+ },
+ "test_0059__s0": {
+  "pass": false,
+  "tokens": 3546,
+  "lines": 309,
+  "objects": 3,
+  "materials": 1,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'Mesh' object has no attribute 'clear'  [line: me.clear()]",
+   "too long: 3546 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0060__s0": {
+  "pass": false,
+  "tokens": 3478,
+  "lines": 263,
+  "objects": 112,
+  "materials": 11,
+  "lights": 2,
+  "edge_share": 0.397,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 40% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3478 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0061__s0": {
+  "pass": false,
+  "tokens": 3883,
+  "lines": 244,
+  "objects": 128,
+  "materials": 18,
+  "lights": 6,
+  "edge_share": 0.521,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 52% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3883 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0062__s0": {
+  "pass": false,
+  "tokens": 3378,
+  "lines": 284,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 3378 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0063__s0": {
+  "pass": false,
+  "tokens": 3273,
+  "lines": 236,
+  "objects": 535,
+  "materials": 11,
+  "lights": 2,
+  "edge_share": 0.446,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 45% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0064__s0": {
+  "pass": false,
+  "tokens": 3159,
+  "lines": 210,
+  "objects": 175,
+  "materials": 7,
+  "lights": 6,
+  "edge_share": 0.45,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 45% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0065__s0": {
+  "pass": false,
+  "tokens": 3088,
+  "lines": 216,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: bpy_prop_collection: attribute \"clear\" not found  [line: bpy.data.meshes.clear()]"
+  ],
+  "warnings": []
+ },
+ "test_0066__s0": {
+  "pass": false,
+  "tokens": 1934,
+  "lines": 152,
+  "objects": 7,
+  "materials": 3,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized  [line: bpy.ops.mesh.primitive_cone_add(radius=3.2, depth=1.5, vertices=4, location=(0, 0, 4.5))]"
+  ],
+  "warnings": []
+ },
+ "test_0067__s0": {
+  "pass": false,
+  "tokens": 3382,
+  "lines": 247,
+  "objects": 41,
+  "materials": 16,
+  "lights": 1,
+  "edge_share": 0.576,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 58% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3382 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0068__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 255,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 255)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0069__s0": {
+  "pass": false,
+  "tokens": 4058,
+  "lines": 249,
+  "objects": 217,
+  "materials": 16,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties: enum \"Hemi\" not found in ('POINT', 'SUN', 'SPOT', 'AREA')  [line: bpy.ops.object.light_add(type='Hemi', location=(0, 0, 30))]",
+   "too long: 4058 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0070__s0": {
+  "pass": false,
+  "tokens": 3773,
+  "lines": 247,
+  "objects": 27,
+  "materials": 4,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized  [line: bpy.ops.mesh.primitive_torus_add(radius=0.25, major_segments=16, minor_segments=8, location=(table_x, table_y, 0.72))]",
+   "too long: 3773 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0071__s0": {
+  "pass": false,
+  "tokens": 2988,
+  "lines": 243,
+  "objects": 106,
+  "materials": 6,
+  "lights": 18,
+  "edge_share": 0.737,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 74% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": []
+ },
+ "test_0072__s0": {
+  "pass": false,
+  "tokens": 3813,
+  "lines": 328,
+  "objects": 2,
+  "materials": 1,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: RuntimeError: Operator bpy.ops.object.transform_apply.poll() failed, context is incorrect  [line: bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)]",
+   "too long: 3813 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0073__s0": {
+  "pass": false,
+  "tokens": 2028,
+  "lines": 128,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]"
+  ],
+  "warnings": []
+ },
+ "test_0074__s0": {
+  "pass": false,
+  "tokens": 3787,
+  "lines": 267,
+  "objects": 39,
+  "materials": 9,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: Calling operator \"bpy.ops.mesh.primitive_curve_add\" error, could not be found  [line: bpy.ops.mesh.primitive_curve_add(type='BEZIER', location=(mx, my, mz))]",
+   "too long: 3787 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0075__s0": {
+  "pass": false,
+  "tokens": 3178,
+  "lines": 173,
+  "objects": 250,
+  "materials": 211,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'RenderSettings' object has no attribute 'use_shadows'  [line: bpy.context.scene.render.use_shadows = True]"
+  ],
+  "warnings": []
+ },
+ "test_0076__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 251,
+  "objects": 76,
+  "materials": 14,
+  "lights": 0,
+  "edge_share": 0.0,
+  "fill": 0.69,
+  "fails": [
+   "no camera of its own",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 69% of the picture); move the camera closer",
+   "no light object (fine only if the scene is lit by glowing materials or the background)"
+  ]
+ },
+ "test_0077__s0": {
+  "pass": false,
+  "tokens": 2608,
+  "lines": 205,
+  "objects": 120,
+  "materials": 8,
+  "lights": 1,
+  "edge_share": 0.019,
+  "fill": 0.083,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 8% of the picture); move the camera closer"
+  ]
+ },
+ "test_0078__s0": {
+  "pass": false,
+  "tokens": 3730,
+  "lines": 272,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]",
+   "too long: 3730 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0079__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 310,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 310)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0080__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 340,
+  "objects": 32,
+  "materials": 7,
+  "lights": 3,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ },
+ "test_0081__s0": {
+  "pass": false,
+  "tokens": 2254,
+  "lines": 186,
+  "objects": 63,
+  "materials": 6,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation  [line: direction = (0, 0, 0) - cam.location]"
+  ],
+  "warnings": []
+ },
+ "test_0082__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 266,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = base_color]",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0083__s0": {
+  "pass": false,
+  "tokens": 3805,
+  "lines": 213,
+  "objects": 123,
+  "materials": 17,
+  "lights": 2,
+  "edge_share": 0.483,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 48% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3805 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0084__s0": {
+  "pass": false,
+  "tokens": 2496,
+  "lines": 137,
+  "objects": 52,
+  "materials": 52,
+  "lights": 0,
+  "edge_share": 0.694,
+  "fill": 1.0,
+  "fails": [
+   "no camera of its own",
+   "cut off by the picture's edge: the scene covers 69% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base"
+  ],
+  "warnings": [
+   "no light object (fine only if the scene is lit by glowing materials or the background)"
+  ]
+ },
+ "test_0085__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 308,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: unterminated f-string literal (detected at line 308) (script.py, line 308)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0086__s0": {
+  "pass": false,
+  "tokens": 3706,
+  "lines": 309,
+  "objects": 65,
+  "materials": 6,
+  "lights": 1,
+  "edge_share": 0.317,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 32% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3706 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0087__s0": {
+  "pass": false,
+  "tokens": 3322,
+  "lines": 276,
+  "objects": 73,
+  "materials": 40,
+  "lights": 12,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: IndexError: bpy_prop_collection[index]: index 0 out of range, size 0  [line: ps = rain_source.particle_systems[0]]",
+   "too long: 3322 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0088__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 309,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: AttributeError: 'Material' object has no attribute 'emission_color'  [line: mat_flame.emission_color = (1.0, 0.5, 0.05, 1)]",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0089__s0": {
+  "pass": false,
+  "tokens": 2418,
+  "lines": 242,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]"
+  ],
+  "warnings": []
+ },
+ "test_0090__s0": {
+  "pass": false,
+  "tokens": 2704,
+  "lines": 222,
+  "objects": 0,
+  "materials": 0,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = base_color]"
+  ],
+  "warnings": []
+ },
+ "test_0091__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 218,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '[' was never closed (script.py, line 218)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0092__s0": {
+  "pass": false,
+  "tokens": 4098,
+  "lines": 238,
+  "objects": 0,
+  "materials": 1,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: SyntaxError: '(' was never closed (script.py, line 238)",
+   "too long: 4098 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0093__s0": {
+  "pass": false,
+  "tokens": 1939,
+  "lines": 150,
+  "objects": 18,
+  "materials": 10,
+  "lights": 1,
+  "edge_share": 0.0,
+  "fill": 1.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)"
+  ],
+  "warnings": []
+ },
+ "test_0094__s0": {
+  "pass": false,
+  "tokens": 3553,
+  "lines": 332,
+  "objects": 10,
+  "materials": 9,
+  "lights": 2,
+  "edge_share": 0.488,
+  "fill": 1.0,
+  "fails": [
+   "cut off by the picture's edge: the scene covers 49% of the edge of its own view (limit 15%); move the camera back, or pull in whatever reaches past the base",
+   "too long: 3553 tokens (limit 3300)"
+  ],
+  "warnings": []
+ },
+ "test_0095__s0": {
+  "pass": false,
+  "tokens": 3062,
+  "lines": 243,
+  "objects": 121,
+  "materials": 3,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: NameError: name 'cage_end' is not defined  [line: e = cage_end + Vector((offset_x, 0, 0))]"
+  ],
+  "warnings": []
+ },
+ "test_0096__s0": {
+  "pass": false,
+  "tokens": 3103,
+  "lines": 230,
+  "objects": 37,
+  "materials": 12,
+  "lights": 3,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: TypeError: bpy_struct: item.attr = val: enum \"NISHITA\" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')  [line: sky.sky_type = 'NISHITA']"
+  ],
+  "warnings": []
+ },
+ "test_0097__s0": {
+  "pass": false,
+  "tokens": 4084,
+  "lines": 244,
+  "objects": 89,
+  "materials": 14,
+  "lights": 1,
+  "edge_share": 0.0,
+  "fill": 0.0,
+  "fails": [
+   "its own camera does not show the scene (points away, or the view is blank or unlit)",
+   "too long: 4084 tokens (limit 3300)"
+  ],
+  "warnings": [
+   "the scene is small in its own view (it spans 0% of the picture); move the camera closer"
+  ]
+ },
+ "test_0098__s0": {
+  "pass": false,
+  "tokens": 2762,
+  "lines": 208,
+  "objects": 0,
+  "materials": 0,
+  "lights": 1,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]"
+  ],
+  "warnings": []
+ },
+ "test_0099__s0": {
+  "pass": false,
+  "tokens": 2541,
+  "lines": 182,
+  "objects": 0,
+  "materials": 0,
+  "lights": 0,
+  "edge_share": null,
+  "fill": null,
+  "fails": [
+   "error: ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3  [line: bsdf.inputs[\"Base Color\"].default_value = color]"
+  ],
+  "warnings": []
+ }
+}

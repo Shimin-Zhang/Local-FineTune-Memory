@@ -1,0 +1,88 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(522)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def shade(rgb, glow=0, rough=.85):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if glow:
+        p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    return m
+turf, path, bark, bark2, leaf = shade((.07, .17, .07)), shade((.3, .2, .14)), shade((.2, .12, .08)), shade((.15, .09, .07)), shade((.06, .2, .12))
+leaf2, gold, wood, iron, wall, petal = shade((.1, .26, .14)), shade((1, .62, .08), 3.5), shade((.35, .2, .1)), shade((.1, .1, .12)), shade((.28, .22, .26)), shade((.7, .25, .4))
+def emit(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("e"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("e", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def block(at, d, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return emit(bm, m, at, rot)
+def trunk(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return emit(bm, m, at, rot)
+def puff(at, r, m, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return emit(bm, m, at)
+def rod(a, b, t, m):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return emit(bm, m)
+def glimmer(kind, rgb, w, at, aim=None):
+    L = bpy.data.lights.new("g", kind); L.color, L.energy = rgb, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=5, radius2=11.5, depth=3.6)
+for v in bm.verts:
+    v.co.z -= 1.8
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .3)))
+emit(bm, turf)
+for i in range(10): block((math.sin(i * .62) * 1.3, -8 + i * 1.7, 0), (3.2, 1.7, .06), path, (0, 0, math.sin(i * .62) * .3))
+# orchard: a trunk, a knotted crown, and golden apples hanging from it
+def tree(x, y, s):
+    trunk((x, y, 0), .5 * s, 2.6 * s, 6, bark, .35 * s)
+    puff((x, y, 3.3 * s), 1.7 * s, leaf, .85); puff((x + 1.0 * s, y + .4, 3.0 * s), 1.2 * s, leaf2, .8); puff((x - 1.0 * s, y - .3, 3.0 * s), 1.1 * s, leaf2, .8)
+    for k in range(7):
+        a = k * 1.1 + x; r = 1.2 * s * (k % 3)
+        puff((x + math.cos(a) * r, y + math.sin(a) * r, 2.4 * s + (k % 2) * .3), .3 * s, gold, 1.0)
+for x, y, s in ((-6.5, 3.5, 1.2), (-2.5, 6.0, 1.0), (2.0, 6.5, 1.3), (6.5, 3.0, 1.0), (-7.5, -2.0, .9), (7.5, -1.5, 1.1), (0, 9.0, .8)):
+    tree(x, y, s)
+# fallen fruit glowing on the grass, larger than life so it reads
+for i in range(16):
+    x, y = random.uniform(-8.5, 8.5), random.uniform(-8, 7.5)
+    if math.hypot(x, y) > 9.5 or abs(x - math.sin(i * .62) * 1.3) < 1.6: continue
+    puff((x, y, .25), .42, gold, .8)
+for x, y in ((-3.5, -2.5), (3.0, -4.0), (5.5, 1.0), (-5.0, 0.5), (-1.5, 5.0), (2.0, 1.5), (-6.5, -5.0), (0.5, -6.5)):
+    glimmer("POINT", (1, .6, .1), 120, (x, y, .9))
+# a ladder leaning on the leftmost tree, with rungs and a little sack
+for s in (-.4, .4): rod((-7.2 + s, 1.2, 0), (-6.2 + s, 3.0, 3.6), .14, wood)
+for k in range(8): rod((-7.1 + k * .13, 1.3 + k * .22, .4 + k * .42), (-6.3 + k * .13, 1.3 + k * .22, .4 + k * .42), .1, wood)
+puff((-5.0, 1.0, .5), .55, shade((.5, .3, .15)), .9)
+# wooden gate at the front right, on a stone post
+for sx in (1, -1):
+    block((8.6 + sx * 2.6, -6.0, 0), (.9, .9, 2.6), wall); block((8.6 + sx * 2.6, -6.0, 2.6), (1.2, 1.2, .25), wall)
+    for k in range(5): block((8.6 + sx * 2.6 - sx * .0, -6.0, .4 + k * .45), (.12, .12, .12), iron)
+block((8.6, -6.0, 2.3), (5.4, .35, .3), wood)
+for k in range(7): block((6.9 + k * .5, -6.0, .2), (.14, .14, 2.1), wood)
+rod((8.6, -6.0, .5), (8.6, -6.0, 2.2), .1, iron)
+# a low hedge ring and blossom drifts
+for i in range(16):
+    a = i * math.pi / 8 + .1
+    if abs(a - 1.57) < .3: continue
+    puff((math.cos(a) * 9.8, math.sin(a) * 9.2, .5), 1.1, leaf2, .7)
+for i in range(10): puff((random.uniform(-8, 8), random.uniform(-7, 8), .12), .25, petal, .5)
+# dusk: violet key from the right, magenta rim, warm gold spill from the apples
+glimmer("SUN", (.7, .35, .9), 5, (26, -16, 11), (0, 0, 1)); glimmer("SUN", (1, .4, .5), 2.2, (-24, 22, 10), (0, 0, 1))
+w = bpy.data.worlds.new("dusk"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .012, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2)); co.location = t + Vector((-12, -50, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

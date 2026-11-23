@@ -1,0 +1,97 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(597)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def moss(c, e=0):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*c, 1); b.inputs["Roughness"].default_value = .9
+    if e: b.inputs["Emission Color"].default_value = (*c, 1); b.inputs["Emission Strength"].default_value = e
+    return m
+bank, pond, reed, reed2, pad, stem, frog, frogb, stone, nymph, wing, body, firefly, bark = (
+    moss((.07, .17, .08)), moss((.04, .13, .2)), moss((.1, .3, .1)), moss((.2, .3, .08)), moss((.05, .3, .12)), moss((.1, .35, .1)), moss((.2, .5, .1)), moss((.45, .35, .15)), moss((.25, .26, .28)), moss((.7, .65, .2)), moss((.7, .8, 1,)), moss((.1, .25, .5)), moss((.8, 1, .2)), moss((.15, .1, .07)))
+def shape(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(m, x, y, z, w, d, h, r=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return shape(bm, m, (x, y, z), r)
+def stalk(m, x, y, z, r, h, n=5, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return shape(bm, m, (x, y, z))
+def lump(m, x, y, z, sx, sy, sz):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1)
+    for v in bm.verts: v.co = Vector((v.co.x * sx, v.co.y * sy, v.co.z * sz))
+    return shape(bm, m, (x, y, z))
+def beam(m, a, b, t):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return shape(bm, m)
+def glint(x, y, z, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# floating meadow base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=11.5, depth=3.5)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.75
+shape(bm, bank)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5.6, radius2=5.6, depth=.15)
+for v in bm.verts: v.co.x *= 1.15; v.co.y *= .85; v.co += Vector((random.uniform(-.3, .3), random.uniform(-.3, .3), 0))
+shape(bm, pond, (0, 0, .02))
+# reeds along the far and side banks
+for i in range(30):
+    a = random.uniform(0, 6.28); r = random.uniform(5.8, 7.4)
+    x, y = math.cos(a) * r * 1.1, math.sin(a) * r * .85
+    if y < -4.5 or (x < -3 and y < 0): continue
+    h = random.uniform(2, 3.6); lean = random.uniform(-.15, .15)
+    stalk(random.choice((reed, reed2)), x, y, 0, .09, h, 4, .03)
+    if i % 3 == 0: stalk(bark, x + .2, y, h - .6, .12, .8, 5, .03)
+# lily pads with a notch, one flower stem
+for i, (x, y, r) in enumerate(((-2.5, -1.2, 1.1), (-1.2, -2.2, .9), (1.5, -1.6, 1.0), (-3.5, 1.0, .8), (2.8, 1.4, .9), (-.2, 1.6, 1.0))):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=r, radius2=r, depth=.08)
+    for v in bm.verts: v.co += Vector((random.uniform(-.05, .05), random.uniform(-.05, .05), 0))
+    shape(bm, pad, (x, y, .12))
+    slab(bank, x + r * .5, y, .12, r * .6, .1, .1, (0, 0, .3))
+    if i == 1:
+        stalk(stem, x, y, .1, .04, 1.2); lump(moss((.8, .5, .7)), x, y, 1.4, .3, .3, .25)
+# the frog on a stone, facing the viewer
+lump(stone, 3.6, -3.6, .5, 1.3, 1.0, .8)
+lump(frog, 3.6, -3.6, 1.5, .8, .6, .55); lump(frogb, 3.6, -4.1, 1.3, .55, .35, .3)
+for s in (-1, 1): lump(frogb, 3.6 + s * .45, -4.2, 1.9, .2, .2, .2); lump(frog, 3.6 + s * .5, -3.2, 1.6, .25, .25, .3)
+# nymphs crawling out of the water at the edge
+for i in range(7):
+    a = random.uniform(3.2, 6.0); r = random.uniform(4.4, 5.2)
+    x, y = math.cos(a) * r * 1.1, math.sin(a) * r * .85; z = .3 + random.uniform(0, .3)
+    for k in range(3): lump(nymph, x + k * .2, y, z + .15, .17, .13, .12)
+    for k in range(3): beam(nymph, (x + .1, y, z + .1), (x + .1 + k * .05 - .1, y + (k - 1) * .15, z - .1), .03)
+# dragonflies hovering over the water
+for i, (x, y, z) in enumerate(((0, 0, 3.2), (-2.2, 2.0, 2.6), (2.5, -.5, 3.8))):
+    beam(body, (x - .5, y, z), (x + .5, y, z), .14)
+    for s in (-1, 1):
+        slab(wing, x - .1, y + s * .4, z + .1, .8, .45, .03, (0, 0, .2 * s)); slab(wing, x + .1, y + s * .4, z + .1, .8, .45, .03, (0, 0, -.2 * s))
+    lump(frogb, x - .65, y, z, .2, .17, .17)
+# fireflies and a fallen log
+for i in range(8):
+    x, y = random.uniform(-8, 8), random.uniform(-7, 6)
+    if (x / 6) ** 2 + (y / 5) ** 2 < 1: continue
+    stalk(firefly, x, y, random.uniform(1, 2.5), .1, .2, 5)
+    glint(x, y, 1.5, (.7, 1, .3), 60)
+beam(bark, (-6.5, -5, .3), (-3.5, -5.6, .3), .5); beam(bark, (-6.5, -5, .3), (-6.8, -5.2, 1.4), .2)
+# moonlit night: cold blue key from the left, faint violet rim
+for c, w, p in (((.5, .65, 1), 5, (-28, -14, 10)), ((.6, .35, .8), 2, (24, 22, 12))):
+    s = bpy.data.lights.new("s", "SUN"); s.color = c; s.energy = w
+    o = bpy.data.objects.new("s", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .015, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((10, -46, 27))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

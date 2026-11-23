@@ -1,0 +1,92 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1235)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def tint(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .8
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    M[name] = m
+for k, v in dict(snow=(.5, .55, .68), ice=(.1, .13, .2), iron=(.06, .06, .07), red=(.45, .07, .06), brass=(.5, .33, .1),
+                 paper=(.8, .75, .65), paper2=(.55, .3, .25), flame=(1, .3, .05), coal=(.05, .02, .02), flame2=(1, .7, .2), glass=(.9, .8, .4)).items(): tint(k, v)
+tint("ember", (1, .25, .05), 14); tint("lamp", (1, .8, .4), 12)
+def mesh(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(M[k]); return o
+def blk(at, d, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * d[0] * f, v.co.y * d[1] * f, (v.co.z + .5) * d[2]))
+    return mesh(bm, k, at, (0, 0, rz))
+def cyl(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, k, at, rot)
+def dome(at, r, k, sub=2):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co.z = max(v.co.z, 0) * .9
+    return mesh(bm, k, at)
+def arm(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mesh(bm, k)
+def light(kind, c, w, at, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+
+# base: snowy street block with an icy road and a kerb
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=13.5, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    v.co.z -= 2
+mesh(bm, "snow")
+blk((0, -6.5, 0), (19, 6, .15), "ice"); blk((0, -3.3, 0), (19, .5, .3), "snow")
+for i in range(14): blk((random.uniform(-9, 9), random.uniform(-8, 8), 0), (random.uniform(1.5, 3), random.uniform(1, 2), .15), "snow", random.random())
+# the brazier: four wheels on an axle, a cart body, the coal bed, the dome roaster
+bx, by = -2, 1.5
+for sy in (-1, 1):
+    for sx in (-1, 1): cyl((bx + sx * 1.8, by + sy * 1.0, .85), .85, .25, 8, "iron", rot=(math.pi / 2, 0, 0))
+arm((bx - 2.2, by - 1.0, .85), (bx + 2.2, by - 1.0, .85), .15, "iron"); arm((bx - 2.2, by + 1.0, .85), (bx + 2.2, by + 1.0, .85), .15, "iron")
+blk((bx, by, 1.5), (4.6, 2.8, .5), "red", 0, .95)
+for sx in (-1, 1): blk((bx + sx * 2.3, by, 2.0), (.2, 2.8, 1.2), "red", 0, .9)
+blk((bx, by - 1.4, 2.0), (4.6, .2, 1.2), "red"); blk((bx, by + 1.4, 2.0), (4.6, .2, 1.2), "red")
+cyl((bx, by, 2.0), 2.0, .35, 10, "coal")
+for i in range(16):
+    a = random.uniform(0, 6.28); r = random.uniform(0, 1.5)
+    cyl((bx + r * math.cos(a), by + r * math.sin(a), 2.3), random.uniform(.2, .38), .15, 6, "ember", rot=(random.random(), random.random(), 0))
+cyl((bx, by, 2.35), 1.0, 1.0, 8, "iron", 1.2)
+dome((bx, by, 3.3), 2.0, "iron", 2)
+cyl((bx, by, 5.2), .35, .5, 6, "brass", .15); cyl((bx, by, 5.7), .15, .4, 5, "iron")
+for k in range(3): blk((bx + .3, by - 1.9 + k * .35, 2.6), (.9, .08, .08), "brass")
+arm((bx - 2.3, by, 2.6), (bx - 4.2, by, 1.4), .12, "iron"); arm((bx - 2.3, by, 2.6), (bx - 3.0, by, 3.6), .12, "iron")
+blk((bx - 3.0, by, 3.4), (.6, .6, .5), "red")
+light("POINT", (1, .35, .08), 1200, (bx, by - 1.5, 2.6))
+# paper cones, big and oversized, on a little counter beside the cart
+for i in range(7):
+    cyl((bx + 3.8 + i * .62, by - .5 + (i % 2) * .3, 1.2), .22, 1.0, 6, "paper" if i % 2 else "paper2", .04)
+    dome((bx + 3.8 + i * .62, by - .5 + (i % 2) * .3, 2.2), .17, "flame2", 1)
+blk((bx + 3.6, by, .8), (4.4, 1.4, .4), "red"); blk((bx + 3.6, by, 1.2), (4.6, 1.6, .12), "brass")
+for sx in (-2, 2):
+    for sy in (-.6, .6): cyl((bx + 3.6 + sx, by + sy, 0), .08, .8, 5, "iron")
+# lamp post with a lantern, a bench and a snowdrift
+lx, ly = 5.5, 6.0
+cyl((lx, ly, 0), .35, .6, 6, "iron", .25); cyl((lx, ly, .6), .14, 5.6, 6, "iron", .1)
+cyl((lx, ly, 6.2), .35, .15, 6, "iron"); blk((lx, ly, 5.2), (1.0, 1.0, 1.0), "glass", .78, .8); blk((lx, ly, 6.2), (1.5, 1.5, .2), "iron", .78, .5)
+dome((lx, ly, 6.4), .75, "iron", 1); light("POINT", (1, .75, .35), 900, (lx, ly, 5.7))
+blk((-8, 6, .8), (3.2, 1.0, .15), "red"); blk((-8, 6, 1.0), (.2, .9, 1.0), "red")
+for sx in (-1.4, 1.4): blk((-8 + sx, 6, 0), (.2, .9, .8), "iron")
+for i in range(5): dome((random.uniform(-10, 10), random.uniform(-9, 9), 0), random.uniform(.6, 1.4), "snow", 1)
+light("SUN", (.6, .75, 1), 4.5, (-22, -14, 11), (0, 0, 1)); light("SUN", (.9, .5, .6), 2, (20, 18, 9), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .05, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.2)); co.location = t + Vector((10, -56, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.9,
+ "error": "ReferenceError: BMesh data of type BMVert has been removed",
+ "error_line": "v.co.z *= 0.3",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 23,
+ "n_lights": 2,
+ "n_materials": 5,
+ "own_camera": true,
+ "render_error": null
+}

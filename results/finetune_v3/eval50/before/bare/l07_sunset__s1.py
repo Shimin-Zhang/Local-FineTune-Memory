@@ -1,0 +1,147 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- World / Sky ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+nodes.clear()
+
+# Sky texture for sunset
+sky = nodes.new('ShaderNodeTexSky')
+sky.sky_type = 'NISHITA'
+sky.sun_elevation = math.radians(3)  # very low sun
+sky.sun_rotation = math.radians(180)  # sun direction
+sky.sun_intensity = 1.0
+sky.altitude = 100
+sky.air_density = 2.0
+sky.dust_density = 6.0
+sky.ozone_density = 3.0
+
+bg = nodes.new('ShaderNodeBackground')
+bg.inputs['Strength'].default_value = 1.0
+out = nodes.new('ShaderNodeOutputWorld')
+links.new(sky.outputs['Color'], bg.inputs['Color'])
+links.new(bg.outputs['Background'], out.inputs['Surface'])
+
+# --- Sun (visible disk) ---
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 3.0
+sun_data.color = (1.0, 0.55, 0.2)
+sun_data.angle = math.radians(2)
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(87), 0, math.radians(180))  # low angle
+
+# --- Ground / Hill ---
+# Create a hill using a subdivided plane with some displacement
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+hill = bpy.context.active_object
+hill.name = "Hill"
+# Subdivide for smoothness
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=50)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Add a simple hill shape by moving vertices
+import bmesh
+me = hill.data
+bm = bmesh.new()
+bm.from_mesh(me)
+for v in bm.verts:
+    # Gentle hill: higher in the center, slopes down
+    dist = math.sqrt(v.co.x**2 + v.co.y**2)
+    v.co.z = 5.0 * math.exp(-dist**2 / 400.0) + 0.5 * math.sin(v.co.x * 0.1) * math.cos(v.co.y * 0.1)
+bm.to_mesh(me)
+bm.free()
+
+# Ground material - warm earthy tone
+mat_ground = bpy.data.materials.new("GroundMat")
+mat_ground.use_nodes = True
+bsdf = mat_ground.node_tree.nodes['Principled BSDF']
+bsdf.inputs['Base Color'].default_value = (0.45, 0.30, 0.15, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.9
+hill.data.materials.append(mat_ground)
+
+# --- Trees ---
+def make_tree(location, scale=1.0):
+    """Create a simple tree: cylinder trunk + icosphere canopy."""
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3 * scale, depth=3.0 * scale, location=(location[0], location[1], location[2] + 1.5 * scale))
+    trunk = bpy.context.active_object
+    trunk.name = "Trunk"
+    
+    # Canopy
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1.5 * scale, subdivisions=2, location=(location[0], location[1], location[2] + 3.5 * scale))
+    canopy = bpy.context.active_object
+    canopy.name = "Canopy"
+    
+    # Materials
+    mat_trunk = bpy.data.materials.new("TrunkMat")
+    mat_trunk.use_nodes = True
+    tb = mat_trunk.node_tree.nodes['Principled BSDF']
+    tb.inputs['Base Color'].default_value = (0.3, 0.18, 0.1, 1.0)
+    tb.inputs['Roughness'].default_value = 0.8
+    trunk.data.materials.append(mat_trunk)
+    
+    mat_canopy = bpy.data.materials.new("CanopyMat")
+    mat_canopy.use_nodes = True
+    cb = mat_canopy.node_tree.nodes['Principled BSDF']
+    cb.inputs['Base Color'].default_value = (0.15, 0.35, 0.1, 1.0)
+    cb.inputs['Roughness'].default_value = 0.7
+    canopy.data.materials.append(mat_canopy)
+
+# Place a few trees on the hill
+random.seed(42)
+tree_positions = [
+    (-8, -5, 0),
+    (5, -10, 0),
+    (10, 3, 0),
+    (-12, 8, 0),
+    (3, 12, 0),
+]
+
+for pos in tree_positions:
+    # Sample the hill height at this x,y
+    dist = math.sqrt(pos[0]**2 + pos[1]**2)
+    z = 5.0 * math.exp(-dist**2 / 400.0) + 0.5 * math.sin(pos[0] * 0.1) * math.cos(pos[1] * 0.1)
+    make_tree((pos[0], pos[1], z), scale=random.uniform(0.8, 1.3))
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(0, -40, 8))
+cam = bpy.context.active_object
+cam.name = "Camera"
+bpy.context.scene.camera = cam
+
+# Point camera toward the sun / horizon
+target = Vector((0, 0, 3))
+direction = target - cam.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+
+# Set camera to see a nice wide sunset view
+cam.data.lens = 35
+
+# --- Render settings ---
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+
+# Enable long shadows via sun angle (already low)
+# Make sure shadows are on
+scene.render.use_shadows = True
+
+print("Sunset scene created successfully!")

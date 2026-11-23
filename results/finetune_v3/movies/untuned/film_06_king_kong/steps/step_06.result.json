@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 2.0,
+ "error": "KeyError: 'bpy_prop_collection[key]: key \"Transmission\" not found'",
+ "error_line": "bsdf_atm.inputs['Transmission'].default_value = 0.8",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1700,
+ "n_lights": 10,
+ "n_materials": 16,
+ "own_camera": true,
+ "render_error": null
+}

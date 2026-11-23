@@ -1,0 +1,245 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+scene = bpy.context.scene
+
+# Remove all existing lights
+for obj in list(scene.objects):
+    if obj.type == 'LIGHT':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Remove fog patches
+for obj in list(scene.objects):
+    if obj.name.startswith("FogPatch"):
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Set up dark night world
+world = scene.world
+if not world:
+    world = bpy.data.worlds.new("World")
+    scene.world = world
+world.use_nodes = True
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+nodes.clear()
+bg = nodes.new('ShaderNodeBackground')
+bg.inputs[0].default_value = (0.005, 0.008, 0.02, 1.0)
+bg.inputs[1].default_value = 1.0
+out = nodes.new('ShaderNodeOutputWorld')
+links.new(bg.outputs[0], out.inputs[0])
+
+# Materials
+def make_mat(name, color, roughness=0.5, metallic=0.0, emission=0.0, emission_color=None):
+    if emission_color is None:
+        emission_color = color
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    n = mat.node_tree.nodes
+    l = mat.node_tree.links
+    n.clear()
+    b = n.new('ShaderNodeBsdfPrincipled')
+    b.inputs['Base Color'].default_value = (*color, 1.0)
+    b.inputs['Roughness'].default_value = roughness
+    b.inputs['Metallic'].default_value = metallic
+    if emission > 0:
+        b.inputs['Emission Color'].default_value = (*emission_color, 1.0)
+        b.inputs['Emission Strength'].default_value = emission
+    o = n.new('ShaderNodeOutputMaterial')
+    l.new(b.outputs[0], o.inputs[0])
+    return mat
+
+m_asphalt = make_mat("AsphaltN", (0.03, 0.03, 0.035), roughness=0.9)
+m_concrete = make_mat("ConcreteN", (0.1, 0.1, 0.09), roughness=0.8)
+m_metal = make_mat("MetalN", (0.2, 0.2, 0.22), roughness=0.4, metallic=0.7)
+m_dark_metal = make_mat("DarkMetalN", (0.06, 0.06, 0.07), roughness=0.5, metallic=0.6)
+m_glass = make_mat("GlassN", (0.3, 0.4, 0.5), roughness=0.1)
+m_coat_dark = make_mat("CoatDarkN", (0.04, 0.04, 0.05), roughness=0.6)
+m_coat_light = make_mat("CoatLightN", (0.15, 0.13, 0.1), roughness=0.6)
+m_hat = make_mat("HatN", (0.06, 0.05, 0.03), roughness=0.5)
+m_skin = make_mat("SkinN", (0.35, 0.25, 0.18), roughness=0.4)
+m_car_body = make_mat("CarBodyN", (0.015, 0.015, 0.02), roughness=0.3, metallic=0.5)
+m_car_glass = make_mat("CarGlassN", (0.1, 0.12, 0.15), roughness=0.1)
+m_hangar_wall = make_mat("HangarWallN", (0.08, 0.08, 0.09), roughness=0.6, metallic=0.3)
+m_hangar_door = make_mat("HangarDoorN", (0.1, 0.1, 0.11), roughness=0.5, metallic=0.4)
+m_tire = make_mat("TireN", (0.015, 0.015, 0.015), roughness=0.9)
+m_prop = make_mat("PropN", (0.06, 0.06, 0.06), roughness=0.4, metallic=0.5)
+m_fuselage = make_mat("FuselageN", (0.15, 0.15, 0.17), roughness=0.3, metallic=0.5)
+m_wing = make_mat("WingN", (0.12, 0.12, 0.14), roughness=0.3, metallic=0.5)
+m_engine = make_mat("EngineN", (0.08, 0.08, 0.08), roughness=0.4, metallic=0.7)
+m_wood = make_mat("WoodN", (0.12, 0.08, 0.04), roughness=0.7)
+m_light_warm = make_mat("LightWarmN", (1.0, 0.75, 0.35), roughness=0.4, emission=20.0, emission_color=(1.0, 0.75, 0.35))
+m_light_cold = make_mat("LightColdN", (0.5, 0.6, 0.9), roughness=0.4, emission=10.0, emission_color=(0.5, 0.6, 0.9))
+m_tail = make_mat("TailN", (1.0, 0.1, 0.08), roughness=0.4, emission=10.0, emission_color=(1.0, 0.1, 0.08))
+
+# Update all meshes
+for obj in scene.objects:
+    if obj.type != 'MESH':
+        continue
+    n = obj.name
+    if n.startswith("Ground"):
+        obj.data.materials.clear(); obj.data.materials.append(m_asphalt)
+    elif n.startswith("Marking") or n.startswith("CenterLine") or n.startswith("TaxiMark"):
+        obj.data.materials.clear(); obj.data.materials.append(m_concrete)
+    elif n.startswith("HangarBody") or n.startswith("HangarRoof") or n.startswith("ControlTower"):
+        obj.data.materials.clear(); obj.data.materials.append(m_hangar_wall)
+    elif n.startswith("HangarDoor") or n.startswith("DoorFrame"):
+        obj.data.materials.clear(); obj.data.materials.append(m_hangar_door)
+    elif n.startswith("HangarWin") or n.startswith("TowerWin") or n.startswith("CockpitWin") or n.startswith("PaxWin") or n.startswith("CarWin") or n.startswith("Windshield") or n.startswith("RearWindow"):
+        obj.data.materials.clear(); obj.data.materials.append(m_glass)
+    elif n.startswith("Fuselage") or n.startswith("Nose") or n.startswith("Tail") or n.startswith("VStab") or n.startswith("HStab"):
+        obj.data.materials.clear(); obj.data.materials.append(m_fuselage)
+    elif n.startswith("Wing"):
+        obj.data.materials.clear(); obj.data.materials.append(m_wing)
+    elif n.startswith("Engine"):
+        obj.data.materials.clear(); obj.data.materials.append(m_engine)
+    elif n.startswith("PropHub") or n.startswith("Blade"):
+        obj.data.materials.clear(); obj.data.materials.append(m_prop)
+    elif n.startswith("Gear") or n.startswith("Wheel") or n.startswith("TailWheel") or n.startswith("CarWheel"):
+        obj.data.materials.clear(); obj.data.materials.append(m_tire)
+    elif n.startswith("Hubcap"):
+        obj.data.materials.clear(); obj.data.materials.append(m_metal)
+    elif n.startswith("Headlight"):
+        obj.data.materials.clear(); obj.data.materials.append(m_light_warm)
+    elif n.startswith("Taillight"):
+        obj.data.materials.clear(); obj.data.materials.append(m_tail)
+    elif n.startswith("Rick"):
+        if "Head" in n:
+            obj.data.materials.clear(); obj.data.materials.append(m_skin)
+        elif "Hat" in n:
+            obj.data.materials.clear(); obj.data.materials.append(m_hat)
+        else:
+            obj.data.materials.clear(); obj.data.materials.append(m_coat_dark)
+    elif n.startswith("Ilsa"):
+        if "Head" in n:
+            obj.data.materials.clear(); obj.data.materials.append(m_skin)
+        elif "Hat" in n:
+            obj.data.materials.clear(); obj.data.materials.append(m_hat)
+        else:
+            obj.data.materials.clear(); obj.data.materials.append(m_coat_light)
+    elif n.startswith("CarBody") or n.startswith("CarRoof") or n.startswith("Hood") or n.startswith("Trunk"):
+        obj.data.materials.clear(); obj.data.materials.append(m_car_body)
+    elif n.startswith("LightPole") or n.startswith("SignPole") or n.startswith("Ladder") or n.startswith("SmallLampPole"):
+        obj.data.materials.clear(); obj.data.materials.append(m_dark_metal)
+    elif n.startswith("LightFixture") or n.startswith("SmallLampGlobe"):
+        obj.data.materials.clear(); obj.data.materials.append(m_light_warm)
+    elif n.startswith("Crate") or n.startswith("ExtraCrate") or n.startswith("Bench") or n.startswith("Trunk") or n.startswith("Suitcase"):
+        obj.data.materials.clear(); obj.data.materials.append(m_wood)
+    elif n.startswith("Drum") or n.startswith("Barrel") or n.startswith("TrashCan"):
+        obj.data.materials.clear(); obj.data.materials.append(m_dark_metal)
+    elif n.startswith("EdgeLight") or n.startswith("RunwayEdge"):
+        obj.data.materials.clear(); obj.data.materials.append(m_light_cold)
+    elif n.startswith("SignBoard"):
+        obj.data.materials.clear(); obj.data.materials.append(m_concrete)
+    elif n.startswith("Tree"):
+        obj.data.materials.clear(); obj.data.materials.append(make_mat(f"TreeN_{n}", (0.008, 0.015, 0.008), roughness=0.9))
+    elif n.startswith("CityLight"):
+        obj.data.materials.clear(); obj.data.materials.append(make_mat(f"CityN_{n}", (1.0, 0.7, 0.3), roughness=0.5, emission=8.0, emission_color=(1.0, 0.7, 0.3)))
+
+# Lights
+# Floodlights
+for i, pos in enumerate([(-10, 5, 6), (10, 5, 6), (-10, -5, 6), (10, -5, 6)]):
+    ld = bpy.data.lights.new(f"FL{i}", type='POINT')
+    ld.energy = 8000
+    ld.color = (1.0, 0.78, 0.4)
+    ld.shadow_soft_size = 0.8
+    lo = bpy.data.objects.new(f"FLObj{i}", ld)
+    scene.collection.objects.link(lo)
+    lo.location = pos
+
+# Hangar light
+hl = bpy.data.lights.new("HL", type='POINT')
+hl.energy = 5000
+hl.color = (0.6, 0.7, 1.0)
+hl.shadow_soft_size = 2.0
+hlo = bpy.data.objects.new("HLObj", hl)
+scene.collection.objects.link(hlo)
+hlo.location = (15, 14, 4)
+
+# Car headlights
+for s in [-1, 1]:
+    cl = bpy.data.lights.new(f"CHL{s}", type='SPOT')
+    cl.energy = 1500
+    cl.color = (1.0, 0.85, 0.45)
+    cl.spot_size = math.radians(35)
+    cl.shadow_soft_size = 0.2
+    clo = bpy.data.objects.new(f"CHLObj{s}", cl)
+    scene.collection.objects.link(clo)
+    clo.location = (-7.8, -2 + s * 0.6, 0.5)
+    clo.rotation_euler = (0, math.radians(-90), 0)
+
+# Moon
+ml = bpy.data.lights.new("Moon", type='SUN')
+ml.energy = 0.5
+ml.color = (0.4, 0.5, 0.8)
+ml.shadow_soft_size = 3.0
+mlo = bpy.data.objects.new("MoonObj", ml)
+scene.collection.objects.link(mlo)
+mlo.rotation_euler = (math.radians(55), math.radians(10), 0)
+
+# Key on couple
+kl = bpy.data.lights.new("KC", type='AREA')
+kl.energy = 500
+kl.color = (1.0, 0.8, 0.5)
+kl.size = 2
+klo = bpy.data.objects.new("KCObj", kl)
+scene.collection.objects.link(klo)
+klo.location = (3, -4, 4)
+klo.rotation_euler = (math.radians(55), 0, math.radians(25))
+
+# Fill
+fl = bpy.data.lights.new("FC", type='AREA')
+fl.energy = 250
+fl.color = (0.5, 0.6, 0.8)
+fl.size = 3
+flo = bpy.data.objects.new("FCObj", fl)
+scene.collection.objects.link(flo)
+flo.location = (-2, -7, 3)
+flo.rotation_euler = (math.radians(65), 0, math.radians(-15))
+
+# Rim on plane
+rl = bpy.data.lights.new("RP", type='AREA')
+rl.energy = 400
+rl.color = (0.6, 0.7, 1.0)
+rl.size = 1.5
+rlo = bpy.data.objects.new("RPObj", rl)
+scene.collection.objects.link(rlo)
+rlo.location = (8, 7, 5)
+rlo.rotation_euler = (math.radians(40), math.radians(25), 0)
+
+# Tower beacon
+tl = bpy.data.lights.new("TB", type='POINT')
+tl.energy = 1500
+tl.color = (1.0, 0.08, 0.08)
+tlo = bpy.data.objects.new("TBObj", tl)
+scene.collection.objects.link(tlo)
+tlo.location = (-30, 25, 18)
+
+# Small lamp
+sl = bpy.data.lights.new("SL", type='POINT')
+sl.energy = 300
+sl.color = (1.0, 0.75, 0.35)
+slo = bpy.data.objects.new("SLObj", sl)
+scene.collection.objects.link(slo)
+slo.location = (-1, -4, 3)
+
+# Camera
+cam = scene.camera
+cam.location = (4, -9, 2.2)
+cam.rotation_euler = (math.radians(88), 0, math.radians(8))
+cam.data.lens = 55
+cam.data.sensor_width = 36
+
+# Render
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.cycles.samples = 512
+scene.cycles.use_denoising = True
+scene.cycles.max_bounces = 6
+scene.cycles.diffuse_bounces = 3
+scene.cycles.glossy_bounces = 3
+scene.view_settings.exposure = 0.5
+scene.view_settings.look = 'AgX - Punchy'
+
+print("Final night scene complete!")

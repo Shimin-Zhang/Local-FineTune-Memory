@@ -1,0 +1,69 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1942)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def rust(c, e=0, r=.85):
+    m = bpy.data.materials.new("r"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+floor, rust1, rust2, rust3, iron, dark, puddle, drip, spark, fire = (rust((.13, .11, .1)), rust((.42, .16, .05)), rust((.3, .1, .04)), rust((.5, .2, .07)), rust((.12, .12, .13), r=.5),
+    rust((.03, .02, .02)), rust((.04, .08, .1), r=.1), rust((.35, .12, .04)), rust((1, .5, .1), 25), rust((1, .35, .05), 14))
+def mk(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cyl(m, p, r, h, n=10, r2=None, rot=(0, 0, 0), j=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts:
+        v.co.z += h / 2; v.co += Vector((random.uniform(-j, j), random.uniform(-j, j), random.uniform(-j, j)))
+    return mk(bm, m, p, rot)
+def box(m, p, s, r=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, p, r)
+def lamp(kind, c, w, p, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# base: concrete slab with rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 13 + random.uniform(-1, 1), v.co.y * 11 + random.uniform(-1, 1), -3 + random.uniform(-.6, .4)))
+    else: v.co = Vector((v.co.x * 17, v.co.y * 14, 0))
+mk(bm, floor)
+# the barrel: stacked plates with rust bands, bulging ribs, dished lid
+for k in range(7):
+    cyl(rust1 if k % 2 else rust2, (0, 0, k * .85), 1.9, .86, 10, j=.03)
+for z in (.4, 2.0, 3.6, 5.2): cyl(iron, (0, 0, z), 2.02, .3, 10, j=.02)
+cyl(rust3, (0, 0, 5.95), 1.95, .3, 10, 1.7); cyl(dark, (0, 0, 6.25), 1.55, .08, 10)
+cyl(rust1, (0, 0, 6.3), 1.4, .2, 10, .9)
+for k in range(14):
+    a = random.uniform(0, 6.28); z = random.uniform(.5, 5.8)
+    box(rust3 if k % 2 else rust2, (1.9 * math.cos(a), 1.9 * math.sin(a), z), (random.uniform(.4, .9), random.uniform(.3, .6), random.uniform(.3, .7)), (0, 0, a))
+# side hatch with a glowing sliver, and a spigot with drips
+box(dark, (0, -1.88, 1.9), (1.3, .12, 1.3)); box(fire, (0, -1.96, 1.95), (1.0, .05, .9)); lamp("POINT", (1, .4, .08), 450, (0, -2.8, 2.4))
+cyl(iron, (1.9, 0, .9), .15, .8, 6, rot=(0, math.pi / 2, 0)); cyl(iron, (2.7, 0, .6), .12, .4, 6)
+for k in range(4): cyl(drip, (2.7, 0, .1 + k * .2), .07, .15, 5)
+cyl(puddle, (2.7, 0, .02), .8, .05, 7)
+# a cut-off drum lying on its side, a stack of scrap, a broken drum, a crate
+cyl(rust2, (-6, -2.5, 1.3), 1.3, 3.2, 9, rot=(0, math.pi / 2, .3)); cyl(dark, (-4.4, -3.0, 1.3), 1.2, .1, 9, rot=(0, math.pi / 2, .3))
+cyl(rust1, (-6.5, 3.5, 0), 1.2, 1.4, 9); cyl(rust3, (-6.5, 3.5, 1.4), 1.15, 1.4, 9); cyl(dark, (-6.5, 3.5, 2.8), 1.1, .1, 9)
+for k in range(5): box(rust1 if k % 2 else rust2, (random.uniform(-1, 1) + 5.5, random.uniform(-1, 1) + 3, 0), (random.uniform(1, 2), random.uniform(.8, 1.5), random.uniform(.5, 1.2)), (0, 0, random.uniform(0, 3)))
+box(rust3, (6.5, -3.5, 0), (2.4, 2, 1.8), (0, 0, .4)); box(dark, (6.5, -3.5, 1.8), (2.5, 2.1, .15), (0, 0, .4))
+# a torch lying on the ground, sparks and embers
+cyl(iron, (-1.5, -5, .25), .2, 1.6, 6, rot=(math.pi / 2, 0, .5)); cyl(spark, (-2.4, -5.7, .25), .3, .3, 6)
+lamp("POINT", (1, .5, .1), 350, (-2.4, -5.7, .6))
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(2.8, 7)
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.1, .22))
+    mk(bm, spark, (r * math.cos(a), r * math.sin(a), .25))
+lamp("SUN", (.55, .7, 1), 3.5, (-24, -14, 9), (0, 0, 2)); lamp("SUN", (1, .4, .15), 2.2, (20, 22, 8), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .015, .025, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.6)); co.location = t + Vector((8, -38, 23))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

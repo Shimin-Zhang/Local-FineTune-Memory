@@ -1,0 +1,99 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1878)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def paint(name, rgb, em=0, metal=0, rough=.85):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough; p.inputs["Metallic"].default_value = metal
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    M[name] = m
+for k, c in dict(water=(.07, .12, .14), quay=(.28, .27, .25), iron=(.1, .11, .13), iron2=(.16, .17, .19), deck=(.35, .22, .12), black=(.03, .03, .035),
+                 coal=(.02, .02, .02), hullred=(.3, .08, .06), white=(.55, .55, .5), rope=(.4, .3, .2), brick=(.3, .14, .1), fog=(.2, .25, .28)).items(): paint(k, c)
+paint("smoke", (.25, .26, .28)); paint("fire", (1, .45, .1), 14); paint("lamp", (1, .75, .35), 12); paint("flag", (.8, .1, .1), 2)
+def spawn(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(M[k]); return o
+def slab(at, d, k, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return spawn(bm, k, at, (rx, 0, rz))
+def post(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return spawn(bm, k, at, rot)
+def spar(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return spawn(bm, k)
+def puff(at, r, k):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.8, 1.2)
+    return spawn(bm, k, at)
+def beam(at, c, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+# harbour water base, with a stone quay along the back
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=16, depth=4)
+for v in bm.verts:
+    v.co.y *= .85
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    v.co.z -= 2
+spawn(bm, "water")
+slab((0, 11, 0), (26, 4.5, 1.3), "quay"); slab((0, 8.8, 0), (26, .4, .5), "iron2")
+for i in range(13): slab((-12 + i * 2, 8.6, 0), (.5, .5, 1.5), "iron")
+# the ironclad: hull, red boot topping, deck, casemate, turrets, funnels, mast
+hx, hy = -1, 0
+slab((hx, hy, 0), (22, 5.2, 1.5), "iron", rx=0); slab((hx, hy, 1.5), (22.4, 5.4, .25), "hullred")
+slab((hx, hy, 1.75), (21.4, 4.6, .3), "deck")
+for i in range(11): slab((hx - 9.5 + i * 1.9, hy - 2.32, 1.8), (.2, .06, .9), "iron2"); slab((hx - 9.5 + i * 1.9, hy + 2.32, 1.8), (.2, .06, .9), "iron2")
+slab((hx, hy, 2.05), (12, 3.6, 1.6), "iron2")
+for i in range(6): slab((hx - 4.5 + i * 1.8, hy - 1.82, 2.6), (.7, .06, .6), "lamp"); slab((hx - 4.5 + i * 1.8, hy + 1.82, 2.6), (.7, .06, .6), "lamp")
+slab((hx, hy, 3.65), (12.4, 3.9, .2), "deck")
+for tx in (-3.5, 3.5):
+    post((hx + tx, hy, 3.85), 1.9, 1.5, 8, "iron", 1.6); post((hx + tx, hy, 5.3), 1.7, .3, 8, "black", 1.4)
+    for s in (-1, 1):
+        spar((hx + tx, hy + s * 1.5, 5.0), (hx + tx, hy + s * 4.2, 4.6), .45, "black"); slab((hx + tx, hy + s * 1.5, 4.5), (.5, .5, .5), "iron2")
+for fx in (-.6, .6):
+    post((hx + fx, hy, 3.85), .6, 3.8, 7, "iron", .45); post((hx + fx, hy, 7.6), .5, .25, 7, "black")
+for i in range(4): puff((hx + .6 + i * 1.5, hy, 8.4 + i * .9), .7 + i * .3, "smoke")
+spar((hx - 9, hy, 3.85), (hx - 9, hy, 12), .22, "iron2")
+for z in (6.5, 9): slab((hx - 9, hy, z), (3, .12, .12), "iron")
+slab((hx - 9, hy, 11.2), (1.6, .06, 1.1), "flag"); beam((hx - 9, hy - .5, 11.2), (1, .2, .15), 150)
+# gangway from quay to the ship's side, with railings
+spar((hx + 2, hy + 2.4, 2.0), (hx + 2, 8.6, 1.3), .9, "deck")
+for i in range(6):
+    p = Vector((hx + 2, hy + 2.4, 2.0)).lerp(Vector((hx + 2, 8.6, 1.3)), i / 5)
+    post((p.x - .5, p.y, p.z), .06, .8, 4, "iron"); post((p.x + .5, p.y, p.z), .06, .8, 4, "iron")
+# coal barges alongside with heaps of coal
+for i, (bx, by) in enumerate(((6, -5.5), (11, -5.2))):
+    slab((bx, by, 0), (6, 3.2, 1.0), "hullred"); slab((bx, by, 1.0), (5.4, 2.6, .15), "deck")
+    for k in range(5): puff((bx - 2 + k * 1, by + random.uniform(-.4, .4), 1.4), random.uniform(.5, .8), "coal")
+# crane on the quay
+cx, cy = -11, 10.5
+slab((cx, cy, 1.3), (2.2, 2.2, .4), "iron2")
+for s in (-1, 1): spar((cx + s * .8, cy, 1.7), (cx + s * .8, cy, 7.5), .3, "iron")
+spar((cx - .8, cy, 7.4), (cx + .8, cy, 7.4), .3, "iron"); spar((cx, cy, 7.2), (cx, cy - 6.5, 5.2), .3, "iron")
+spar((cx, cy - 6.5, 5.2), (cx, cy - 6.5, 1.6), .08, "rope"); slab((cx, cy - 6.5, 1.4), (.8, .8, .4), "iron")
+# brick store and lamp post on the quay
+slab((6, 11.5, 1.3), (7, 3.5, 3.2), "brick"); slab((6, 11.5, 4.5), (7.4, 3.9, .3), "black")
+slab((6, 9.7, 2.4), (1.2, .1, 1.2), "lamp"); beam((6, 9.0, 3), (1, .7, .3), 200)
+post((-6, 9.2, 1.3), .1, 3.2, 5, "iron"); slab((-6, 9.2, 4.5), (.5, .5, .6), "lamp"); beam((-6, 9.2, 4.8), (1, .75, .35), 250)
+# fire in a coal heap on a barge
+puff((6, -5.5, 1.6), .5, "fire"); beam((6, -5.5, 2.4), (1, .45, .1), 250)
+# fog banks
+for i in range(8): puff((random.uniform(-14, 14), random.uniform(-10, 6), random.uniform(.2, 1.2)), random.uniform(1.5, 2.8), "fog").scale.z = .25
+for col, w, p in (((.65, .75, .85), 4.5, (-26, -20, 10)), ((.5, .6, .75), 2, (22, 26, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("fog"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.035, .045, .055, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+tg = Vector((0, 1, 3)); co.location = tg + Vector((16, -62, 38))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

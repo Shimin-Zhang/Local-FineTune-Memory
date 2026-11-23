@@ -1,0 +1,573 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.data.meshes.remove_all()
+bpy.data.materials.remove_all()
+bpy.data.lights.remove_all()
+bpy.data.cameras.remove_all()
+
+# ============ MATERIALS ============
+
+def create_material(name, base_color, metallic=0.0, roughness=0.5, emission=0.0, emission_color=(0,0,0,1)):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+    out = nodes.new('ShaderNodeOutputMaterial')
+    out.location = (300, 0)
+    bsdf.location = (0, 0)
+    bsdf.inputs['Base Color'].default_value = base_color
+    bsdf.inputs['Metallic'].default_value = metallic
+    bsdf.inputs['Roughness'].default_value = roughness
+    if emission > 0:
+        bsdf.inputs['Emission Color'].default_value = emission_color
+        bsdf.inputs['Emission Strength'].default_value = emission
+    links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+    return mat
+
+# Wet asphalt
+mat_asphalt = create_material("WetAsphalt", (0.02, 0.02, 0.02, 1), metallic=0.1, roughness=0.05)
+# Wet road reflection - use a glossy shader for the wet look
+mat_asphalt_wet = create_material("WetAsphaltGlossy", (0.01, 0.01, 0.015, 1), metallic=0.3, roughness=0.02)
+
+# Brick buildings
+mat_brick1 = create_material("Brick1", (0.25, 0.08, 0.05, 1), roughness=0.8)
+mat_brick2 = create_material("Brick2", (0.35, 0.12, 0.08, 1), roughness=0.8)
+mat_brick3 = create_material("Brick3", (0.18, 0.10, 0.06, 1), roughness=0.8)
+mat_stone = create_material("Stone", (0.3, 0.28, 0.25, 1), roughness=0.9)
+mat_stone_dark = create_material("StoneDark", (0.15, 0.14, 0.12, 1), roughness=0.9)
+
+# Window glass (lit)
+mat_window_lit = create_material("WindowLit", (1.0, 0.9, 0.6, 1), emission=2.0, emission_color=(1.0, 0.85, 0.5, 1))
+mat_window_dark = create_material("WindowDark", (0.05, 0.05, 0.08, 1), roughness=0.1)
+mat_window_frame = create_material("WindowFrame", (0.1, 0.08, 0.05, 1), roughness=0.7)
+
+# Storefront
+mat_storefront_glass = create_material("StorefrontGlass", (0.9, 0.85, 0.7, 1), emission=1.5, emission_color=(1.0, 0.9, 0.6, 1))
+mat_storefront_frame = create_material("StorefrontFrame", (0.05, 0.05, 0.05, 1), roughness=0.3)
+mat_awning = create_material("Awning", (0.15, 0.02, 0.02, 1), roughness=0.9)
+mat_awning_stripe = create_material("AwningStripe", (0.8, 0.75, 0.6, 1), roughness=0.9)
+
+# Lamp post
+mat_lamp_post = create_material("LampPost", (0.05, 0.05, 0.05, 1), metallic=0.8, roughness=0.3)
+mat_lamp_glass = create_material("LampGlass", (1.0, 0.9, 0.5, 1), emission=3.0, emission_color=(1.0, 0.85, 0.4, 1))
+mat_lamp_base = create_material("LampBase", (0.03, 0.03, 0.03, 1), metallic=0.9, roughness=0.2)
+
+# Character
+mat_skin = create_material("Skin", (0.8, 0.6, 0.5, 1), roughness=0.7)
+mat_suit = create_material("Suit", (0.02, 0.02, 0.02, 1), roughness=0.6)
+mat_shoes = create_material("Shoes", (0.01, 0.01, 0.01, 1), metallic=0.3, roughness=0.2)
+mat_hair = create_material("Hair", (0.05, 0.03, 0.02, 1), roughness=0.9)
+mat_umbrella = create_material("Umbrella", (0.05, 0.05, 0.05, 1), roughness=0.4)
+mat_umbrella_handle = create_material("UmbrellaHandle", (0.3, 0.2, 0.1, 1), roughness=0.5)
+
+# Misc
+mat_curb = create_material("Curb", (0.15, 0.15, 0.15, 1), roughness=0.8)
+mat_fire_hydrant = create_material("FireHydrant", (0.6, 0.05, 0.05, 1), roughness=0.5)
+mat_manhole = create_material("Manhole", (0.08, 0.08, 0.08, 1), metallic=0.5, roughness=0.4)
+mat_sign = create_material("Sign", (0.9, 0.85, 0.7, 1), emission=1.0, emission_color=(1.0, 0.9, 0.6, 1))
+mat_neon = create_material("Neon", (1.0, 0.2, 0.2, 1), emission=5.0, emission_color=(1.0, 0.1, 0.1, 1))
+mat_neon_blue = create_material("NeonBlue", (0.2, 0.4, 1.0, 1), emission=5.0, emission_color=(0.1, 0.3, 1.0, 1))
+mat_puddle = create_material("Puddle", (0.02, 0.02, 0.03, 1), metallic=0.9, roughness=0.01)
+mat_sky = create_material("NightSky", (0.01, 0.01, 0.03, 1), emission=0.5, emission_color=(0.01, 0.01, 0.04, 1))
+
+# ============ WORLD ============
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.005, 0.005, 0.015, 1)
+    bg.inputs[1].default_value = 1.0
+
+# ============ GROUND / STREET ============
+
+# Main road surface
+road = bpy.data.meshes.new("Road")
+road_obj = bpy.data.objects.new("Road", road)
+bpy.context.collection.objects.link(road_obj)
+import bmesh
+bm = bmesh.new()
+# Road: 20m wide, 50m long
+verts = [
+    bm.verts.new((-10, -25, 0)),
+    bm.verts.new((10, -25, 0)),
+    bm.verts.new((10, 25, 0)),
+    bm.verts.new((-10, 25, 0)),
+]
+bm.faces.new(verts)
+bm.to_mesh(road)
+bm.free()
+road_obj.data.materials.append(mat_asphalt_wet)
+
+# Sidewalks
+for side in [-1, 1]:
+    sw = bpy.data.meshes.new(f"Sidewalk_{side}")
+    sw_obj = bpy.data.objects.new(f"Sidewalk_{side}", sw)
+    bpy.context.collection.objects.link(sw_obj)
+    bm = bmesh.new()
+    x0 = side * 10
+    x1 = side * 13
+    verts = [
+        bm.verts.new((x0, -25, 0.15)),
+        bm.verts.new((x1, -25, 0.15)),
+        bm.verts.new((x1, 25, 0.15)),
+        bm.verts.new((x0, 25, 0.15)),
+    ]
+    bm.faces.new(verts)
+    bm.to_mesh(sw)
+    bm.free()
+    sw_obj.data.materials.append(mat_stone)
+    # Top face
+    bm = bmesh.new()
+    verts = [
+        bm.verts.new((x0, -25, 0.15)),
+        bm.verts.new((x1, -25, 0.15)),
+        bm.verts.new((x1, 25, 0.15)),
+        bm.verts.new((x0, 25, 0.15)),
+    ]
+    bm.faces.new(verts)
+    bm.to_mesh(sw)
+    bm.free()
+
+# Curbs
+for side in [-1, 1]:
+    curb = bpy.data.meshes.new(f"Curb_{side}")
+    curb_obj = bpy.data.objects.new(f"Curb_{side}", curb)
+    bpy.context.collection.objects.link(curb_obj)
+    bm = bmesh.new()
+    x0 = side * 9.8
+    x1 = side * 10.2
+    h = 0.15
+    verts = [
+        bm.verts.new((x0, -25, 0)),
+        bm.verts.new((x1, -25, 0)),
+        bm.verts.new((x1, -25, h)),
+        bm.verts.new((x0, -25, h)),
+        bm.verts.new((x0, 25, 0)),
+        bm.verts.new((x1, 25, 0)),
+        bm.verts.new((x1, 25, h)),
+        bm.verts.new((x0, 25, h)),
+    ]
+    bm.faces.new([verts[0], verts[1], verts[2], verts[3]])
+    bm.faces.new([verts[4], verts[7], verts[6], verts[5]])
+    bm.faces.new([verts[0], verts[4], verts[7], verts[3]])
+    bm.faces.new([verts[1], verts[5], verts[6], verts[2]])
+    bm.to_mesh(curb)
+    bm.free()
+    curb_obj.data.materials.append(mat_curb)
+
+# ============ BUILDINGS ============
+
+def create_building(x, z, width, depth, height, mat, num_floors=4, windows_per_floor=4):
+    """Create a simple box building with windows."""
+    # Main structure
+    mesh = bpy.data.meshes.new(f"Building_{x}_{z}")
+    obj = bpy.data.objects.new(f"Building_{x}_{z}", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    # Box
+    x0, x1 = x - width/2, x + width/2
+    z0, z1 = z - depth/2, z + depth/2
+    y0, y1 = 0, height
+    verts = [
+        bm.verts.new((x0, y0, z0)),
+        bm.verts.new((x1, y0, z0)),
+        bm.verts.new((x1, y0, z1)),
+        bm.verts.new((x0, y0, z1)),
+        bm.verts.new((x0, y1, z0)),
+        bm.verts.new((x1, y1, z0)),
+        bm.verts.new((x1, y1, z1)),
+        bm.verts.new((x0, y1, z1)),
+    ]
+    bm.faces.new([verts[0], verts[1], verts[2], verts[3]])
+    bm.faces.new([verts[4], verts[7], verts[6], verts[5]])
+    bm.faces.new([verts[0], verts[4], verts[5], verts[1]])
+    bm.faces.new([verts[2], verts[6], verts[7], verts[3]])
+    bm.faces.new([verts[1], verts[5], verts[6], verts[2]])
+    bm.faces.new([verts[0], verts[3], verts[7], verts[4]])
+    bm.to_mesh(mesh)
+    bm.free()
+    obj.data.materials.append(mat)
+    
+    # Windows on front face (facing street, z = z1)
+    floor_h = height / num_floors
+    win_w = width / (windows_per_floor * 2)
+    win_h = floor_h * 0.5
+    
+    for floor in range(num_floors):
+        for w in range(windows_per_floor):
+            wx = x0 + win_w * (w * 2 + 1)
+            wy = y0 + floor_h * floor + floor_h * 0.25
+            wz = z1 + 0.01
+            wm = bpy.data.meshes.new(f"Win_{x}_{z}_{floor}_{w}")
+            wo = bpy.data.objects.new(f"Win_{x}_{z}_{floor}_{w}", wm)
+            bpy.context.collection.objects.link(wo)
+            bm = bmesh.new()
+            ww = win_w * 0.8
+            wh = win_h * 0.8
+            v = [
+                bm.verts.new((wx - ww/2, wy - wh/2, wz)),
+                bm.verts.new((wx + ww/2, wy - wh/2, wz)),
+                bm.verts.new((wx + ww/2, wy + wh/2, wz)),
+                bm.verts.new((wx - ww/2, wy + wh/2, wz)),
+            ]
+            bm.faces.new(v)
+            bm.to_mesh(wm)
+            bm.free()
+            # Randomly lit or dark
+            if random.random() > 0.3:
+                wo.data.materials.append(mat_window_lit)
+            else:
+                wo.data.materials.append(mat_window_dark)
+            
+            # Window frame
+            fm = bpy.data.meshes.new(f"WinF_{x}_{z}_{floor}_{w}")
+            fo = bpy.data.objects.new(f"WinF_{x}_{z}_{floor}_{w}", fm)
+            bpy.context.collection.objects.link(fo)
+            bm = bmesh.new()
+            fw = ww + 0.05
+            fh = wh + 0.05
+            v = [
+                bm.verts.new((wx - fw/2, wy - fh/2, wz - 0.01)),
+                bm.verts.new((wx + fw/2, wy - fh/2, wz - 0.01)),
+                bm.verts.new((wx + fw/2, wy + fh/2, wz - 0.01)),
+                bm.verts.new((wx - fw/2, wy + fh/2, wz - 0.01)),
+            ]
+            bm.faces.new(v)
+            bm.to_mesh(fm)
+            bm.free()
+            fo.data.materials.append(mat_window_frame)
+    
+    return obj
+
+# Buildings along both sides of the street
+# Left side (x = -13 to -10)
+create_building(-13, -15, 6, 8, 15, mat_brick1, 5, 4)
+create_building(-13, -5, 6, 8, 12, mat_brick2, 4, 3)
+create_building(-13, 5, 6, 8, 18, mat_brick3, 6, 4)
+create_building(-13, 15, 6, 8, 14, mat_brick1, 5, 3)
+
+# Right side (x = 10 to 13)
+create_building(13, -15, 6, 8, 16, mat_brick2, 5, 4)
+create_building(13, -5, 6, 8, 13, mat_brick3, 4, 3)
+create_building(13, 5, 6, 8, 20, mat_brick1, 6, 4)
+create_building(13, 15, 6, 8, 15, mat_brick2, 5, 3)
+
+# ============ STOREFRONTS ============
+
+def create_storefront(x, z, width, depth, mat_wall, mat_glass, mat_frame):
+    """Create a storefront with large glass windows at street level."""
+    # Storefront wall
+    mesh = bpy.data.meshes.new(f"Storefront_{x}_{z}")
+    obj = bpy.data.objects.new(f"Storefront_{x}_{z}", mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    x0, x1 = x - width/2, x + width/2
+    z0, z1 = z - depth/2, z + depth/2
+    h = 4  # Storefront height
+    # Front face
+    v = [
+        bm.verts.new((x0, 0, z1)),
+        bm.verts.new((x1, 0, z1)),
+        bm.verts.new((x1, h, z1)),
+        bm.verts.new((x0, h, z1)),
+    ]
+    bm.faces.new(v)
+    # Top
+    v = [
+        bm.verts.new((x0, h, z0)),
+        bm.verts.new((x1, h, z0)),
+        bm.verts.new((x1, h, z1)),
+        bm.verts.new((x0, h, z1)),
+    ]
+    bm.faces.new(v)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj.data.materials.append(mat_wall)
+    
+    # Large glass window
+    gm = bpy.data.meshes.new(f"StoreGlass_{x}_{z}")
+    go = bpy.data.objects.new(f"StoreGlass_{x}_{z}", gm)
+    bpy.context.collection.objects.link(go)
+    bm = bmesh.new()
+    gw = width * 0.8
+    gh = 3
+    v = [
+        bm.verts.new((x - gw/2, 0.3, z1 + 0.02)),
+        bm.verts.new((x + gw/2, 0.3, z1 + 0.02)),
+        bm.verts.new((x + gw/2, 0.3 + gh, z1 + 0.02)),
+        bm.verts.new((x - gw/2, 0.3 + gh, z1 + 0.02)),
+    ]
+    bm.faces.new(v)
+    bm.to_mesh(gm)
+    bm.free()
+    go.data.materials.append(mat_glass)
+    
+    # Frame
+    fm = bpy.data.meshes.new(f"StoreFrame_{x}_{z}")
+    fo = bpy.data.objects.new(f"StoreFrame_{x}_{z}", fm)
+    bpy.context.collection.objects.link(fo)
+    bm = bmesh.new()
+    fw = gw + 0.1
+    fh = gh + 0.1
+    v = [
+        bm.verts.new((x - fw/2, 0.2, z1 + 0.01)),
+        bm.verts.new((x + fw/2, 0.2, z1 + 0.01)),
+        bm.verts.new((x + fw/2, 0.2 + fh, z1 + 0.01)),
+        bm.verts.new((x - fw/2, 0.2 + fh, z1 + 0.01)),
+    ]
+    bm.faces.new(v)
+    bm.to_mesh(fm)
+    bm.free()
+    fo.data.materials.append(mat_frame)
+    
+    # Awning
+    am = bpy.data.meshes.new(f"Awning_{x}_{z}")
+    ao = bpy.data.objects.new(f"Awning_{x}_{z}", am)
+    bpy.context.collection.objects.link(ao)
+    bm = bmesh.new()
+    aw = width * 0.85
+    ah = 1.5
+    v = [
+        bm.verts.new((x - aw/2, 0.3 + gh + 0.1, z1 + 0.02)),
+        bm.verts.new((x + aw/2, 0.3 + gh + 0.1, z1 + 0.02)),
+        bm.verts.new((x + aw/2, 0.3 + gh + 0.1, z1 + 0.02 + ah)),
+        bm.verts.new((x - aw/2, 0.3 + gh + 0.1, z1 + 0.02 + ah)),
+    ]
+    bm.faces.new(v)
+    bm.to_mesh(am)
+    bm.free()
+    ao.data.materials.append(mat_awning)
+
+# Storefronts on both sides
+create_storefront(-11, -15, 5, 6, mat_brick1, mat_storefront_glass, mat_storefront_frame)
+create_storefront(-11, -5, 5, 6, mat_brick2, mat_storefront_glass, mat_storefront_frame)
+create_storefront(-11, 5, 5, 6, mat_brick3, mat_storefront_glass, mat_storefront_frame)
+create_storefront(-11, 15, 5, 6, mat_brick1, mat_storefront_glass, mat_storefront_frame)
+
+create_storefront(11, -15, 5, 6, mat_brick2, mat_storefront_glass, mat_storefront_frame)
+create_storefront(11, -5, 5, 6, mat_brick3, mat_storefront_glass, mat_storefront_frame)
+create_storefront(11, 5, 5, 6, mat_brick1, mat_storefront_glass, mat_storefront_frame)
+create_storefront(11, 15, 5, 6, mat_brick2, mat_storefront_glass, mat_storefront_frame)
+
+# ============ LAMP POSTS ============
+
+def create_lamp_post(x, z):
+    """Create a classic street lamp post."""
+    # Base
+    bm = bmesh.new()
+    # Octagonal base
+    import math
+    for i in range(8):
+        angle = i * math.pi / 4
+        r = 0.3
+        bm.verts.new((x + r * math.cos(angle), 0, z + r * math.sin(angle)))
+    for i in range(8):
+        angle = i * math.pi / 4
+        r = 0.25
+        bm.verts.new((x + r * math.cos(angle), 0.2, z + r * math.sin(angle)))
+    bm.to_mesh(bpy.data.meshes.new(f"LampBase_{x}_{z}"))
+    # Actually let's do a simpler cylinder-like base
+    base_mesh = bpy.data.meshes.new(f"LampBase_{x}_{z}")
+    base_obj = bpy.data.objects.new(f"LampBase_{x}_{z}", base_mesh)
+    bpy.context.collection.objects.link(base_obj)
+    bm = bmesh.new()
+    # Create a simple tapered cylinder base
+    segments = 12
+    bottom_r = 0.35
+    top_r = 0.2
+    h = 0.3
+    bottom_verts = []
+    top_verts = []
+    for i in range(segments):
+        angle = i * 2 * math.pi / segments
+        bottom_verts.append(bm.verts.new((x + bottom_r * math.cos(angle), 0, z + bottom_r * math.sin(angle))))
+        top_verts.append(bm.verts.new((x + top_r * math.cos(angle), h, z + top_r * math.sin(angle))))
+    for i in range(segments):
+        j = (i + 1) % segments
+        bm.faces.new([bottom_verts[i], bottom_verts[j], top_verts[j], top_verts[i]])
+    bm.to_mesh(base_mesh)
+    bm.free()
+    base_obj.data.materials.append(mat_lamp_base)
+    
+    # Pole
+    pole_mesh = bpy.data.meshes.new(f"LampPole_{x}_{z}")
+    pole_obj = bpy.data.objects.new(f"LampPole_{x}_{z}", pole_mesh)
+    bpy.context.collection.objects.link(pole_obj)
+    bm = bmesh.new()
+    pole_h = 4.5
+    pr = 0.08
+    bv = []
+    tv = []
+    for i in range(segments):
+        angle = i * 2 * math.pi / segments
+        bv.append(bm.verts.new((x + pr * math.cos(angle), h, z + pr * math.sin(angle))))
+        tv.append(bm.verts.new((x + pr * math.cos(angle), h + pole_h, z + pr * math.sin(angle))))
+    for i in range(segments):
+        j = (i + 1) % segments
+        bm.faces.new([bv[i], bv[j], tv[j], tv[i]])
+    bm.to_mesh(pole_mesh)
+    bm.free()
+    pole_obj.data.materials.append(mat_lamp_post)
+    
+    # Lamp head (globe)
+    lamp_mesh = bpy.data.meshes.new(f"LampHead_{x}_{z}")
+    lamp_obj = bpy.data.objects.new(f"LampHead_{x}_{z}", lamp_mesh)
+    bpy.context.collection.objects.link(lamp_obj)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(x, h + pole_h + 0.25, z), segments=16, ring_count=8)
+    lamp_obj = bpy.context.active_object
+    lamp_obj.name = f"LampHead_{x}_{z}"
+    lamp_obj.data.materials.append(mat_lamp_glass)
+    
+    # Decorative arm
+    arm_mesh = bpy.data.meshes.new(f"LampArm_{x}_{z}")
+    arm_obj = bpy.data.objects.new(f"LampArm_{x}_{z}", arm_mesh)
+    bpy.context.collection.objects.link(arm_obj)
+    bm = bmesh.new()
+    # Curved arm from top of pole
+    arm_start = (x, h + pole_h, z)
+    arm_end = (x, h + pole_h + 0.1, z)
+    v = [
+        bm.verts.new((x - 0.05, h + pole_h, z)),
+        bm.verts.new((x + 0.05, h + pole_h, z)),
+        bm.verts.new((x + 0.05, h + pole_h + 0.15, z)),
+        bm.verts.new((x - 0.05, h + pole_h + 0.15, z)),
+    ]
+    bm.faces.new(v)
+    bm.to_mesh(arm_mesh)
+    bm.free()
+    arm_obj.data.materials.append(mat_lamp_post)
+
+# Lamp posts along the street
+create_lamp_post(-9, -10)
+create_lamp_post(-9, 0)
+create_lamp_post(-9, 10)
+create_lamp_post(9, -10)
+create_lamp_post(9, 0)
+create_lamp_post(9, 10)
+
+# ============ THE MAIN LAMP POST (where he swings from) ============
+# Place it prominently in the center-right of the street
+main_lamp_x = 2
+main_lamp_z = 0
+
+# Bigger, more detailed lamp post
+# Base
+bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.4, location=(main_lamp_x, 0.2, main_lamp_z), vertices=16)
+base = bpy.context.active_object
+base.name = "MainLampBase"
+base.data.materials.append(mat_lamp_base)
+
+# Pole
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=5, location=(main_lamp_x, 2.5, main_lamp_z), vertices=16)
+pole = bpy.context.active_object
+pole.name = "MainLampPole"
+pole.data.materials.append(mat_lamp_post)
+
+# Decorative ring
+bpy.ops.mesh.primitive_torus_add(major_radius=0.15, minor_radius=0.03, location=(main_lamp_x, 2.5, main_lamp_z), major_segments=16, minor_segments=8)
+ring = bpy.context.active_object
+ring.name = "MainLampRing"
+ring.data.materials.append(mat_lamp_post)
+
+# Lamp head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.35, location=(main_lamp_x, 5.2, main_lamp_z), segments=24, ring_count=12)
+lamp_head = bpy.context.active_object
+lamp_head.name = "MainLampHead"
+lamp_head.data.materials.append(mat_lamp_glass)
+
+# Lamp top cap
+bpy.ops.mesh.primitive_cone_add(radius1=0.15, radius2=0.05, depth=0.3, location=(main_lamp_x, 5.6, main_lamp_z), vertices=16)
+lamp_cap = bpy.context.active_object
+lamp_cap.name = "MainLampCap"
+lamp_cap.data.materials.append(mat_lamp_post)
+
+# ============ CHARACTER (Don Lockwood) ============
+# He's swinging from the lamp post, so he's in mid-air
+# Position: hanging from the lamp post, body angled, one arm reaching up
+char_x = main_lamp_x + 0.5  # Slightly offset from the post
+char_y = 3.5  # Height - swinging
+char_z = main_lamp_z
+
+# Create a simplified but recognizable figure
+# Body (torso) - tilted
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.8, location=(char_x, char_y, char_z), vertices=12)
+torso = bpy.context.active_object
+torso.name = "Char_Torso"
+torso.rotation_euler = (0, math.radians(30), 0)  # Tilted
+torso.data.materials.append(mat_suit)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(char_x + 0.2, char_y + 0.5, char_z), segments=16, ring_count=8)
+head = bpy.context.active_object
+head.name = "Char_Head"
+head.data.materials.append(mat_skin)
+
+# Hair
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.16, location=(char_x + 0.2, char_y + 0.55, char_z - 0.02), segments=16, ring_count=8)
+hair = bpy.context.active_object
+hair.name = "Char_Hair"
+hair.scale = (1, 0.8, 1)
+hair.data.materials.append(mat_hair)
+
+# Left arm (reaching up to grab the lamp post)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.7, location=(char_x + 0.3, char_y + 0.8, char_z), vertices=8)
+left_arm = bpy.context.active_object
+left_arm.name = "Char_LeftArm"
+left_arm.rotation_euler = (0, math.radians(-45), 0)
+left_arm.data.materials.append(mat_suit)
+
+# Right arm (holding umbrella, extended outward)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.7, location=(char_x - 0.3, char_y + 0.2, char_z), vertices=8)
+right_arm = bpy.context.active_object
+right_arm.name = "Char_RightArm"
+right_arm.rotation_euler = (math.radians(45), math.radians(30), 0)
+right_arm.data.materials.append(mat_suit)
+
+# Left leg (kicked up)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.8, location=(char_x + 0.1, char_y - 0.6, char_z), vertices=8)
+left_leg = bpy.context.active_object
+left_leg.name = "Char_LeftLeg"
+left_leg.rotation_euler = (0, math.radians(-60), 0)
+left_leg.data.materials.append(mat_suit)
+
+# Right leg (extended down)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.8, location=(char_x - 0.1, char_y - 0.7, char_z), vertices=8)
+right_leg = bpy.context.active_object
+right_leg.name = "Char_RightLeg"
+right_leg.rotation_euler = (0, math.radians(20), 0)
+right_leg.data.materials.append(mat_suit)
+
+# Shoes
+bpy.ops.mesh.primitive_cube_add(size=0.15, location=(char_x + 0.25, char_y - 1.0, char_z))
+shoe1 = bpy.context.active_object
+shoe1.name = "Char_Shoe1"
+shoe1.scale = (1, 1.5, 1)
+shoe1.rotation_euler = (0, math.radians(-60), 0)
+shoe1.data.materials.append(mat_shoes)
+
+bpy.ops.mesh.primitive_cube_add(size=0.15, location=(char_x - 0.15, char_y - 1.1, char_z))
+shoe2 = bpy.context.active_object
+shoe2.name = "Char_Shoe2"
+shoe2.scale = (1, 1.5, 1)
+shoe2.rotation_euler = (0, math.radians(20), 0)
+shoe2.data.materials.append(mat_shoes)
+
+# ============ UMBRELLA ============
+# Umbrella in his right hand, extended
+umb_x = char_x - 0.5
+umb_y = char_y + 0.4
+umb_z = char_z + 0.3
+
+# Umbrella canopy (cone shape)
+bpy.ops.mesh.primitive_cone_add(radius1=0.6, radius2=0.05, depth=0.4, location=(umb_x, umb_y + 0.2, umb_z), vertices=16)
+canopy = bpy.context.active_object

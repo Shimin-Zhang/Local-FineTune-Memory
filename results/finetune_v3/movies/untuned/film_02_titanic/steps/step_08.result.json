@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 5.1,
+ "error": null,
+ "error_line": null,
+ "printed": "Cleaned rigging, re-aimed camera, balanced lights\n",
+ "state_saved": true,
+ "n_objects": 175,
+ "n_lights": 6,
+ "n_materials": 21,
+ "own_camera": true,
+ "render_error": null
+}

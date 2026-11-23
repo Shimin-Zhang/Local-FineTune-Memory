@@ -1,0 +1,104 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Remove default objects
+for obj in bpy.data.objects:
+    bpy.data.objects.remove(obj, do_unlink=True)
+
+# Create the body (sphere scaled)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=32, ring_count=16)
+body = bpy.context.active_object
+body.name = "DuckBody"
+body.scale = (1.2, 1.5, 1.0)
+body.location = (0, 0, 0)
+bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+# Create the head (sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.6, segments=32, ring_count=16)
+head = bpy.context.active_object
+head.name = "DuckHead"
+head.location = (0, 0.8, 0.9)
+
+# Create the beak (cone)
+bpy.ops.mesh.primitive_cone_add(radius1=0.25, radius2=0.0, depth=0.5, vertices=16)
+beak = bpy.context.active_object
+beak.name = "DuckBeak"
+beak.rotation_euler = (math.radians(90), 0, 0)
+beak.location = (0, 1.35, 0.85)
+
+# Create left eye (small sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, segments=16, ring_count=8)
+eye_left = bpy.context.active_object
+eye_left.name = "DuckEyeLeft"
+eye_left.location = (-0.25, 1.25, 1.05)
+
+# Create right eye (small sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, segments=16, ring_count=8)
+eye_right = bpy.context.active_object
+eye_right.name = "DuckEyeRight"
+eye_right.location = (0.25, 1.25, 1.05)
+
+# Create the tail (small cone)
+bpy.ops.mesh.primitive_cone_add(radius1=0.3, radius2=0.0, depth=0.6, vertices=16)
+tail = bpy.context.active_object
+tail.name = "DuckTail"
+tail.rotation_euler = (math.radians(-120), 0, 0)
+tail.location = (0, -1.2, 0.5)
+
+# Create yellow rubber material
+yellow_material = bpy.data.materials.new(name="RubberYellow")
+yellow_material.use_nodes = True
+nodes = yellow_material.node_tree.nodes
+links = yellow_material.node_tree.links
+
+# Set base color to yellow
+bsdf = nodes.get("Principled BSDF")
+if bsdf:
+    bsdf.inputs["Base Color"].default_value = (1.0, 0.8, 0.0, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.7
+    bsdf.inputs["Specular IOR Level"].default_value = 0.5
+
+# Create black material for eyes
+black_material = bpy.data.materials.new(name="Black")
+black_material.use_nodes = True
+nodes_black = black_material.node_tree.nodes
+bsdf_black = nodes_black.get("Principled BSDF")
+if bsdf_black:
+    bsdf_black.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    bsdf_black.inputs["Roughness"].default_value = 0.5
+
+# Apply materials
+body.data.materials.append(yellow_material)
+head.data.materials.append(yellow_material)
+beak.data.materials.append(yellow_material)
+tail.data.materials.append(yellow_material)
+eye_left.data.materials.append(black_material)
+eye_right.data.materials.append(black_material)
+
+# Add a light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 5))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Add a camera
+bpy.ops.object.camera_add(location=(3, -3, 2))
+camera = bpy.context.active_object
+camera.name = "Camera"
+# Point camera at the duck
+direction = (0, 0, 0.5) - camera.location
+camera.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+# Set camera as active
+bpy.context.scene.camera = camera
+
+# Smooth shading for all duck parts
+for obj in [body, head, beak, tail, eye_left, eye_right]:
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.object.shade_smooth()
+    obj.select_set(False)

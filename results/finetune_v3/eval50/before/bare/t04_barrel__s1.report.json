@@ -1,0 +1,87 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 4,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 2,
+  "MESH": 4
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "RustyMetal",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 11,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MIX_RGB",
+    "MIX_RGB",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "RGB",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    3.0,
+    3.0,
+    5.0
+   ]
+  },
+  {
+   "type": "POINT",
+   "energy": 50.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    -2.0,
+    -2.0,
+    2.0
+   ]
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "bbox_size": [
+  1.2,
+  1.2,
+  1.0
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.2,
+ "image": true
+}

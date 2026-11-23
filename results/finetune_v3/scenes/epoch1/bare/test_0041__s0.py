@@ -1,0 +1,90 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1175)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def turf(rgb, em=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .95
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+grass, turf, road, wood, thatch, ember, sea, snow = (turf(c) for c in (
+    (.08, .17, .07), (.12, .22, .08), (.2, .14, .09), (.22, .13, .07), (.3, .24, .12), (.2, .1, .06), (.05, .12, .17), (.55, .6, .65)))
+fire = turf((1, .45, .08), 22); hearth = turf((1, .6, .2), 10)
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def block(at, s, m, rot=(0, 0, 0), top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return make(bm, m, at, rot)
+def cone(at, r1, r2, h, n, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at, rot)
+def gable(at, w, d, h, m, rot):
+    bm = bmesh.new(); p = [bm.verts.new(c) for c in ((-w/2, -d/2, 0), (w/2, -d/2, 0), (w/2, d/2, 0), (-w/2, d/2, 0), (-w/2, 0, h), (w/2, 0, h))]
+    for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 3, 2, 1)): bm.faces.new([p[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return make(bm, m, at, rot)
+def glow(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("g", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# round base of earth with a small harbour at the back
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=6, radius2=13.5, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.2, .3)))
+    v.co.z -= 1.5
+make(bm, grass)
+block((0, 11.4, 0), (9, 3.4, .15), sea)
+for sx in (-1, 1): block((sx * 3.5, 9.6, 0), (1.6, .5, .35), wood, (0, 0, sx * .3), .8)
+# the ring: 24 turf bank blocks with a ditch in front of each, four gaps for the gates
+R, r = 9.0, 1.7
+for i in range(24):
+    a = i * math.pi / 12
+    if any(abs(((a - k * math.pi / 2) + math.pi) % (2 * math.pi)) - math.pi) < .13 for k in range(4)): continue
+    block((R * math.cos(a), R * math.sin(a), 0), (2.5, r, 1.6), turf, (0, 0, a + math.pi / 2), .75)
+    block(((R - 2.2) * math.cos(a), (R - 2.2) * math.sin(a), 0), (1.6, 1.2, .1), sea, (0, 0, a + math.pi / 2))
+    if i % 2 == 0: block((R * math.cos(a), R * math.sin(a), 1.5), (.9, .9, .25), snow, (0, 0, a), .6)
+# four gates with palisade stakes and a gatehouse, plus the cross streets
+for k in range(4):
+    a = k * math.pi / 2
+    for s in (-1, 1):
+        for j in range(4):
+            cone((R * math.cos(a + s * (.22 + j * .22)), R * math.sin(a + s * (.22 + j * .22)), 0), .12, .05, 2.4, 4, wood)
+    gx, gy = R * math.cos(a), R * math.sin(a)
+    block((gx * 1.15, gy * 1.15, 0), (2.2, 2.2, 2.6), wood, (0, 0, a), .85); gable((gx * 1.15, gy * 1.15, 2.6), 2.8, 2.8, 1.2, thatch, (0, 0, a))
+    block((gx * 1.15, gy * 1.15, 1.6), (1.2, 1.2, .5), hearth, (0, 0, a))
+    block((gx * .62, gy * .62, 0), (1.9, 1.9, .1), road, (0, 0, a + math.pi / 2))
+    glow("POINT", (1, .55, .2), 250, (gx * 1.15, gy * 1.15, 1.6))
+for a in (math.pi / 2, 0):
+    block((0, 0, 0), (1.9, 17.5, .1), road, (0, 0, a + math.pi / 2))
+# longhouses in neat groups along the streets: walls, gable roof, glowing doorway, smoke pole
+def house(x, y, rot):
+    block((x, y, 0), (3.0, 1.5, 1.5), wood, (0, 0, rot), .95); gable((x, y, 1.5), 3.4, 1.9, 1.4, thatch, (0, 0, rot))
+    block((x + 1.6 * math.cos(rot), y + 1.6 * math.sin(rot), 0), (.6, .15, 1.1), hearth, (0, 0, rot))
+    cone((x - 1.1 * math.cos(rot), y - 1.1 * math.sin(rot), 2.0), .1, .08, 2.0, 4, wood)
+for gx, gy, rot in ((-3.2, 3.4, 0), (-3.2, 6.0, 0), (3.2, 3.4, math.pi), (3.2, 6.0, math.pi), (-3.2, -3.4, math.pi), (3.2, -3.4, 0), (-3.2, -6.0, 0), (3.2, -6.0, math.pi)): house(gx, gy, rot)
+# central hall with its hearth, and a bonfire at the south gate
+block((0, 0, 0), (3.8, 2.4, 1.8), wood, (0, 0, 0), .95); gable((0, 0, 1.8), 4.4, 2.8, 1.8, thatch, (0, 0, 0))
+block((0, 0, 1.2), (1.0, 1.0, .5), hearth); cone((0, 0, 3.6), .12, .1, 1.8, 4, wood)
+glow("POINT", (1, .55, .2), 450, (0, 0, 1.5))
+cone((0, -7.2, 0), .9, .6, .3, 7, wood); cone((0, -7.2, .3), .55, .05, 1.3, 6, fire)
+glow("POINT", (1, .45, .1), 600, (0, -7.2, 1.4))
+# a longship drawn up on the harbour
+block((0, 11.4, .15), (6.4, 1.6, .5), wood, (0, 0, 0), .8)
+for s in (-1, 1): block((s * 3.4, 11.4, .6), (1.0, .3, 1.0), wood, (0, s * .5, 0))
+cone((0, 11.4, .65), .08, .08, 4.0, 4, wood, (0, math.pi / 2, 0))
+for i in range(5): block((-2 + i, 11.4, .65), (.3, .1, .9), snow)
+# cold blue dusk: low moon from the left, teal rim from behind right
+glow("SUN", (.6, .75, 1), 4.5, (-26, -14, 10), (0, 0, 1)); glow("SUN", (.3, .6, .6), 2.2, (22, 24, 12), (0, 0, 1))
+w = bpy.data.worlds.new("dusk"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1)); co.location = t + Vector((6, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,111 @@
+import bpy, math
+from mathutils import Vector
+
+# The camera is now pointed at the empty sea. Re-aim it at the bow/figures.
+# Find the figures' average position
+jack = [o for o in bpy.data.objects if o.name.startswith("Jack_")]
+rose = [o for o in bpy.data.objects if o.name.startswith("Rose_")]
+allfig = jack + rose
+if allfig:
+    cx = sum(o.location.x for o in allfig) / len(allfig)
+    cy = sum(o.location.y for o in allfig) / len(allfig)
+    cz = sum(o.location.z for o in allfig) / len(allfig)
+else:
+    cx, cy, cz = 0, 28, 10
+
+# Place camera behind and to the side, looking at the figures
+cam = bpy.context.scene.camera
+if cam:
+    cam.location = (cx - 10, cy - 16, cz + 4)
+    # Point at the figures
+    direction = Vector((cx, cy, cz)) - cam.location
+    rot_quat = direction.to_track_quat('-Z', 'Y')
+    cam.rotation_euler = rot_quat.to_euler()
+    cam.data.lens = 50
+    cam.data.dof.use_dof = True
+    cam.data.dof.focus_distance = direction.length
+    cam.data.dof.aperture_fstop = 5.0
+
+# Fix compositor (scene.node_tree was wrong; use scene.node_tree only if use_nodes)
+scene = bpy.context.scene
+if scene.use_nodes:
+    ct = scene.node_tree
+    for n in list(ct.nodes):
+        ct.nodes.remove(n)
+    rl = ct.nodes.new('CompositorNodeRLayers')
+    grade = ct.nodes.new('CompositorNodeColorBalance')
+    grade.midtones = (1.05, 0.95, 0.85)
+    comp = ct.nodes.new('CompositorNodeComposite')
+    ct.links.new(rl.outputs['Image'], grade.inputs['Image'])
+    ct.links.new(grade.outputs['Image'], comp.inputs['Image'])
+
+# Add a few more bow details: a small flag, rope coils, and a boat
+# Rope coil on deck
+bpy.ops.mesh.primitive_torus_add(major_radius=0.5, minor_radius=0.15, location=(-3, 24, 8.2))
+coil = bpy.context.active_object; coil.name = "RopeCoil"
+coil.data.materials.append(bpy.data.materials["Wood"])
+
+# A small dinghy on the side
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.5, location=(-9, 18, 9))
+boat = bpy.context.active_object; boat.name = "Dinghy"
+boat.scale = (1, 2, 0.4)
+boat.data.materials.append(bpy.data.materials["Wood"])
+
+# Add a couple of crew figures in the background on deck
+for i, (x, y) in enumerate([(-4, 15), (4, 12)]):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=1.5, location=(x, y, 9))
+    crew = bpy.context.active_object; crew.name = f"Crew_{i}"
+    crew.data.materials.append(bpy.data.materials["JackSuit"])
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2, location=(x, y, 10))
+    head = bpy.context.active_object; head.name = f"CrewHead_{i}"
+    head.data.materials.append(bpy.data.materials["JackSkin"])
+
+# Add a subtle warm bounce light from the deck
+bpy.ops.object.light_add(type='AREA', location=(0, 25, 9))
+bounce = bpy.context.active_object; bounce.name = "DeckBounce"
+bounce.data.energy = 30; bounce.data.size = 10
+bounce.data.color = (1.0, 0.8, 0.5)
+bounce.rotation_euler = (math.radians(90), 0, 0)
+
+# Ensure the ocean is visible and not too dark
+ocean = bpy.data.objects.get("Ocean")
+if ocean:
+    for m in ocean.data.materials:
+        for n in m.node_tree.nodes:
+            if n.type == 'BSDF_PRINCIPLED':
+                n.inputs['Base Color'].default_value = (0.03, 0.1, 0.18, 1)
+                n.inputs['Roughness'].default_value = 0.03
+
+# Slightly boost the sunset sky brightness
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    for n in world.node_tree.nodes:
+        if n.type == 'BACKGROUND':
+            n.inputs['Strength'].default_value = 1.2
+
+# Add a faint cloud layer using a large emissive plane high up (soft)
+bpy.ops.mesh.primitive_plane_add(size=300, location=(0, -150, 80))
+clouds = bpy.context.active_object; clouds.name = "Clouds"
+clouds.rotation_euler = (math.radians(90), 0, 0)
+cm = bpy.data.materials.new("CloudMat"); cm.use_nodes = True
+cn, cl = cm.node_tree.nodes, cm.node_tree.links
+for n in cn: cn.remove(n)
+cnoise = cn.new('ShaderNodeTexNoise')
+cnoise.inputs['Scale'].default_value = 5.0
+cramp = cn.new('ShaderNodeValToRGB')
+cramp.color_ramp.elements[0].position = 0.4
+cramp.color_ramp.elements[0].color = (0, 0, 0, 0)
+cramp.color_ramp.elements[1].position = 0.7
+cramp.color_ramp.elements[1].color = (1, 0.8, 0.6, 1)
+cbsdf = cn.new('ShaderNodeBsdfPrincipled')
+cbsdf.inputs['Base Color'].default_value = (1, 0.85, 0.7, 1)
+cbsdf.inputs['Roughness'].default_value = 1.0
+cbsdf.inputs['Alpha'].default_value = 0.5
+co = cn.new('ShaderNodeOutputMaterial')
+cl.new(cnoise.outputs['Fac'], cramp.inputs['Fac'])
+cl.new(cramp.outputs['Color'], cbsdf.inputs['Base Color'])
+cl.new(cbsdf.outputs['BSDF'], co.inputs['Surface'])
+cm.blend_method = 'BLEND'
+clouds.data.materials.append(cm)
+
+print("Re-aimed camera at bow, added crew, clouds, bounce light")

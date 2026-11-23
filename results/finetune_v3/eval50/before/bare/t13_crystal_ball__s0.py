@@ -1,0 +1,192 @@
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear default scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- 1. Create the crystal ball ---
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=64, ring_count=32, location=(0, 0, 1.2))
+crystal = bpy.context.active_object
+crystal.name = "CrystalBall"
+
+# Smooth shading
+bpy.ops.object.shade_smooth()
+
+# --- 2. Create the stand ---
+# Base: a small cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=0.1, location=(0, 0, 0.05), vertices=32)
+stand_base = bpy.context.active_object
+stand_base.name = "StandBase"
+bpy.ops.object.shade_smooth()
+
+# Stem: a tapered cylinder connecting base to ball
+bpy.ops.mesh.primitive_cone_add(radius1=0.15, radius2=0.08, depth=0.3, location=(0, 0, 0.25), vertices=32)
+stand_stem = bpy.context.active_object
+stand_stem.name = "StandStem"
+bpy.ops.object.shade_smooth()
+
+# Small ring/collar at the top of the stem where the ball sits
+bpy.ops.mesh.primitive_torus_add(major_radius=0.12, minor_radius=0.02, major_segments=32, minor_segments=16, location=(0, 0, 0.42))
+stand_ring = bpy.context.active_object
+stand_ring.name = "StandRing"
+bpy.ops.object.shade_smooth()
+
+# --- 3. Materials ---
+
+# Crystal ball material: glass-like
+mat_crystal = bpy.data.materials.new(name="CrystalGlass")
+mat_crystal.use_nodes = True
+nodes = mat_crystal.node_tree.nodes
+links = mat_crystal.node_tree.links
+nodes.clear()
+
+output = nodes.new('ShaderNodeOutputMaterial')
+output.location = (300, 0)
+
+glass = nodes.new('ShaderNodeBsdfGlass')
+glass.location = (0, 0)
+glass.inputs['Color'].default_value = (0.9, 0.95, 1.0, 1.0)
+glass.inputs['Roughness'].default_value = 0.0
+glass.inputs['IOR'].default_value = 1.5
+glass.inputs['Transmission Weight'].default_value = 1.0
+
+links.new(glass.outputs['BSDF'], output.inputs['Surface'])
+
+crystal.data.materials.append(mat_crystal)
+
+# Stand material: dark metallic
+mat_stand = bpy.data.materials.new(name="StandMetal")
+mat_stand.use_nodes = True
+nodes_s = mat_stand.node_tree.nodes
+links_s = mat_stand.node_tree.links
+nodes_s.clear()
+
+output_s = nodes_s.new('ShaderNodeOutputMaterial')
+output_s.location = (300, 0)
+
+metal = nodes_s.new('ShaderNodeBsdfPrincipled')
+metal.location = (0, 0)
+metal.inputs['Base Color'].default_value = (0.15, 0.12, 0.1, 1.0)
+metal.inputs['Metallic'].default_value = 1.0
+metal.inputs['Roughness'].default_value = 0.3
+
+links_s.new(metal.outputs['BSDF'], output_s.inputs['Surface'])
+
+for obj in [stand_base, stand_stem, stand_ring]:
+    obj.data.materials.append(mat_stand)
+
+# --- 4. Swirling mist inside the crystal ball ---
+# Create a volume inside the sphere using a procedural noise texture
+mat_mist = bpy.data.materials.new(name="SwirlingMist")
+mat_mist.use_nodes = True
+nodes_m = mat_mist.node_tree.nodes
+links_m = mat_mist.node_tree.links
+nodes_m.clear()
+
+output_m = nodes_m.new('ShaderNodeOutputMaterial')
+output_m.location = (600, 0)
+
+# Volume scatter for the mist
+scatter = nodes_m.new('ShaderNodeVolumeScatter')
+scatter.location = (300, 0)
+scatter.inputs['Color'].default_value = (0.6, 0.7, 1.0, 1.0)
+scatter.inputs['Density'].default_value = 0.8
+scatter.inputs['Anisotropy'].default_value = 0.3
+
+# Noise texture for swirling pattern
+noise = nodes_m.new('ShaderNodeTexNoise')
+noise.location = (0, 0)
+noise.inputs['Scale'].default_value = 3.0
+noise.inputs['Detail'].default_value = 8.0
+noise.inputs['Roughness'].default_value = 0.6
+
+# Mapping to create swirl effect
+mapping = nodes_m.new('ShaderNodeMapping')
+mapping.location = (-300, 0)
+mapping.inputs['Rotation'].default_value = (0.5, 0.3, 1.0)
+
+# Texture coordinate
+tex_coord = nodes_m.new('ShaderNodeTexCoord')
+tex_coord.location = (-600, 0)
+
+# Combine noise with mapping for density variation
+math_node = nodes_m.new('ShaderNodeMath')
+math_node.location = (150, -100)
+math_node.operation = 'MULTIPLY'
+math_node.inputs[1].default_value = 1.5
+
+# Link: tex coord -> mapping -> noise -> math -> scatter density
+links_m.new(tex_coord.outputs['Object'], mapping.inputs['Vector'])
+links_m.new(mapping.outputs['Vector'], noise.inputs['Vector'])
+links_m.new(noise.outputs['Fac'], math_node.inputs[0])
+links_m.new(math_node.outputs['Value'], scatter.inputs['Density'])
+links_m.new(scatter.outputs['Volume'], output_m.inputs['Volume'])
+
+# Apply mist material to the crystal ball (as a volume)
+# We need to set the crystal ball to have a volume material
+# Add the mist material to the crystal ball
+crystal.data.materials.append(mat_mist)
+
+# Set the crystal ball to use volume
+# In Blender, the material's output has a Volume input
+# The crystal ball should show both glass surface and volume inside
+
+# --- 5. Lighting ---
+# Add a key light
+bpy.ops.object.light_add(type='POINT', location=(2, 2, 3))
+key_light = bpy.context.active_object
+key_light.name = "KeyLight"
+key_light.data.energy = 50
+key_light.data.color = (1.0, 0.95, 0.9)
+
+# Add a fill light
+bpy.ops.object.light_add(type='POINT', location=(-2, -1, 2))
+fill_light = bpy.context.active_object
+fill_light.name = "FillLight"
+fill_light.data.energy = 20
+fill_light.data.color = (0.8, 0.85, 1.0)
+
+# Add a rim light
+bpy.ops.object.light_add(type='POINT', location=(0, -3, 2))
+rim_light = bpy.context.active_object
+rim_light.name = "RimLight"
+rim_light.data.energy = 30
+rim_light.data.color = (0.9, 0.9, 1.0)
+
+# --- 6. World background ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+world_nodes.clear()
+
+world_output = world_nodes.new('ShaderNodeOutputWorld')
+world_output.location = (300, 0)
+
+world_bg = world_nodes.new('ShaderNodeBackground')
+world_bg.location = (0, 0)
+world_bg.inputs['Color'].default_value = (0.02, 0.02, 0.05, 1.0)
+world_bg.inputs['Strength'].default_value = 1.0
+
+world_links.new(world_bg.outputs['Background'], world_output.inputs['Surface'])
+
+# --- 7. Camera ---
+bpy.ops.object.camera_add(location=(0, -3.5, 1.5), rotation=(math.radians(85), 0, 0))
+camera = bpy.context.active_object
+camera.name = "Camera"
+bpy.context.scene.camera = camera
+
+# --- 8. Render settings ---
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+
+print("Crystal ball with swirling mist on a stand created successfully.")

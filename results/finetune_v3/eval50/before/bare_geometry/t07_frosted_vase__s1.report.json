@@ -1,0 +1,94 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 1,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 1,
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "FrostedGlass",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 3,
+   "principled_base_color": [
+    0.9,
+    0.95,
+    1.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BSDF_TRANSLUCENT",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "AREA",
+   "energy": 100.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    2.0,
+    2.0,
+    3.0
+   ],
+   "direction": [
+    0.0,
+    0.0,
+    -1.0
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   2.0,
+   -2.0,
+   1.5
+  ],
+  "direction": [
+   -0.683,
+   0.683,
+   -0.2588
+  ],
+  "up": [
+   -0.183,
+   0.183,
+   0.9659
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  0.518,
+  0.518,
+  1.489
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.75
+ ],
+ "scene_radius": 0.8295,
+ "process": "exit 0",
+ "seconds": 1.1,
+ "image": false
+}

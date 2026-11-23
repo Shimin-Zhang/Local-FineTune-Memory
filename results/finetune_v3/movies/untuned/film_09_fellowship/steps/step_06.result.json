@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.0,
+ "error": null,
+ "error_line": null,
+ "printed": "Fixed view look, rebalanced lighting, added fire stream, runes, arches, tentacle, lava, face light, more embers\n",
+ "state_saved": true,
+ "n_objects": 336,
+ "n_lights": 9,
+ "n_materials": 21,
+ "own_camera": true,
+ "render_error": null
+}

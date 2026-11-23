@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: Matrix.Diagonal() takes exactly one argument (2 given)",
+ "error_line": "bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1, matrix=__import__(\"mathutils\").Matrix.Diagonal((26, 22, 3.4), 1) @ __import__(\"mathutils\").Matrix.Translation((0, 0, -1.7)))",
+ "n_renderable_objects": 0,
+ "object_types": {},
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.7321,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.4,
+ "image": true
+}

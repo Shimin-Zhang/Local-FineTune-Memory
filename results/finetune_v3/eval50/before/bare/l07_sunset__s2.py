@@ -1,0 +1,169 @@
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- World / Sky setup ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+
+# Gradient sky via Sky Texture (Nishita)
+world.use_nodes = True
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+nodes.clear()
+
+bg = nodes.new('ShaderNodeBackground')
+sky = nodes.new('ShaderNodeTexSky')
+out = nodes.new('ShaderNodeOutputWorld')
+
+# Nishita sky for realistic sunset
+sky.sky_type = 'NISHITA'
+sky.sun_elevation = math.radians(3)   # very low sun
+sky.sun_rotation = math.radians(200)  # sun direction
+sky.sun_intensity = 1.0
+sky.altitude = 0
+sky.air_density = 1.0
+sky.dust_density = 2.0
+sky.ozone_density = 1.0
+
+links.new(sky.outputs['Color'], bg.inputs['Color'])
+bg.inputs['Strength'].default_value = 1.0
+links.new(bg.outputs['Background'], out.inputs['Surface'])
+
+# --- Sun (visible disc) ---
+# Add a small emissive sphere as the visible sun
+sun_data = bpy.data.meshes.new("SunMesh")
+bpy.ops.mesh.primitive_uv_sphere_add(radius=2.0, segments=32, ring_count=16, location=(0, -200, 10))
+sun_obj = bpy.context.active_object
+sun_obj.name = "Sun"
+sun_mat = bpy.data.materials.new("SunMat")
+sun_mat.use_nodes = True
+mat_nodes = sun_mat.node_tree.nodes
+mat_nodes.clear()
+emission = mat_nodes.new('ShaderNodeEmission')
+emission.inputs['Color'].default_value = (1.0, 0.5, 0.1, 1.0)
+emission.inputs['Strength'].default_value = 50.0
+out_mat = mat_nodes.new('ShaderNodeOutputMaterial')
+sun_mat.node_tree.links.new(emission.outputs['Emission'], out_mat.inputs['Surface'])
+sun_obj.data.materials.append(sun_mat)
+
+# --- Hill ---
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+hill = bpy.context.active_object
+hill.name = "Hill"
+
+# Displace the plane to create a gentle hill
+# Use a simple approach: modify vertices to create a dome shape
+import bmesh
+bm = bmesh.new()
+bm.from_mesh(hill.data)
+for v in bm.verts:
+    x, y = v.co.x, v.co.y
+    dist = math.sqrt(x*x + y*y)
+    # Gaussian-like hill centered at (0, 0)
+    height = 8.0 * math.exp(-((dist/30)**2))
+    v.co.z += height
+bm.to_mesh(hill.data)
+bm.free()
+
+hill_mat = bpy.data.materials.new("HillMat")
+hill_mat.use_nodes = True
+mat_nodes = hill_mat.node_tree.nodes
+mat_nodes.clear()
+bsdf = mat_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.15, 0.25, 0.08, 1.0)  # greenish
+bsdf.inputs['Roughness'].default_value = 0.9
+out_mat = mat_nodes.new('ShaderNodeOutputMaterial')
+hill_mat.node_tree.links.new(bsdf.outputs['BSDF'], out_mat.inputs['Surface'])
+hill.data.materials.append(hill_mat)
+
+# Subdivide for smoother hill
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# --- Trees ---
+def make_tree(location, scale=1.0):
+    """Create a simple tree (trunk + foliage sphere)."""
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3*scale, depth=3*scale, location=(location[0], location[1], 1.5*scale + location[2]))
+    trunk = bpy.context.active_object
+    trunk.name = "Trunk"
+    trunk_mat = bpy.data.materials.new("TrunkMat")
+    trunk_mat.use_nodes = True
+    tn = trunk_mat.node_tree.nodes
+    tn.clear()
+    tbsdf = tn.new('ShaderNodeBsdfPrincipled')
+    tbsdf.inputs['Base Color'].default_value = (0.25, 0.15, 0.05, 1.0)
+    tbsdf.inputs['Roughness'].default_value = 0.8
+    tout = tn.new('ShaderNodeOutputMaterial')
+    trunk_mat.node_tree.links.new(tbsdf.outputs['BSDF'], tout.inputs['Surface'])
+    trunk.data.materials.append(trunk_mat)
+
+    # Foliage
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=2.0*scale, subdivisions=2, location=(location[0], location[1], 4.0*scale + location[2]))
+    foliage = bpy.context.active_object
+    foliage.name = "Foliage"
+    fol_mat = bpy.data.materials.new("FoliageMat")
+    fol_mat.use_nodes = True
+    fn = fol_mat.node_tree.nodes
+    fn.clear()
+    fbsdf = fn.new('ShaderNodeBsdfPrincipled')
+    fbsdf.inputs['Base Color'].default_value = (0.1, 0.3, 0.05, 1.0)  # dark green
+    fbsdf.inputs['Roughness'].default_value = 0.7
+    fout = fn.new('ShaderNodeOutputMaterial')
+    fol_mat.node_tree.links.new(fbsdf.outputs['BSDF'], fout.inputs['Surface'])
+    foliage.data.materials.append(fol_mat)
+
+    return trunk, foliage
+
+# Place a few trees on the hill
+tree_positions = [
+    (-15, -5, 6.5),
+    (10, 5, 7.0),
+    (-5, 15, 5.5),
+    (20, -10, 5.0),
+    (-25, 10, 4.5),
+]
+
+for i, pos in enumerate(tree_positions):
+    scale = 0.8 + 0.4 * (i % 3) / 2
+    make_tree(pos, scale)
+
+# --- Sun light (for shadows) ---
+bpy.ops.object.light_add(type='SUN', location=(0, -100, 5))
+sun_light = bpy.context.active_object
+sun_light.name = "SunLight"
+sun_light.data.energy = 5.0
+sun_light.data.color = (1.0, 0.6, 0.3, 1.0)
+# Point the sun light in the direction of the sun (from behind, low angle)
+sun_light.rotation_euler = (math.radians(85), 0, math.radians(200))
+sun_light.data.angle = math.radians(1)  # small angle for sharper shadows
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(0, 40, 8))
+camera = bpy.context.active_object
+camera.name = "Camera"
+# Point camera toward the sun/hill
+direction = Vector((0, -200, 10)) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+bpy.context.scene.camera = camera
+
+# --- Render settings ---
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.resolution_percentage = 100
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+
+# Enable shadow casting
+bpy.context.scene.cycles.use_shadow = True

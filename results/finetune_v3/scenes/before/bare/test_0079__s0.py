@@ -1,0 +1,310 @@
+import bpy
+import math
+import random
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Clear collections
+for col in bpy.data.collections:
+    bpy.data.collections.remove(col)
+
+# Create main collection
+main_col = bpy.data.collections.new("MachineHall")
+bpy.context.scene.collection.children.link(main_col)
+
+def add_to_collection(obj, col_name):
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    col = bpy.data.collections.get(col_name)
+    if col is None:
+        col = bpy.data.collections.new(col_name)
+        bpy.context.scene.collection.children.link(col)
+    col.objects.link(obj)
+
+# Materials
+def create_material(name, color, roughness=0.5, metallic=0.0, emission=0.0, emit_color=None):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    if emission > 0:
+        bsdf.inputs["Emission Strength"].default_value = emission
+        if emit_color:
+            bsdf.inputs["Emission Color"].default_value = emit_color
+    return mat
+
+# Floor material
+floor_mat = create_material("Floor", (0.15, 0.15, 0.18, 1.0), roughness=0.8)
+# Metal material
+metal_mat = create_material("Metal", (0.4, 0.4, 0.45, 1.0), roughness=0.3, metallic=0.9)
+# Dark metal
+dark_metal = create_material("DarkMetal", (0.1, 0.1, 0.12, 1.0), roughness=0.4, metallic=0.8)
+# Conveyor belt
+belt_mat = create_material("Belt", (0.05, 0.05, 0.05, 1.0), roughness=0.9)
+# Crusher body
+crusher_mat = create_material("Crusher", (0.5, 0.3, 0.1, 1.0), roughness=0.5, metallic=0.7)
+# Furnace body
+furnace_mat = create_material("Furnace", (0.2, 0.2, 0.25, 1.0), roughness=0.4, metallic=0.8)
+# Molten material
+molten_mat = create_material("Molten", (1.0, 0.3, 0.0, 1.0), roughness=0.1, emission=2.0, emit_color=(1.0, 0.3, 0.0, 1.0))
+# Ingot material
+ingot_mat = create_material("Ingot", (0.7, 0.6, 0.2, 1.0), roughness=0.2, metallic=0.95)
+# Hazard light red
+hazard_red = create_material("HazardRed", (1.0, 0.0, 0.0, 1.0), roughness=0.2, emission=3.0, emit_color=(1.0, 0.0, 0.0, 1.0))
+# Hazard light yellow
+hazard_yellow = create_material("HazardYellow", (1.0, 0.8, 0.0, 1.0), roughness=0.2, emission=3.0, emit_color=(1.0, 0.8, 0.0, 1.0))
+# Glass for furnace window
+glass_mat = create_material("FurnaceGlass", (0.8, 0.9, 1.0, 0.3), roughness=0.05, metallic=0.0)
+glass_mat.blend_method = 'BLEND'
+# Concrete wall
+wall_mat = create_material("Wall", (0.3, 0.3, 0.35, 1.0), roughness=0.9)
+# Pipe material
+pipe_mat = create_material("Pipe", (0.35, 0.35, 0.4, 1.0), roughness=0.3, metallic=0.9)
+
+# ===== FLOOR =====
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, 0))
+floor = bpy.context.object
+floor.name = "Floor"
+floor.data.materials.append(floor_mat)
+add_to_collection(floor, "MachineHall")
+
+# ===== WALLS =====
+# Back wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -15, 5))
+back_wall = bpy.context.object
+back_wall.scale = (15, 0.3, 5)
+back_wall.name = "BackWall"
+back_wall.data.materials.append(wall_mat)
+add_to_collection(back_wall, "MachineHall")
+
+# Left wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(-15, 0, 5))
+left_wall = bpy.context.object
+left_wall.scale = (0.3, 15, 5)
+left_wall.name = "LeftWall"
+left_wall.data.materials.append(wall_mat)
+add_to_collection(left_wall, "MachineHall")
+
+# Right wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(15, 0, 5))
+right_wall = bpy.context.object
+right_wall.scale = (0.3, 15, 5)
+right_wall.name = "RightWall"
+right_wall.data.materials.append(wall_mat)
+add_to_collection(right_wall, "MachineHall")
+
+# Ceiling
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, 10))
+ceiling = bpy.context.object
+ceiling.name = "Ceiling"
+ceiling.data.materials.append(wall_mat)
+add_to_collection(ceiling, "MachineHall")
+
+# ===== CONVEYOR BELTS =====
+def create_conveyor_belt(name, location, length, width=2, height=1.5, rotation=0):
+    """Create a conveyor belt with frame and belt surface."""
+    # Frame
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    frame = bpy.context.object
+    frame.name = name + "_Frame"
+    frame.scale = (length/2, width/2, height/2)
+    frame.data.materials.append(dark_metal)
+    add_to_collection(frame, "MachineHall")
+    
+    # Belt surface (slightly on top)
+    belt_loc = (location[0], location[1], location[2] + height/2 + 0.05)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=belt_loc)
+    belt = bpy.context.object
+    belt.name = name + "_Belt"
+    belt.scale = (length/2 - 0.1, width/2 - 0.1, 0.05)
+    belt.data.materials.append(belt_mat)
+    add_to_collection(belt, "MachineHall")
+    
+    # Side rails
+    for side in [-1, 1]:
+        rail_loc = (location[0], location[1] + side * (width/2 + 0.1), location[2] + height/2 + 0.3)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=rail_loc)
+        rail = bpy.context.object
+        rail.name = name + f"_Rail_{side}"
+        rail.scale = (length/2, 0.1, 0.3)
+        rail.data.materials.append(metal_mat)
+        add_to_collection(rail, "MachineHall")
+    
+    # Legs
+    for lx in [-length/2 + 0.5, length/2 - 0.5]:
+        for ly in [-width/2 + 0.3, width/2 - 0.3]:
+            leg_loc = (location[0] + lx, location[1] + ly, location[2] - height/2)
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=height, location=leg_loc)
+            leg = bpy.context.object
+            leg.name = name + f"_Leg_{lx}_{ly}"
+            leg.data.materials.append(dark_metal)
+            add_to_collection(leg, "MachineHall")
+    
+    return frame
+
+# Main conveyor line (from left to right, toward furnace)
+create_conveyor_belt("Conveyor_Main", (-8, 5, 1.5), length=16, width=2.5, height=1.5)
+
+# Secondary conveyor (from back toward crusher)
+create_conveyor_belt("Conveyor_Secondary", (5, -8, 1.5), length=12, width=2, height=1.5)
+
+# ===== CRUSHER =====
+def create_crusher(name, location):
+    """Create a crusher machine."""
+    # Main body
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    body = bpy.context.object
+    body.name = name + "_Body"
+    body.scale = (2, 2, 2.5)
+    body.data.materials.append(crusher_mat)
+    add_to_collection(body, "MachineHall")
+    
+    # Hopper (top funnel)
+    hopper_loc = (location[0], location[1], location[2] + 2.5 + 1)
+    bpy.ops.mesh.primitive_cone_add(radius1=1.5, radius2=0.5, depth=2, location=hopper_loc)
+    hopper = bpy.context.object
+    hopper.name = name + "_Hopper"
+    hopper.data.materials.append(metal_mat)
+    add_to_collection(hopper, "MachineHall")
+    
+    # Output chute
+    chute_loc = (location[0] + 2, location[1], location[2] - 0.5)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=chute_loc)
+    chute = bpy.context.object
+    chute.name = name + "_Chute"
+    chute.scale = (1.5, 1, 1)
+    chute.rotation_euler = (0, math.radians(-30), 0)
+    chute.data.materials.append(dark_metal)
+    add_to_collection(chute, "MachineHall")
+    
+    # Control panel
+    panel_loc = (location[0], location[1] + 2.2, location[2])
+    bpy.ops.mesh.primitive_cube_add(size=1, location=panel_loc)
+    panel = bpy.context.object
+    panel.name = name + "_Panel"
+    panel.scale = (0.8, 0.1, 1.2)
+    panel.data.materials.append(dark_metal)
+    add_to_collection(panel, "MachineHall")
+    
+    # Warning stripes on body (simple approach: add small colored boxes)
+    for i in range(4):
+        stripe_loc = (location[0] - 1.5 + i * 0.8, location[1] + 2.05, location[2] - 1.5)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=stripe_loc)
+        stripe = bpy.context.object
+        stripe.name = name + f"_Stripe_{i}"
+        stripe.scale = (0.3, 0.05, 0.5)
+        stripe.data.materials.append(hazard_yellow)
+        add_to_collection(stripe, "MachineHall")
+    
+    return body
+
+create_crusher("Crusher", (8, -5, 2.5))
+
+# ===== MOLTEN FURNACE =====
+def create_furnace(name, location):
+    """Create a molten furnace with glowing interior."""
+    # Main body
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    body = bpy.context.object
+    body.name = name + "_Body"
+    body.scale = (3, 3, 4)
+    body.data.materials.append(furnace_mat)
+    add_to_collection(body, "MachineHall")
+    
+    # Molten core (visible through front)
+    core_loc = (location[0], location[1], location[2])
+    bpy.ops.mesh.primitive_cube_add(size=1, location=core_loc)
+    core = bpy.context.object
+    core.name = name + "_MoltenCore"
+    core.scale = (2.5, 2.5, 3.5)
+    core.data.materials.append(molten_mat)
+    add_to_collection(core, "MachineHall")
+    
+    # Front window frame
+    window_loc = (location[0], location[1] + 3.05, location[2])
+    bpy.ops.mesh.primitive_cube_add(size=1, location=window_loc)
+    window_frame = bpy.context.object
+    window_frame.name = name + "_WindowFrame"
+    window_frame.scale = (2, 0.1, 2.5)
+    window_frame.data.materials.append(dark_metal)
+    add_to_collection(window_frame, "MachineHall")
+    
+    # Glass window
+    glass_loc = (location[0], location[1] + 3.1, location[2])
+    bpy.ops.mesh.primitive_cube_add(size=1, location=glass_loc)
+    glass = bpy.context.object
+    glass.name = name + "_Glass"
+    glass.scale = (1.8, 0.05, 2.3)
+    glass.data.materials.append(glass_mat)
+    add_to_collection(glass, "MachineHall")
+    
+    # Top chimney
+    chimney_loc = (location[0], location[1], location[2] + 4 + 1.5)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=3, location=chimney_loc)
+    chimney = bpy.context.object
+    chimney.name = name + "_Chimney"
+    chimney.data.materials.append(pipe_mat)
+    add_to_collection(chimney, "MachineHall")
+    
+    # Base platform
+    base_loc = (location[0], location[1], location[2] - 4)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=base_loc)
+    base = bpy.context.object
+    base.name = name + "_Base"
+    base.scale = (3.5, 3.5, 0.3)
+    base.data.materials.append(dark_metal)
+    add_to_collection(base, "MachineHall")
+    
+    # Pipes connecting to furnace
+    for px in [-2, 2]:
+        pipe_loc = (location[0] + px, location[1] - 3.5, location[2])
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=3, location=pipe_loc, rotation=(math.radians(90), 0, 0))
+        pipe = bpy.context.object
+        pipe.name = name + f"_Pipe_{px}"
+        pipe.data.materials.append(pipe_mat)
+        add_to_collection(pipe, "MachineHall")
+    
+    return body
+
+create_furnace("Furnace", (12, 5, 3))
+
+# ===== INGOTS STACKED =====
+def create_ingot_stack(name, location, rows=3, cols=3, layers=4, ingot_size=0.4, spacing=0.05):
+    """Create a stack of ingots."""
+    for layer in range(layers):
+        for row in range(rows):
+            for col in range(cols):
+                x = location[0] + (col - cols/2 + 0.5) * (ingot_size + spacing)
+                y = location[1] + (row - rows/2 + 0.5) * (ingot_size + spacing)
+                z = location[2] + layer * (ingot_size * 0.6 + 0.02)
+                
+                bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+                ingot = bpy.context.object
+                ingot.name = f"{name}_L{layer}_R{row}_C{col}"
+                ingot.scale = (ingot_size/2, ingot_size/2, ingot_size*0.3/2)
+                ingot.data.materials.append(ingot_mat)
+                add_to_collection(ingot, "MachineHall")
+
+# Ingot stacks near furnace output
+create_ingot_stack("IngotStack1", (10, 8, 0.5), rows=4, cols=4, layers=5)
+create_ingot_stack("IngotStack2", (13, 8, 0.5), rows=3, cols=3, layers=4)
+create_ingot_stack("IngotStack3", (11.5, 10, 0.5), rows=3, cols=4, layers=6)
+
+# Ingot pallets (wooden bases)
+for px, py in [(10, 8), (13, 8), (11.5, 10)]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(px, py, 0.15))
+    pallet = bpy.context.object
+    pallet.name = f"Pallet_{px}_{py}"
+    pallet.scale = (1.2, 1.2, 0.1)
+    pallet.data.materials.append(create_material("Pallet", (0.5, 0.35, 0.15, 1.0), roughness=0.8))
+    add_to_collection(pallet, "MachineHall")
+
+# ===== HAZARD LIGHTS =====
+def create_hazard_light(name, location, material, height=0.3):
+    """Create a rotating hazard light."""
+    # Base
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.1

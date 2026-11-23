@@ -1,0 +1,134 @@
+```python
+import bpy
+import math
+
+# Clear existing objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a UV sphere for the watermelon body
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=64, ring_count=32, location=(0, 0, 0))
+melon = bpy.context.active_object
+melon.name = "Watermelon"
+
+# Slightly scale to make it more oval/elliptical (watermelon shape)
+melon.scale = (1.0, 0.85, 0.85)
+bpy.ops.object.transform_apply(scale=True)
+
+# Create a material with stripes using a node-based approach
+mat = bpy.data.materials.new(name="WatermelonSkin")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (600, 0)
+
+diffuse_node = nodes.new('ShaderNodeBsdfDiffuse')
+diffuse_node.location = (400, 0)
+
+# Mix shader for stripes
+mix_node = nodes.new('ShaderNodeMixShader')
+mix_node.location = (200, 0)
+
+# Dark green color
+dark_green_node = nodes.new('ShaderNodeBsdfDiffuse')
+dark_green_node.inputs['Color'].default_value = (0.05, 0.25, 0.05, 1.0)
+dark_green_node.location = (0, 100)
+
+# Light green color
+light_green_node = nodes.new('ShaderNodeBsdfDiffuse')
+light_green_node.inputs['Color'].default_value = (0.2, 0.6, 0.15, 1.0)
+light_green_node.location = (0, -100)
+
+# Texture coordinates
+tex_coord_node = nodes.new('ShaderNodeTexCoord')
+tex_coord_node.location = (-400, 0)
+
+# Mapping
+mapping_node = nodes.new('ShaderNodeMapping')
+mapping_node.location = (-250, 0)
+mapping_node.inputs['Rotation'].default_value = (0, 0, 0)
+mapping_node.inputs['Scale'].default_value = (1, 1, 1)
+
+# Separate XYZ to get the X coordinate for stripes
+sep_xyz_node = nodes.new('ShaderNodeSeparateXYZ')
+sep_xyz_node.location = (-100, 0)
+
+# Math node to create stripe pattern using sine
+math_sin_node = nodes.new('ShaderNodeMath')
+math_sin_node.operation = 'SINE'
+math_sin_node.location = (50, 0)
+math_sin_node.inputs[1].default_value = 0  # We'll set this via link
+
+# Multiply to scale the frequency
+math_mult_node = nodes.new('ShaderNodeMath')
+math_mult_node.operation = 'MULTIPLY'
+math_mult_node.location = (-50, 0)
+math_mult_node.inputs[1].default_value = 8.0  # Number of stripes
+
+# Greater than to create threshold for stripes
+math_gt_node = nodes.new('ShaderNodeMath')
+math_gt_node.operation = 'GREATER_THAN'
+math_gt_node.location = (150, 0)
+math_gt_node.inputs[1].default_value = 0.0  # Threshold
+
+# Links
+links.new(tex_coord_node.outputs['Object'], mapping_node.inputs['Vector'])
+links.new(mapping_node.outputs['Vector'], sep_xyz_node.inputs['Vector'])
+links.new(sep_xyz_node.outputs['X'], math_mult_node.inputs[0])
+links.new(math_mult_node.outputs['Value'], math_sin_node.inputs[0])
+links.new(math_sin_node.outputs['Value'], math_gt_node.inputs[0])
+links.new(math_gt_node.outputs['Value'], mix_node.inputs['Fac'])
+links.new(dark_green_node.outputs['BSDF'], mix_node.inputs[1])
+links.new(light_green_node.outputs['BSDF'], mix_node.inputs[2])
+links.new(mix_node.outputs['Shader'], diffuse_node.inputs['Color'])
+links.new(diffuse_node.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign material to the watermelon
+melon.data.materials.append(mat)
+
+# Add a stem
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.3, location=(0, 0, 0.85))
+stem = bpy.context.active_object
+stem.name = "Stem"
+stem.scale = (1, 1, 1)
+
+# Stem material
+stem_mat = bpy.data.materials.new(name="StemMaterial")
+stem_mat.use_nodes = True
+stem_diffuse = stem_mat.node_tree.nodes.get("Principled BSDF")
+if stem_diffuse:
+    stem_diffuse.inputs['Base Color'].default_value = (0.1, 0.3, 0.1, 1.0)
+    stem_diffuse.inputs['Roughness'].default_value = 0.8
+stem.data.materials.append(stem_mat)
+
+# Set up camera
+cam_data = bpy.data.cameras.new(name="Camera")
+cam = bpy.data.objects.new(name="Camera", object_data=cam_data)
+bpy.context.collection.objects.link(cam)
+cam.location = (0, -4, 1.5)
+cam.rotation_euler = (math.radians(75), 0, 0)
+bpy.context.scene.camera = cam
+
+# Add a light
+light_data = bpy.data.lights.new(name="Light", type='SUN')
+light_data.energy = 3.0
+light_obj = bpy.data.objects.new(name="Light", object_data=light_data)
+bpy.context.collection.objects.link(light_obj)
+light_obj.location = (2, -2, 5)
+light_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Set viewport to look at the watermelon
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+        for space in area.spaces:
+            if space.type == 'VIEW_3D':
+                space.shading.type = 'MATERIAL'
+                space.shading.show_cavity = False
+```

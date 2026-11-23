@@ -1,0 +1,89 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1157)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def tint(name, rgb, em=0, metal=0, rough=.85):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough; n.inputs["Metallic"].default_value = metal
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    M[name] = m
+for k, v in dict(ice=(.4, .52, .66), snow=(.55, .6, .72), wall=(.3, .17, .1), roof=(.12, .13, .18), steel=(.35, .37, .42), red=(.7, .08, .06),
+                 seat=(.05, .05, .07), pine=(.05, .16, .12), trunk=(.2, .12, .08), yellow=(.9, .6, .05), blue=(.1, .2, .6), white=(.8, .8, .85)).items(): tint(k, v)
+tint("window", (1, .6, .2), em=14); tint("flag", (1, .1, .05), em=3); tint("steel", (.5, .52, .58), metal=.8, rough=.35)
+def build(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("b"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("b", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(M[k]); return o
+def slab(at, s, k, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return build(bm, k, at, rot)
+def tube(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    return build(bm, k, at, rot)
+def bar(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length))
+    return build(bm, k, a, d.to_track_quat('Z', 'Y').to_euler())
+def glow(at, rgb, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# ice slab with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 18 + random.uniform(-1.5, 1.5), v.co.y * 16 + random.uniform(-1.5, 1.5), -3.2 + random.uniform(-.8, .4)))
+    else: v.co = Vector((v.co.x * 24, v.co.y * 22, 0))
+build(bm, "ice")
+# the chute: a long ice run sloping away into the distance, edged with banks
+for i in range(10):
+    slab((0, -3 - i * 1.7, 0), (5.2, 1.8, .5 - i * .05), "ice")
+for s in (-1, 1):
+    for i in range(10): slab((s * 3.3, -3 - i * 1.7, 0), (1.2, 1.8, .8 - i * .05), "snow")
+# start ramp: a raised ice block with a steep lip at the chute head
+slab((0, 3.2, 0), (8, 5.4, 2.0), "ice"); slab((0, .6, 0), (8, 1.2, 1.2), "ice")
+for i in range(5): slab((0, 5.6 + i * .9, 0), (8.4, .9, 2.0 + (4 - i) * .0), "snow").location.z = 0
+for s in (-1, 1): slab((s * 4.3, 3.2, 0), (.6, 5.4, 2.6), "snow")
+# the four-man sled: steel runners, a hull, four seats, a push bar
+for s in (-1, 1):
+    bar((s * .9, 1.0, 2.0), (s * .9, 1.0, 2.55), .12, "steel"); bar((s * .9, 1.0, 2.55), (s * .9, 1.0, 3.5), .12, "steel"); bar((s * .9, 3.5, 3.5), (s * .9, 3.5, 2.1), .12, "steel")
+slab((0, 2.2, 2.0), (2.2, 2.8, .5), "red"); slab((0, 2.2, 2.5), (2.0, 2.5, .15), "blue")
+for i in range(4): slab((0, 1.3 + i * .75, 2.65), (1.7, .5, .3), "seat")
+bar((-1, 1.0, 2.9), (1, 1.0, 2.9), .1, "steel"); bar((-1, 1.0, 2.9), (-1, 1.0, 3.6), .1, "steel"); bar((1, 1.0, 2.9), (1, 1.0, 3.6), .1, "steel")
+for s in (-1, 1): slab((s * 1.1, 3.6, 2.0), (.3, .3, .3), "yellow")
+# hut beside the ramp with a lit window and a roof
+slab((9.5, 4.5, 0), (5.5, 4.5, 3.0), "wall"); slab((9.5, 4.5, 3.0), (6.4, 5.2, .35), "roof")
+slab((9.5, 4.5, 3.3), (6.0, 4.8, .3), "snow")
+slab((6.72, 4.5, 1.0), (.1, 1.4, 1.2), "window"); slab((6.72, 2.4, 0), (.1, 1.0, 1.8), "trunk")
+glow((5.6, 4.5, 1.5), (1, .6, .2), 600)
+# helmets on pegs on the hut wall, bigger than life
+for i in range(4):
+    slab((6.6, 5.6 - i * .6, 2.0), (.1, .2, .2), "trunk"); tube((6.3, 5.6 - i * .6, 2.15), .38, .3, 7, ("red", "blue", "yellow", "white")[i], .3)
+# starter's flag on a pole, larger than life
+bar((-6.5, 5.0, 0), (-6.5, 5.0, 5.0), .15, "trunk"); slab((-5.6, 5.0, 3.8), (1.8, .08, 1.2), "flag")
+slab((-5.6, 5.0, 4.1), (.9, .1, .3), "white")
+glow((-5.6, 4.0, 4.2), (1, .1, .05), 120)
+# a few pines and snow drifts
+for x, y, h in ((-9, 8, 4.5), (-10, 3, 3.6), (11, -2, 4), (-8, -5, 3.4), (10, 9, 4.8), (-3, 9, 3.8)):
+    tube((x, y, 0), .25, 1.2, 5, "trunk")
+    for k in range(3): tube((x, y, 1.0 + k * h * .22), 1.7 - k * .45, h * .38, 6, "pine", .1)
+for i in range(8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.6, 1.2))
+    for v in bm.verts: v.co.z *= .4
+    build(bm, "snow", (random.uniform(-11, 11), random.uniform(-10, 9), 0))
+# dawn: rose-pink low key from the right, cold blue rim from behind
+for rgb, w, p in (((1, .5, .4), 5, (24, -10, 6)), ((.4, .55, 1), 2.2, (-18, 20, 10))):
+    L = bpy.data.lights.new("sun", "SUN"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("sun", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("dawn"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.04, .025, .05, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((-14, -54, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

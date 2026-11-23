@@ -1,0 +1,203 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+
+# Set up world
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.7, 0.85, 0.95, 1.0)
+    bg.inputs[1].default_value = 1.0
+
+# Sun
+sun_data = bpy.data.lights.new(name="Sun", type='SUN')
+sun_data.energy = 4.0
+sun_data.angle = math.radians(3)
+sun = bpy.data.objects.new("Sun", sun_data)
+bpy.context.scene.collection.objects.link(sun)
+sun.rotation_euler = (math.radians(50), math.radians(20), math.radians(30))
+
+# Material helper
+def make_mat(name, color, rough=0.8, metal=0.0, spec=0.3):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    bsdf.inputs["Specular IOR Level"].default_value = spec
+    return m
+
+mat_sand    = make_mat("Sand",    (0.82, 0.72, 0.48), rough=0.95)
+mat_log     = make_mat("Log",     (0.45, 0.30, 0.15), rough=0.9)
+mat_dugout  = make_mat("Dugout",  (0.55, 0.38, 0.20), rough=0.85)
+mat_canoe   = make_mat("Canoe",   (0.35, 0.22, 0.10), rough=0.7)
+mat_adze    = make_mat("Adze",    (0.25, 0.25, 0.25), rough=0.4, metal=0.9)
+mat_shaving = make_mat("Shaving", (0.75, 0.55, 0.30), rough=0.95)
+mat_thatch  = make_mat("Thatch",  (0.70, 0.60, 0.30), rough=1.0)
+mat_shedpost= make_mat("ShedPost",(0.40, 0.28, 0.15), rough=0.9)
+mat_water   = make_mat("Water",   (0.10, 0.35, 0.50), rough=0.1, spec=0.8)
+mat_stone   = make_mat("Stone",   (0.5, 0.5, 0.5), rough=0.9)
+
+# ---------- Sand ground ----------
+bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Sand"
+ground.data.materials.append(mat_sand)
+# Displace for sand texture
+tex = bpy.data.textures.new("SandTex", type='CLOUDS')
+tex.noise_scale = 2.0
+mod = ground.modifiers.new("Disp", 'DISPLACE')
+mod.texture = tex
+mod.strength = 0.3
+
+# ---------- Water ----------
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, -25, -0.3))
+water = bpy.context.active_object
+water.name = "Water"
+water.data.materials.append(mat_water)
+
+# ---------- Logs under dugout ----------
+log_positions = [(-2, 2, 0.35), (2, 2, 0.35), (-2, -2, 0.35), (2, -2, 0.35)]
+for i, pos in enumerate(log_positions):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=5, location=pos, rotation=(0, math.radians(90), 0))
+    log = bpy.context.active_object
+    log.name = f"Log_{i}"
+    log.data.materials.append(mat_log)
+
+# ---------- Half-carved dugout ----------
+# Start with a cylinder, then scale/modify to look like a dugout canoe half
+bpy.ops.mesh.primitive_cylinder_add(radius=1.0, depth=6, location=(0, 0, 1.2), rotation=(0, math.radians(90), 0))
+dugout = bpy.context.active_object
+dugout.name = "Dugout_Half"
+# Scale to make it elongated
+dugout.scale = (1.0, 0.7, 0.5)
+bpy.ops.object.transform_apply(scale=True)
+# Add loop cuts and displace to make it look carved
+subdiv = dugout.modifiers.new("Subdiv", 'SUBSURF')
+subdiv.levels = 2
+bpy.ops.object.shade_smooth()
+dugout.data.materials.append(mat_dugout)
+
+# Carve the inside - add a boolean cutter
+bpy.ops.mesh.primitive_cylinder_add(radius=0.7, depth=5.5, location=(0, 0, 1.4), rotation=(0, math.radians(90), 0))
+cutter = bpy.context.active_object
+cutter.scale = (1.0, 0.5, 0.4)
+bpy.ops.object.transform_apply(scale=True)
+bool_mod = dugout.modifiers.new("Carve", 'BOOLEAN')
+bool_mod.operation = 'DIFFERENCE'
+bool_mod.object = cutter
+bpy.context.view_layer.objects.active = dugout
+bpy.ops.object.modifier_apply(modifier="Carve")
+bpy.ops.object.delete()  # delete cutter
+
+# ---------- Adze ----------
+# Handle
+bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.6, location=(3, 3, 0.5), rotation=(0, math.radians(45), 0))
+handle = bpy.context.active_object
+handle.name = "Adze_Handle"
+handle.data.materials.append(mat_log)
+
+# Blade
+bpy.ops.mesh.primitive_cube_add(size=1, location=(3.3, 3.3, 0.8))
+blade = bpy.context.active_object
+blade.name = "Adze_Blade"
+blade.scale = (0.15, 0.05, 0.25)
+bpy.ops.object.transform_apply(scale=True)
+blade.data.materials.append(mat_adze)
+
+# ---------- Wood shavings ----------
+random.seed(42)
+for i in range(20):
+    x = random.uniform(-1, 1)
+    y = random.uniform(1, 4)
+    z = 0.05
+    bpy.ops.mesh.primitive_plane_add(size=0.15, location=(x, y, z))
+    shav = bpy.context.active_object
+    shav.name = f"Shaving_{i}"
+    shav.scale = (random.uniform(0.5, 1.5), random.uniform(0.3, 0.8), 1)
+    shav.rotation_euler = (random.uniform(-0.3, 0.3), random.uniform(-0.3, 0.3), random.uniform(0, math.pi*2))
+    bpy.ops.object.transform_apply(scale=True)
+    shav.data.materials.append(mat_shaving)
+
+# ---------- Thatched shed ----------
+# Posts
+post_positions = [(-5, 5, 1), (-5, 8, 1), (-2, 5, 1), (-2, 8, 1)]
+for i, pos in enumerate(post_positions):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=2, location=pos)
+    post = bpy.context.active_object
+    post.name = f"ShedPost_{i}"
+    post.data.materials.append(mat_shedpost)
+
+# Roof beams
+bpy.ops.mesh.primitive_cube_add(size=1, location=(-3.5, 5, 2.1))
+beam1 = bpy.context.active_object
+beam1.name = "RoofBeam_Front"
+beam1.scale = (0.1, 0.1, 3.5)
+bpy.ops.object.transform_apply(scale=True)
+beam1.data.materials.append(mat_shedpost)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(-3.5, 8, 2.1))
+beam2 = bpy.context.active_object
+beam2.name = "RoofBeam_Back"
+beam2.scale = (0.1, 0.1, 3.5)
+bpy.ops.object.transform_apply(scale=True)
+beam2.data.materials.append(mat_shedpost)
+
+# Thatched roof - use a series of overlapping planes
+for i in range(8):
+    y = 4.5 + i * 0.5
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(-3.5, y, 2.3 + i*0.08))
+    thatch = bpy.context.active_object
+    thatch.name = f"Thatch_{i}"
+    thatch.scale = (4.0, 0.6, 1)
+    thatch.rotation_euler = (math.radians(15), 0, 0)
+    bpy.ops.object.transform_apply(scale=True)
+    thatch.data.materials.append(mat_thatch)
+
+# ---------- Finished canoe at water ----------
+bpy.ops.mesh.primitive_cylinder_add(radius=0.6, depth=5, location=(5, -20, 0.2), rotation=(0, math.radians(90), 0))
+canoe = bpy.context.active_object
+canoe.name = "Finished_Canoe"
+canoe.scale = (1.0, 0.5, 0.35)
+bpy.ops.object.transform_apply(scale=True)
+subdiv = canoe.modifiers.new("Subdiv", 'SUBSURF')
+subdiv.levels = 2
+bpy.ops.object.shade_smooth()
+canoe.data.materials.append(mat_canoe)
+
+# Carve inside of finished canoe
+bpy.ops.mesh.primitive_cylinder_add(radius=0.45, depth=4.8, location=(5, -20, 0.35), rotation=(0, math.radians(90), 0))
+cutter2 = bpy.context.active_object
+cutter2.scale = (1.0, 0.35, 0.25)
+bpy.ops.object.transform_apply(scale=True)
+bool_mod2 = canoe.modifiers.new("Carve2", 'BOOLEAN')
+bool_mod2.operation = 'DIFFERENCE'
+bool_mod2.object = cutter2
+bpy.context.view_layer.objects.active = canoe
+bpy.ops.object.modifier_apply(modifier="Carve2")
+bpy.ops.object.delete()  # delete cutter2
+
+# ---------- Camera ----------
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam = bpy.data.objects.new("Camera", cam_data)
+bpy.context.scene.collection.objects.link(cam)
+cam.location = (10, 15, 8)
+cam.rotation_euler = (math.radians(65), 0, math.radians(-30))
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False

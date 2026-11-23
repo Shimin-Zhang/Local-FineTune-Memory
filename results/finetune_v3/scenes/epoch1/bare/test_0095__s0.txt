@@ -1,0 +1,113 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1875)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(rgb, glow=0, rough=.8, metal=0):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough; b.inputs["Metallic"].default_value = metal
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(m, at, s, rot=(0, 0, 0), top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return add(bm, m, at, rot)
+def tube(m, at, r, h, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def blob(m, at, r, sq=(1, 1, 1), rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2]))
+    return add(bm, m, at, rot)
+def line(m, a, b, t):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return add(bm, m)
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+deep, seabed, steel, steel2, hull, white, grey, bait, rope, foam = (paint(c) for c in (
+    (.0, .04, .09), (.04, .1, .1), (.3, .33, .38), (.2, .22, .26), (.5, .05, .06), (.8, .82, .85), (.5, .52, .55), (.7, .1, .05), (.5, .4, .2), (.8, .9, 1)))
+glow = paint((.1, 1, .7), 10); glass = paint((.2, .9, .6), 6)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=4, radius2=11.5, depth=4)
+for v in bm.verts:
+    v.co.x *= 1.15
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.5, .3)))
+    v.co.z -= 2
+add(bm, deep)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=11.4, radius2=11.4, depth=.3)
+for v in bm.verts: v.co.x *= 1.15; v.co.z -= .15
+add(bm, seabed)
+for i in range(12):
+    a = random.uniform(0, 6.28); r = random.uniform(5, 10.5); h = random.uniform(.8, 2.2)
+    tube(seabed, (math.cos(a) * r, math.sin(a) * r, -.2), random.uniform(.4, .8), h, 5, .15, (random.uniform(-.2, .2), random.uniform(-.2, .2), 0))
+# the cage: octagonal frame with a door, bars, a roof ring and a hatch
+cx, cy, cz = 0, 0, -1.2
+for k in range(8):
+    a = k * math.pi / 4 + math.pi / 8
+    x, y = cx + 3 * math.cos(a), cy + 3 * math.sin(a)
+    line(steel, (x, y, cz - 2.4), (x, y, cz + 2.4), .16)
+    for h in (-1.2, 1.2):
+        a2 = (k + 1) * math.pi / 4 + math.pi / 8
+        line(steel2, (x, y, cz + h), (cx + 3 * math.cos(a2), cy + 3 * math.sin(a2), cz + h), .1)
+for z in (-2.4, 2.4):
+    for k in range(8):
+        a, a2 = k * math.pi / 4 + math.pi / 8, (k + 1) * math.pi / 4 + math.pi / 8
+        line(steel, (cx + 3 * math.cos(a), cy + 3 * math.sin(a), cz + z), (cx + 3 * math.cos(a2), cy + 3 * math.sin(a2), cz + z), .16)
+line(steel, (cx - 3, cy, cz - 2.4), (cx, cy, cz - 2.4), .16)
+for k in range(5): line(steel, (cx - 2.5 + k, cy, cz - 2.4), (cx - 2.5 + k, cy, cz + 2.4), .08)
+line(steel2, (cx, cy, cz + 2.4), (cx, cy, cz + 3.6), .14)
+tube(steel2, (cx, cy, cz + 3.6), 1.0, .12, 8)
+tube(steel, (cx, cy, cz - 2.4), .25, .6, 6, rot=(0, math.pi / 2, 0))
+line(rope, (cx, cy, cz + 3.6), (cx, cy, cz + 6.2), .12)
+box(steel2, (cx, cy, cz + 6.2), (1.6, 1.0, .5))
+box(glass, (cx, cy, cz + 6.7), (1.2, .7, .5))
+lamp("POINT", (.2, 1, .6), 600, (cx, cy, cz + 6.7))
+# bait lines drifting inside the cage, with glowing lures
+for i, (bx, by) in enumerate(((-1.2, .6), (1.1, -1.0), (.1, 1.4), (-.5, -1.3))):
+    line(rope, (bx, by, cz + 2.4), (bx + .1, by, cz - 1.0), .04)
+    blob(bait, (bx + .1, by, cz - 1.2), .35, (1, 1, 1.3))
+    blob(glow, (bx + .1, by, cz - 1.6), .18)
+lamp("POINT", (.2, 1, .6), 400, (cx, cy, cz - 1.2))
+# the boat hull above, with deck, cabin, mast and a diving light
+box(hull, (0, 0, 6.8), (8, 4.4, 2.0), top=.8)
+box(steel2, (0, 0, 8.8), (7.6, 4.0, .25))
+box(steel, (-2.4, 0, 9.0), (3.0, 2.8, 1.5), top=.9); box(glass, (-2.4, 0, 9.9), (2.6, 2.4, .2))
+tube(steel, (2.8, 0, 9.0), .12, 3.4, 5)
+box(steel2, (2.0, 0, 11.0), (2.0, .1, .1))
+box(glow, (-.4, 0, 9.0), (.7, .7, .7))
+lamp("POINT", (.3, 1, .7), 900, (-.4, 0, 9.4))
+for i in range(5): blob(foam, (random.uniform(-3, 3), random.choice((-1, 1)) * 2.5, 6.7), .35, (1.6, .7, .35))
+# two great white sharks: grey back, white belly, fins, open jaws
+def shark(x, y, z, yaw, s):
+    c, sn = math.cos(yaw), math.sin(yaw)
+    P = lambda dx, dy, dz: (x + (dx * c - dy * sn) * s, y + (dx * sn + dy * c) * s, z + dz * s)
+    blob(grey, P(0, 0, 0), 1.2 * s, (2.6, .6, .8), (0, 0, yaw))
+    blob(white, P(0, 0, -.35 * s), .9 * s, (2.3, .5, .5), (0, 0, yaw))
+    box(grey, P(2.2, 0, .2), (1.0 * s, .1 * s, .5 * s), (0, 0, yaw), top=.1)
+    for sd in (-1, 1):
+        box(grey, P(0, sd * .6 * s, .3 * s), (.9 * s, .8 * s, .08 * s), (0, 0, yaw), top=.3)
+        box(grey, P(-1.5 * s, sd * .6 * s, .3 * s), (.8 * s, .5 * s, .08 * s), (0, 0, yaw), top=.3)
+    for sd in (-1, 1): box(white, P(2.0, sd * .18 * s, -.15 * s), (.8 * s, .12 * s, .1 * s), (0, 0, yaw))
+    box(white, P(1.9, 0, -.1 * s), (.5 * s, .3 * s, .08 * s), (0, 0, yaw))
+    for sd in (-1, 1): blob(steel, P(1.2 * s, sd * .45 * s, .35 * s), .12 * s)
+shark(-6.5, 3.0, -4.5, .3, 1.3); shark(7.0, -4.0, -6.5, 3.5, 1.1)
+lamp("SUN", (.3, .7, 1), 5, (-20, -14, 14), (0, 0, 0)); lamp("SUN", (.1, .3, .9), 2.5, (16, 20, 8), (0, 0, 0))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.0, .015, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1)); co.location = t + Vector((16, -50, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

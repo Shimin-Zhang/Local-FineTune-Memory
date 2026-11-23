@@ -1,0 +1,266 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set units
+scene = bpy.context.scene
+scene.unit_settings.system = 'METRIC'
+
+# --- MATERIALS ---
+def make_mat(name, base_color, rough=0.7, metal=0.0, emission=None, emit_str=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = base_color
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    if emission:
+        bsdf.inputs["Emission Color"].default_value = emission
+        bsdf.inputs["Emission Strength"].default_value = emit_str
+    return mat
+
+mats = {
+    'wall': make_mat("Wall", (0.55, 0.42, 0.28), rough=0.9),
+    'floor': make_mat("Floor", (0.35, 0.22, 0.12), rough=0.95),
+    'wood': make_mat("Wood", (0.30, 0.18, 0.08), rough=0.85),
+    'brass': make_mat("Brass", (0.75, 0.55, 0.20), rough=0.25, metal=1.0),
+    'sack': make_mat("Sack", (0.75, 0.68, 0.55), rough=0.95),
+    'sack_dark': make_mat("SackDark", (0.55, 0.45, 0.35), rough=0.95),
+    'glass': make_mat("Glass", (0.9, 0.9, 0.95), rough=0.05, metal=0.0),
+    'chillie': make_mat("Chillie", (0.85, 0.10, 0.05), rough=0.4),
+    'chillie_green': make_mat("ChillieGreen", (0.20, 0.55, 0.15), rough=0.4),
+    'mill_body': make_mat("MillBody", (0.45, 0.30, 0.15), rough=0.7),
+    'sun_dust': make_mat("SunDust", (1.0, 0.9, 0.7), rough=1.0, emission=(1.0, 0.85, 0.6), emit_str=0.5),
+}
+
+# Powder colors
+powder_colors = [
+    (0.95, 0.85, 0.20),  # turmeric yellow
+    (0.85, 0.15, 0.10),  # paprika red
+    (0.90, 0.50, 0.10),  # saffron orange
+    (0.30, 0.70, 0.20),  # green
+    (0.95, 0.95, 0.95),  # salt/white
+    (0.20, 0.15, 0.60),  # blue
+    (0.80, 0.30, 0.60),  # pink
+    (0.50, 0.30, 0.10),  # brown
+]
+
+# --- ROOM ---
+# Floor
+bpy.ops.mesh.primitive_plane_add(size=6, location=(0, 0, 0))
+floor = bpy.context.object
+floor.name = "Floor"
+floor.data.materials.append(mats['floor'])
+
+# Back wall
+bpy.ops.mesh.primitive_plane_add(size=6, location=(0, -3, 3))
+back_wall = bpy.context.object
+back_wall.name = "BackWall"
+back_wall.rotation_euler = (math.radians(90), 0, 0)
+back_wall.data.materials.append(mats['wall'])
+
+# Left wall
+bpy.ops.mesh.primitive_plane_add(size=6, location=(-3, 0, 3))
+left_wall = bpy.context.object
+left_wall.name = "LeftWall"
+left_wall.rotation_euler = (0, math.radians(90), 0)
+left_wall.data.materials.append(mats['wall'])
+
+# Right wall (with window gap for sun shaft)
+# Build right wall with a rectangular hole using a grid of quads
+import bmesh
+mesh = bpy.data.meshes.new("RightWall")
+bm = bmesh.new()
+# Wall from x=3, y from -3 to 3, z from 0 to 6
+# Window: y from -0.5 to 0.5, z from 2.5 to 4.5
+# Create wall as a plane with hole via bmesh
+def add_wall_with_hole(bm, x, y1, y2, z1, z2, hole_y1, hole_y2, hole_z1, hole_z2):
+    # Split into regions around hole
+    # Bottom strip
+    v1 = bm.verts.new((x, y1, z1))
+    v2 = bm.verts.new((x, y2, z1))
+    v3 = bm.verts.new((x, y2, hole_z1))
+    v4 = bm.verts.new((x, y1, hole_z1))
+    bm.faces.new([v1, v2, v3, v4])
+    # Top strip
+    v5 = bm.verts.new((x, y1, hole_z2))
+    v6 = bm.verts.new((x, y2, hole_z2))
+    v7 = bm.verts.new((x, y2, z2))
+    v8 = bm.verts.new((x, y1, z2))
+    bm.faces.new([v5, v6, v7, v8])
+    # Left of hole
+    v9 = bm.verts.new((x, y1, hole_z1))
+    v10 = bm.verts.new((x, hole_y1, hole_z1))
+    v11 = bm.verts.new((x, hole_y1, hole_z2))
+    v12 = bm.verts.new((x, y1, hole_z2))
+    bm.faces.new([v9, v10, v11, v12])
+    # Right of hole
+    v13 = bm.verts.new((x, hole_y2, hole_z1))
+    v14 = bm.verts.new((x, y2, hole_z1))
+    v15 = bm.verts.new((x, y2, hole_z2))
+    v16 = bm.verts.new((x, hole_y2, hole_z2))
+    bm.faces.new([v13, v14, v15, v16])
+
+add_wall_with_hole(bm, 3, -3, 3, 0, 6, -0.5, 0.5, 2.5, 4.5)
+bm.to_mesh(mesh)
+bm.free()
+right_wall = bpy.data.objects.new("RightWall", mesh)
+bpy.context.collection.objects.link(right_wall)
+right_wall.data.materials.append(mats['wall'])
+
+# Ceiling
+bpy.ops.mesh.primitive_plane_add(size=6, location=(0, 0, 6))
+ceiling = bpy.context.object
+ceiling.name = "Ceiling"
+ceiling.rotation_euler = (math.radians(180), 0, 0)
+ceiling.data.materials.append(mats['wall'])
+
+# --- SUNLIGHT (Shaft through window) ---
+sun = bpy.data.lights.new(name="Sun", type='SUN')
+sun.energy = 8.0
+sun.color = (1.0, 0.9, 0.7)
+sun.angle = math.radians(2)
+sun_obj = bpy.data.objects.new("Sun", sun)
+bpy.context.collection.objects.link(sun_obj)
+# Direction: from window (right wall, x=3) into room, angled down
+sun_obj.rotation_euler = (math.radians(30), math.radians(-60), 0)
+
+# Volumetric light shaft (cone)
+bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=1.2, radius2=0.8, depth=4, location=(1.5, 0, 3.5))
+shaft = bpy.context.object
+shaft.name = "LightShaft"
+shaft.rotation_euler = (0, math.radians(-60), 0)
+shaft.data.materials.append(mats['sun_dust'])
+shaft.display_type = 'WIRE'
+shaft.visible_shadow = False
+
+# Area light for fill
+fill = bpy.data.lights.new(name="Fill", type='AREA')
+fill.energy = 50
+fill.color = (0.8, 0.7, 0.6)
+fill.size = 3
+fill_obj = bpy.data.objects.new("Fill", fill)
+bpy.context.collection.objects.link(fill_obj)
+fill_obj.location = (0, 0, 5.5)
+fill_obj.rotation_euler = (0, 0, 0)
+
+# --- COUNTER (long wooden table along back wall) ---
+def make_box(name, size, loc, mat):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    obj.data.materials.append(mat)
+    return obj
+
+counter = make_box("Counter", (5, 1.0, 1.0), (0, -2.2, 0.5), mats['wood'])
+counter_top = make_box("CounterTop", (5.2, 1.1, 0.08), (0, -2.2, 1.04), mats['wood'])
+
+# --- OPEN SACKS OF POWDERS ---
+sack_positions = [
+    (-1.8, -1.8, 0.0),
+    (-0.8, -1.8, 0.0),
+    (0.2, -1.8, 0.0),
+    (1.2, -1.8, 0.0),
+    (2.0, -1.8, 0.0),
+]
+
+for i, (sx, sy, sz) in enumerate(sack_positions):
+    # Sack body (cylinder)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.25, depth=0.45, location=(sx, sy, 0.225))
+    sack = bpy.context.object
+    sack.name = f"Sack_{i}"
+    sack.data.materials.append(mats['sack'] if i % 2 == 0 else mats['sack_dark'])
+    # Sack top (open, slightly flared)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.28, depth=0.05, location=(sx, sy, 0.47))
+    sack_top = bpy.context.object
+    sack_top.name = f"SackTop_{i}"
+    sack_top.data.materials.append(mats['sack'] if i % 2 == 0 else mats['sack_dark'])
+    # Powder mound inside
+    color = powder_colors[i % len(powder_colors)]
+    powder_mat = make_mat(f"Powder_{i}", color, rough=0.95)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=0.22, location=(sx, sy, 0.45))
+    mound = bpy.context.object
+    mound.name = f"Powder_{i}"
+    mound.scale = (1, 1, 0.5)
+    mound.data.materials.append(powder_mat)
+
+# --- BRASS SCALES ---
+def make_scales(name, loc):
+    # Base
+    base = make_box(name+"_Base", (0.3, 0.15, 0.05), loc, mats['brass'])
+    # Central post
+    post = make_box(name+"_Post", (0.03, 0.03, 0.35), (loc[0], loc[1], loc[2]+0.2), mats['brass'])
+    # Crossbar
+    bar = make_box(name+"_Bar", (0.5, 0.03, 0.03), (loc[0], loc[1], loc[2]+0.38), mats['brass'])
+    # Left pan
+    pan_l = make_box(name+"_PanL", (0.12, 0.12, 0.02), (loc[0]-0.25, loc[1], loc[2]+0.30), mats['brass'])
+    # Right pan
+    pan_r = make_box(name+"_PanR", (0.12, 0.12, 0.02), (loc[0]+0.25, loc[1], loc[2]+0.30), mats['brass'])
+    # Strings
+    for dx in [-0.25, 0.25]:
+        bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.005, depth=0.1, location=(loc[0]+dx, loc[1], loc[2]+0.34))
+        string = bpy.context.object
+        string.name = f"{name}_String_{dx}"
+        string.data.materials.append(mats['brass'])
+
+make_scales("Scales1", (-1.5, -2.0, 1.08))
+make_scales("Scales2", (1.5, -2.0, 1.08))
+
+# --- ROWS OF JARS ON SHELVES (left wall) ---
+# Shelves
+for shelf_z in [1.5, 2.5, 3.5]:
+    shelf = make_box(f"Shelf_{shelf_z}", (0.05, 4.0, 0.05), (-2.95, 0, shelf_z), mats['wood'])
+
+# Jars on shelves
+jar_count = 0
+for shelf_z in [1.5, 2.5, 3.5]:
+    for jx in range(-1.5, 1.6, 0.4):
+        color = powder_colors[jar_count % len(powder_colors)]
+        jar_mat = make_mat(f"JarContent_{jar_count}", color, rough=0.9)
+        # Jar body (cylinder)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.12, depth=0.25, location=(-2.85, jx, shelf_z + 0.125))
+        jar = bpy.context.object
+        jar.name = f"Jar_{jar_count}"
+        jar.data.materials.append(mats['glass'])
+        # Content
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.10, depth=0.18, location=(-2.85, jx, shelf_z + 0.10))
+        content = bpy.context.object
+        content.name = f"JarContent_{jar_count}"
+        content.data.materials.append(jar_mat)
+        # Lid
+        bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.13, depth=0.03, location=(-2.85, jx, shelf_z + 0.26))
+        lid = bpy.context.object
+        lid.name = f"JarLid_{jar_count}"
+        lid.data.materials.append(mats['brass'])
+        jar_count += 1
+
+# --- GRINDING MILL ---
+def make_mill(name, loc):
+    # Base
+    base = make_box(name+"_Base", (0.4, 0.4, 0.15), loc, mats['mill_body'])
+    # Body (cylinder)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=0.2, depth=0.3, location=(loc[0], loc[1], loc[2]+0.3))
+    body = bpy.context.object
+    body.name = name+"_Body"
+    body.data.materials.append(mats['mill_body'])
+    # Top hopper (cone)
+    bpy.ops.mesh.primitive_cone_add(vertices=16, radius1=0.2, radius2=0.1, depth=0.15, location=(loc[0], loc[1], loc[2]+0.52))
+    hopper = bpy.context.object
+    hopper.name = name+"_Hopper"
+    hopper.data.materials.append(mats['mill_body'])
+    # Handle
+    handle = make_box(name+"_Handle", (0.3, 0.04, 0.04), (loc[0]+0.25, loc[1], loc[2]+0.45), mats['wood'])
+    # Crank knob
+    bpy.ops.mesh.primitive_cylinder_add(vertices=8, radius=0.03, depth=0.05, location=(loc[0]+0.4, loc[1], loc[2]+0.45))
+    knob = bpy.context.object
+    knob.name = name+"_Knob"
+    knob.rotation_euler = (0, math.radians(90), 0)
+    knob.data.materials.append(mats['wood'])
+
+make_mill("Mill1", (-2.5, 1.0, 0.0))

@@ -1,0 +1,124 @@
+{
+ "untuned replies cut off at 4,096 tokens, written again with a limit of 8,192": [
+  {
+   "id": "test_0032",
+   "prompt": "Make a paladin's chapel of white stone with a golden sunburst window, a shield rack, a healing well and banners flying over a muddy field.",
+   "category": "fantasy_architecture"
+  },
+  {
+   "id": "test_0050",
+   "prompt": "A Roman aqueduct crossing a valley on two tiers of arches, with a stream below, a washing place, a stone bridge and a distribution tank at the end.",
+   "category": "mills_waterworks"
+  },
+  {
+   "id": "test_0025",
+   "prompt": "Build a lavish colonial-era safari camp with a long dining tent, a bath tub, a gramophone, folding chairs and lanterns.",
+   "category": "expeditions_camps"
+  },
+  {
+   "id": "test_0052",
+   "prompt": "Make a town built from giant jigsaw pieces with tabs and blanks, a church, a street of coloured houses and a couple of pieces still out of place.",
+   "category": "miniature_toy_worlds"
+  },
+  {
+   "id": "test_0091",
+   "prompt": "Please make a tower crane over a half-built brick block, with a hoist, a site hut, scaffolding and stacks of bricks, seen at dusk with lamps on.",
+   "category": "towers"
+  },
+  {
+   "id": "test_0092",
+   "prompt": "An Edwardian department store with a domed corner entrance, long display windows, a doorman, a clock and delivery carts, decked for the winter holidays.",
+   "category": "town_buildings"
+  },
+  {
+   "id": "test_0079",
+   "prompt": "Could you do a machine hall with conveyor belts, a crusher and a molten furnace, with ingots stacked and hazard lights turning?",
+   "category": "scifi_interiors"
+  },
+  {
+   "id": "test_0040",
+   "prompt": "I'd love a mountain fortress whose stone wall follows the whole ridge line, with a south gate pavilion, a signal fire station and a small temple, in autumn colours.",
+   "category": "fortifications"
+  },
+  {
+   "id": "test_0076",
+   "prompt": "A cliff village shrine with a flat-roofed mud house with a tall thatched roof, a cave-mouth shrine above it, and masks lined up on a terrace.",
+   "category": "sacred_americas_africa_oceania"
+  },
+  {
+   "id": "test_0027",
+   "prompt": "Two long painted boats with dragon heads racing on a river, a drummer in each bow, a finish line pavilion and crowded banks with flags.",
+   "category": "fairs_festivals"
+  },
+  {
+   "id": "test_0068",
+   "prompt": "Make a small rural bus depot with a brick garage, two old buses nose to nose, a pit, a fuel pump and a wooden timetable board.",
+   "category": "roadside"
+  },
+  {
+   "id": "test_0045",
+   "prompt": "I'd like a concrete arch dam in a narrow valley with a spillway pouring water, a power house at the base and pylons marching away.",
+   "category": "industry_energy"
+  },
+  {
+   "id": "test_0056",
+   "prompt": "Build a volcano rim hut of black stone and corrugated iron, with a steaming crater behind, a marker pole, a railed path and a layer of ash.",
+   "category": "mountains_caves"
+  },
+  {
+   "id": "test_0003",
+   "prompt": "Make a heli-ski base with a lodge, a helicopter on a snowy pad, a ski rack, a fuel cache and a fresh blue morning.",
+   "category": "airfields_flight"
+  },
+  {
+   "id": "test_0088",
+   "prompt": "Build a Doric temple on a sea cape with a stepped base, a row of fluted columns, a bronze brazier and a goat path from the shore, seen at first light.",
+   "category": "temples_mediterranean"
+  },
+  {
+   "id": "test_0008",
+   "prompt": "A small timber hut over a shallow pit, a warp-weighted loom with hanging stones, a pig pen and a vegetable plot, in a village clearing.",
+   "category": "ancient_everyday"
+  },
+  {
+   "id": "test_0085",
+   "prompt": "I want a glass-walled padel court on a rooftop with floodlights, a net, spectators' benches, a drinks cooler and city lights beyond, in the blue hour.",
+   "category": "sports_games"
+  },
+  {
+   "id": "test_0016",
+   "prompt": "Build a Maltese parish church with a huge ribbed dome, two clock-faced bell towers and strings of festival lights across the square, glowing at night.",
+   "category": "churches_mosques"
+  },
+  {
+   "id": "test_0009",
+   "prompt": "Make a small pond with reeds and a lily pad, dragonflies hovering, nymphs crawling from water and a frog on a stone.",
+   "category": "animal_places"
+  },
+  {
+   "id": "test_0005",
+   "prompt": "Build a seaplane base with a floating dock, a boathouse, a plane on a cradle, a ramp, a gas pump and cold blue mountains behind.",
+   "category": "airfields_flight"
+  },
+  {
+   "id": "test_0024",
+   "prompt": "A buccaneer stockade of sharpened logs with a lookout post, a cannon, a rum store hut, a jolly flag and a sloop at the beach.",
+   "category": "expeditions_camps"
+  },
+  {
+   "id": "test_0057",
+   "prompt": "Can you build a chapel carved in a salt cave with a pale altar, crystal chandeliers, carved reliefs, wooden pews and a lantern-lit stair down?",
+   "category": "mountains_caves"
+  },
+  {
+   "id": "test_0080",
+   "prompt": "Make an asteroid mine with a drill rig bolted to the rock, an ore hopper, a tethered cargo pod and a cramped crew dome lit from inside.",
+   "category": "scifi_outposts"
+  },
+  {
+   "id": "test_0082",
+   "prompt": "Please make the inside of a spice merchant's shop with open sacks of colourful powders, brass scales, rows of jars, a grinding mill and strings of chillies, in a shaft of afternoon sun.",
+   "category": "shops_cutaway"
+  }
+ ]
+}

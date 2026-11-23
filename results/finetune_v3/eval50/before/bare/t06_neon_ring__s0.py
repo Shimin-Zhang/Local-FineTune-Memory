@@ -1,0 +1,135 @@
+import bpy
+import math
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Dark Floor ---
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+floor = bpy.context.active_object
+floor.name = "Floor"
+
+# Floor material (dark, slightly reflective)
+floor_mat = bpy.data.materials.new(name="DarkFloor")
+floor_mat.use_nodes = True
+nodes = floor_mat.node_tree.nodes
+links = floor_mat.node_tree.links
+
+# Clear default nodes
+for n in nodes:
+    nodes.remove(n)
+
+# Principled BSDF
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.location = (0, 0)
+bsdf.inputs['Base Color'].default_value = (0.01, 0.01, 0.02, 1.0)
+bsdf.inputs['Metallic'].default_value = 0.3
+bsdf.inputs['Roughness'].default_value = 0.4
+
+# Output
+output = nodes.new('ShaderNodeOutputMaterial')
+output.location = (300, 0)
+links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+floor.data.materials.append(floor_mat)
+
+# --- Neon Ring ---
+bpy.ops.mesh.primitive_torus_add(
+    major_radius=2.0,
+    minor_radius=0.15,
+    major_segments=128,
+    minor_segments=32,
+    location=(0, 0, 2.0)
+)
+ring = bpy.context.active_object
+ring.name = "NeonRing"
+
+# Neon material (emissive)
+neon_mat = bpy.data.materials.new(name="NeonGlow")
+neon_mat.use_nodes = True
+nodes = neon_mat.node_tree.nodes
+links = neon_mat.node_tree.links
+
+# Clear default nodes
+for n in nodes:
+    nodes.remove(n)
+
+# Emission shader for strong glow
+emission = nodes.new('ShaderNodeEmission')
+emission.location = (0, 0)
+emission.inputs['Color'].default_value = (0.0, 1.0, 1.0, 1.0)  # Cyan neon
+emission.inputs['Strength'].default_value = 15.0
+
+# Output
+output = nodes.new('ShaderNodeOutputMaterial')
+output.location = (300, 0)
+links.new(emission.outputs['Emission'], output.inputs['Surface'])
+
+ring.data.materials.append(neon_mat)
+
+# --- Add a point light inside the ring for extra glow effect on floor ---
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 1.8))
+light = bpy.context.active_object
+light.name = "RingLight"
+light.data.color = (0.0, 1.0, 1.0)
+light.data.energy = 500
+light.data.shadow_soft_size = 0.5
+
+# --- World: dark background ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs['Color'].default_value = (0.0, 0.0, 0.0, 1.0)
+    bg_node.inputs['Strength'].default_value = 0.0
+
+# --- Camera setup ---
+bpy.ops.object.camera_add(location=(0, -8, 3.5))
+cam = bpy.context.active_object
+cam.name = "Camera"
+bpy.context.scene.camera = cam
+
+# Point camera at the ring
+direction = (0, 0, 2.0) - cam.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+
+# --- Enable bloom for glow effect (Cycles) ---
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+
+# Enable bloom in compositor
+bpy.context.scene.use_nodes = True
+nt = bpy.context.scene.node_tree
+nodes = nt.nodes
+links = nt.links
+
+# Clear existing
+for n in nodes:
+    nodes.remove(n)
+
+# Render Layers
+rl = nodes.new('CompositorNodeRLayers')
+rl.location = (0, 0)
+
+# Glare node for bloom
+glare = nodes.new('CompositorNodeGlare')
+glare.location = (300, 0)
+glare.glare_type = 'FOG_GLOW'
+glare.quality = 'HIGH'
+glare.threshold = 0.5
+glare.size = 8
+
+# Composite
+comp = nodes.new('CompositorNodeComposite')
+comp.location = (600, 0)
+
+links.new(rl.outputs['Image'], glare.inputs['Image'])
+links.new(glare.outputs['Image'], comp.inputs['Image'])
+
+print("Neon ring scene created successfully!")

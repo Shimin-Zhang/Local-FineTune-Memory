@@ -1,0 +1,231 @@
+import bpy
+import math
+import random
+from mathutils import Vector, noise
+
+# --- Clean Scene ---
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# --- Materials ---
+mat_rock = bpy.data.materials.new("Rock")
+mat_rock.use_nodes = True
+mat_rock.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.3, 0.3, 0.3, 1)
+mat_rock.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+
+mat_soil = bpy.data.materials.new("Soil")
+mat_soil.use_nodes = True
+mat_soil.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.2, 0.15, 0.1, 1)
+mat_soil.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 1.0
+
+mat_bamboo = bpy.data.materials.new("Bamboo")
+mat_bamboo.use_nodes = True
+mat_bamboo.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.6, 0.5, 0.2, 1)
+mat_bamboo.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.5
+
+mat_wood = bpy.data.materials.new("Wood")
+mat_wood.use_nodes = True
+mat_wood.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.3, 0.2, 0.1, 1)
+mat_wood.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.8
+
+mat_leaves = bpy.data.materials.new("TeaLeaves")
+mat_leaves.use_nodes = True
+mat_leaves.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.1, 0.4, 0.1, 1)
+mat_leaves.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.6
+
+mat_ribbon = bpy.data.materials.new("RedRibbon")
+mat_ribbon.use_nodes = True
+mat_ribbon.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.8, 0.0, 0.0, 1)
+mat_ribbon.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.3
+
+mat_fire = bpy.data.materials.new("Fire")
+mat_fire.use_nodes = True
+mat_fire.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 0.3, 0.0, 1)
+mat_fire.node_tree.nodes["Principled BSDF"].inputs["Emission Color"].default_value = (1.0, 0.5, 0.0, 1)
+mat_fire.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = 5.0
+
+mat_pot = bpy.data.materials.new("ClayPot")
+mat_pot.use_nodes = True
+mat_pot.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.2, 0.1, 0.05, 1)
+mat_pot.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+
+# --- Terrain (Mountain) ---
+bpy.ops.mesh.primitive_grid_add(vertices=100, size=100, location=(0, 0, 0))
+terrain = bpy.context.object
+terrain.name = "Terrain"
+terrain.data.materials.append(mat_soil)
+
+# Displace terrain
+mod = terrain.modifiers.new("Displace", 'DISPLACE')
+tex = bpy.data.textures.new("NoiseTex", 'CLOUDS')
+tex.noise_scale = 5.0
+mod.texture = tex
+mod.strength = 10.0
+mod.mid_level = 0.5
+
+# Flatten area for village
+# We'll use a vertex group or just place objects at a specific Z
+village_z = 2.0  # Approximate height where we'll place things
+
+# --- Tea Forest (Background) ---
+for i in range(50):
+    x = random.uniform(-40, 40)
+    y = random.uniform(-40, 40)
+    # Skip if too close to center (village area)
+    if abs(x) < 10 and abs(y) < 10:
+        continue
+    z = 0
+    # Sample terrain height approximately (we'll just use a rough noise or fixed offset)
+    # For simplicity, we'll place them on a plane and let them intersect or use a height map
+    # Better: use the terrain object's evaluated mesh to get height? Too complex for simple script.
+    # We'll just place them at a varying Z based on noise.
+    z = noise.noise(Vector((x, y, 0))) * 5 + 2
+    
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=2, location=(x, y, z + 1))
+    trunk = bpy.context.object
+    trunk.data.materials.append(mat_wood)
+    
+    # Canopy
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1.5, location=(x, y, z + 2.5))
+    canopy = bpy.context.object
+    canopy.data.materials.append(mat_leaves)
+
+# --- Old Tea Tree with Ribbons ---
+# Main trunk
+bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=4, location=(5, 5, village_z + 2))
+old_trunk = bpy.context.object
+old_trunk.data.materials.append(mat_wood)
+
+# Branches
+for angle in range(0, 360, 45):
+    rad = math.radians(angle)
+    bx = 5 + math.cos(rad) * 1.5
+    by = 5 + math.sin(rad) * 1.5
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=2, location=(bx, by, village_z + 3.5), rotation=(0, math.radians(45), rad))
+    branch = bpy.context.object
+    branch.data.materials.append(mat_wood)
+    
+    # Canopy
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=2, location=(bx, by, village_z + 4.5))
+    canopy = bpy.context.object
+    canopy.data.materials.append(mat_leaves)
+
+# Ribbons on the main trunk
+for i in range(5):
+    angle = random.uniform(0, 2 * math.pi)
+    rad = math.radians(angle)
+    rx = 5 + math.cos(rad) * 0.5
+    ry = 5 + math.sin(rad) * 0.5
+    rz = village_z + random.uniform(1, 3)
+    
+    bpy.ops.mesh.primitive_plane_add(size=0.3, location=(rx, ry, rz), rotation=(0, math.radians(90), rad))
+    ribbon = bpy.context.object
+    ribbon.scale = (1, 0.5, 1)
+    ribbon.data.materials.append(mat_ribbon)
+
+# --- Drying Yard with Bamboo Trays ---
+# Platform
+bpy.ops.mesh.primitive_cylinder_add(radius=5, depth=0.2, location=(-5, -5, village_z))
+platform = bpy.context.object
+platform.data.materials.append(mat_wood)
+
+# Bamboo Trays (Circles)
+for i in range(8):
+    angle = (i / 8) * 2 * math.pi
+    tx = -5 + math.cos(angle) * 3
+    ty = -5 + math.sin(angle) * 3
+    
+    # Tray base (flat cylinder)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=0.05, location=(tx, ty, village_z + 0.2))
+    tray = bpy.context.object
+    tray.data.materials.append(mat_bamboo)
+    
+    # Tray rim (torus)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.8, minor_radius=0.05, location=(tx, ty, village_z + 0.25))
+    rim = bpy.context.object
+    rim.data.materials.append(mat_bamboo)
+    
+    # Tea leaves on tray (small green spheres)
+    for j in range(10):
+        lx = tx + random.uniform(-0.6, 0.6)
+        ly = ty + random.uniform(-0.6, 0.6)
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.05, location=(lx, ly, village_z + 0.25))
+        leaf = bpy.context.object
+        leaf.data.materials.append(mat_leaves)
+
+# --- Stone Path ---
+# Path from village center to the old tree
+start = Vector((-5, -5, village_z + 0.1))
+end = Vector((5, 5, village_z + 0.1))
+steps = 10
+for i in range(steps):
+    t = i / (steps - 1)
+    px = start.x + (end.x - start.x) * t
+    py = start.y + (end.y - start.y) * t
+    pz = village_z + 0.1
+    
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.1, location=(px, py, pz))
+    stone = bpy.context.object
+    stone.scale = (1.2, 0.8, 1)
+    stone.rotation_euler[2] = random.uniform(0, 2 * math.pi)
+    stone.data.materials.append(mat_rock)
+
+# --- Pot of Tea on a Fire ---
+# Fire pit (circle of stones)
+fire_loc = Vector((0, 0, village_z))
+for i in range(12):
+    angle = (i / 12) * 2 * math.pi
+    sx = fire_loc.x + math.cos(angle) * 1.5
+    sy = fire_loc.y + math.sin(angle) * 1.5
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=0.3, location=(sx, sy, fire_loc.z + 0.1))
+    stone = bpy.context.object
+    stone.scale = (1.2, 1.2, 0.8)
+    stone.data.materials.append(mat_rock)
+
+# Fire (glowing sphere)
+bpy.ops.mesh.primitive_ico_sphere_add(radius=0.5, location=fire_loc)
+fire = bpy.context.object
+fire.data.materials.append(mat_fire)
+
+# Tripod stand (3 legs)
+for i in range(3):
+    angle = (i / 3) * 2 * math.pi
+    lx = fire_loc.x + math.cos(angle) * 1.2
+    ly = fire_loc.y + math.sin(angle) * 1.2
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=1.5, location=(lx, ly, fire_loc.z + 0.75), rotation=(0, math.radians(15), angle))
+    leg = bpy.context.object
+    leg.data.materials.append(mat_wood)
+
+# Pot
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=fire_loc + Vector((0, 0, 1.2)))
+pot = bpy.context.object
+pot.scale = (1, 1, 0.8)
+pot.data.materials.append(mat_pot)
+
+# --- Lighting ---
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.object
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# World
+world = bpy.context.scene.world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.5, 0.7, 1.0, 1.0)
+    bg.inputs[1].default_value = 0.5
+
+# Camera
+bpy.ops.object.camera_add(location=(20, 20, 15))
+cam = bpy.context.object
+cam.rotation_euler = (math.radians(60), 0, math.radians(45))
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False

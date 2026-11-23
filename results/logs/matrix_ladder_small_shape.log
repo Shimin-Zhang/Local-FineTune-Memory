@@ -1,0 +1,57 @@
+matrix ladder_small_shape: 56 probes, 0 already done
+[1/56] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 1x1024 loss=vanilla  -> ok  peak 10.52 GB 7.9s
+[2/56] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 1x1024 loss=chunked  -> ok  peak 7.14 GB 6.3s
+[3/56] Qwen3.5-0.8B-Base lora_bf16 ckpt=1 1x1024 loss=vanilla  -> ok  peak 5.27 GB 6.7s
+[4/56] Qwen3.5-0.8B-Base lora_bf16 ckpt=1 1x1024 loss=chunked  -> ok  peak 2.00 GB 6.7s
+[5/56] Qwen3.5-0.8B-Base qlora ckpt=0 1x1024 loss=vanilla  -> ok  peak 9.59 GB 6.3s
+[6/56] Qwen3.5-0.8B-Base qlora ckpt=0 1x1024 loss=chunked  -> ok  peak 6.20 GB 6.4s
+[7/56] Qwen3.5-0.8B-Base qlora ckpt=1 1x1024 loss=vanilla  -> ok  peak 4.54 GB 6.8s
+[8/56] Qwen3.5-0.8B-Base qlora ckpt=1 1x1024 loss=chunked  -> ok  peak 1.25 GB 6.9s
+[9/56] Qwen3.5-2B-Base lora_bf16 ckpt=0 1x1024 loss=vanilla  -> ok  peak 13.81 GB 8.7s
+[10/56] Qwen3.5-2B-Base lora_bf16 ckpt=0 1x1024 loss=chunked  -> ok  peak 10.43 GB 6.6s
+[11/56] Qwen3.5-2B-Base lora_bf16 ckpt=1 1x1024 loss=vanilla  -> ok  peak 7.65 GB 6.9s
+[12/56] Qwen3.5-2B-Base lora_bf16 ckpt=1 1x1024 loss=chunked  -> ok  peak 4.45 GB 7.0s
+[13/56] Qwen3.5-2B-Base qlora ckpt=0 1x1024 loss=vanilla  -> ok  peak 11.39 GB 6.7s
+[14/56] Qwen3.5-2B-Base qlora ckpt=0 1x1024 loss=chunked  -> ok  peak 8.02 GB 6.8s
+[15/56] Qwen3.5-2B-Base qlora ckpt=1 1x1024 loss=vanilla  -> ok  peak 5.62 GB 7.2s
+[16/56] Qwen3.5-2B-Base qlora ckpt=1 1x1024 loss=chunked  -> ok  peak 2.38 GB 7.2s
+[17/56] Qwen3.5-4B-Base lora_bf16 ckpt=0 1x1024 loss=vanilla  -> oom (phase step0_forward) peak 22.98 GB 11.2s
+[18/56] Qwen3.5-4B-Base lora_bf16 ckpt=0 1x1024 loss=chunked  -> oom (phase step0_forward) peak 22.98 GB 5.9s
+[19/56] Qwen3.5-4B-Base lora_bf16 ckpt=1 1x1024 loss=vanilla  -> ok  peak 12.57 GB 8.1s
+[20/56] Qwen3.5-4B-Base lora_bf16 ckpt=1 1x1024 loss=chunked  -> ok  peak 9.63 GB 8.2s
+[21/56] Qwen3.5-4B-Base qlora ckpt=0 1x1024 loss=vanilla  -> ok  peak 21.00 GB 8.0s
+[22/56] Qwen3.5-4B-Base qlora ckpt=0 1x1024 loss=chunked  -> ok  peak 17.55 GB 8.1s
+[23/56] Qwen3.5-4B-Base qlora ckpt=1 1x1024 loss=vanilla  -> ok  peak 7.28 GB 8.6s
+[24/56] Qwen3.5-4B-Base qlora ckpt=1 1x1024 loss=chunked  -> ok  peak 4.30 GB 8.6s
+[25/56] Qwen3.5-9B-Base lora_bf16 ckpt=0 1x1024 loss=vanilla  -> oom (phase step0_forward) peak 23.06 GB 21.7s
+[26/56] Qwen3.5-9B-Base lora_bf16 ckpt=0 1x1024 loss=chunked  -> oom (phase step0_forward) peak 23.00 GB 8.5s
+[27/56] Qwen3.5-9B-Base lora_bf16 ckpt=1 1x1024 loss=vanilla  -> ok  peak 22.29 GB 9.9s
+[28/56] Qwen3.5-9B-Base lora_bf16 ckpt=1 1x1024 loss=chunked  -> ok  peak 19.44 GB 10.0s
+[29/56] Qwen3.5-9B-Base qlora ckpt=0 1x1024 loss=vanilla  -> oom (phase step0_forward) peak 22.93 GB 7.3s
+[30/56] Qwen3.5-9B-Base qlora ckpt=0 1x1024 loss=chunked  -> oom (phase step0_forward) peak 22.93 GB 7.3s
+[31/56] Qwen3.5-9B-Base qlora ckpt=1 1x1024 loss=vanilla  -> ok  peak 12.03 GB 10.4s
+[32/56] Qwen3.5-9B-Base qlora ckpt=1 1x1024 loss=chunked  -> ok  peak 9.17 GB 10.6s
+[33/56] Qwen3-14B-Base lora_bf16 ckpt=0 1x1024 loss=vanilla  -> oom (phase load)  3.4s
+[34/56] Qwen3-14B-Base lora_bf16 ckpt=0 1x1024 loss=chunked  -> oom (phase load)  3.4s
+[35/56] Qwen3-14B-Base lora_bf16 ckpt=1 1x1024 loss=vanilla  -> oom (phase load)  3.3s
+[36/56] Qwen3-14B-Base lora_bf16 ckpt=1 1x1024 loss=chunked  -> oom (phase load)  3.4s
+[37/56] Qwen3-14B-Base qlora ckpt=0 1x1024 loss=vanilla  -> oom (phase step1_backward) peak 22.81 GB 38.0s
+[38/56] Qwen3-14B-Base qlora ckpt=0 1x1024 loss=chunked  -> ok  peak 21.38 GB 13.6s
+[39/56] Qwen3-14B-Base qlora ckpt=1 1x1024 loss=vanilla  -> ok  peak 13.39 GB 12.0s
+[40/56] Qwen3-14B-Base qlora ckpt=1 1x1024 loss=chunked  -> ok  peak 11.71 GB 12.6s
+[41/56] Qwen3.8-27B lora_bf16 ckpt=0 1x1024 loss=vanilla  -> oom (phase load)  3.4s
+[42/56] Qwen3.8-27B lora_bf16 ckpt=0 1x1024 loss=chunked  -> oom (phase load)  3.4s
+[43/56] Qwen3.8-27B lora_bf16 ckpt=1 1x1024 loss=vanilla  -> oom (phase load)  3.4s
+[44/56] Qwen3.8-27B lora_bf16 ckpt=1 1x1024 loss=chunked  -> oom (phase load)  3.4s
+[45/56] Qwen3.8-27B qlora ckpt=0 1x1024 loss=vanilla  -> oom (phase step0_forward) peak 22.92 GB 80.6s
+[46/56] Qwen3.8-27B qlora ckpt=0 1x1024 loss=chunked  -> oom (phase step0_forward) peak 22.92 GB 14.1s
+[47/56] Qwen3.8-27B qlora ckpt=1 1x1024 loss=vanilla  -> oom (phase step1_forward) peak 22.41 GB 15.9s
+[48/56] Qwen3.8-27B qlora ckpt=1 1x1024 loss=chunked  -> ok  peak 20.87 GB 20.9s
+[49/56] Nanbeige4.3-33B-Base lora_bf16 ckpt=0 1x1024 loss=vanilla  -> oom (phase load)  3.4s
+[50/56] Nanbeige4.3-33B-Base lora_bf16 ckpt=0 1x1024 loss=chunked  -> oom (phase load)  3.4s
+[51/56] Nanbeige4.3-33B-Base lora_bf16 ckpt=1 1x1024 loss=vanilla  -> oom (phase load)  3.4s
+[52/56] Nanbeige4.3-33B-Base lora_bf16 ckpt=1 1x1024 loss=chunked  -> oom (phase load)  3.4s
+[53/56] Nanbeige4.3-33B-Base qlora ckpt=0 1x1024 loss=vanilla  -> oom (phase step0_forward) peak 22.58 GB 69.4s
+[54/56] Nanbeige4.3-33B-Base qlora ckpt=0 1x1024 loss=chunked  -> oom (phase step0_forward) peak 22.58 GB 16.0s
+[55/56] Nanbeige4.3-33B-Base qlora ckpt=1 1x1024 loss=vanilla  -> oom (phase step0_forward) peak 22.57 GB 14.8s
+[56/56] Nanbeige4.3-33B-Base qlora ckpt=1 1x1024 loss=chunked  -> oom (phase step0_backward) peak 22.57 GB 15.0s

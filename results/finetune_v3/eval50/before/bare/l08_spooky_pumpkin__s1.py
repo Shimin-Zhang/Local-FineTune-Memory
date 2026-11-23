@@ -1,0 +1,95 @@
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Create pumpkin (scaled UV sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, location=(0, 0, 1.0), segments=32, ring_count=16)
+pumpkin = bpy.context.active_object
+pumpkin.name = "Pumpkin"
+pumpkin.scale = (1.0, 1.0, 0.8)
+
+# Add subsurf for smoother look
+subsurf = pumpkin.modifiers.new(name="Subsurf", type='SUBSURF')
+subsurf.levels = 2
+subsurf.render_levels = 3
+
+# Create pumpkin material (orange)
+pumpkin_mat = bpy.data.materials.new(name="PumpkinMat")
+pumpkin_mat.use_nodes = True
+nodes = pumpkin_mat.node_tree.nodes
+links = pumpkin_mat.node_tree.links
+
+# Set diffuse color to orange
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.8, 0.3, 0.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.6
+
+pumpkin.data.materials.append(pumpkin_mat)
+
+# Add stem (cylinder on top)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.4, location=(0, 0, 1.85), vertices=12)
+stem = bpy.context.active_object
+stem.name = "Stem"
+stem.rotation_euler = (math.radians(10), 0, 0)
+
+stem_mat = bpy.data.materials.new(name="StemMat")
+stem_mat.use_nodes = True
+stem_bsdf = stem_mat.node_tree.nodes["Principled BSDF"]
+stem_bsdf.inputs["Base Color"].default_value = (0.1, 0.3, 0.05, 1.0)
+stem_bsdf.inputs["Roughness"].default_value = 0.8
+stem.data.materials.append(stem_mat)
+
+# Create ground plane
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+
+ground_mat = bpy.data.materials.new(name="GroundMat")
+ground_mat.use_nodes = True
+ground_bsdf = ground_mat.node_tree.nodes["Principled BSDF"]
+ground_bsdf.inputs["Base Color"].default_value = (0.05, 0.05, 0.05, 1.0)
+ground_bsdf.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(ground_mat)
+
+# Create green point light below the pumpkin
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 0.1))
+light = bpy.context.active_object
+light.name = "GreenUnderlight"
+light.data.color = (0.0, 1.0, 0.0)  # Green
+light.data.energy = 50.0
+light.data.shadow_soft_size = 0.3
+
+# Add a dim ambient light for spooky atmosphere
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 5))
+ambient = bpy.context.active_object
+ambient.name = "AmbientDim"
+ambient.data.color = (0.2, 0.2, 0.3)  # Bluish dim
+ambient.data.energy = 5.0
+
+# Set up camera
+bpy.ops.object.camera_add(location=(4, -4, 2), rotation=(math.radians(70), 0, math.radians(45)))
+camera = bpy.context.active_object
+camera.name = "Camera"
+bpy.context.scene.camera = camera
+
+# Set world to dark
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes["Background"]
+bg_node.inputs["Color"].default_value = (0.01, 0.01, 0.01, 1.0)
+bg_node.inputs["Strength"].default_value = 1.0
+
+# Enable shadows and set render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False

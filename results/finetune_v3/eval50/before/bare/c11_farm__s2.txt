@@ -1,0 +1,144 @@
+```python
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Helper functions
+def create_box(name, size, location, rotation=(0, 0, 0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    bpy.ops.object.transform_apply(scale=True)
+    return obj
+
+def create_cylinder(name, radius, depth, location, rotation=(0, 0, 0), segments=32):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, rotation=rotation, vertices=segments)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+def create_sphere(name, radius, location, segments=32, rings=16):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=segments, rings=rings)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+def set_material(obj, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name=f"Mat_{obj.name}")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+
+# --- GROUND ---
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+set_material(ground, (0.3, 0.5, 0.15, 1.0), roughness=1.0)
+
+# --- BARN ---
+barn_base = create_box("Barn_Base", (12, 8, 6), (0, -15, 3))
+set_material(barn_base, (0.7, 0.1, 0.1, 1.0))
+
+# Barn roof (two angled planes)
+roof_left = create_box("Barn_Roof_Left", (12.5, 5, 0.3), (-2.5, -15, 7.2), rotation=(0, math.radians(30), 0))
+set_material(roof_left, (0.2, 0.2, 0.2, 1.0))
+roof_right = create_box("Barn_Roof_Right", (12.5, 5, 0.3), (2.5, -15, 7.2), rotation=(0, math.radians(-30), 0))
+set_material(roof_right, (0.2, 0.2, 0.2, 1.0))
+
+# Barn door
+door = create_box("Barn_Door", (4, 0.2, 5), (0, -11, 2.5))
+set_material(door, (0.3, 0.2, 0.1, 1.0))
+
+# --- SILO ---
+silo_body = create_cylinder("Silo_Body", 2.5, 10, (10, -15, 5))
+set_material(silo_body, (0.8, 0.8, 0.8, 1.0), metallic=0.5, roughness=0.3)
+silo_top = create_sphere("Silo_Top", 2.5, (10, -15, 10), segments=32, rings=16)
+set_material(silo_top, (0.8, 0.8, 0.8, 1.0), metallic=0.5, roughness=0.3)
+
+# --- FENCE ---
+# Create fence posts and rails around a rectangular area
+fence_x_min, fence_x_max = -25, 25
+fence_y_min, fence_y_max = -25, 5
+post_spacing = 5
+post_height = 1.5
+post_size = 0.2
+rail_heights = [0.5, 1.0]
+
+# Bottom and top rails along x-axis (front and back)
+for y in [fence_y_min, fence_y_max]:
+    for h in rail_heights:
+        rail = create_box(f"Fence_Rail_{y}_{h}", (fence_x_max - fence_x_min, 0.1, 0.15), ((fence_x_min + fence_x_max) / 2, y, h))
+        set_material(rail, (0.6, 0.5, 0.3, 1.0))
+
+# Left and right rails along y-axis
+for x in [fence_x_min, fence_x_max]:
+    for h in rail_heights:
+        rail = create_box(f"Fence_Rail_{x}_{h}", (0.1, fence_y_max - fence_y_min, 0.15), (x, (fence_y_min + fence_y_max) / 2, h))
+        set_material(rail, (0.6, 0.5, 0.3, 1.0))
+
+# Posts
+for x in range(fence_x_min, fence_x_max + 1, post_spacing):
+    for y in [fence_y_min, fence_y_max]:
+        post = create_box(f"Fence_Post_{x}_{y}", (post_size, post_size, post_height), (x, y, post_height / 2))
+        set_material(post, (0.5, 0.4, 0.2, 1.0))
+
+for y in range(fence_y_min, fence_y_max + 1, post_spacing):
+    for x in [fence_x_min, fence_x_max]:
+        post = create_box(f"Fence_Post_{x}_{y}", (post_size, post_size, post_height), (x, y, post_height / 2))
+        set_material(post, (0.5, 0.4, 0.2, 1.0))
+
+# --- TRACTOR ---
+# Body
+tractor_body = create_box("Tractor_Body", (3, 2, 1.5), (-10, 0, 1.5))
+set_material(tractor_body, (0.1, 0.4, 0.1, 1.0))
+
+# Cab
+tractor_cab = create_box("Tractor_Cab", (2, 1.8, 1.5), (-10, 0, 3))
+set_material(tractor_cab, (0.1, 0.4, 0.1, 1.0))
+
+# Front wheels
+for x in [-11.5, -8.5]:
+    wheel = create_cylinder(f"Tractor_Front_Wheel_{x}", 0.8, 0.5, (x, 0, 0.8), rotation=(math.radians(90), 0, 0))
+    set_material(wheel, (0.1, 0.1, 0.1, 1.0))
+
+# Rear wheels (larger)
+for x in [-12, -8]:
+    wheel = create_cylinder(f"Tractor_Rear_Wheel_{x}", 1.2, 0.7, (x, 0, 1.2), rotation=(math.radians(90), 0, 0))
+    set_material(wheel, (0.1, 0.1, 0.1, 1.0))
+
+# --- HAY BALES (3) ---
+hay_bale_positions = [
+    (15, -5, 0.75),
+    (18, -8, 0.75),
+    (16, -12, 0.75)
+]
+for i, pos in enumerate(hay_bale_positions):
+    bale = create_cylinder(f"Hay_Bale_{i}", 0.75, 1.5, pos, rotation=(0, math.radians(90), 0), segments=16)
+    set_material(bale, (0.8, 0.7, 0.3, 1.0), roughness=1.0)
+
+# --- LIGHTING ---
+bpy.ops.object.light_add(type='SUN', location=(20, 20, 30))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# World background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs[0].default_value = (0.5, 0.7, 1.0, 1.0)
+bg.inputs[1].default_value = 1.0
+```

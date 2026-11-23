@@ -1,0 +1,347 @@
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create collections
+scene = bpy.context.scene
+dam_col = scene.collection.children.new("Dam") if "Dam" not in [c.name for c in scene.collection.children] else scene.collection.children["Dam"]
+water_col = scene.collection.children.new("Water") if "Water" not in [c.name for c in scene.collection.children] else scene.collection.children["Water"]
+power_col = scene.collection.children.new("PowerHouse") if "PowerHouse" not in [c.name for c in scene.collection.children] else scene.collection.children["PowerHouse"]
+pylon_col = scene.collection.children.new("Pylons") if "Pylons" not in [c.name for c in scene.collection.children] else scene.collection.children["Pylons"]
+valley_col = scene.collection.children.new("Valley") if "Valley" not in [c.name for c in scene.collection.children] else scene.collection.children["Valley"]
+
+# Materials
+def create_material(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.get(name)
+    if mat is None:
+        mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = roughness
+        bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+concrete_mat = create_material("Concrete", (0.6, 0.6, 0.55, 1.0), roughness=0.9)
+rock_mat = create_material("Rock", (0.35, 0.3, 0.25, 1.0), roughness=1.0)
+water_mat = create_material("Water", (0.1, 0.3, 0.6, 1.0), roughness=0.1, metallic=0.3)
+water_mat.node_tree.nodes["Principled BSDF"].inputs["Transmission Weight"].default_value = 0.8 if "Transmission Weight" in [i.name for i in water_mat.node_tree.nodes["Principled BSDF"].inputs] else 0.0
+steel_mat = create_material("Steel", (0.2, 0.2, 0.25, 1.0), roughness=0.3, metallic=0.9)
+cable_mat = create_material("Cable", (0.1, 0.1, 0.1, 1.0), roughness=0.5, metallic=0.5)
+grass_mat = create_material("Grass", (0.2, 0.4, 0.1, 1.0), roughness=1.0)
+
+# --- Valley Terrain ---
+# Create a plane and displace it to form a narrow valley
+bpy.ops.mesh.primitive_plane_add(size=400, location=(0, 0, 0))
+terrain = bpy.context.active_object
+terrain.name = "Valley_Terrain"
+terrain.data.materials.append(rock_mat)
+# Subdivide
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=50)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Displace vertices to create valley shape
+import bmesh
+me = terrain.data
+for v in me.vertices:
+    x, y = v.co.x, v.co.y
+    # Valley: narrow in x, wide in y. River runs along y axis
+    # Valley floor at z=0, walls rise as |x| increases
+    # Add some noise
+    import random
+    random.seed(int(x*100) + int(y*100))
+    noise = random.uniform(-1, 1) * 2
+    # Valley cross-section: parabolic
+    wall_height = (abs(x) / 50) ** 1.5 * 40
+    # Add variation along y
+    y_factor = 1.0 + 0.3 * math.sin(y * 0.05)
+    v.co.z = wall_height * y_factor + noise + 5
+    # Make river bed lower
+    if abs(x) < 15:
+        v.co.z = max(v.co.z, 0) - 3
+
+# Add a second material for grass on slopes
+# Keep it simple - just rock
+
+# --- Concrete Arch Dam ---
+# Create the arch dam as a curved wall
+# The dam spans across the valley at y=0, curving upstream (concave toward the reservoir)
+# Dam parameters
+dam_center_y = 0
+dam_thickness = 12  # thickness in y
+dam_height = 60      # height from base to crest
+dam_width = 80       # span across valley (x direction)
+
+# Create dam mesh using a series of points along the arch
+arch_points = []
+num_points = 40
+for i in range(num_points + 1):
+    t = i / num_points
+    x = -dam_width/2 + t * dam_width
+    # Arch curve: parabolic, concave toward +y (upstream)
+    # The arch bows toward the reservoir (negative y direction for concavity)
+    y_curve = -8 * (1 - (2*t - 1)**2)  # parabolic arch, max deflection at center
+    # Base of dam
+    base_y = y_curve
+    # Top of dam
+    top_y = y_curve + 2  # slight taper
+    arch_points.append((x, base_y, 0))
+
+# Build dam mesh: extrude the arch line upward
+dam_verts = []
+dam_faces = []
+
+# Bottom ring (at z=0) and top ring (at z=dam_height)
+for i, (x, y, z) in enumerate(arch_points):
+    # Bottom vertex
+    dam_verts.append((x, y, 0))
+    # Top vertex
+    dam_verts.append((x, y + 2, dam_height))  # slight taper upward
+
+# Create faces between consecutive points (bottom to top, and side faces)
+for i in range(len(arch_points) - 1):
+    b0 = i * 2
+    b1 = i * 2 + 1
+    t0 = (i + 1) * 2
+    t1 = (i + 1) * 2 + 1
+    # Front face (upstream)
+    dam_faces.append((b0, t0, t1, b1))
+    # Bottom face
+    if i == 0:
+        dam_faces.append((b0, t0, t1, b1))  # already have front
+    # Top face
+    dam_faces.append((t0, t1, t1 + 1, t0 + 1) if False else (t0, t1, t1, t0))
+
+# Actually let's build it more carefully
+dam_verts = []
+dam_faces = []
+n = len(arch_points)
+for i in range(n):
+    x, y, z = arch_points[i]
+    # Bottom
+    dam_verts.append((x, y, 0))
+    # Top
+    dam_verts.append((x, y + 2, dam_height))
+
+# Front face (upstream side)
+for i in range(n - 1):
+    b0 = i * 2
+    b1 = i * 2 + 1
+    t0 = (i + 1) * 2
+    t1 = (i + 1) * 2 + 1
+    dam_faces.append((b0, b1, t1, t0))
+
+# Back face (downstream side) - offset by thickness
+for i in range(n - 1):
+    b0 = i * 2
+    b1 = i * 2 + 1
+    t0 = (i + 1) * 2
+    t1 = (i + 1) * 2 + 1
+    # Back vertices
+    dam_verts.append((arch_points[i][0], arch_points[i][1] + dam_thickness, 0))
+    dam_verts.append((arch_points[i][0], arch_points[i][1] + dam_thickness + 2, dam_height))
+
+# Rebuild with back faces
+dam_verts = []
+dam_faces = []
+for i in range(n):
+    x, y, z = arch_points[i]
+    # Front bottom
+    dam_verts.append((x, y, 0))
+    # Front top
+    dam_verts.append((x, y + 2, dam_height))
+    # Back bottom
+    dam_verts.append((x, y + dam_thickness, 0))
+    # Back top
+    dam_verts.append((x, y + dam_thickness + 2, dam_height))
+
+# Front face
+for i in range(n - 1):
+    f0 = i * 4
+    f1 = i * 4 + 1
+    f2 = (i + 1) * 4 + 1
+    f3 = (i + 1) * 4
+    dam_faces.append((f0, f1, f2, f3))
+
+# Back face
+for i in range(n - 1):
+    b0 = i * 4 + 2
+    b1 = i * 4 + 3
+    b2 = (i + 1) * 4 + 3
+    b3 = (i + 1) * 4 + 2
+    dam_faces.append((b0, b3, b2, b1))
+
+# Top face
+for i in range(n - 1):
+    t0 = i * 4 + 1
+    t1 = (i + 1) * 4 + 1
+    t2 = (i + 1) * 4 + 3
+    t3 = i * 4 + 3
+    dam_faces.append((t0, t1, t2, t3))
+
+# Bottom face
+for i in range(n - 1):
+    bt0 = i * 4
+    bt1 = (i + 1) * 4
+    bt2 = (i + 1) * 4 + 2
+    bt3 = i * 4 + 2
+    dam_faces.append((bt0, bt3, bt2, bt1))
+
+# End caps
+# Left end
+left_faces = [
+    (0, 1, 3, 2),  # front-left
+]
+# Right end
+right_end = (n - 1) * 4
+right_faces = [
+    (right_end, right_end + 2, right_end + 3, right_end + 1),  # right cap
+]
+dam_faces.extend(left_faces)
+dam_faces.extend(right_faces)
+
+dam_mesh = bpy.data.meshes.new("Dam_Mesh")
+dam_mesh.from_pydata(dam_verts, [], dam_faces)
+dam_obj = bpy.data.objects.new("Arch_Dam", dam_mesh)
+dam_obj.data.materials.append(concrete_mat)
+dam_col.objects.link(dam_obj)
+
+# --- Reservoir Water (behind the dam) ---
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -30, 15))
+reservoir = bpy.context.active_object
+reservoir.name = "Reservoir_Water"
+reservoir.scale = (40, 25, 1)
+reservoir.data.materials.append(water_mat)
+water_col.objects.link(reservoir)
+
+# --- Spillway ---
+# A channel on the right side of the dam where water pours out
+# Create a sloped channel from the dam crest down to the base
+spillway_verts = []
+spillway_faces = []
+# Spillway is a rectangular channel, sloped
+# Starts at dam crest (right side), goes down and out
+sw_x_start = 30
+sw_x_end = 45
+sw_y_start = 2
+sw_y_end = 15
+sw_z_start = dam_height
+sw_z_end = 0
+sw_width = 8
+sw_thickness = 3
+
+# Create a box for the spillway channel
+# 8 vertices
+sw_verts = [
+    (sw_x_start - sw_width/2, sw_y_start, sw_z_start),
+    (sw_x_start + sw_width/2, sw_y_start, sw_z_start),
+    (sw_x_start + sw_width/2, sw_y_start + sw_thickness, sw_z_start),
+    (sw_x_start - sw_width/2, sw_y_start + sw_thickness, sw_z_start),
+    (sw_x_end - sw_width/2, sw_y_end, sw_z_end),
+    (sw_x_end + sw_width/2, sw_y_end, sw_z_end),
+    (sw_x_end + sw_width/2, sw_y_end + sw_thickness, sw_z_end),
+    (sw_x_end - sw_width/2, sw_y_end + sw_thickness, sw_z_end),
+]
+sw_faces = [
+    (0, 1, 5, 4),  # front
+    (1, 2, 6, 5),  # right
+    (2, 3, 7, 6),  # back
+    (3, 0, 4, 7),  # left
+    (0, 3, 2, 1),  # top
+    (4, 5, 6, 7),  # bottom
+]
+spillway_mesh = bpy.data.meshes.new("Spillway_Mesh")
+spillway_mesh.from_pydata(sw_verts, [], sw_faces)
+spillway_obj = bpy.data.objects.new("Spillway", spillway_mesh)
+spillway_obj.data.materials.append(concrete_mat)
+dam_col.objects.link(spillway_obj)
+
+# Water in spillway - a flowing stream
+bpy.ops.mesh.primitive_plane_add(size=1, location=((sw_x_start + sw_x_end)/2, (sw_y_start + sw_y_end)/2, (sw_z_start + sw_z_end)/2))
+spillway_water = bpy.context.active_object
+spillway_water.name = "Spillway_Water"
+# Make it a thin box
+bpy.ops.object.transform_apply(location=False, rotation=False, scale=False)
+# Scale to fit the spillway
+spillway_water.scale = (sw_width/2 - 0.5, (sw_y_end - sw_y_start)/2, 0.5)
+# Rotate to align with the slope
+angle = math.atan2(sw_z_start - sw_z_end, sw_y_end - sw_y_start)
+spillway_water.rotation_euler = (angle, 0, 0)
+spillway_water.location = ((sw_x_start + sw_x_end)/2, (sw_y_start + sw_y_end)/2, (sw_z_start + sw_z_end)/2)
+spillway_water.data.materials.append(water_mat)
+water_col.objects.link(spillway_water)
+
+# --- Power House at the Base ---
+# A rectangular building at the base of the dam, on the downstream side
+ph_width = 30
+ph_depth = 20
+ph_height = 15
+ph_x = 0
+ph_y = 20  # downstream of dam
+ph_z = 0
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(ph_x, ph_y, ph_z + ph_height/2))
+power_house = bpy.context.active_object
+power_house.name = "Power_House"
+power_house.scale = (ph_width, ph_depth, ph_height)
+power_house.data.materials.append(concrete_mat)
+power_col.objects.link(power_house)
+
+# Add a roof
+bpy.ops.mesh.primitive_cube_add(size=1, location=(ph_x, ph_y, ph_z + ph_height + 0.5))
+roof = bpy.context.active_object
+roof.name = "Power_House_Roof"
+roof.scale = (ph_width * 1.05, ph_depth * 1.05, 1)
+roof.data.materials.append(steel_mat)
+power_col.objects.link(roof)
+
+# Add some windows/doors on the front face
+for i in range(4):
+    wx = ph_x - ph_width/2 + 5 + i * 7
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(wx, ph_y - ph_depth/2 - 0.1, ph_z + 5))
+    window = bpy.context.active_object
+    window.name = f"Window_{i}"
+    window.scale = (2, 0.5, 3)
+    window.data.materials.append(steel_mat)
+    power_col.objects.link(window)
+
+# --- Pylons Marching Away ---
+# Transmission towers going downstream (positive y direction)
+pylon_count = 8
+pylon_spacing = 30
+pylon_start_y = 40
+pylon_height = 40
+
+for i in range(pylon_count):
+    py = pylon_start_y + i * pylon_spacing
+    px = 0
+    pz = 0
+
+    # Pylon body - tapered box
+    pylon_verts = [
+        (-3, -3, 0),
+        (3, -3, 0),
+        (3, 3, 0),
+        (-3, 3, 0),
+        (-2, -2, pylon_height),
+        (2, -2, pylon_height),
+        (2, 2, pylon_height),
+        (-2, 2, pylon_height),
+    ]
+    pylon_faces = [
+        (0, 1, 5, 4),  # front
+        (1, 2, 6, 5),  # right
+        (2, 3, 7, 6),  # back
+        (3, 0, 4, 7),  # left
+        (0, 3, 7, 4),  # bottom
+        (4, 5, 6, 7),  # top
+    ]
+    pylon_mesh = bpy.data.meshes.new(f"Pylon_Mesh_{i}")
+    pylon_mesh.from_pydata(pylon_verts, [], pylon_faces)

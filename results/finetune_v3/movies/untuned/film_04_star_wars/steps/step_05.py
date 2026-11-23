@@ -1,0 +1,281 @@
+import bpy
+import math
+import mathutils
+import random
+from mathutils import Vector
+
+# The scene is getting closer but needs major fixes:
+# 1. Luke is cut off on the right - need to reposition
+# 2. The suns are behind the dome - need to be visible in the sky
+# 3. The sand ripples look like paper - need to fix
+# 4. Need a proper silhouette composition
+
+# First, let's clean up the messy ripple objects that look like paper
+for i in range(30):
+    ripple = bpy.data.objects.get(f"Ripple_{i}")
+    if ripple:
+        bpy.data.objects.remove(ripple, do_unlink=True)
+
+# Reposition everything for a proper composition
+# Camera should see: Luke (foreground, left), Homestead (midground, center-right), Two suns (background, on horizon)
+
+# Reposition camera
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (-3, 12, 1.5)
+    cam.rotation_euler = (math.radians(85), 0, math.radians(170))
+    cam.data.lens = 40
+    cam.data.dof.focus_distance = 10.0
+    cam.data.dof.aperture_fstop = 4.0
+
+# Reposition Luke to be clearly in the foreground, on the left side
+luke_parts = ["LukeTorso", "LukeHead", "LukeHair", "LukeLeg_-1", "LukeLeg_1", "LukeArm_-1", "LukeArm_1", "LukeBelt"]
+for name in luke_parts:
+    obj = bpy.data.objects.get(name)
+    if obj:
+        obj.location.x = -2
+        obj.location.y = 8
+        # Scale Luke up a bit for visibility
+        obj.scale = (1.3, 1.3, 1.3)
+
+# Reposition the homestead to center-right
+dome_obj = bpy.data.objects.get("Dome")
+if dome_obj:
+    dome_obj.location = (3, -15, 0)
+
+for i in range(12):
+    rib = bpy.data.objects.get(f"Rib_{i}")
+    if rib:
+        rib.location = (3, -15, 0)
+
+for ring_z in [1.5, 3.0, 4.0]:
+    ring = bpy.data.objects.get(f"Ring_{ring_z}")
+    if ring:
+        ring.location = (3, -15, 0)
+
+door_obj = bpy.data.objects.get("Door")
+if door_obj:
+    door_obj.location = (3, -10.2, 1.4)
+
+step_obj = bpy.data.objects.get("DoorStep")
+if step_obj:
+    step_obj.location = (3, -9.8, 0.15)
+
+for side in [-1, 1]:
+    annex = bpy.data.objects.get(f"Annex_{side}")
+    if annex:
+        annex.location = (3 + side * 7, -12, 1.1)
+    
+    small_dome = bpy.data.objects.get(f"SmallDome_{side}")
+    if small_dome:
+        small_dome.location = (3 + side * 7, -12, 2.2)
+    
+    window = bpy.data.objects.get(f"Window_{side}")
+    if window:
+        window.location = (3 + side * 7, -9.5, 1.5)
+
+antenna_obj = bpy.data.objects.get("Antenna")
+if antenna_obj:
+    antenna_obj.location = (3, -15, 5)
+
+dish_obj = bpy.data.objects.get("Dish")
+if dish_obj:
+    dish_obj.location = (3, -15, 9)
+
+for i in range(6):
+    pipe = bpy.data.objects.get(f"Pipe_{i}")
+    if pipe:
+        pipe.location = (3, -15, 0)
+
+# Reposition the suns to be clearly visible in the sky, NOT behind the dome
+# Sun 1 - larger, lower, to the left
+sun1_obj = bpy.data.objects.get("Sun1")
+if sun1_obj:
+    sun1_obj.location = (-12, -60, 3)
+    sun1_obj.scale = (1.2, 1.2, 1.2)
+
+# Sun 2 - smaller, higher, to the right
+sun2_obj = bpy.data.objects.get("Sun2")
+if sun2_obj:
+    sun2_obj.location = (8, -65, 6)
+    sun2_obj.scale = (0.8, 0.8, 0.8)
+
+# Move glow objects
+sun1_glow = bpy.data.objects.get("Sun1Glow")
+if sun1_glow:
+    sun1_glow.location = sun1_obj.location
+    sun1_glow.scale = (1.8, 1.8, 1.8)
+
+sun2_glow = bpy.data.objects.get("Sun2Glow")
+if sun2_glow:
+    sun2_glow.location = sun2_obj.location
+    sun2_glow.scale = (1.2, 1.2, 1.2)
+
+# Adjust sun lights
+sun1_light = bpy.data.objects.get("Sun1")
+sun2_light = bpy.data.objects.get("Sun2")
+
+if sun1_light:
+    # Light coming from the direction of sun 1
+    sun1_light.rotation_euler = (math.radians(78), 0, math.radians(195))
+    sun1_light.data.energy = 8.0
+    sun1_light.data.color = (1.0, 0.35, 0.05)
+
+if sun2_light:
+    sun2_light.rotation_euler = (math.radians(72), 0, math.radians(175))
+    sun2_light.data.energy = 5.0
+    sun2_light.data.color = (1.0, 0.45, 0.15)
+
+# Fix the world sky - make it more dramatic with darker top
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    world_nodes = world.node_tree.nodes
+    for node in world_nodes:
+        if node.type == 'VALTORGB':
+            cr = node.color_ramp
+            while len(cr.elements) > 2:
+                cr.elements.remove(cr.elements[-1])
+            
+            cr.elements[0].position = 0.0
+            cr.elements[0].color = (0.02, 0.01, 0.03, 1)
+            cr.elements[1].position = 0.08
+            cr.elements[1].color = (0.4, 0.08, 0.01, 1)
+            
+            e1 = cr.elements.new(0.15)
+            e1.color = (0.8, 0.25, 0.02, 1)
+            e2 = cr.elements.new(0.25)
+            e2.color = (0.6, 0.15, 0.03, 1)
+            e3 = cr.elements.new(0.4)
+            e3.color = (0.25, 0.08, 0.12, 1)
+            e4 = cr.elements.new(0.6)
+            e4.color = (0.08, 0.03, 0.1, 1)
+            e5 = cr.elements.new(1.0)
+            e5.color = (0.01, 0.005, 0.03, 1)
+
+# Reposition the path
+path_obj = bpy.data.objects.get("Path")
+if path_obj:
+    path_obj.location = (3, -8, 0)
+
+# Remove the heat haze plane (it's not working well)
+haze_obj = bpy.data.objects.get("HeatHaze")
+if haze_obj:
+    bpy.data.objects.remove(haze_obj, do_unlink=True)
+
+# Remove the flare object
+flare_obj = bpy.data.objects.get("Flare")
+if flare_obj:
+    bpy.data.objects.remove(flare_obj, do_unlink=True)
+
+# Make Luke's material darker for better silhouette
+luke_mat = bpy.data.materials.get("LukeOutfit")
+if luke_mat and luke_mat.use_nodes:
+    for node in luke_mat.node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (0.15, 0.12, 0.1, 1)
+            node.inputs['Roughness'].default_value = 0.95
+
+hair_mat = bpy.data.materials.get("LukeHair")
+if hair_mat and hair_mat.use_nodes:
+    for node in hair_mat.node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (0.05, 0.02, 0.01, 1)
+
+belt_mat = bpy.data.materials.get("LukeBelt")
+if belt_mat and belt_mat.use_nodes:
+    for node in belt_mat.node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (0.08, 0.05, 0.03, 1)
+
+# Adjust atmosphere
+atmo_mat = bpy.data.materials.get("AtmosphereMat")
+if atmo_mat and atmo_mat.use_nodes:
+    for node in atmo_mat.node_tree.nodes:
+        if node.type == 'VOLUME_PRINCIPLED':
+            node.inputs['Density'].default_value = 0.004
+            node.inputs['Color'].default_value = (0.6, 0.3, 0.1, 1)
+            node.inputs['Anisotropy'].default_value = 0.7
+
+# Add some foreground rocks for depth
+rock_mat = bpy.data.materials.get("RockMat")
+if rock_mat:
+    for i in range(10):
+        rock_data = bpy.data.meshes.new(f"NewFGRock_{i}")
+        rock_obj = bpy.data.objects.new(f"NewFGRock_{i}", rock_data)
+        bpy.context.scene.collection.objects.link(rock_obj)
+        
+        bm_rock = bmesh.new()
+        bmesh.ops.create_icosphere(bm_rock, subdivisions=2, radius=0.15)
+        for v in bm_rock.verts:
+            v.co += Vector((random.uniform(-0.04, 0.04), random.uniform(-0.04, 0.04), random.uniform(-0.04, 0.04)))
+        bm_rock.to_mesh(rock_data)
+        bm_rock.free()
+        
+        rock_obj.location = (random.uniform(-4, 4), random.uniform(6, 12), 0.03)
+        rock_obj.scale = (random.uniform(0.5, 2), random.uniform(0.5, 2), random.uniform(0.3, 0.8))
+        rock_obj.rotation_euler = (random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi))
+        rock_obj.data.materials.append(rock_mat)
+
+# Add some sand texture detail to the ground
+# Use a displacement texture for the ground
+ground_obj = bpy.data.objects.get("Ground")
+if ground_obj:
+    # Add a second displacement for fine sand ripples
+    displace2 = ground_obj.modifiers.new("SandRipples", 'DISPLACE')
+    displace2.strength = 0.15
+    displace2.mid_level = 0.5
+    ripple_tex = bpy.data.textures.new("SandRippleTex", type='MARBLE')
+    ripple_tex.noise_scale = 0.5
+    ripple_tex.turbulence = 5
+    ripple_tex.noise_depth = 3
+    displace2.texture = ripple_tex
+
+# Add a distant mesa/butte for landscape interest
+mesa_data = bpy.data.meshes.new("Mesa")
+mesa_obj = bpy.data.objects.new("Mesa", mesa_data)
+bpy.context.scene.collection.objects.link(mesa_obj)
+
+bm_mesa = bmesh.new()
+bmesh.ops.create_cone(bm_mesa, cap_ends=True, cap_tris=False, segments=8,
+                       radius1=8, radius2=5, depth=6)
+bm_mesa.to_mesh(mesa_data)
+bm_mesa.free()
+
+mesa_obj.location = (-30, -50, 3)
+
+mesa_mat = bpy.data.materials.new("MesaMat")
+mesa_mat.use_nodes = True
+mesa_nodes = mesa_mat.node_tree.nodes
+mesa_links = mesa_mat.node_tree.links
+
+for node in mesa_nodes:
+    mesa_nodes.remove(node)
+
+bsdf_mesa = mesa_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_mesa.inputs['Base Color'].default_value = (0.45, 0.25, 0.12, 1)
+bsdf_mesa.inputs['Roughness'].default_value = 0.95
+
+mesa_links.new(bsdf_mesa.outputs['BSDF'], mesa_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+mesa_obj.data.materials.append(mesa_mat)
+
+# Add another distant mesa
+mesa2_data = bpy.data.meshes.new("Mesa2")
+mesa2_obj = bpy.data.objects.new("Mesa2", mesa2_data)
+bpy.context.scene.collection.objects.link(mesa2_obj)
+
+bm_mesa2 = bmesh.new()
+bmesh.ops.create_cone(bm_mesa2, cap_ends=True, cap_tris=False, segments=6,
+                       radius1=6, radius2=4, depth=4)
+bm_mesa2.to_mesh(mesa2_data)
+bm_mesa2.free()
+
+mesa2_obj.location = (35, -55, 2)
+mesa2_obj.data.materials.append(mesa_mat)
+
+# Final render settings
+scene = bpy.context.scene
+scene.view_settings.exposure = -0.3
+scene.view_settings.look = 'Medium High Contrast'
+scene.cycles.samples = 256
+
+print("Composition fixed - binary sunset with Luke silhouette!")

@@ -1,0 +1,24 @@
+test_0024__s0.py             exit 0       1.5s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0016__s0.py             exit 0       1.5s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0025__s0.py             exit 0       1.5s image=True objects=0 viewport_only_materials=0 error=AttributeError: 'Material' object has no attribute 'emission_color'
+test_0008__s0.py             exit 0       1.5s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0003__s0.py             exit 0       1.6s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0027__s0.py             exit 0       5.0s image=True objects=108 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "radius" unrecognized
+test_0040__s0.py             exit 0       3.5s image=True objects=0 viewport_only_materials=0 error=AttributeError: 'Material' object has no attribute 'emission_color'
+test_0050__s0.py             exit 0       3.7s image=True objects=24 viewport_only_materials=0 error=None
+test_0009__s0.py             exit 0       5.9s image=True objects=101 viewport_only_materials=0 error=None
+test_0045__s0.py             exit 0       4.5s image=True objects=58 viewport_only_materials=0 error=None
+test_0005__s0.py             exit 0       6.0s image=True objects=130 viewport_only_materials=0 error=None
+test_0052__s0.py             exit 0       5.0s image=True objects=5 viewport_only_materials=2 error=RuntimeError: Operator bpy.ops.object.modifier_apply.poll() failed, context is incorrect
+test_0032__s0.py             exit 0       5.3s image=True objects=60 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "WAVE" not found in ('TWIST', 'BEND', 'TAPER', 'STRETCH')
+test_0068__s0.py             exit 0       2.0s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0056__s0.py             exit 0       2.8s image=True objects=5 viewport_only_materials=0 error=AttributeError: 'ParticleSystem' object has no attribute 'particle_count'
+test_0079__s0.py             exit 0       3.2s image=True objects=1 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0082__s0.py             exit 0       2.8s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+test_0076__s0.py             exit 0       3.6s image=True objects=64 viewport_only_materials=0 error=None
+test_0080__s0.py             exit 0       3.6s image=True objects=47 viewport_only_materials=0 error=AttributeError: 'ViewLayer' object has no attribute 'shading'
+test_0088__s0.py             exit 0       2.8s image=True objects=0 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "NISHITA" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')
+test_0057__s0.py             exit 0       7.1s image=True objects=132 viewport_only_materials=0 error=None
+test_0092__s0.py             exit 0       4.1s image=True objects=90 viewport_only_materials=0 error=None
+test_0085__s0.py             exit 0       6.9s image=True objects=291 viewport_only_materials=0 error=None
+test_0091__s0.py             exit 0       6.5s image=True objects=306 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "NISHITA" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')

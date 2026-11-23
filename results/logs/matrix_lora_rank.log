@@ -1,0 +1,4 @@
+matrix lora_rank: 3 probes, 0 already done
+[1/3] Qwen3.5-2B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.98 GB 4.9s
+[2/3] Qwen3.5-2B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 23.05 GB 5.2s
+[3/3] Qwen3.5-2B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 23.02 GB 6.1s

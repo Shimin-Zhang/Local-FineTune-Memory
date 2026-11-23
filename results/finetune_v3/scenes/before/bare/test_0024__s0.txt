@@ -1,0 +1,266 @@
+```python
+import bpy
+import math
+import mathutils
+import random
+
+# --- Setup ---
+bpy.ops.object.select_all(action='DESELECT')
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Clear default scene
+for obj in bpy.data.objects:
+    bpy.data.objects.remove(obj, do_unlink=True)
+for mesh in bpy.data.meshes:
+    bpy.data.meshes.remove(mesh)
+for mat in bpy.data.materials:
+    bpy.data.materials.remove(mat)
+
+# --- Materials ---
+def create_material(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = color
+        bsdf.inputs['Roughness'].default_value = roughness
+        bsdf.inputs['Metallic'].default_value = metallic
+    return mat
+
+mat_wood_dark = create_material("Wood_Dark", (0.15, 0.08, 0.03, 1.0), 0.9)
+mat_wood_light = create_material("Wood_Light", (0.4, 0.25, 0.1, 1.0), 0.8)
+mat_sand = create_material("Sand", (0.8, 0.7, 0.5, 1.0), 1.0)
+mat_water = create_material("Water", (0.1, 0.3, 0.5, 1.0), 0.2, 0.0)
+mat_cannon = create_material("Cannon_Metal", (0.1, 0.1, 0.1, 1.0), 0.4, 0.8)
+mat_flag_red = create_material("Flag_Red", (0.8, 0.1, 0.1, 1.0), 0.9)
+mat_flag_black = create_material("Flag_Black", (0.05, 0.05, 0.05, 1.0), 0.9)
+mat_rope = create_material("Rope", (0.6, 0.5, 0.3, 1.0), 1.0)
+mat_hull = create_material("Hull_Wood", (0.3, 0.15, 0.05, 1.0), 0.7)
+mat_sail = create_material("Sail_Cloth", (0.9, 0.85, 0.8, 1.0), 0.9)
+
+# --- Helper Functions ---
+def add_cylinder(name, radius, depth, location, rotation=(0,0,0), material=None, segments=16):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, rotation=rotation, vertices=segments)
+    obj = bpy.context.active_object
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+def add_cube(name, size, location, rotation=(0,0,0), material=None):
+    bpy.ops.mesh.primitive_cube_add(size=size, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+def add_sphere(name, radius, location, material=None):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=16, ring_count=8)
+    obj = bpy.context.active_object
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+def add_plane(name, size, location, rotation=(0,0,0), material=None):
+    bpy.ops.mesh.primitive_plane_add(size=size, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+# --- Ground (Sand & Water) ---
+# Sand beach
+sand = add_plane("Beach", 100, (0, 0, -0.1), material=mat_sand)
+bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+# Make sand slightly uneven? For simplicity, keep flat but large.
+
+# Water
+water = add_plane("Ocean", 200, (0, 50, -0.5), material=mat_water)
+
+# --- Stockade (Sharpened Logs) ---
+# A semi-circular or rectangular fortification. Let's do a rectangular patch.
+# Dimensions: 20m x 15m. Height: 2m.
+wall_height = 2.5
+wall_thickness = 0.3
+radius_log = 0.15
+
+def create_log_wall(length, location, rotation_z, material):
+    """Creates a row of vertical logs."""
+    logs = []
+    num_logs = int(length / (radius_log * 2.2))
+    spacing = length / num_logs
+    start_x = -length / 2
+    for i in range(num_logs):
+        x = start_x + i * spacing
+        # Add slight random variation for organic look
+        h = wall_height + random.uniform(-0.2, 0.2)
+        loc = (x, 0, h/2)
+        # Rotate log slightly
+        rot_y = random.uniform(-0.05, 0.05)
+        rot_x = random.uniform(-0.05, 0.05)
+        
+        log = add_cylinder(f"Log_{i}", radius_log, h, loc, rotation=(rot_x, rot_y, 0), material=material, segments=8)
+        # Move to world position
+        log.location.x += location[0]
+        log.location.y += location[1]
+        log.location.z += location[2]
+        # Rotate around center? Easier to build in local space then transform
+        # Actually, let's just place them directly in world space for the 4 walls.
+        logs.append(log)
+    return logs
+
+# Define Stockade Center
+sc_x, sc_y, sc_z = 0, -10, 0
+w = 20  # Width (X)
+d = 15  # Depth (Y)
+
+# Wall 1: Front (Y = sc_y - d/2)
+# Wall 2: Back (Y = sc_y + d/2)
+# Wall 3: Left (X = sc_x - w/2)
+# Wall 4: Right (X = sc_x + w/2)
+
+# We will create logs for each side.
+def add_wall_logs(start_x, start_y, end_x, end_y, height, material):
+    dx = end_x - start_x
+    dy = end_y - start_y
+    length = math.sqrt(dx*dx + dy*dy)
+    angle = math.atan2(dy, dx)
+    num_logs = max(2, int(length / 0.35))
+    spacing = length / num_logs
+    
+    for i in range(num_logs):
+        t = i / (num_logs - 1) if num_logs > 1 else 0
+        x = start_x + dx * t
+        y = start_y + dy * t
+        h = height + random.uniform(-0.1, 0.1)
+        # Random tilt
+        rx = random.uniform(-0.1, 0.1)
+        ry = random.uniform(-0.1, 0.1)
+        log = add_cylinder("Stockade_Log", 0.15, h, (x, y, h/2), rotation=(rx, ry, 0), material=material, segments=8)
+        # Point the log towards the center of the stockade? No, they are vertical.
+        # But sharpened logs often lean inwards.
+        # Calculate vector from log to center
+        vec_to_center = mathutils.Vector((sc_x, sc_y, 0)) - mathutils.Vector((x, y, 0))
+        vec_to_center.normalize()
+        # Lean angle
+        lean = 0.15
+        # Rotation axis is perpendicular to lean direction
+        # This is complex, let's just add a slight random rotation for now.
+        log.rotation_euler = (rx, ry, 0)
+
+# Front Wall
+add_wall_logs(sc_x - w/2, sc_y - d/2, sc_x + w/2, sc_y - d/2, wall_height, mat_wood_dark)
+# Back Wall
+add_wall_logs(sc_x - w/2, sc_y + d/2, sc_x + w/2, sc_y + d/2, wall_height, mat_wood_dark)
+# Left Wall
+add_wall_logs(sc_x - w/2, sc_y - d/2, sc_x - w/2, sc_y + d/2, wall_height, mat_wood_dark)
+# Right Wall
+add_wall_logs(sc_x + w/2, sc_y - d/2, sc_x + w/2, sc_y + d/2, wall_height, mat_wood_dark)
+
+# --- Lookout Post ---
+lp_x, lp_y, lp_z = sc_x, sc_y, 0
+post_height = 6
+# 4 Legs
+leg_offset = 1.5
+for i in range(4):
+    angle = i * math.pi / 2
+    lx = lp_x + math.cos(angle) * leg_offset
+    ly = lp_y + math.sin(angle) * leg_offset
+    leg = add_cylinder("Lookout_Leg", 0.2, post_height, (lx, ly, post_height/2), material=mat_wood_dark, segments=8)
+    
+# Platform
+platform_size = 4
+platform = add_cube("Lookout_Platform", platform_size, (lp_x, lp_y, post_height), material=mat_wood_light)
+# Railing
+rail_height = 1
+for i in range(4):
+    angle = i * math.pi / 2
+    # Side rails
+    if i == 0: # Front
+        add_cylinder("Rail", 0.05, platform_size, (lp_x, lp_y - platform_size/2, post_height + rail_height/2), rotation=(0, math.pi/2, 0), material=mat_wood_light)
+    elif i == 1: # Right
+        add_cylinder("Rail", 0.05, platform_size, (lp_x + platform_size/2, lp_y, post_height + rail_height/2), rotation=(math.pi/2, 0, 0), material=mat_wood_light)
+    elif i == 2: # Back
+        add_cylinder("Rail", 0.05, platform_size, (lp_x, lp_y + platform_size/2, post_height + rail_height/2), rotation=(0, math.pi/2, 0), material=mat_wood_light)
+    elif i == 3: # Left
+        add_cylinder("Rail", 0.05, platform_size, (lp_x - platform_size/2, lp_y, post_height + rail_height/2), rotation=(math.pi/2, 0, 0), material=mat_wood_light)
+
+# --- Cannon ---
+cannon_x, cannon_y, cannon_z = sc_x + 5, sc_y - 5, 0
+# Carriage
+carriage = add_cube("Cannon_Carriage", 1.5, (cannon_x, cannon_y, 0.5), material=mat_wood_dark)
+# Wheels
+for side in [-0.8, 0.8]:
+    wheel = add_cylinder("Cannon_Wheel", 0.5, 0.2, (cannon_x, cannon_y + side, 0.5), rotation=(0, math.pi/2, 0), material=mat_wood_dark, segments=16)
+# Barrel
+barrel_len = 3
+barrel = add_cylinder("Cannon_Barrel", 0.2, barrel_len, (cannon_x, cannon_y, 1.2), rotation=(0, math.pi/2, 0), material=mat_cannon, segments=16)
+# Muzzle
+muzzle = add_cylinder("Cannon_Muzzle", 0.25, 0.2, (cannon_x, cannon_y - barrel_len/2, 1.2), rotation=(0, math.pi/2, 0), material=mat_cannon, segments=16)
+
+# --- Rum Store Hut ---
+hut_x, hut_y, hut_z = sc_x - 5, sc_y + 3, 0
+hut_w, hut_d, hut_h = 4, 3, 2.5
+# Walls
+# Front
+add_cube("Hut_Front", hut_w, (hut_x, hut_y - hut_d/2, hut_h/2), material=mat_wood_light)
+# Back
+add_cube("Hut_Back", hut_w, (hut_x, hut_y + hut_d/2, hut_h/2), material=mat_wood_light)
+# Left
+add_cube("Hut_Left", hut_d, (hut_x - hut_w/2, hut_y, hut_h/2), material=mat_wood_light)
+# Right
+add_cube("Hut_Right", hut_d, (hut_x + hut_w/2, hut_y, hut_h/2), material=mat_wood_light)
+# Roof (Two slopes)
+roof_angle = math.atan2(hut_d/2, 1.5) # Pitch
+roof_len = math.sqrt((hut_d/2)**2 + 1.5**2)
+# Left Roof
+roof_left = add_cube("Hut_Roof_L", hut_w + 0.5, (hut_x, hut_y - hut_d/4, hut_h + 0.75), rotation=(0, roof_angle, 0), material=mat_wood_dark)
+roof_left.scale = (1, roof_len, 0.1)
+# Right Roof
+roof_right = add_cube("Hut_Roof_R", hut_w + 0.5, (hut_x, hut_y + hut_d/4, hut_h + 0.75), rotation=(0, -roof_angle, 0), material=mat_wood_dark)
+roof_right.scale = (1, roof_len, 0.1)
+# Sign
+sign = add_cube("Rum_Sign", 1.5, (hut_x, hut_y - hut_d/2 - 0.1, hut_h + 0.5), material=mat_wood_light)
+
+# --- Jolly Roger Flag ---
+flag_x, flag_y, flag_z = sc_x, sc_y, post_height + 1
+# Pole
+pole = add_cylinder("Flag_Pole", 0.05, 2, (flag_x, flag_y, flag_z + 1), material=mat_wood_dark, segments=8)
+# Flag (Plane)
+flag = add_plane("Jolly_Roger", 1.5, (flag_x, flag_y - 0.8, flag_z + 1.5), rotation=(0, 0, 0), material=mat_flag_black)
+flag.scale = (1, 1, 1)
+# Add a white skull? Just use a white plane for simplicity or texture. Let's add a white square.
+skull = add_plane("Skull_White", 0.5, (flag_x, flag_y - 0.8, flag_z + 1.5), rotation=(0, 0, 0), material=mat_flag_red) # Using red as placeholder for white if no white mat, let's make white
+mat_white = create_material("White", (1,1,1,1), 0.9)
+skull.data.materials.clear()
+skull.data.materials.append(mat_white)
+
+# --- Sloop at Beach ---
+sloop_x, sloop_y, sloop_z = 15, 10, 0
+# Hull (Box with tapered front)
+# Simple box hull
+hull = add_cube("Sloop_Hull", 8, (sloop_x, sloop_y, 1), material=mat_hull)
+hull.scale = (1, 1.5, 0.5)
+# Bow (Cone)
+bow = add_cylinder("Sloop_Bow", 1.5, 3, (sloop_x - 5.5, sloop_y, 1), rotation=(0, math.pi/2, 0), material=mat_hull, segments=16)
+bow.scale = (1, 1.5, 0.5)
+# Stern
+stern = add_cube("Sloop_Stern", 1, (sloop_x + 4, sloop_y, 1), material=mat_hull)
+stern.scale = (1, 1.5, 0.5)
+
+# Masts
+mast1 = add_cylinder("Sloop_Mast_Fore", 0.1, 8, (sloop_x - 2, sloop_y, 5), material=mat_wood_dark, segments=8)
+mast2 = add_cylinder("Sloop_Mast_Main", 0.1, 10, (sloop_x + 1, sloop_y, 6), material=mat_wood_dark, segments=8)
+
+# Sails
+sail1 = add_plane("Sloop_Sail_Fore", 4, (sloop_x - 2, sloop_y - 2.5, 5), rotation=(0, 0, 0), material=mat_sail)
+sail1.scale = (1, 1, 1)
+# Rotate sail to hang from mast
+sail1.rotation_euler = (0, 0, math.pi/2)
+sail1.location = (sloop_x - 2, sloop_y - 2, 5)
+
+sail2 = add_plane("Sloop_Sail_Main", 5, (sloop_x + 1, sloop_y - 3, 6), rotation

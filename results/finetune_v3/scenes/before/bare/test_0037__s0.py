@@ -1,0 +1,161 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# --- 1. Ground ---
+bpy.ops.mesh.primitive_plane_add(size=50, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+mat_ground = bpy.data.materials.new("Dirt")
+mat_ground.use_nodes = True
+nodes = mat_ground.node_tree.nodes
+links = mat_ground.node_tree.links
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.4, 0.25, 0.15, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(mat_ground)
+
+# --- 2. Drying Shed (Open-sided) ---
+# Floor
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 5, 0.01))
+shed_floor = bpy.context.active_object
+shed_floor.scale = (10, 15, 1)
+mat_shed = bpy.data.materials.new("ShedWood")
+mat_shed.use_nodes = True
+mat_shed.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.3, 0.2, 0.1, 1.0)
+mat_shed.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.8
+shed_floor.data.materials.append(mat_shed)
+
+# Posts
+post_positions = [(-5, -5), (5, -5), (-5, 15), (5, 15), (-5, 5), (5, 5)]
+for x, y in post_positions:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=4, location=(x, y, 2))
+    post = bpy.context.active_object
+    post.data.materials.append(mat_shed)
+
+# Roof (Sloped)
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 5, 4.2))
+roof = bpy.context.active_object
+roof.scale = (11, 16, 1)
+roof.rotation_euler = (0, math.radians(10), 0)
+mat_roof = bpy.data.materials.new("Roof")
+mat_roof.use_nodes = True
+mat_roof.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.2, 0.15, 0.1, 1.0)
+roof.data.materials.append(mat_roof)
+
+# --- 3. Curing Racks with Tobacco ---
+def create_tobacco_leaf(loc, rot_z):
+    # Simple leaf shape using a scaled plane
+    bpy.ops.mesh.primitive_plane_add(size=1, location=loc, rotation=(0, 0, rot_z))
+    leaf = bpy.context.active_object
+    leaf.scale = (0.8, 1.5, 1)
+    # Bend the leaf slightly
+    mesh = leaf.data
+    for v in mesh.vertices:
+        v.co.z += math.sin(v.co.y * 2) * 0.1
+    mat_tob = bpy.data.materials.new("Tobacco")
+    mat_tob.use_nodes = True
+    mat_tob.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.6, 0.45, 0.2, 1.0)
+    mat_tob.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.7
+    leaf.data.materials.append(mat_tob)
+    return leaf
+
+# Racks inside the shed
+for rack_x in [-3, 0, 3]:
+    # Rack frame
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(rack_x, 5, 1.5))
+    rack = bpy.context.active_object
+    rack.scale = (0.1, 6, 3)
+    rack.data.materials.append(mat_shed)
+    
+    # Hanging tobacco leaves
+    for i in range(8):
+        y_pos = -4 + i * 1.2
+        # Two leaves per spot
+        create_tobacco_leaf((rack_x - 0.2, y_pos, 2.5), math.radians(90))
+        create_tobacco_leaf((rack_x + 0.2, y_pos, 2.5), math.radians(-90))
+
+# --- 4. Stack of Crates ---
+crate_positions = [
+    (8, 2, 0.5), (8, 2, 1.5), (8, 2, 2.5),
+    (9, 3, 0.5), (9, 3, 1.5),
+    (7, 4, 0.5)
+]
+mat_crate = bpy.data.materials.new("Crate")
+mat_crate.use_nodes = True
+mat_crate.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.35, 0.2, 1.0)
+mat_crate.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+
+for loc in crate_positions:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    crate = bpy.context.active_object
+    crate.scale = (1.5, 1.5, 1)
+    crate.data.materials.append(mat_crate)
+
+# --- 5. Lighting (Heat-hazy afternoon) ---
+# Sun
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 4.0
+sun_data.color = (1.0, 0.9, 0.7)  # Warm afternoon light
+sun_data.angle = math.radians(2)
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(45), math.radians(20), math.radians(30))
+
+# World Environment
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.8, 0.85, 1.0, 1.0)  # Hazy sky
+    bg_node.inputs[1].default_value = 1.0
+
+# --- 6. Heat Haze Effect (Using Volumetric Scattering) ---
+# Add a cube to cover the scene with volumetric properties
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 5, 5))
+haze_box = bpy.context.active_object
+haze_box.scale = (30, 30, 10)
+haze_box.display_type = 'WIRE'
+
+mat_haze = bpy.data.materials.new("HeatHaze")
+mat_haze.use_nodes = True
+nodes_haze = mat_haze.node_tree.nodes
+links_haze = mat_haze.node_tree.links
+nodes_haze.clear()
+
+output = nodes_haze.new("Material Output")
+volume = nodes_haze.new("Volume Scatter")
+volume.inputs["Color"].default_value = (1.0, 0.95, 0.85, 1.0)
+volume.inputs["Density"].default_value = 0.005
+volume.inputs["Anisotropy"].default_value = 0.3
+
+links_haze.new(volume.outputs["Volume"], output.inputs["Volume"])
+haze_box.data.materials.append(mat_haze)
+
+# --- 7. Camera ---
+bpy.ops.object.camera_add(location=(12, -8, 3), rotation=(math.radians(75), 0, math.radians(25)))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera
+
+# Adjust camera settings for a cinematic look
+camera.data.lens = 35
+camera.data.dof.use_dof = True
+camera.data.dof.focus_distance = 15
+camera.data.dof.aperture_fstop = 4.0
+
+# --- 8. Render Settings ---
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'
+
+print("Scene setup complete.")

@@ -1,0 +1,93 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1845)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+paint = {}
+def tone(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = 0.9
+    if glow:
+        n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    paint[name] = m
+def put(bm, name, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(name, me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); me.materials.append(paint[name]); return o
+def blk(bm, x, y, z, w, d, h, rz=0):
+    bmesh.ops.create_cube(bm, size=1, matrix=__import__("mathutils").Matrix.Translation((x, y, z + h / 2)) @ __import__("mathutils").Matrix.Rotation(rz, 4, 'Z') @ __import__("mathutils").Matrix.Diagonal((w, d, h, 1)))
+def col(bm, x, y, z, r, h, n=7, r2=None):
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h, matrix=__import__("mathutils").Matrix.Translation((x, y, z + h / 2)))
+def lamp(kind, rgb, w, at, aim=None):
+    l = bpy.data.lights.new(kind, kind); l.color = rgb; l.energy = w
+    o = bpy.data.objects.new(kind, l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+
+for k, c, g in [("mud", (.14, .12, .09), 0), ("lake", (.07, .17, .22), 0), ("bank", (.16, .22, .12), 0), ("stone", (.4, .4, .38), 0), ("stone2", (.28, .28, .28), 0),
+        ("wood", (.35, .2, .1), 0), ("tile", (.1, .13, .15), 0), ("willow", (.2, .32, .15), 0), ("hedge", (.1, .2, .1), 0), ("rain", (.55, .7, .9), 0), ("lantern", (1, .6, .25), 12)]:
+    tone(k, c, g)
+# lake slab with banks and a raised causeway along its length
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1, matrix=__import__("mathutils").Matrix.Diagonal((26, 22, 3.4), 1) @ __import__("mathutils").Matrix.Translation((0, 0, -1.7)))
+for v in bm.verts:
+    if v.co.z < -1: v.co.x *= .75; v.co.y *= .75; v.co.z -= random.uniform(0, 1.5)
+put(bm, "mud")
+bm = bmesh.new(); blk(bm, 0, 0, -.05, 24, 16, .3); put(bm, "lake")
+bm = bmesh.new()
+blk(bm, 0, -9.2, 0, 26, 3.6, .9); blk(bm, 0, 9.2, 0, 26, 3.6, .9)
+blk(bm, 0, 0, 0, 26, 2.2, .9)
+for i in range(12):
+    blk(bm, -11.5 + i * 2.1, 0, .9, 1.6, .3, .5); blk(bm, -11.5 + i * 2.1, 1.1, .9, 1.6, .3, .5)
+put(bm, "stone")
+# stone arched bridge over the lake at one end
+bm = bmesh.new()
+for i in range(9):
+    x = -1.4 + i * .35; z = 1.0 + 1.5 * (1 - (x / 1.6) ** 2) ** .8
+    blk(bm, x, 0, z - .15, .4, 2.6, .3)
+for s in (-1, 1):
+    for i in range(9):
+        x = -1.4 + i * .35; z = 1.0 + 1.5 * (1 - (x / 1.6) ** 2) ** .8 + .15
+        blk(bm, x, s * 1.3, z, .4, .2, .7)
+        blk(bm, x, s * 1.3, z + .7, .45, .3, .12)
+put(bm, "stone2")
+# roofed pavilion half way along the causeway
+bm = bmesh.new()
+for sx in (-1, 1):
+    for sy in (-1, 1): blk(bm, sx * 1.3, sy * 1.0, .9, .25, .25, 1.8)
+blk(bm, 0, 0, 2.6, 3.8, 3.2, .25)
+bm2 = bmesh.new(); bmesh.ops.create_cone(bm2, cap_ends=True, segments=4, radius1=3.0, radius2=.4, depth=1.8, matrix=__import__("mathutils").Matrix.Translation((0, 0, 3.9)) @ __import__("mathutils").Matrix.Rotation(math.pi / 4, 4, 'Z'))
+put(bm, "wood", (0, 0, 0)); put(bm2, "tile", (0, 0, 0))
+bm = bmesh.new(); blk(bm, 0, 0, .9, 2.8, 2.2, .15); put(bm, "wood", (0, 0, 0))
+# willows on both banks and the causeway
+for i in range(14):
+    x = random.uniform(-11, 11); y = random.choice((-1, 1)) * random.uniform(2.0, 8.5) if i < 10 else random.choice((-1, 1)) * 1.7
+    bm = bmesh.new(); col(bm, x, y, 0, .22, 1.6, 5); put(bm, "wood")
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=1.2, matrix=__import__("mathutils").Matrix.Translation((x, y, 2.2)))
+    for v in bm.verts: v.co.z *= 1.5
+    put(bm, "willow")
+# pagoda-less bank: a terrace with steps and a hedge
+bm = bmesh.new()
+blk(bm, 7.5, 7.2, 0, 7, 4, 1.2); blk(bm, 7.5, 5.2, 0, 7, .8, .4); blk(bm, 7.5, 4.6, 0, 7, .6, .2)
+for i in range(4): blk(bm, 4.5 + i * 2.0, 7.2, 1.2, .2, 3.4, .9)
+blk(bm, 7.5, 8.6, 1.2, 6.6, .8, .8); put(bm, "stone2")
+# lantern posts glowing in the rain
+for i in range(6):
+    x = -10 + i * 4.0
+    bm = bmesh.new(); col(bm, x, 1.5, .9, .08, 1.6, 5); blk(bm, x, 1.5, 2.5, .5, .5, .6); put(bm, "wood")
+    bm = bmesh.new(); blk(bm, x, 1.5, 2.55, .4, .4, .5); put(bm, "lantern")
+    lamp("POINT", (1, .6, .25), 120, (x, 1.0, 2.8))
+lamp("POINT", (1, .6, .25), 300, (0, 0, 2.0))
+# light rain: slanted streaks
+bm = bmesh.new()
+for i in range(110):
+    x, y, z = random.uniform(-12, 12), random.uniform(-10, 10), random.uniform(3, 12)
+    bmesh.ops.create_cube(bm, size=1, matrix=__import__("mathutils").Matrix.Translation((x, y, z)) @ __import__("mathutils").Matrix.Diagonal((.04, .04, 1.0, 1)))
+put(bm, "rain")
+lamp("SUN", (.65, .78, .95), 4.5, (-26, -20, 12), (0, 0, 1))
+lamp("SUN", (.8, .6, .75), 2.0, (24, 22, 10), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .03, .045, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1)); co.location = t + Vector((6, -66, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

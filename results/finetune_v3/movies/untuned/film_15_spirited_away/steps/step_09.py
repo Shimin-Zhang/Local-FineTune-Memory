@@ -1,0 +1,151 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is still too dark. Let's take a final aggressive approach to make it visible.
+# The bathhouse and bridge exist but are not being lit enough.
+
+# 1. Set a moderate night sky
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    bg_node = world.node_tree.nodes.get("Background")
+    if bg_node:
+        bg_node.inputs[0].default_value = (0.03, 0.05, 0.1, 1.0)
+        bg_node.inputs[1].default_value = 1.0
+
+# 2. Boost all point lights to reasonable night levels
+for obj in bpy.data.objects:
+    if obj.type == 'LIGHT':
+        if obj.data.type == 'POINT':
+            obj.data.energy = max(obj.data.energy, 10000)
+        elif obj.data.type == 'SUN':
+            obj.data.energy = max(obj.data.energy, 3.0)
+        elif obj.data.type == 'AREA':
+            obj.data.energy = max(obj.data.energy, 5000)
+        elif obj.data.type == 'SPOT':
+            obj.data.energy = max(obj.data.energy, 20000)
+
+# 3. Set view to show detail
+scene = bpy.context.scene
+scene.view_settings.view_transform = 'Filmic'
+scene.view_settings.look = 'Medium Contrast'
+scene.view_settings.exposure = 1.0
+
+# 4. Make sure camera is positioned well
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, 140, 20)
+    target = Vector((0, 10, 8))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 40
+
+# 5. Add a very bright key light right in front of the bathhouse
+bpy.ops.object.light_add(type='POINT', location=(0, 25, 15))
+final_key = bpy.context.active_object
+final_key.name = "FinalKey"
+final_key.data.energy = 30000
+final_key.data.color = (1.0, 0.75, 0.45)
+final_key.data.shadow_soft_size = 10
+
+# 6. Add lights at the bridge
+for i in range(4):
+    y = 45 + i * 20
+    bpy.ops.object.light_add(type='POINT', location=(0, y, 3))
+    bl = bpy.context.active_object
+    bl.name = f"FinalBridgeLight_{i}"
+    bl.data.energy = 15000
+    bl.data.color = (1.0, 0.5, 0.15)
+    bl.data.shadow_soft_size = 5
+
+# 7. Make the bathhouse materials brighter
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        for mat in obj.data.materials:
+            if mat and mat.use_nodes:
+                bsdf = mat.node_tree.nodes.get("Principled BSDF")
+                if bsdf:
+                    # Boost all base colors
+                    bc = bsdf.inputs["Base Color"].default_value
+                    new_r = min(bc[0] * 2.0 + 0.1, 1.0)
+                    new_g = min(bc[1] * 2.0 + 0.1, 1.0)
+                    new_b = min(bc[2] * 2.0 + 0.1, 1.0)
+                    bsdf.inputs["Base Color"].default_value = (new_r, new_g, new_b, 1.0)
+                    
+                    # Boost emission for glowing elements
+                    if "Window" in obj.name or "Lantern" in obj.name or "Glow" in obj.name or "Sign" in obj.name:
+                        bsdf.inputs["Emission Strength"].default_value = 40.0
+
+# 8. Make the water surface slightly lighter
+water = bpy.data.objects.get("WaterSurface")
+if water:
+    for mat in water.data.materials:
+        if mat.use_nodes:
+            bsdf = mat.node_tree.nodes.get("Principled BSDF")
+            if bsdf:
+                bsdf.inputs["Base Color"].default_value = (0.08, 0.12, 0.2, 1.0)
+                bsdf.inputs["Roughness"].default_value = 0.1
+                bsdf.inputs["Metallic"].default_value = 0.5
+
+# 9. Add a rim light to separate the bathhouse from the background
+bpy.ops.object.light_add(type='POINT', location=(0, -20, 25))
+final_rim = bpy.context.active_object
+final_rim.name = "FinalRim"
+final_rim.data.energy = 20000
+final_rim.data.color = (0.5, 0.6, 1.0)
+final_rim.data.shadow_soft_size = 15
+
+# 10. Add side accent lights
+bpy.ops.object.light_add(type='POINT', location=(-50, 30, 15))
+final_left = bpy.context.active_object
+final_left.name = "FinalLeft"
+final_left.data.energy = 15000
+final_left.data.color = (1.0, 0.6, 0.3)
+final_left.data.shadow_soft_size = 10
+
+bpy.ops.object.light_add(type='POINT', location=(50, 30, 15))
+final_right = bpy.context.active_object
+final_right.name = "FinalRight"
+final_right.data.energy = 15000
+final_right.data.color = (1.0, 0.6, 0.3)
+final_right.data.shadow_soft_size = 10
+
+# 11. Add a top light to illuminate the roof
+bpy.ops.object.light_add(type='POINT', location=(0, 10, 40))
+final_top = bpy.context.active_object
+final_top.name = "FinalTop"
+final_top.data.energy = 10000
+final_top.data.color = (0.7, 0.8, 1.0)
+final_top.data.shadow_soft_size = 20
+
+# 12. Make sure all objects are visible
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        obj.hide_render = False
+        obj.hide_viewport = False
+
+# 13. Add a final atmospheric glow around the bathhouse
+bpy.ops.mesh.primitive_uv_sphere_add(radius=30, location=(0, 10, 10))
+glow_sphere = bpy.context.active_object
+glow_sphere.name = "AtmosphericGlow"
+glow_sphere.scale = (1.5, 1.2, 1.0)
+mat_glow = bpy.data.materials.new("AtmosphericGlowMat")
+mat_glow.use_nodes = True
+mat_glow.blend_method = 'BLEND'
+bsdf = mat_glow.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (1.0, 0.6, 0.3, 1.0)
+bsdf.inputs["Alpha"].default_value = 0.05
+bsdf.inputs["Emission Color"].default_value = (1.0, 0.5, 0.2, 1.0)
+bsdf.inputs["Emission Strength"].default_value = 2.0
+glow_sphere.data.materials.append(mat_glow)
+
+# 14. Final camera adjustment
+if camera:
+    camera.location = (0, 135, 18)
+    target = Vector((0, 10, 8))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 42

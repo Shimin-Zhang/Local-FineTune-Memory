@@ -1,0 +1,242 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# --- Materials ---
+def make_mat(name, color, metallic=0.0, rough=0.6, alpha=1.0, emissive=0.0, emissive_color=(1,1,1,1)):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Metallic"].default_value = metallic
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Alpha"].default_value = alpha
+    if alpha < 1.0:
+        mat.blend_method = 'BLEND'
+    if emissive > 0:
+        bsdf.inputs["Emission Color"].default_value = emissive_color
+        bsdf.inputs["Emission Strength"].default_value = emissive
+    return mat
+
+mat_water   = make_mat("Water", (0.05, 0.25, 0.35, 1), metallic=0.3, rough=0.1)
+mat_boat_red = make_mat("BoatRed", (0.7, 0.05, 0.05, 1), metallic=0.1, rough=0.4)
+mat_boat_blue = make_mat("BoatBlue", (0.05, 0.15, 0.7, 1), metallic=0.1, rough=0.4)
+mat_gold   = make_mat("Gold", (1.0, 0.8, 0.2, 1), metallic=0.9, rough=0.2)
+mat_wood   = make_mat("Wood", (0.3, 0.15, 0.05, 1), metallic=0.0, rough=0.7)
+mat_drum   = make_mat("Drum", (0.8, 0.1, 0.1, 1), metallic=0.0, rough=0.5)
+mat_drum_skin = make_mat("DrumSkin", (0.9, 0.85, 0.7, 1), metallic=0.0, rough=0.3)
+mat_person = make_mat("Person", (0.5, 0.3, 0.2, 1), metallic=0.0, rough=0.8)
+mat_flag_red = make_mat("FlagRed", (0.9, 0.1, 0.1, 1), metallic=0.0, rough=0.5)
+mat_flag_blue = make_mat("FlagBlue", (0.1, 0.2, 0.9, 1), metallic=0.0, rough=0.5)
+mat_flag_yellow = make_mat("FlagYellow", (0.95, 0.85, 0.1, 1), metallic=0.0, rough=0.5)
+mat_pavilion = make_mat("Pavilion", (0.8, 0.1, 0.1, 1), metallic=0.2, rough=0.4)
+mat_roof = make_mat("Roof", (0.2, 0.5, 0.2, 1), metallic=0.1, rough=0.5)
+mat_ground = make_mat("Ground", (0.2, 0.35, 0.15, 1), metallic=0.0, rough=0.9)
+mat_rock = make_mat("Rock", (0.4, 0.35, 0.3, 1), metallic=0.0, rough=0.8)
+mat_sky = make_mat("Sky", (0.6, 0.8, 1.0, 1), emissive=0.5, emissive_color=(0.6, 0.8, 1.0, 1))
+
+# --- River (flat plane) ---
+bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, 0))
+river = bpy.context.object
+river.name = "River"
+river.scale = (1, 3, 1)
+river.data.materials.append(mat_water)
+
+# --- Bank ground (two long strips) ---
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, side * 18, 0.05))
+    bank = bpy.context.object
+    bank.name = f"Bank_{side}"
+    bank.scale = (60, 6, 1)
+    bank.data.materials.append(mat_ground)
+
+# --- Helper: create a simple humanoid figure ---
+def make_humanoid(name, loc, mat, scale=1.0):
+    objs = []
+    # Body
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.25*scale, depth=1.0*scale, location=(loc[0], loc[1], loc[2]+0.5*scale))
+    body = bpy.context.object
+    body.name = name+"_body"
+    body.data.materials.append(mat)
+    objs.append(body)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2*scale, location=(loc[0], loc[1], loc[2]+1.1*scale))
+    head = bpy.context.object
+    head.name = name+"_head"
+    head.data.materials.append(mat)
+    objs.append(head)
+    # Arms (two small cylinders)
+    for a in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08*scale, depth=0.6*scale, location=(loc[0]+a*0.35*scale, loc[1], loc[2]+0.7*scale))
+        arm = bpy.context.object
+        arm.name = f"{name}_arm_{a}"
+        arm.rotation_euler = (0, a*0.5, 0)
+        arm.data.materials.append(mat)
+        objs.append(arm)
+    # Legs
+    for l in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1*scale, depth=0.5*scale, location=(loc[0]+l*0.15*scale, loc[1], loc[2]+0.25*scale))
+        leg = bpy.context.object
+        leg.name = f"{name}_leg_{l}"
+        leg.data.materials.append(mat)
+        objs.append(leg)
+    return objs
+
+# --- Helper: create a dragon boat ---
+def make_dragon_boat(name, loc, mat_boat, mat_head, facing=1):
+    objs = []
+    # Hull: elongated scaled cube
+    bpy.ops.mesh.primitive_cube_add(location=(loc[0], loc[1], loc[2]+0.3))
+    hull = bpy.context.object
+    hull.name = name+"_hull"
+    hull.scale = (6.0, 0.8, 0.5)
+    hull.data.materials.append(mat_boat)
+    objs.append(hull)
+    # Dragon head at bow
+    head_x = loc[0] + facing * 6.5
+    bpy.ops.mesh.primitive_cube_add(location=(head_x, loc[1], loc[2]+0.8))
+    head = bpy.context.object
+    head.name = name+"_head"
+    head.scale = (0.8, 0.6, 0.6)
+    head.data.materials.append(mat_head)
+    objs.append(head)
+    # Snout
+    bpy.ops.mesh.primitive_cube_add(location=(head_x + facing*0.8, loc[1], loc[2]+0.7))
+    snout = bpy.context.object
+    snout.name = name+"_snout"
+    snout.scale = (0.5, 0.3, 0.3)
+    snout.data.materials.append(mat_head)
+    objs.append(snout)
+    # Eyes (small spheres)
+    for e in [-1, 1]:
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(head_x + facing*0.2, loc[1]+e*0.35, loc[2]+1.0))
+        eye = bpy.context.object
+        eye.name = f"{name}_eye_{e}"
+        eye.data.materials.append(mat_gold)
+        objs.append(eye)
+    # Tail at stern
+    tail_x = loc[0] - facing * 6.5
+    bpy.ops.mesh.primitive_cone_add(radius1=0.4, radius2=0.05, depth=1.5, location=(tail_x, loc[1], loc[2]+0.8), rotation=(0, facing*1.57, 0))
+    tail = bpy.context.object
+    tail.name = name+"_tail"
+    tail.data.materials.append(mat_boat)
+    objs.append(tail)
+    # Drummer at bow
+    drummer_loc = (loc[0] + facing * 4.5, loc[1], loc[2]+0.5)
+    make_humanoid(name+"_drummer", drummer_loc, mat_person, scale=0.9)
+    # Drum
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.5, location=(loc[0] + facing * 4.5, loc[1], loc[2]+1.0))
+    drum = bpy.context.object
+    drum.name = name+"_drum"
+    drum.data.materials.append(mat_drum)
+    objs.append(drum)
+    # Drum skin top
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.42, depth=0.05, location=(loc[0] + facing * 4.5, loc[1], loc[2]+1.25))
+    skin = bpy.context.object
+    skin.name = name+"_drum_skin"
+    skin.data.materials.append(mat_drum_skin)
+    objs.append(skin)
+    # Rowers (simplified figures along hull)
+    for i in range(6):
+        rx = loc[0] + facing * (3.5 - i * 1.2)
+        make_humanoid(f"{name}_rower_{i}", (rx, loc[1], loc[2]+0.5), mat_person, scale=0.8)
+    return objs
+
+# --- Two racing boats ---
+make_dragon_boat("BoatRed", (-2, -3, 0.1), mat_boat_red, mat_gold, facing=1)
+make_dragon_boat("BoatBlue", (-2, 3, 0.1), mat_boat_blue, mat_gold, facing=1)
+
+# --- Finish line pavilion ---
+pav_loc = (25, 0, 0.1)
+# Base platform
+bpy.ops.mesh.primitive_cube_add(location=(pav_loc[0], pav_loc[1], pav_loc[2]+0.3))
+base = bpy.context.object
+base.name = "Pavilion_Base"
+base.scale = (3, 4, 0.3)
+base.data.materials.append(mat_wood)
+# Pillars
+for px in [-2.5, 2.5]:
+    for py in [-3, 3]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=4, location=(pav_loc[0]+px, pav_loc[1]+py, pav_loc[2]+2))
+        pil = bpy.context.object
+        pil.name = f"Pavilion_Pillar_{px}_{py}"
+        pil.data.materials.append(mat_wood)
+# Roof (pyramid)
+bpy.ops.mesh.primitive_cone_add(radius=5, depth=2.5, location=(pav_loc[0], pav_loc[1], pav_loc[2]+5.25), vertices=4)
+roof = bpy.context.object
+roof.name = "Pavilion_Roof"
+roof.rotation_euler = (0, 0, math.radians(45))
+roof.data.materials.append(mat_roof)
+# Finish line banner
+bpy.ops.mesh.primitive_plane_add(size=1, location=(pav_loc[0], pav_loc[1], pav_loc[2]+3))
+banner = bpy.context.object
+banner.name = "Finish_Banner"
+banner.scale = (0.5, 4, 1)
+banner.rotation_euler = (math.radians(90), 0, 0)
+banner.data.materials.append(mat_flag_red)
+
+# --- Crowded banks with flags ---
+random.seed(42)
+flag_mats = [mat_flag_red, mat_flag_blue, mat_flag_yellow]
+for side in [-1, 1]:
+    bank_y = side * 14
+    # People along the bank
+    for i in range(30):
+        px = random.uniform(-20, 20)
+        py = bank_y + random.uniform(-2, 2)
+        pz = 0.1
+        make_humanoid(f"BankPerson_{side}_{i}", (px, py, pz), mat_person, scale=random.uniform(0.7, 1.0))
+    # Flag poles
+    for i in range(10):
+        fx = random.uniform(-20, 20)
+        fy = bank_y + random.uniform(-1, 1)
+        # Pole
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=3, location=(fx, fy, 1.5))
+        pole = bpy.context.object
+        pole.name = f"FlagPole_{side}_{i}"
+        pole.data.materials.append(mat_wood)
+        # Flag
+        flag_mat = random.choice(flag_mats)
+        bpy.ops.mesh.primitive_plane_add(size=1, location=(fx+0.5, fy, 2.5))
+        flag = bpy.context.object
+        flag.name = f"Flag_{side}_{i}"
+        flag.scale = (0.5, 0.3, 1)
+        flag.rotation_euler = (0, random.uniform(-0.2, 0.2), random.uniform(-0.2, 0.2))
+        flag.data.materials.append(flag_mat)
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(0, 25, 8), rotation=(math.radians(75), 0, 0))
+cam = bpy.context.object
+cam.name = "MainCam"
+bpy.context.scene.camera = cam
+
+# --- Lighting ---
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20), rotation=(math.radians(45), 0, math.radians(30)))
+sun = bpy.context.object
+sun.name = "Sun"
+sun.data.energy = 3.0
+
+bpy.ops.object.light_add(type='AREA', location=(0, 0, 15))
+area = bpy.context.object
+area.name = "FillLight"
+area.data.energy = 100
+area.data.size = 20
+
+# --- World background ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.5, 0.7, 1.0, 1.0)
+    bg.inputs[1].default_value = 0.5
+
+print("Dragon boat race scene created.")

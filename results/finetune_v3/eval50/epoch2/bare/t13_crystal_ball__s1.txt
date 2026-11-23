@@ -1,0 +1,85 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(539)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def mat(rgb, glow=0, rough=.6):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+oak, oak2, brass, velvet, orb, mist, mist2, rune, candle, wax = (mat((.16, .09, .05)), mat((.1, .055, .035)), mat((.7, .5, .15), rough=.35), mat((.3, .03, .12)),
+    mat((.15, .3, .6), glow=.8, rough=.05), mat((.4, .7, 1), glow=3), mat((.7, .5, 1), glow=3), mat((.5, .9, 1), glow=10), mat((1, .7, .3), glow=14), mat((.7, .65, .55)))
+def mesh(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def disc(r, h, n, m, at, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, m, at, rot)
+def bar(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mesh(bm, m)
+def gem(r, m, at, sq=.7):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return mesh(bm, m, at)
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# round table-top slab, rough underneath
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=5.5, radius2=10, depth=2.4)
+for v in bm.verts:
+    v.co.z -= 1.2
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.2, .3)))
+mesh(bm, oak2)
+# the stand: velvet-clothed table, brass foot, three legs, bowl cradle
+disc(3.4, .5, 8, oak, (0, 0, 0), 3.2); disc(3.0, .5, 8, velvet, (0, 0, .5), 2.9)
+for k in range(3):
+    a = k * 2.094 + .5
+    bar((2.6 * math.cos(a), 2.6 * math.sin(a), .3), (0, 0, 1.0), .35, brass)
+disc(.9, .5, 8, brass, (0, 0, 1.0), .7)
+for k in range(3):
+    a = k * 2.094
+    bar((.5 * math.cos(a), .5 * math.sin(a), 1.3), (.95 * math.cos(a), .95 * math.sin(a), 2.2), .2, brass)
+disc(1.0, .35, 8, brass, (0, 0, 1.3), .6)
+# the crystal ball: glowing outer sphere, a mist swirl inside made of tilted bands and blobs
+gem(2.0, orb, (0, 0, 3.3), 1.0)
+for k in range(5):
+    a = k * 1.3
+    for s in range(4):
+        t = (k * .2 + s * .25)
+        r = 1.2 * math.cos(t * 2.2) * (1 - s * .15)
+        gem(.45 - s * .05, mist if (k + s) % 2 else mist2, (r * math.cos(a), r * math.sin(a), 3.3 + (s - 1.5) * .35), .6)
+for k in range(6):
+    a = k * 1.05 + .3; r = .8
+    gem(.3, mist2, (r * math.cos(a), r * math.sin(a), 3.3 + .1 * math.sin(a * 3)), .6)
+lamp("POINT", (.4, .7, 1), 700, (0, 0, 3.3))
+# runic ring on the table top: little glowing bars around the ball's foot
+for k in range(12):
+    a = k * math.pi / 6
+    bar((1.7 * math.cos(a), 1.7 * math.sin(a), 1.0), (2.1 * math.cos(a), 2.1 * math.sin(a), 1.0), .1, rune)
+# candles, a grimoire and a few bones on the table, plus a shelf of jars behind
+for a, r in ((.8, 3.0), (2.4, 3.0), (4.0, 3.0)):
+    x, y = r * math.cos(a), r * math.sin(a)
+    disc(.14, .9, 6, wax, (x, y, 1.0)); disc(.16, .1, 6, candle, (x, y, 1.9)); lamp("POINT", (1, .65, .3), 90, (x, y, 2.3))
+disc(1.0, .22, 4, velvet, (-4.2, -1.5, 1.0), 1.0, (0, 0, .4)); disc(.9, .1, 4, mat((.75, .7, .55)), (-4.2, -1.5, 1.22), .9, (0, 0, .4))
+bar((-3.5, -2.3, 1.1), (-2.6, -2.9, 1.1), .12, wax); bar((-3.2, -2.5, 1.1), (-3.0, -2.1, 1.1), .1, wax)
+disc(3.6, 2.6, 6, oak2, (0, 7.5, 0), 3.6); disc(3.2, .2, 6, oak, (0, 7.5, 2.6), 3.2)
+for k in range(5):
+    x = -2.4 + k * 1.2; h = 1.0 + (k % 3) * .3
+    disc(.4, h, 6, mat(((.4, .1, .4), (.1, .3, .4), (.5, .3, .1))[k % 3]), (x, 7.5, 2.8), .3)
+lamp("SUN", (.6, .5, 1), 4, (-16, -12, 8), (0, 0, 2)); lamp("SUN", (.2, .9, .8), 2.5, (14, 14, 9), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .01, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1.5, 2.2)); co.location = t + Vector((0, -38, 22))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

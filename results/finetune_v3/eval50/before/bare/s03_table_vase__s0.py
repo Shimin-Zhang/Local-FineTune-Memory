@@ -1,0 +1,109 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create materials
+# Wood material
+wood_mat = bpy.data.materials.new(name="Wood")
+wood_mat.use_nodes = True
+nodes = wood_mat.node_tree.nodes
+links = wood_mat.node_tree.links
+nodes.clear()
+
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.4, 0.25, 0.1, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.7
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+wood_mat.node_tree.links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+
+# Green material for vase
+green_mat = bpy.data.materials.new(name="GreenVase")
+green_mat.use_nodes = True
+nodes = green_mat.node_tree.nodes
+links = green_mat.node_tree.links
+nodes.clear()
+
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.0, 0.5, 0.0, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.4
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs['BSDF'], out.inputs['Surface'])
+
+# Table dimensions
+table_width = 2.0
+table_depth = 1.0
+table_height = 0.75
+top_thickness = 0.08
+leg_width = 0.1
+leg_depth = 0.1
+
+# Create table top
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, table_height - top_thickness / 2))
+top = bpy.context.active_object
+top.scale = (table_width / 2, table_depth / 2, top_thickness / 2)
+top.data.materials.append(wood_mat)
+top.name = "TableTop"
+
+# Create four legs
+leg_positions = [
+    (-table_width / 2 + leg_width / 2, -table_depth / 2 + leg_depth / 2),
+    (table_width / 2 - leg_width / 2, -table_depth / 2 + leg_depth / 2),
+    (-table_width / 2 + leg_width / 2, table_depth / 2 - leg_depth / 2),
+    (table_width / 2 - leg_width / 2, table_depth / 2 - leg_depth / 2),
+]
+
+leg_height = table_height - top_thickness
+for i, (x, y) in enumerate(leg_positions):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, leg_height / 2))
+    leg = bpy.context.active_object
+    leg.scale = (leg_width / 2, leg_depth / 2, leg_height / 2)
+    leg.data.materials.append(wood_mat)
+    leg.name = f"Leg_{i+1}"
+
+# Create the green vase
+# Vase body - use a cylinder with some shaping
+vase_height = 0.3
+vase_radius = 0.08
+vase_base_z = table_height
+
+# Create vase using a cylinder
+bpy.ops.mesh.primitive_cylinder_add(radius=vase_radius, depth=vase_height, location=(0, 0, vase_base_z + vase_height / 2))
+vase = bpy.context.active_object
+vase.data.materials.append(green_mat)
+vase.name = "Vase"
+
+# Add a slightly wider top to the vase (neck)
+neck_radius = vase_radius * 0.6
+neck_height = 0.05
+bpy.ops.mesh.primitive_cylinder_add(radius=neck_radius, depth=neck_height, location=(0, 0, vase_base_z + vase_height + neck_height / 2 - 0.01))
+neck = bpy.context.active_object
+neck.data.materials.append(green_mat)
+neck.name = "VaseNeck"
+
+# Add a small rim at the top
+rim_radius = neck_radius * 1.2
+rim_height = 0.015
+bpy.ops.mesh.primitive_cylinder_add(radius=rim_radius, depth=rim_height, location=(0, 0, vase_base_z + vase_height + neck_height - 0.005))
+rim = bpy.context.active_object
+rim.data.materials.append(green_mat)
+rim.name = "VaseRim"
+
+# Add a ground plane for context
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+
+# Add a light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+sun.data.energy = 3.0
+
+# Add a camera
+bpy.ops.object.camera_add(location=(3, -3, 2), rotation=(math.radians(60), 0, math.radians(45)))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera

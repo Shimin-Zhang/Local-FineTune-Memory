@@ -1,0 +1,159 @@
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing mesh objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- 1. Checkered Picnic Blanket ---
+# Create a plane and subdivide it for a grid
+bpy.ops.mesh.primitive_plane_add(size=2.0, location=(0, 0, 0))
+blanket = bpy.context.active_object
+blanket.name = "Picnic_Blanket"
+
+# Subdivide to create a grid for the checker pattern
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=8)  # 8x8 grid = 16x16 squares
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Assign a red material to the blanket
+mat_red = bpy.data.materials.new(name="Blanket_Red")
+mat_red.use_nodes = True
+nodes = mat_red.node_tree.nodes
+links = mat_red.node_tree.links
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.8, 0.1, 0.1, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+
+# Assign a white material to the blanket
+mat_white = bpy.data.materials.new(name="Blanket_White")
+mat_white.use_nodes = True
+nodes = mat_white.node_tree.nodes
+links = mat_white.node_tree.links
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+
+# Assign materials to faces in a checkerboard pattern
+blanket.data.materials.append(mat_red)
+blanket.data.materials.append(mat_white)
+
+# In edit mode, assign materials to faces
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+bpy.ops.mesh.select_all(action='SELECT')
+
+# We need to iterate through faces and assign material index
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Get the mesh data
+mesh = blanket.data
+for i, poly in enumerate(mesh.polygons):
+    # Calculate center of the face
+    center = poly.center
+    # Determine checker pattern based on grid position
+    # The grid is 8x8 cuts, so 9x9 vertices, 8x8 faces
+    # We need to map the face index to a grid position
+    # Since the plane is subdivided 8 times, we have 8x8 = 64 faces
+    # Face index i: row = i // 8, col = i % 8
+    row = i // 8
+    col = i % 8
+    if (row + col) % 2 == 0:
+        poly.material_index = 0  # Red
+    else:
+        poly.material_index = 1  # White
+
+# --- 2. Wicker Basket ---
+# Create a simple basket shape using a cylinder and modify it
+bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.4, location=(0.3, 0.2, 0.2), vertices=32)
+basket = bpy.context.active_object
+basket.name = "Wicker_Basket"
+
+# Scale the top to make it slightly wider (trapezoid shape)
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+# Select top face
+bpy.ops.mesh.select_mode(type='FACE')
+bpy.ops.mesh.select_all(action='DESELECT')
+# Select the top face (the one with normal pointing up)
+for poly in basket.data.polygons:
+    if poly.normal.z > 0.9:
+        poly.select = True
+bpy.ops.transform.resize(value=(1.2, 1.2, 1.0))
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Add a handle
+bpy.ops.mesh.primitive_torus_add(major_radius=0.35, minor_radius=0.03, location=(0.3, 0.2, 0.4), major_segments=32, minor_segments=8)
+handle = bpy.context.active_object
+handle.name = "Basket_Handle"
+# Scale the handle to make it look like a basket handle
+bpy.ops.object.transform_apply(scale=True)
+# Flatten the handle in the z direction
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.transform.scale(value=(1.0, 1.0, 0.3))
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Join the handle with the basket
+bpy.ops.object.select_all(action='DESELECT')
+handle.select_set(True)
+basket.select_set(True)
+bpy.context.view_layer.objects.active = basket
+bpy.ops.object.join()
+
+# Add wicker material
+mat_wicker = bpy.data.materials.new(name="Wicker")
+mat_wicker.use_nodes = True
+nodes = mat_wicker.node_tree.nodes
+links = mat_wicker.node_tree.links
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.5, 0.3, 0.1, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.9
+
+# Add some procedural texture for wicker look
+noise = nodes.new("ShaderNodeTexNoise")
+noise.inputs["Scale"].default_value = 50.0
+noise.inputs["Detail"].default_value = 10.0
+bump = nodes.new("ShaderNodeBump")
+bump.inputs["Strength"].default_value = 0.3
+links.new(noise.outputs["Fac"], bump.inputs["Height"])
+links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+basket.data.materials.append(mat_wicker)
+
+# --- 3. Ground/Shadow Plane ---
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, -0.01))
+ground = bpy.context.active_object
+ground.name = "Ground"
+mat_ground = bpy.data.materials.new(name="Ground")
+mat_ground.use_nodes = True
+bsdf = mat_ground.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.2, 0.4, 0.1, 1.0)
+bsdf.inputs["Roughness"].default_value = 1.0
+ground.data.materials.append(mat_ground)
+
+# --- 4. Lighting ---
+# Add a sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Add a fill light
+bpy.ops.object.light_add(type='POINT', location=(-3, -3, 5))
+fill = bpy.context.active_object
+fill.data.energy = 100.0
+
+# --- 5. Camera ---
+bpy.ops.object.camera_add(location=(2, -3, 2), rotation=(math.radians(60), 0, math.radians(45)))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera
+
+# Set render settings
+bpy.context.scene.render.resolution_x = 1280
+bpy.context.scene.render.resolution_y = 720
+bpy.context.scene.render.film_transparent = False
+
+print("Picnic blanket with wicker basket scene created!")

@@ -1,0 +1,112 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1453)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+A = {}
+def pigment(n, c, e=0, r=.85):
+    m = bpy.data.materials.new(n); m.use_nodes = True
+    s = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    s.inputs["Base Color"].default_value = (*c, 1); s.inputs["Roughness"].default_value = r
+    if e:
+        s.inputs["Emission Color"].default_value = (*c, 1); s.inputs["Emission Strength"].default_value = e
+    A[n] = m
+for n, c in (("floor", (.22, .13, .07)), ("oak", (.34, .2, .1)), ("oak2", (.26, .15, .08)), ("plaster", (.4, .36, .3)), ("stone", (.28, .27, .26)), ("bone", (.8, .75, .6)),
+             ("robe", (.5, .1, .1)), ("robe2", (.1, .2, .4)), ("skin", (.55, .35, .25)), ("book", (.5, .35, .15)), ("brass", (.7, .5, .15)), ("iron", (.08, .08, .09))):
+    pigment(n, c)
+pigment("sky", (.55, .7, 1), 6, .1); pigment("candle", (1, .65, .25), 18); pigment("eye", (1, .1, .05), 12)
+def piece(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(A[m]); return o
+def blk(m, x, y, z, w, d, h, rz=0, tp=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = tp if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return piece(bm, m, (x, y, z), (0, 0, rz))
+def cyl(m, x, y, z, r, h, n=8, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return piece(bm, m, (x, y, z), rot)
+def bar(m, a, b, t):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return piece(bm, m)
+def orb(m, x, y, z, r, s=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], v.co.z * s[2]))
+    return piece(bm, m, (x, y, z))
+def lit(kind, c, w, p, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# base: round floor of planks, stone plinth below
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=14, radius1=5, radius2=12, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .3)))
+    v.co.z -= 2
+piece(bm, "stone")
+cyl("floor", 0, 0, 0, 11.4, .3, 14)
+for k in range(14): blk("oak2" if k % 2 else "oak", 0, 0, .3, .6, 22, .05, k * math.pi / 7)
+# galleries: four tiers of steep steps rising to the back, front open, with balustrades
+N, R = 10, 10.2
+for t in range(4):
+    for k in range(N):
+        a = math.pi * .08 + k * math.pi * .84 / N
+        r = R - t * 1.7
+        blk("oak" if (t + k) % 2 else "oak2", math.cos(a) * r, math.sin(a) * r, .3, 1.75, 1.75, .75 + t * .85, a + math.pi / 2)
+        if t == 3 or k % 2:
+            bar("oak2", (math.cos(a) * (r + .8), math.sin(a) * (r + .8), .75 + t * .85), (math.cos(a) * (r + .8), math.sin(a) * (r + .8), 1.5 + t * .85), .1)
+    for k in range(2):
+        a = math.pi * (.08 + k * .84)
+        bar("oak2", (math.cos(a) * (R + .9), math.sin(a) * (R + .9), .3), (math.cos(a) * (R - 6.8), math.sin(a) * (R - 6.8), 4.4), .14)
+# central table with a slab, a candle and a skull on it
+blk("oak", 0, 0, .3, 5.2, 2.6, 1.1, 0, .95)
+for sx in (-1, 1):
+    for sy in (-1, 1): blk("oak2", sx * 2.2, sy * 1.0, .3, .35, .35, 1.0)
+blk("plaster", 0, 0, 1.4, 4.4, 1.9, .15)
+cyl("candle", -1.5, .5, 1.55, .18, .5, 6); cyl("candle", -1.5, .5, 2.05, .1, .15, 5)
+lit("POINT", (1, .65, .25), 220, (-1.5, .5, 2.5))
+orb("bone", 1.2, 0, 1.95, .45, (1, .9, .9)); blk("bone", 1.2, -.1, 1.6, .4, .3, .25)
+# skeleton on a stand: skull, spine, ribs, pelvis, arms, legs, larger than life
+sx0, sy0 = 6.2, -4.0
+cyl("oak2", sx0, sy0, .3, .5, 2.4, 6, .25)
+for i in range(9): cyl("bone", sx0, sy0, 1.0 + i * .22, .16, .2, 6)
+orb("bone", sx0, sy0, 3.3, .6, (1, 1, 1.1)); cyl("bone", sx0, sy0 - .35, 3.1, .25, .3, 6)
+for i in range(5):
+    z = 2.5 - i * .22
+    for s in (-1, 1): bar("bone", (sx0, sy0, z), (sx0 + s * .9, sy0, z - .3), .1)
+    bar("bone", (sx0 - .9, sy0, z - .3), (sx0, sy0, z - .35), .1)
+blk("bone", sx0, sy0, 1.2, .9, .5, .4, 0, .8)
+for s in (-1, 1):
+    bar("bone", (sx0 + s * .9, sy0, 2.9), (sx0 + s * 1.7, sy0, 2.1), .14); bar("bone", (sx0 + s * 1.7, sy0, 2.1), (sx0 + s * 1.9, sy0, 1.2), .14)
+    bar("bone", (sx0 + s * .3, sy0, 1.2), (sx0 + s * .35, sy0, .3), .18)
+# scholars in robes watching from the galleries
+for i, (t, k) in enumerate(((1, 2), (2, 5), (3, 1), (3, 6), (2, 8))):
+    a = math.pi * .08 + k * math.pi * .84 / N; r = R - t * 1.7 - .3
+    x, y, z = math.cos(a) * r, math.sin(a) * r, .75 + t * .85
+    cyl("robe" if i % 2 else "robe2", x, y, z, .5, 1.2, 6, .3); orb("skin", x, y, z + 1.5, .32)
+# skylight: ring of glass panels and a glowing shaft above the back gallery
+for k in range(8):
+    a = k * math.pi / 4 + .2
+    blk("sky", math.cos(a) * 2.6, math.sin(a) * 2.6, 7.6, 2.0, .12, .1, a)
+for k in range(4):
+    a = k * math.pi / 2 + .78
+    bar("oak2", (math.cos(a) * 2.6, math.sin(a) * 2.6, 7.6), (math.cos(a) * 2.6, math.sin(a) * 2.6, 8.4), .18)
+cyl("oak2", 0, 0, 8.3, 2.7, .2, 8, 2.4)
+lit("POINT", (.6, .75, 1), 1600, (0, 0, 7.2))
+# a few books, a candle stand and a small model of the theatre
+for i in range(4): blk("book" if i % 2 else "robe2", -3.8 + i * .45, 4.5, .3 + (i > 2) * .25, .4, .6, .25, i * .3)
+cyl("iron", 3.6, 5.5, .3, .1, 1.6, 5); cyl("candle", 3.6, 5.5, 1.9, .15, .4, 6); lit("POINT", (1, .65, .25), 150, (3.6, 5.5, 2.4))
+# candlelit hall: warm key low from the left, cool moonlight from the right
+lit("SUN", (1, .65, .4), 4.5, (-26, -14, 9), (0, 0, 2)); lit("SUN", (.4, .55, 1), 2, (22, 20, 12), (0, 0, 2))
+w = bpy.data.worlds.new("hall"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .015, .02, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3.5)); co.location = t + Vector((-6, -56, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

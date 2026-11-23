@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 43.5,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene built. Objects: 1249\n",
+ "state_saved": true,
+ "n_objects": 1247,
+ "n_lights": 1,
+ "n_materials": 813,
+ "own_camera": true,
+ "render_error": null
+}

@@ -1,0 +1,187 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene exists but camera is looking at sky. Fix camera to look at Kong/ESB.
+# Also add more detail: moon, clouds, more city glow, refine Kong pose.
+
+# --- FIX CAMERA: aim at Kong on top of ESB ---
+cam_obj = bpy.data.objects.get('Camera')
+if cam_obj:
+    cam_obj.location = (150, 150, 450)
+    # Point camera at Kong (0, 0, 500)
+    target = Vector((0, 0, 500))
+    direction = target - cam_obj.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam_obj.rotation_euler = rot_quat.to_euler()
+    cam_obj.data.lens = 50
+else:
+    cam_data = bpy.data.cameras.new('Camera')
+    cam_obj = bpy.data.objects.new('Camera', cam_data)
+    bpy.context.collection.objects.link(cam_obj)
+    cam_obj.location = (150, 150, 450)
+    target = Vector((0, 0, 500))
+    direction = target - cam_obj.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam_obj.rotation_euler = rot_quat.to_euler()
+    cam_obj.data.lens = 50
+    bpy.context.scene.camera = cam_obj
+
+# --- ADD MOON (visible in sky) ---
+mat_moon = bpy.data.materials.new('MoonMat')
+mat_moon.use_nodes = True
+bsdf = mat_moon.node_tree.nodes.get('Principled BSDF')
+bsdf.inputs['Base Color'].default_value = (0.9, 0.9, 0.85, 1.0)
+bsdf.inputs['Emission Color'].default_value = (0.9, 0.9, 0.85, 1.0)
+bsdf.inputs['Emission Strength'].default_value = 5.0
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=20, location=(-200, -300, 600), segments=16, ring_count=8)
+moon_sphere = bpy.context.active_object
+moon_sphere.name = 'Moon_Sphere'
+moon_sphere.data.materials.append(mat_moon)
+
+# --- ADD CLOUDS (volumetric-ish planes) ---
+mat_cloud = bpy.data.materials.new('CloudMat')
+mat_cloud.use_nodes = True
+bsdf_c = mat_cloud.node_tree.nodes.get('Principled BSDF')
+bsdf_c.inputs['Base Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+bsdf_c.inputs['Roughness'].default_value = 1.0
+mat_cloud.blend_method = 'BLEND'
+mat_cloud.show_transparent_back = False
+
+for i in range(8):
+    x = random.uniform(-300, 300)
+    y = random.uniform(-300, 300)
+    z = random.uniform(350, 500)
+    w = random.uniform(40, 100)
+    d = random.uniform(20, 60)
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(x, y, z))
+    cloud = bpy.context.active_object
+    cloud.name = f'Cloud_{i}'
+    cloud.scale = (w, d, 1)
+    cloud.rotation_euler = (0, 0, random.uniform(0, math.pi))
+    cloud.data.materials.append(mat_cloud)
+
+# --- ADD MORE CITY BUILDINGS with varied heights ---
+mat_city2 = bpy.data.materials.new('CityMat2')
+mat_city2.use_nodes = True
+bsdf_c2 = mat_city2.node_tree.nodes.get('Principled BSDF')
+bsdf_c2.inputs['Base Color'].default_value = (0.06, 0.06, 0.08, 1.0)
+bsdf_c2.inputs['Roughness'].default_value = 0.7
+bsdf_c2.inputs['Metallic'].default_value = 0.3
+
+random.seed(456)
+for i in range(30):
+    x = random.uniform(-250, 250)
+    y = random.uniform(-250, 250)
+    if abs(x) < 35 and abs(y) < 35:
+        continue
+    h = random.uniform(10, 60)
+    w = random.uniform(3, 12)
+    d = random.uniform(3, 12)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, h/2))
+    bldg = bpy.context.active_object
+    bldg.name = f'City2_{i}'
+    bldg.scale = (w, d, h)
+    bldg.data.materials.append(mat_city2)
+
+# --- ADD STREET LIGHTS (emissive points on ground) ---
+mat_street = bpy.data.materials.new('StreetLight')
+mat_street.use_nodes = True
+bsdf_s = mat_street.node_tree.nodes.get('Principled BSDF')
+bsdf_s.inputs['Base Color'].default_value = (1.0, 0.8, 0.3, 1.0)
+bsdf_s.inputs['Emission Color'].default_value = (1.0, 0.8, 0.3, 1.0)
+bsdf_s.inputs['Emission Strength'].default_value = 10.0
+
+for i in range(20):
+    x = random.uniform(-150, 150)
+    y = random.uniform(-150, 150)
+    if abs(x) < 30 and abs(y) < 30:
+        continue
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=(x, y, 1), segments=8, ring_count=4)
+    light_pt = bpy.context.active_object
+    light_pt.name = f'StreetLight_{i}'
+    light_pt.data.materials.append(mat_street)
+
+# --- ADD KONG DETAIL: fur bumps via displacement (simple - add small spheres) ---
+mat_fur = bpy.data.materials.new('FurMat')
+mat_fur.use_nodes = True
+bsdf_f = mat_fur.node_tree.nodes.get('Principled BSDF')
+bsdf_f.inputs['Base Color'].default_value = (0.15, 0.1, 0.08, 1.0)
+bsdf_f.inputs['Roughness'].default_value = 0.9
+
+# Fur patches on Kong's body
+fur_positions = [
+    (0, 0, 490), (5, 3, 495), (-5, -3, 485), (3, -5, 492),
+    (-3, 5, 488), (0, 8, 490), (8, 0, 488), (-8, 0, 492),
+    (0, 0, 520), (3, 2, 522), (-3, -2, 518)
+]
+for i, pos in enumerate(fur_positions):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=2, location=pos, segments=8, ring_count=4)
+    fur = bpy.context.active_object
+    fur.name = f'Fur_{i}'
+    fur.scale = (1, 1, 1.5)
+    fur.data.materials.append(mat_fur)
+
+# --- ADD BIPLANE TRAIL (motion blur hint - small emissive streaks) ---
+mat_trail = bpy.data.materials.new('TrailMat')
+mat_trail.use_nodes = True
+bsdf_t = mat_trail.node_tree.nodes.get('Principled BSDF')
+bsdf_t.inputs['Base Color'].default_value = (1.0, 0.5, 0.2, 1.0)
+bsdf_t.inputs['Emission Color'].default_value = (1.0, 0.5, 0.2, 1.0)
+bsdf_t.inputs['Emission Strength'].default_value = 3.0
+
+for i in range(10):
+    angle = (i / 10) * 2 * math.pi
+    x = 120 * math.cos(angle)
+    y = 120 * math.sin(angle)
+    z = 520 + 15 * math.sin(angle * 3)
+    # Trail behind each plane
+    for j in range(3):
+        tx = x - 5 * (j+1) * math.cos(angle + math.pi/2)
+        ty = y - 5 * (j+1) * math.sin(angle + math.pi/2)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(tx, ty, z), segments=8, ring_count=4)
+        trail = bpy.context.active_object
+        trail.name = f'Trail_{i}_{j}'
+        trail.data.materials.append(mat_trail)
+
+# --- ADD MORE STARS (smaller, more numerous) ---
+mat_star = bpy.data.materials.new('StarMat')
+mat_star.use_nodes = True
+bsdf_st = mat_star.node_tree.nodes.get('Principled BSDF')
+bsdf_st.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+bsdf_st.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+bsdf_st.inputs['Emission Strength'].default_value = 20.0
+
+random.seed(789)
+for i in range(100):
+    x = random.uniform(-500, 500)
+    y = random.uniform(-500, 500)
+    z = random.uniform(400, 900)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(x, y, z), segments=8, ring_count=4)
+    star = bpy.context.active_object
+    star.name = f'Star2_{i}'
+    star.data.materials.append(mat_star)
+
+# --- ADD FOG/ATMOSPHERE (large transparent sphere around scene) ---
+mat_fog = bpy.data.materials.new('FogMat')
+mat_fog.use_nodes = True
+bsdf_fog = mat_fog.node_tree.nodes.get('Principled BSDF')
+bsdf_fog.inputs['Base Color'].default_value = (0.02, 0.03, 0.08, 1.0)
+bsdf_fog.inputs['Roughness'].default_value = 1.0
+mat_fog.blend_method = 'BLEND'
+mat_fog.show_transparent_back = False
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=400, location=(0, 0, 200), segments=16, ring_count=8)
+fog_sphere = bpy.context.active_object
+fog_sphere.name = 'FogSphere'
+fog_sphere.scale = (1, 1, 0.5)
+fog_sphere.data.materials.append(mat_fog)
+
+# --- UPDATE RENDER SETTINGS ---
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+
+print("Scene refined: camera fixed, moon, clouds, more city, street lights, fur, trails, stars, fog")

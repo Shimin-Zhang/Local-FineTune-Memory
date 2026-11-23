@@ -1,0 +1,104 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(452)
+sc = bpy.context.scene
+def mk(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("k"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+sand, floor, wall, floor2 = mk((.35, .26, .15)), mk((.3, .22, .14)), mk((.28, .2, .13)), mk((.22, .16, .1))
+boulder, dust, skin, shirt = mk((.3, .24, .19)), mk((.5, .38, .25), .15), mk((.55, .33, .2)), mk((.55, .12, .08))
+hat, rope, leather, torch = mk((.45, .3, .15)), mk((.5, .4, .25)), mk((.2, .12, .07)), mk((.1, .06, .04))
+fire, gold, cloth, glyph = mk((1, .5, .1), 14), mk((1, .75, .15), 2), mk((.5, .1, .1)), mk((.5, .35, .15), .6)
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def rod(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return put(bm, m)
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at, rot)
+def ball(at, r, m, sq=(1, 1, 1), j=0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) + Vector((random.uniform(-j, j), random.uniform(-j, j), random.uniform(-j, j)))
+    return put(bm, m, at)
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# temple floor: a long slab with a rough tapered underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=5, radius2=11, depth=3.4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .2)))
+    v.co.z -= 1.7
+put(bm, sand)
+# passage floor: alternating slabs, then the two walls of stacked blocks
+for i in range(11): slab((0, -9 + i * 1.8, 0), (5.4, 1.8, .15), floor if i % 2 else floor2)
+for i in range(11):
+    for s in (-1, 1):
+        z = 0
+        while z < 5.2:
+            h = random.uniform(.8, 1.2)
+            if z + h > 5.2: h = 5.2 - z
+            slab((s * 3.4, -9 + i * 1.8, z), (1.8, 1.8, h), wall if (i + int(z)) % 2 else floor2)
+            z += h
+# only the left wall carries the ceiling over the far half, so the camera sees into the passage
+for i in range(6): slab((-3.4, -7.2 + i * 2.4, 5.2), (1.8, 1.8, 1.4), wall)
+slab((0, 9.6, 0), (8.6, .8, 6.6), wall); slab((0, 9.6, 6.6), (8.6, .8, 1.0), wall)
+# the glowing doorway: the ark's chamber, with gold inside
+slab((0, 9.1, .1), (3.2, .3, 4.4), fire); slab((0, 9.0, 4.5), (3.6, .3, .4), gold)
+for s in (-1, 1): slab((s * 2.0, 9.0, .1), (.5, .5, 4.8), gold)
+glow((0, 8.0, 2.5), (1, .6, .15), 2000)
+# carved glyphs on the inner faces of both walls, in rows
+for i in range(9):
+    for s in (-1, 1):
+        for k in range(3): slab((s * 2.45, -8 + i * 2.0, .8 + k * 1.2), (.1, .35, .5), glyph, (0, 0, 0))
+# braziers with flame and light along the walls
+for i, y in enumerate((-6, -2, 2, 6)):
+    for s in (-1, 1):
+        x = s * 2.5
+        cyl((x, y, .15), .1, .9, 5, leather); cyl((x, y, 1.0), .4, .3, 6, leather, .55)
+        cyl((x, y, 1.3), .3, .5, 5, fire, .05)
+        if i % 2 == 0: glow((x, y, 1.9), (1, .5, .12), 300)
+# the boulder rolling along the passage, with a dust cloud trailing behind
+ball((-1.0, -2.2, 2.4), 2.4, boulder, (1, 1, 1), .25)
+for k in range(7): ball((-1.2 + random.uniform(-.6, .6), -4.5 - k * .55, .5 + random.uniform(0, .8)), .9 - k * .1, dust, (1.2, 1, .6), .15)
+# Indiana Jones, running toward the camera, leaning forward, arms pumping, whip coiled at his hip
+jx, jy = 1.3, 3.0
+slab((jx, jy, .15), (.55, .4, .9), leather, (0, 0, .3)); slab((jx - .1, jy, 1.0), (.8, .5, 1.0), shirt, (0, 0, .3))
+ball((jx - .1, jy, 2.4), .38, skin); cyl((jx - .1, jy, 2.55), .55, .12, 7, hat, .45); cyl((jx - .1, jy, 2.65), .45, .35, 7, hat, .3)
+rod((jx - .1, jy, 1.7), (jx - 1.0, jy - .2, 2.0), .22, skin); rod((jx - 1.0, jy - .2, 2.0), (jx - 1.4, jy - .8, 1.4), .2, skin)
+rod((jx - .1, jy, 1.7), (jx + .9, jy + .1, 1.9), .22, skin); rod((jx + .9, jy + .1, 1.9), (jx + 1.2, jy - .6, 2.4), .2, skin)
+rod((jx + .3, jy, .6), (jx + .1, jy - .8, .15), .3, leather); rod((jx - .3, jy, .6), (jx - .5, jy + .5, .15), .3, leather)
+rod((jx + .6, jy + .2, 1.0), (jx + 1.2, jy + .8, .5), .1, rope); rod((jx + 1.2, jy + .8, .5), (jx + 1.8, jy + .5, .2), .12, rope)
+# fallen blocks, a broken column, a banner, skulls and bones in the dust
+for i, (x, y, a) in enumerate(((-2.2, 5, .3), (2.4, -4, .8), (-2.3, -8, .1), (2.3, 1, .5))): slab((x, y, .15), (1.1, 1.0, .8), wall, (0, 0, a))
+cyl((2.2, 7.5, .15), .5, 1.6, 7, wall, .4, (0, 1.2, .5)); cyl((2.2, 7.5, 1.75), .65, .3, 7, floor2, .65, (0, 1.2, .5))
+for s in (-1, 1): rod((s * 1.2, -9.5, .15), (s * 1.2, -9.5, 2.4), .15, leather)
+slab((0, -9.5, 2.2), (2.6, .1, .9), cloth)
+for x, y in ((-2.4, -3), (2.3, -6.5)): ball((x, y, .35), .3, floor2, (1, 1, .8)); slab((x + .5, y + .2, .15), (.8, .12, .12), floor2, (0, 0, .5))
+# a rope barrier of posts across the far end of the floor, and a pile of crates
+for i in range(5): rod((-2.4 + i * 1.2, 8.0, .15), (-2.4 + i * 1.2, 8.0, 1.4), .12, leather)
+rod((-2.4, 8.0, 1.2), (2.4, 8.0, 1.2), .08, rope)
+for i, (x, y, a) in enumerate(((-4.5, -6, .2), (-5.0, -4.5, .6), (-4.3, -3, .1))): slab((x, y, .15), (1.4, 1.2, 1.0), rope, (0, 0, a))
+# torchlit amber key from the left, cold moonlit rim from behind the camera
+for c, w, at in (((1, .6, .25), 5, (-24, -10, 10)), ((.4, .55, 1), 2, (18, 24, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("tomb"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.025, .015, .01, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3)); co.location = t + Vector((10, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

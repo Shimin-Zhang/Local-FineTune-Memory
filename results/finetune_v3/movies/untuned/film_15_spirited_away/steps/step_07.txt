@@ -1,0 +1,172 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is still very dark. Let's take a more aggressive approach:
+# 1. Set the world background to a brighter night sky
+# 2. Add very strong lights
+# 3. Make sure the camera is pointing at the bathhouse
+
+# First, brighten the world
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    bg_node = world.node_tree.nodes.get("Background")
+    if bg_node:
+        bg_node.inputs[0].default_value = (0.05, 0.08, 0.15, 1.0)
+        bg_node.inputs[1].default_value = 2.0
+
+# Set view settings to be brighter
+scene = bpy.context.scene
+scene.view_settings.view_transform = 'Filmic'
+scene.view_settings.look = 'High Contrast'
+scene.view_settings.exposure = 2.0
+
+# Add a very bright sun light
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 100))
+bright_sun = bpy.context.active_object
+bright_sun.name = "VeryBrightSun"
+bright_sun.data.energy = 20
+bright_sun.data.color = (0.9, 0.95, 1.0)
+bright_sun.rotation_euler = (math.radians(50), math.radians(20), 0)
+
+# Add a massive area light above
+bpy.ops.object.light_add(type='AREA', location=(0, 50, 60))
+massive_area = bpy.context.active_object
+massive_area.name = "MassiveArea"
+massive_area.data.energy = 50000
+massive_area.data.color = (0.6, 0.7, 0.9)
+massive_area.data.size = 150
+massive_area.rotation_euler = (math.radians(90), 0, 0)
+
+# Reposition camera to definitely see the bathhouse
+# Bathhouse is at y=5, bridge goes to y=120
+# Camera at y=160, looking back
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, 160, 20)
+    camera.rotation_euler = (math.radians(85), 0, 0)
+    camera.data.lens = 30
+
+# Make the bathhouse main body more visible
+bathhouse = bpy.data.objects.get("BathhouseMain")
+if bathhouse:
+    for mat in bathhouse.data.materials:
+        if mat.use_nodes:
+            bsdf = mat.node_tree.nodes.get("Principled BSDF")
+            if bsdf:
+                bsdf.inputs["Base Color"].default_value = (0.5, 0.25, 0.1, 1.0)
+                bsdf.inputs["Roughness"].default_value = 0.5
+
+# Make the bridge more visible
+bridge = bpy.data.objects.get("BridgeDeck")
+if bridge:
+    for mat in bridge.data.materials:
+        if mat.use_nodes:
+            bsdf = mat.node_tree.nodes.get("Principled BSDF")
+            if bsdf:
+                bsdf.inputs["Base Color"].default_value = (0.8, 0.1, 0.1, 1.0)
+
+# Add a strong point light at the center of the bathhouse
+bpy.ops.object.light_add(type='POINT', location=(0, 10, 10))
+center_light = bpy.context.active_object
+center_light.name = "CenterBright"
+center_light.data.energy = 50000
+center_light.data.color = (1.0, 0.8, 0.5)
+center_light.data.shadow_soft_size = 15
+
+# Add lights along the bridge
+for i in range(6):
+    y = 40 + i * 15
+    bpy.ops.object.light_add(type='POINT', location=(0, y, 2))
+    bl = bpy.context.active_object
+    bl.name = f"BridgeBright_{i}"
+    bl.data.energy = 20000
+    bl.data.color = (1.0, 0.5, 0.1)
+    bl.data.shadow_soft_size = 5
+
+# Make all windows and lanterns very bright
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        for mat in obj.data.materials:
+            if mat and mat.use_nodes:
+                bsdf = mat.node_tree.nodes.get("Principled BSDF")
+                if bsdf:
+                    # Boost emission for windows and lanterns
+                    if "Window" in obj.name or "Lantern" in obj.name:
+                        bsdf.inputs["Emission Strength"].default_value = 50.0
+                    # Make the bathhouse wood brighter
+                    if "Bathhouse" in obj.name or "Bridge" in obj.name:
+                        bsdf.inputs["Base Color"].default_value = (
+                            bsdf.inputs["Base Color"].default_value[0] * 1.5,
+                            bsdf.inputs["Base Color"].default_value[1] * 1.5,
+                            bsdf.inputs["Base Color"].default_value[2] * 1.5,
+                            1.0
+                        )
+
+# Add a rim light to silhouette the bathhouse
+bpy.ops.object.light_add(type='POINT', location=(0, -30, 20))
+rim_light = bpy.context.active_object
+rim_light.name = "RimBright"
+rim_light.data.energy = 30000
+rim_light.data.color = (0.4, 0.5, 1.0)
+rim_light.data.shadow_soft_size = 20
+
+# Add side lights
+bpy.ops.object.light_add(type='POINT', location=(-70, 30, 15))
+left_light = bpy.context.active_object
+left_light.name = "LeftBright"
+left_light.data.energy = 20000
+left_light.data.color = (1.0, 0.7, 0.4)
+left_light.data.shadow_soft_size = 10
+
+bpy.ops.object.light_add(type='POINT', location=(70, 30, 15))
+right_light = bpy.context.active_object
+right_light.name = "RightBright"
+right_light.data.energy = 20000
+right_light.data.color = (1.0, 0.7, 0.4)
+right_light.data.shadow_soft_size = 10
+
+# Make the water surface reflective and visible
+water = bpy.data.objects.get("WaterSurface")
+if water:
+    for mat in water.data.materials:
+        if mat.use_nodes:
+            bsdf = mat.node_tree.nodes.get("Principled BSDF")
+            if bsdf:
+                bsdf.inputs["Base Color"].default_value = (0.1, 0.15, 0.25, 1.0)
+                bsdf.inputs["Roughness"].default_value = 0.0
+                bsdf.inputs["Metallic"].default_value = 1.0
+
+# Add a ground plane that's slightly visible
+# The water surface should act as the ground
+
+# Add more steam that's visible
+for i in range(15):
+    x = random.uniform(-10, 10)
+    y = random.uniform(15, 25)
+    z = random.uniform(15, 35)
+    size = random.uniform(2, 4)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    steam = bpy.context.active_object
+    steam.name = f"SteamBright_{i}"
+    mat_steam = bpy.data.materials.new(f"SteamBrightMat_{i}")
+    mat_steam.use_nodes = True
+    mat_steam.blend_method = 'BLEND'
+    bsdf = mat_steam.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 0.95, 1.0)
+    bsdf.inputs["Alpha"].default_value = 0.3
+    bsdf.inputs["Roughness"].default_value = 1.0
+    steam.data.materials.append(mat_steam)
+
+# Add a final check - make sure the camera is pointing at the bathhouse
+# The bathhouse is at (0, 5, 5), camera at (0, 160, 20)
+# The camera should be looking in the -Y direction
+if camera:
+    # Look at the bathhouse
+    target = Vector((0, 5, 5))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+```

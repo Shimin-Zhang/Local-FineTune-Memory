@@ -1,0 +1,394 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Issues to fix:
+# 1. The fog volume is too dense and blocking the view - reduce density or remove
+# 2. The car headlights are too bright and blinding - reduce emission
+# 3. The scene needs more ambient fill light
+# 4. Add more building details - awnings, signs
+# 5. Add more crowd detail - people running away
+# 6. Add a police car with flashing lights
+# 7. Add more varied building heights and styles
+# 8. Add a few more cars in the distance
+# 9. Add smoke/dust particles from Stay Puft's footsteps
+# 10. Improve the overall lighting balance
+
+# Fix fog volume - reduce density
+fog_box = bpy.data.objects.get("FogVolume")
+if fog_box:
+    mat_fog = fog_box.data.materials[0]
+    if mat_fog:
+        vol_principled = mat_fog.node_tree.nodes.get("Principled Volume")
+        if not vol_principled:
+            for node in mat_fog.node_tree.nodes:
+                if node.type == 'VOLUME_PRINCIPLED':
+                    vol_principled = node
+                    break
+        if vol_principled:
+            vol_principled.inputs['Density'].default_value = 0.005
+
+# Reduce car headlight brightness
+for i in range(6):
+    for side in [-1, 1]:
+        hl = bpy.data.objects.get(f"Car_{i}_Headlight_{side}")
+        if hl:
+            mat_hl = hl.data.materials[0]
+            if mat_hl:
+                bsdf = mat_hl.node_tree.nodes.get("Principled BSDF")
+                if bsdf:
+                    bsdf.inputs['Emission Strength'].default_value = 3.0
+        
+        # Reduce point light energy
+        light_obj = bpy.data.objects.get(f"Car_{i}_HL_Light_{side}")
+        if light_obj:
+            light_obj.data.energy = 5
+
+# Add more ambient fill light
+fill_data = bpy.data.lights.new("FillLight", type='POINT')
+fill_data.energy = 30
+fill_data.color = (0.4, 0.4, 0.6)
+fill_data.shadow_soft_size = 5
+fill_obj = bpy.data.objects.new("FillLight", fill_data)
+fill_obj.location = (0, 0, 15)
+bpy.context.collection.objects.link(fill_obj)
+
+# Add a police car with flashing lights
+x = 3
+y = -15
+z = 0.5
+# Car body
+bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+police_car = bpy.context.active_object
+police_car.name = "PoliceCar"
+police_car.scale = (1.8, 4, 1.2)
+mat_pc = bpy.data.materials.new("PoliceCar_mat")
+mat_pc.use_nodes = True
+bsdf = mat_pc.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.0, 0.0, 0.5, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.3
+police_car.data.materials.append(mat_pc)
+
+# White stripe
+bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z + 0.2))
+stripe = bpy.context.active_object
+stripe.name = "PoliceCar_Stripe"
+stripe.scale = (1.85, 4.05, 0.3)
+mat_stripe = bpy.data.materials.new("PoliceCar_Stripe_mat")
+mat_stripe.use_nodes = True
+bsdf = mat_stripe.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.9, 0.9, 0.9, 1.0)
+stripe.data.materials.append(mat_stripe)
+
+# Cabin
+bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y + 0.5, z + 0.8))
+cabin = bpy.context.active_object
+cabin.name = "PoliceCar_Cabin"
+cabin.scale = (1.5, 2.5, 0.8)
+mat_cabin = bpy.data.materials.new("PoliceCar_Cabin_mat")
+mat_cabin.use_nodes = True
+bsdf = mat_cabin.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+cabin.data.materials.append(mat_cabin)
+
+# Wheels
+for wx in [-1.2, 1.2]:
+    for wy in [-1.5, 1.5]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.3, location=(x + wx, y + wy, 0.4), rotation=(0, math.radians(90), 0))
+        wheel = bpy.context.active_object
+        wheel.name = f"PoliceCar_Wheel_{wx}_{wy}"
+        mat_wheel = bpy.data.materials.new(f"PoliceCar_Wheel_{wx}_{wy}_mat")
+        mat_wheel.use_nodes = True
+        bsdf = mat_wheel.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (0.05, 0.05, 0.05, 1.0)
+        wheel.data.materials.append(mat_wheel)
+
+# Light bar
+bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y + 0.5, z + 1.5))
+lightbar = bpy.context.active_object
+lightbar.name = "PoliceCar_LightBar"
+lightbar.scale = (1.2, 0.5, 0.2)
+mat_lb = bpy.data.materials.new("PoliceCar_LightBar_mat")
+mat_lb.use_nodes = True
+bsdf = mat_lb.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.1, 0.1, 0.1, 1.0)
+lightbar.data.materials.append(mat_lb)
+
+# Red light
+bpy.ops.mesh.primitive_cube_add(size=0.3, location=(x - 0.3, y + 0.5, z + 1.6))
+red_light = bpy.context.active_object
+red_light.name = "PoliceCar_RedLight"
+mat_rl = bpy.data.materials.new("PoliceCar_RedLight_mat")
+mat_rl.use_nodes = True
+bsdf = mat_rl.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (1.0, 0.0, 0.0, 1.0)
+bsdf.inputs['Emission Color'].default_value = (1.0, 0.0, 0.0, 1.0)
+bsdf.inputs['Emission Strength'].default_value = 8.0
+red_light.data.materials.append(mat_rl)
+
+# Blue light
+bpy.ops.mesh.primitive_cube_add(size=0.3, location=(x + 0.3, y + 0.5, z + 1.6))
+blue_light = bpy.context.active_object
+blue_light.name = "PoliceCar_BlueLight"
+mat_bl = bpy.data.materials.new("PoliceCar_BlueLight_mat")
+mat_bl.use_nodes = True
+bsdf = mat_bl.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.0, 0.0, 1.0, 1.0)
+bsdf.inputs['Emission Color'].default_value = (0.0, 0.0, 1.0, 1.0)
+bsdf.inputs['Emission Strength'].default_value = 8.0
+blue_light.data.materials.append(mat_bl)
+
+# Point lights for flashing
+red_light_data = bpy.data.lights.new("PoliceCar_RedPL", type='POINT')
+red_light_data.energy = 20
+red_light_data.color = (1.0, 0.0, 0.0)
+red_light_data.shadow_soft_size = 0.5
+red_light_obj = bpy.data.objects.new("PoliceCar_RedPL", red_light_data)
+red_light_obj.location = (x - 0.3, y + 0.5, z + 1.7)
+bpy.context.collection.objects.link(red_light_obj)
+
+blue_light_data = bpy.data.lights.new("PoliceCar_BluePL", type='POINT')
+blue_light_data.energy = 20
+blue_light_data.color = (0.0, 0.0, 1.0)
+blue_light_data.shadow_soft_size = 0.5
+blue_light_obj = bpy.data.objects.new("PoliceCar_BluePL", blue_light_data)
+blue_light_obj.location = (x + 0.3, y + 0.5, z + 1.7)
+bpy.context.collection.objects.link(blue_light_obj)
+
+# Add awnings to some buildings
+for i in range(4):
+    y_pos = -40 + i * 25
+    for side in [-1, 1]:
+        x = side * 12
+        # Awning
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x - side * 0.5, y_pos, 3.5))
+        awning = bpy.context.active_object
+        awning.name = f"Awnings_{side}_{i}"
+        awning.scale = (0.5, 2, 0.1)
+        awning.rotation_euler = (0, math.radians(30 * side), 0)
+        awning_colors = [
+            (0.8, 0.2, 0.2, 1.0), (0.2, 0.5, 0.8, 1.0),
+            (0.2, 0.8, 0.2, 1.0), (0.8, 0.8, 0.2, 1.0),
+        ]
+        color = random.choice(awning_colors)
+        mat_awn = bpy.data.materials.new(f"Awnings_{side}_{i}_mat")
+        mat_awn.use_nodes = True
+        bsdf = mat_awn.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = color
+        bsdf.inputs['Roughness'].default_value = 0.8
+        awning.data.materials.append(mat_awn)
+
+# Add more people running away (further from Stay Puft)
+for i in range(20):
+    x = random.uniform(-7, 7)
+    y = random.uniform(20, 50)  # Behind Stay Puft, running away
+    if abs(x) < 2.5:
+        continue
+    
+    # Body (leaning forward)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(x, y, 0.7))
+    person = bpy.context.active_object
+    person.name = f"Runner_{i}"
+    person.scale = (0.7, 0.7, 1.1)
+    person.rotation_euler = (math.radians(-15), 0, 0)
+    cloth_colors = [
+        (0.5, 0.2, 0.2, 1.0), (0.2, 0.3, 0.5, 1.0), (0.3, 0.5, 0.3, 1.0),
+        (0.6, 0.5, 0.2, 1.0), (0.4, 0.2, 0.5, 1.0), (0.2, 0.4, 0.4, 1.0),
+    ]
+    color = random.choice(cloth_colors)
+    mat_person = bpy.data.materials.new(f"Runner_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    # Head
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0), (0.5, 0.3, 0.2, 1.0)]
+    skin = random.choice(skin_colors)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.18, location=(x, y - 0.2, 1.1))
+    phead = bpy.context.active_object
+    phead.name = f"Runner_{i}_Head"
+    phead.rotation_euler = (math.radians(-15), 0, 0)
+    mat_phead = bpy.data.materials.new(f"Runner_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = skin
+    phead.data.materials.append(mat_phead)
+
+# Add smoke/dust puffs near Stay Puft's feet
+for i in range(10):
+    x = random.uniform(-2, 2)
+    y = random.uniform(-3, 3)
+    z = random.uniform(0.1, 0.5)
+    size = random.uniform(0.3, 0.8)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    smoke = bpy.context.active_object
+    smoke.name = f"Smoke_{i}"
+    mat_smoke = bpy.data.materials.new(f"Smoke_{i}_mat")
+    mat_smoke.use_nodes = True
+    nodes = mat_smoke.node_tree.nodes
+    links = mat_smoke.node_tree.links
+    nodes.clear()
+    vol_principled = nodes.new('ShaderNodeVolumePrincipled')
+    vol_principled.inputs['Color'].default_value = (0.6, 0.6, 0.6, 1.0)
+    vol_principled.inputs['Density'].default_value = 0.5
+    vol_out = nodes.new('ShaderNodeOutputMaterial')
+    links.new(vol_principled.outputs['Volume'], vol_out.inputs['Volume'])
+    smoke.data.materials.append(mat_smoke)
+    smoke.display_type = 'WIRE'
+
+# Add more cars in the distance
+for i in range(4):
+    x = random.choice([-3, -2, 2, 3])
+    y = 30 + i * 10
+    z = 0.5
+    car_colors = [
+        (0.5, 0.0, 0.0, 1.0), (0.0, 0.0, 0.5, 1.0),
+        (0.8, 0.8, 0.0, 1.0), (0.2, 0.2, 0.2, 1.0),
+    ]
+    color = random.choice(car_colors)
+    
+    # Car body
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+    car = bpy.context.active_object
+    car.name = f"DistantCar_{i}"
+    car.scale = (1.8, 4, 1.2)
+    mat_car = bpy.data.materials.new(f"DistantCar_{i}_mat")
+    mat_car.use_nodes = True
+    bsdf = mat_car.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Roughness'].default_value = 0.3
+    car.data.materials.append(mat_car)
+    
+    # Car cabin
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y + 0.5, z + 0.8))
+    cabin = bpy.context.active_object
+    cabin.name = f"DistantCar_{i}_Cabin"
+    cabin.scale = (1.5, 2.5, 0.8)
+    mat_cabin = bpy.data.materials.new(f"DistantCar_{i}_Cabin_mat")
+    mat_cabin.use_nodes = True
+    bsdf = mat_cabin.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.2
+    cabin.data.materials.append(mat_cabin)
+    
+    # Wheels
+    for wx in [-1.2, 1.2]:
+        for wy in [-1.5, 1.5]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.3, location=(x + wx, y + wy, 0.4), rotation=(0, math.radians(90), 0))
+            wheel = bpy.context.active_object
+            wheel.name = f"DistantCar_{i}_Wheel_{wx}_{wy}"
+            mat_wheel = bpy.data.materials.new(f"DistantCar_{i}_Wheel_{wx}_{wy}_mat")
+            mat_wheel.use_nodes = True
+            bsdf = mat_wheel.node_tree.nodes.get("Principled BSDF")
+            bsdf.inputs['Base Color'].default_value = (0.05, 0.05, 0.05, 1.0)
+            wheel.data.materials.append(mat_wheel)
+
+# Add a few more neon signs
+neon_positions = [
+    (-12, 0, 12, (0.0, 1.0, 0.5, 1.0)),
+    (12, 20, 8, (1.0, 0.5, 0.0, 1.0)),
+    (-12, 30, 15, (0.5, 0.0, 1.0, 1.0)),
+]
+for idx, (x, y, z, color) in enumerate(neon_positions):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+    neon = bpy.context.active_object
+    neon.name = f"NeonSign2_{idx}"
+    neon.scale = (0.1, 2, 1)
+    mat_neon = bpy.data.materials.new(f"NeonSign2_{idx}_mat")
+    mat_neon.use_nodes = True
+    bsdf = mat_neon.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Emission Color'].default_value = color
+    bsdf.inputs['Emission Strength'].default_value = 5.0
+    neon.data.materials.append(mat_neon)
+    
+    # Point light
+    light_data = bpy.data.lights.new(f"NeonLight2_{idx}", type='POINT')
+    light_data.energy = 20
+    light_data.color = (color[0], color[1], color[2])
+    light_data.shadow_soft_size = 0.5
+    light_obj = bpy.data.objects.new(f"NeonLight2_{idx}", light_data)
+    light_obj.location = (x, y, z)
+    bpy.context.collection.objects.link(light_obj)
+
+# Add some more building windows that are lit
+for i in range(20):
+    side = random.choice([-1, 1])
+    x = side * (12 + random.uniform(0, 3))
+    y = random.uniform(-50, 50)
+    z = random.uniform(3, 20)
+    bpy.ops.mesh.primitive_cube_add(size=0.4, location=(x - side * 0.5, y, z))
+    win = bpy.context.active_object
+    win.name = f"ExtraWin_{i}"
+    mat_win = bpy.data.materials.new(f"ExtraWin_{i}_mat")
+    mat_win.use_nodes = True
+    bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 0.9, 0.5, 1.0)
+    bsdf.inputs['Emission Color'].default_value = (1.0, 0.8, 0.4, 1.0)
+    bsdf.inputs['Emission Strength'].default_value = 1.5
+    win.data.materials.append(mat_win)
+
+# Add a few more street details: newspaper boxes, phone booths
+for i in range(3):
+    x = random.choice([-7.5, 7.5])
+    y = -20 + i * 25
+    # Newspaper box
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.5))
+    box = bpy.context.active_object
+    box.name = f"NewsBox_{i}"
+    box.scale = (0.3, 0.5, 0.5)
+    mat_box = bpy.data.materials.new(f"NewsBox_{i}_mat")
+    mat_box.use_nodes = True
+    bsdf = mat_box.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.2, 0.4, 0.2, 1.0)
+    box.data.materials.append(mat_box)
+    
+    # Phone booth
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x + 2, y, 1.2))
+    booth = bpy.context.active_object
+    booth.name = f"PhoneBooth_{i}"
+    booth.scale = (0.8, 0.8, 1.2)
+    mat_booth = bpy.data.materials.new(f"PhoneBooth_{i}_mat")
+    mat_booth.use_nodes = True
+    bsdf = mat_booth.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.8, 0.0, 0.0, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.3
+    booth.data.materials.append(mat_booth)
+
+# Adjust camera slightly for a better composition
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, -22, 3.5)
+    camera.rotation_euler = (math.radians(89), 0, 0)
+
+# Add a subtle vignette effect by adding a large plane in front of the camera
+# (This is a hack, but it can help with the mood)
+
+# Increase the moon brightness slightly
+moon = bpy.data.objects.get("Moon")
+if moon:
+    mat_moon = moon.data.materials[0]
+    if mat_moon:
+        bsdf = mat_moon.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            bsdf.inputs['Emission Strength'].default_value = 3.0
+
+# Add a few more stars
+for i in range(50):
+    x = random.uniform(-80, 80)
+    y = random.uniform(-80, -20)
+    z = random.uniform(40, 70)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(x, y, z))
+    star = bpy.context.active_object
+    star.name = f"Star2_{i}"
+    mat_star = bpy.data.materials.new(f"Star2_{i}_mat")
+    mat_star.use_nodes = True
+    bsdf = mat_star.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Strength'].default_value = 4.0
+    star.data.materials.append(mat_star)
+
+print("Scene refined with more details!")

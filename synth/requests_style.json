@@ -1,0 +1,32 @@
+[
+ {
+  "id": "temple_ruin",
+  "category": "scene",
+  "request": "Build a ruined hilltop temple with broken columns, wide steps and an altar."
+ },
+ {
+  "id": "wizard_tower",
+  "category": "scene",
+  "request": "Create a wizard's tower on a rocky outcrop, with a winding outside stair and a small garden at its foot."
+ },
+ {
+  "id": "clock_tower",
+  "category": "scene",
+  "request": "Build a clock tower in a small town square with a fountain and two benches."
+ },
+ {
+  "id": "step_pyramid",
+  "category": "scene",
+  "request": "Make a step pyramid in a jungle clearing with torches along the stairway."
+ },
+ {
+  "id": "desert_island",
+  "category": "scene",
+  "request": "Make a tiny desert island with a palm tree, a treasure chest, a rowing boat pulled up on the sand and a signpost."
+ },
+ {
+  "id": "scifi_corridor",
+  "category": "scene",
+  "request": "Make a section of science-fiction corridor: floor panels, wall ribs, a sliding door, pipes along the ceiling and two glowing light strips."
+ }
+]

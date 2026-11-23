@@ -1,0 +1,86 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1175)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def frost(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("f"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+snow, snow2, coal, felt, carrot, wood, pine, ice, rock, scarf, ember = (frost(c) for c in (
+    (.55, .62, .72), (.42, .5, .6), (.02, .02, .025), (.015, .015, .02), (.9, .32, .03), (.2, .12, .07), (.05, .16, .12), (.3, .75, .9), (.2, .2, .24), (.7, .08, .1), (.1, .06, .04)))
+warm, lamp = frost((1, .6, .2), 9), frost((1, .5, .15), 14)
+def piece(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def drum(r1, r2, h, n, m, at, jit=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co += Vector((random.uniform(-jit, jit), random.uniform(-jit, jit), random.uniform(-jit, jit) * .5)); v.co.z += h / 2
+    return piece(bm, m, at)
+def lump(r, m, at, sq=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) * random.uniform(.95, 1.05)
+    return piece(bm, m, at)
+def stick(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return piece(bm, m)
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# snowy hill with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=13, depth=3.6)
+for v in bm.verts:
+    v.co.z -= 1.8
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.6, .2)))
+    else: v.co.z += random.uniform(-.1, .15)
+piece(bm, snow)
+for i in range(12): lump(random.uniform(.8, 1.8), snow2, (random.uniform(-11, 11), random.uniform(-9, 9), 0), (1.4, 1, .3))
+# the snowman: three tiers, carrot nose, coal face, top hat, scarf, broomstick arms
+lump(3.2, snow, (0, 0, 3.0), (1, 1, .95)); lump(2.4, snow, (0, 0, 6.6), (1, 1, .9)); lump(1.5, snow, (0, 0, 9.4), (1, 1, .95))
+stick((0, -3.3, 9.4), (0, -5.2, 9.2), .3, carrot)
+for sx in (-1, 1):
+    lump(.16, coal, (sx * .5, -1.2, 9.9)); lump(.16, coal, (sx * .5, -1.2, 8.9)); stick((sx * .3, -1.2, 9.3), (sx * .8, -1.2, 9.0), .07, coal)
+    stick((sx * 1.4, 0, 6.8), (sx * 4.6, 0, 8.4), .14, wood); stick((sx * 3.2, 0, 7.4), (sx * 3.2, 0, 6.0), .1, wood)
+    for k in range(5): stick((sx * 4.6, 0, 8.4), (sx * 4.6 + random.uniform(-.3, .3), 0, 7.2 - k * .12), .05, wood)
+    for k in range(5): stick((sx * 4.6, 0, 8.4), (sx * 4.6 + random.uniform(-.3, .3), 0, 7.2 - k * .12), .05, wood)
+drum(1.4, 1.35, .5, 8, felt, (0, 0, 10.6)); drum(2.0, 2.0, .12, 8, felt, (0, 0, 11.05)); drum(1.45, 1.45, .25, 8, scarf, (0, 0, 10.9))
+drum(1.55, 1.55, .5, 8, scarf, (0, 0, 8.55)); lump(.35, scarf, (0, -1.2, 8.0), (1, 1, 1.6))
+for k in range(6): lump(.14, coal, (math.cos(k * 1.05) * 2.9, math.sin(k * 1.05) * 2.9, 4.5 + k * .2), (1, 1, 1))
+glow((0, -5, 9.2), (1, .5, .2), 60)
+# log cabin with a lit window and a chimney, plus a lantern post
+drum(2.2, 2.2, 3.2, 6, wood, (-7, 6, 0), .08)
+for s in (-1, 1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * 5.6, v.co.y * 3.2, (v.co.z + .5) * 1.8))
+    piece(bm, felt, (-7, 6 + s * 1.5, 3.2), (s * -.65, 0, 0))
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts: v.co = Vector((v.co.x * 5.4, v.co.y * 6.2, (v.co.z + .5) * .2))
+piece(bm, snow, (-7, 6, 4.5))
+drum(.4, .4, 2.2, 5, rock, (-5, 7.5, 3.5)); drum(.55, .55, .25, 5, rock, (-5, 7.5, 5.7))
+drum(1.0, 1.0, .1, 6, warm, (-4.95, 3.9, 1.5), 0).rotation_euler = (0, 0, 0)
+stick((-4.9, 3.8, 1.0), (-4.9, 3.8, 2.0), .1, warm)
+glow((-4.2, 3.2, 1.6), (1, .55, .2), 500)
+stick((5.5, -4.5, 0), (5.5, -4.5, 4.2), .16, wood); drum(.35, .35, .7, 6, lamp, (5.5, -4.5, 4.2)); glow((5.5, -4.5, 4.6), (1, .6, .2), 300)
+# pines dusted with snow and a few rocks
+for x, y, h in ((-10, -3, 6), (-6, 10, 5), (9, 7, 6.5), (11, -1, 5), (3, 11, 5.5), (-11, 4, 4.5)):
+    drum(.3, .25, 1.2, 5, wood, (x, y, 0))
+    for k in range(3): drum(1.9 - k * .5, .2, 1.8, 6, pine, (x, y, 1 + k * 1.4), .1); drum(1.5 - k * .45, .1, .5, 6, snow, (x, y, 1.9 + k * 1.4), .08)
+for x, y in ((-2, -8), (8, -7), (-9, -7), (10, 3)): lump(random.uniform(.5, .9), rock, (x, y, .1), (1.2, 1, .7))
+# cold blue dusk: pale moon key from the left, violet rim from behind
+for c, w, at in (((.55, .7, 1), 4.5, (-24, -14, 12)), ((.6, .4, .9), 2, (18, 22, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 4)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("dusk"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .02, .045, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80; cm.clip_end = 500
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+tg = Vector((0, 0, 5)); co.location = tg + Vector((10, -54, 34))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

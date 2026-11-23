@@ -1,0 +1,105 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is still not showing the bathhouse. Let's check if objects are actually visible
+# and try a completely different approach - use a very bright setup and make sure camera is correct.
+
+# First, let's verify the bathhouse exists and get its bounds
+bathhouse = bpy.data.objects.get("BathhouseMain")
+bridge = bpy.data.objects.get("BridgeDeck")
+camera = bpy.data.objects.get("MainCamera")
+
+print(f"Bathhouse exists: {bathhouse is not None}")
+print(f"Bridge exists: {bridge is not None}")
+print(f"Camera exists: {camera is not None}")
+
+if bathhouse:
+    print(f"Bathhouse location: {bathhouse.location}")
+    print(f"Bathhouse scale: {bathhouse.scale}")
+    print(f"Bathhouse hide_render: {bathhouse.hide_render}")
+    print(f"Bathhouse hide_viewport: {bathhouse.hide_viewport}")
+    # Get world bounds
+    bound_box = bathhouse.bound_box
+    world_coords = [bathhouse.matrix_world @ Vector(co) for co in bound_box]
+    min_x = min(co.x for co in world_coords)
+    max_x = max(co.x for co in world_coords)
+    min_y = min(co.y for co in world_coords)
+    max_y = max(co.y for co in world_coords)
+    min_z = min(co.z for co in world_coords)
+    max_z = max(co.z for co in world_coords)
+    print(f"Bathhouse bounds: X[{min_x:.1f}, {max_x:.1f}] Y[{min_y:.1f}, {max_y:.1f}] Z[{min_z:.1f}, {max_z:.1f}]")
+
+if bridge:
+    print(f"Bridge location: {bridge.location}")
+    print(f"Bridge scale: {bridge.scale}")
+
+if camera:
+    print(f"Camera location: {camera.location}")
+    print(f"Camera rotation: {camera.rotation_euler}")
+    print(f"Camera lens: {camera.data.lens}")
+
+# Let's try a completely fresh approach - set up a simple test scene
+# to verify the camera is working, then add the bathhouse back
+
+# Set up a bright test scene
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    bg_node = world.node_tree.nodes.get("Background")
+    if bg_node:
+        bg_node.inputs[0].default_value = (0.1, 0.15, 0.25, 1.0)
+        bg_node.inputs[1].default_value = 1.0
+
+# Add a very bright sun
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 100))
+test_sun = bpy.context.active_object
+test_sun.name = "TestSun"
+test_sun.data.energy = 10
+test_sun.data.color = (1.0, 1.0, 1.0)
+test_sun.rotation_euler = (math.radians(45), 0, 0)
+
+# Position camera to look at the bathhouse
+if camera and bathhouse:
+    # Camera at y=100, looking at bathhouse at y=5
+    camera.location = (0, 100, 15)
+    target = Vector((0, 5, 10))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 50
+
+# Make all bathhouse-related objects very bright
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        for mat in obj.data.materials:
+            if mat and mat.use_nodes:
+                bsdf = mat.node_tree.nodes.get("Principled BSDF")
+                if bsdf:
+                    # Set all materials to a visible color
+                    if "Bathhouse" in obj.name or "Bridge" in obj.name or "Torii" in obj.name or "Roof" in obj.name:
+                        bsdf.inputs["Base Color"].default_value = (0.6, 0.3, 0.1, 1.0)
+                        bsdf.inputs["Roughness"].default_value = 0.5
+                    elif "Window" in obj.name or "Lantern" in obj.name or "Glow" in obj.name:
+                        bsdf.inputs["Emission Color"].default_value = (1.0, 0.6, 0.2, 1.0)
+                        bsdf.inputs["Emission Strength"].default_value = 50.0
+                    elif "Water" in obj.name:
+                        bsdf.inputs["Base Color"].default_value = (0.1, 0.15, 0.3, 1.0)
+                        bsdf.inputs["Roughness"].default_value = 0.1
+                        bsdf.inputs["Metallic"].default_value = 0.5
+
+# Add a test cube to verify camera is working
+bpy.ops.mesh.primitive_cube_add(size=5, location=(0, 5, 5))
+test_cube = bpy.context.active_object
+test_cube.name = "TestCube"
+mat_test = bpy.data.materials.new("TestCubeMat")
+mat_test.use_nodes = True
+bsdf = mat_test.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (1.0, 0.0, 0.0, 1.0)
+test_cube.data.materials.append(mat_test)
+
+# Set view to standard
+scene = bpy.context.scene
+scene.view_settings.view_transform = 'Standard'
+scene.view_settings.look = 'None'
+scene.view_settings.exposure = 0.0

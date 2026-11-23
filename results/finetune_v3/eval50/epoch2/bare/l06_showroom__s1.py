@@ -1,0 +1,106 @@
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(1360)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+S = bpy.context.scene
+def paint(c, em=0, r=.6, mt=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r; n.inputs["Metallic"].default_value = mt
+    if em: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+def mk(bm, m, loc=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = loc; o.rotation_euler = rot
+    S.collection.objects.link(o); o.data.materials.append(m); return o
+def bx(loc, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = V((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, loc, rot)
+def rod(a, b, t, m):
+    a, b = V(a), V(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ V((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def wheel(loc, r, m):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=r, radius2=r, depth=.5)
+    return mk(bm, m, loc, (math.pi / 2, 0, 0))
+def glow(c, w, loc, aim=None):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = loc; S.collection.objects.link(o)
+    if aim: o.rotation_euler = (V(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+floor, wall, steel, dark = paint((.04, .04, .05), r=.08), paint((.07, .07, .09)), paint((.18, .18, .22), mt=.5, r=.4), paint((.01, .01, .015))
+red, red2, glass, tyre = paint((.7, .03, .04), r=.25, mt=.3), paint((.4, .02, .03), r=.3, mt=.3), paint((.02, .03, .05), r=.05), paint((.02, .02, .02))
+lamp, head, cyan, amber = paint((.9, .95, 1), 5), paint((.9, .95, 1), 25), paint((.1, .8, 1), 12), paint((1, .3, .05), 20)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co.x *= .7; v.co.y *= .7; v.co.z -= 1.5 + random.uniform(0, .5)
+    else: v.co.z = 0
+mk(bm, floor, (0, 0, 0))
+bx((0, 0, 0), (13, 7, .06), paint((.05, .06, .08), r=.12))
+for i in range(7): bx((-6 + i * 2, 0, .06), (.12, 6.4, .01), paint((.1, .12, .16)))
+bx((0, 4.6, 0), (13.4, .3, 6), wall); bx((-6.6, 0, 0), (.3, 9.6, 6), wall)
+bx((0, 4.4, 5.6), (13.6, .5, .3), steel); bx((-6.4, 0, 5.6), (.5, 9.8, .3), steel)
+bx((0, 4.35, 1.5), (12, .05, 2.2), cyan); bx((0, 4.35, 3.9), (12, .05, .12), cyan)
+for x in (-5.5, -1.8, 1.8, 5.5): bx((x, 4.3, 3.9), (.5, .05, 1.5), paint((.9, .95, 1), 3))
+# the car: a low wedge body, a cabin, a spoiler, wheels, lights
+def part(pts, m, y=0):
+    bm = bmesh.new(); vs = [bm.verts.new((x, y + w, z)) for x, w, z in pts]
+    for f in ((0, 1, 4, 3), (2, 5, 8, 7), (3, 4, 7, 8), (0, 3, 7, 6), (1, 2, 5, 4), (0, 1, 2, 5, 6, 7)):
+        try: bm.faces.new([vs[i] for i in f])
+        except ValueError: pass
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces); return mk(bm, m)
+part([(0, 1.4, .55), (.6, 1.25, .55), (.6, 1.25, 1.0), (0, 1.4, 1.0)], red2, -2.9)
+part([(0, 1.9, .6), (.6, 1.75, .6), (.6, 1.75, 1.1), (0, 1.9, 1.1)], red2, -2.4)
+part([(0, 1.7, .6), (.6, 1.55, .6), (.6, 1.55, 1.25), (0, 1.7, 1.25)], red2, -1.8)
+part([(0, 1.4, .6), (.6, 1.2, .6), (.6, 1.2, 1.1), (0, 1.4, 1.1)], red2, 2.9)
+part([(0, 1.0, .6), (.6, .8, .6), (.6, .8, 1.0), (0, 1.0, 1.0)], red2, 2.4)
+part([(0, 1.2, .55), (.6, 1.0, .55), (.6, 1.0, .95), (0, 1.2, .95)], red2, 1.8)
+part([(0, 1.0, .55), (.6, .8, .55), (.6, .8, .95), (0, 1.0, .95)], red2, 1.2)
+part([(0, .9, .55), (.6, .7, .55), (.6, .7, .85), (0, .9, .85)], red2, .6)
+part([(0, .7, .55), (.6, .5, .55), (.6, .5, .7), (0, .7, .7)], red2, 0)
+part([(0, .6, .55), (.6, .45, .55), (.6, .45, .6), (0, .6, .6)], red2, -.6)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .55), (0, .5, .55)], red2, -1.2)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red2, -1.8)
+for s in (-1, 1):
+    part([(s * .4, .9, .9), (s * .7, .9, .9), (s * .7, .9, 1.5), (s * .4, .9, 1.5)], red, -1.2); part([(s * .4, .8, .9), (s * .7, .8, .9), (s * .7, .8, 1.4), (s * .4, .8, 1.4)], red, 1.8)
+    part([(s * .3, .8, .9), (s * .6, .8, .9), (s * .6, .8, 1.35), (s * .3, .8, 1.35)], red, 1.2)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, -2.4)
+part([(0, 1.5, .55), (.6, 1.35, .55), (.6, 1.35, .95), (0, 1.5, .95)], red, -2.4)
+part([(0, 1.6, .55), (.6, 1.45, .55), (.6, 1.45, .95), (0, 1.6, .95)], red, -1.8)
+part([(0, 1.6, .55), (.6, 1.45, .55), (.6, 1.45, .95), (0, 1.6, .95)], red, -1.2)
+part([(0, 1.6, .55), (.6, 1.45, .55), (.6, 1.45, .95), (0, 1.6, .95)], red, -.6)
+part([(0, 1.6, .55), (.6, 1.45, .55), (.6, 1.45, .95), (0, 1.6, .95)], red, 0)
+part([(0, 1.6, .55), (.6, 1.45, .55), (.6, 1.45, .95), (0, 1.6, .95)], red, .6)
+part([(0, 1.5, .55), (.6, 1.35, .55), (.6, 1.35, .95), (0, 1.5, .95)], red, 1.2)
+part([(0, 1.3, .55), (.6, 1.15, .55), (.6, 1.15, .95), (0, 1.3, .95)], red, 1.8)
+part([(0, 1.0, .55), (.6, .8, .55), (.6, .8, .95), (0, 1.0, .95)], red, 2.4)
+part([(0, .9, .55), (.6, .7, .55), (.6, .7, .9), (0, .9, .9)], red, 2.9)
+part([(0, .9, .55), (.6, .7, .55), (.6, .7, .8), (0, .9, .8)], red, 3.4)
+part([(0, .6, .55), (.6, .45, .55), (.6, .45, .65), (0, .6, .65)], red, 3.9)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 4.4)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 4.9)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 5.4)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 5.9)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 6.4)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 6.9)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 7.4)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 7.9)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 8.4)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 8.9)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 9.4)
+part([(0, .5, .55), (.6, .3, .55), (.6, .3, .6), (0, .5, .6)], red, 9.9)
+# cabin glass, spoiler, wheels, lamps
+part([(0, 1.0, 1.1), (.6, .9, 1.1), (.6, .9, 1.55), (0, 1.0, 1.55)], glass, -.6)
+part([(0, 1.0, 1.1), (.6, .9, 1.1), (.6, .9, 1.55), (0, 1.0, 1.55)], glass, .6)
+part([(0, 1.0, 1.1), (.6, .9, 1.1), (.6, .9, 1.55), (0, 1.0, 1.55)], glass, 1.8)
+bx((0, 3.7, 1.2), (1.9, .1, .08), red2); bx((0, 3.7, 1.3), (1.7, .5, .06), red2)
+for x in (-.9, .9):
+    for y in (-1.6, 1.6):
+        wheel((x * 1.0, y, .45), .45, tyre); wheel((x * 1.0, y, .45), .22, steel)
+for s in (-1, 1):
+    bx((s * .5, -3.0, .65), (.5, .1, .18), head); bx((s * .5, 3.0, .75), (.5, .1, .12), amber)
+glow((.9, .95, 1), 300, (0, -3.6, .9)); glow((1, .3, .05), 150, (0, 3.6, .8))
+# overhead bars with long soft lights, and the showroom key
+for i, x in enumerate((-3.6, 0, 3.6)):
+    rod((x, -3.5, 

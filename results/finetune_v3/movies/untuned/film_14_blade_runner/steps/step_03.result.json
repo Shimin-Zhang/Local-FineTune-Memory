@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 6.7,
+ "error": "ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 4",
+ "error_line": "light.data.color = mat.node_tree.nodes.get(\"Principled BSDF\").inputs['Emission Color'].default_value",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 169,
+ "n_lights": 2,
+ "n_materials": 26,
+ "own_camera": false,
+ "render_error": null
+}

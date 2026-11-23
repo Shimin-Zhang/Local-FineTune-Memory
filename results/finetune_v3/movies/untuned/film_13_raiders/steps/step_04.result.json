@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 23.2,
+ "error": "NameError: name 'passage_width' is not defined",
+ "error_line": "bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=passage_width, location=(0, rope_y, 0.8))",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1213,
+ "n_lights": 4,
+ "n_materials": 13,
+ "own_camera": true,
+ "render_error": null
+}

@@ -1,0 +1,100 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1305)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+paints = {}
+def pigment(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if glow:
+        n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    paints[name] = m
+def part(bm, mat, loc=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = loc; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(paints[mat]); return o
+def beam(mat, a, b, t=.3, t2=None):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * (t2 or t), (v.co.z + .5) * d.length)) + a
+    return part(bm, mat)
+def block(mat, loc, sx, sy, sz, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * sx * k, v.co.y * sy * k, (v.co.z + .5) * sz))
+    return part(bm, mat, loc, (0, 0, rz))
+def log_(mat, loc, r, h, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return part(bm, mat, loc, rot)
+def glowlamp(col, w, loc):
+    L = bpy.data.lights.new("l", "POINT"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = loc; sc.collection.objects.link(o)
+for n, c in (("moss", (.1, .14, .07)), ("soil", (.14, .1, .06)), ("sleeper", (.22, .14, .08)), ("rail", (.3, .28, .26)), ("logbark", (.3, .17, .08)), ("logend", (.6, .4, .2)),
+             ("pine", (.05, .15, .09)), ("pine2", (.07, .2, .1)), ("steel", (.12, .13, .15)), ("red", (.5, .08, .06)), ("black", (.04, .04, .05)), ("plank", (.35, .22, .12)), ("roof", (.2, .1, .08))):
+    pigment(n, c)
+pigment("fire", (1, .5, .12), 16); pigment("lamp", (1, .85, .5), 20)
+# forest floor on a rough floating base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=15, depth=3.2)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.6
+part(bm, "moss")
+# temporary track: sleepers, two rails, a siding spur
+for i in range(28):
+    block("sleeper", (-12 + i * .9, -2, 0), .35, 2.2, .15)
+for y in (-2.7, -1.3): beam("rail", (-12.5, y, .15), (12.5, y, .15), .14, .14)
+for i in range(6):
+    block("sleeper", (-4 + i * .9, 2.5, 0), .35, 2.2, .15)
+for y in (1.9, 3.1): beam("rail", (-4.5, y, .15), (7.5, y, .15), .14, .14)
+# steam engine on the main track: boiler, cab, chimney, wheels, glowing firebox
+ex = -6
+log_("red", (ex, -2, 1.3), 1.0, 4.0, 8, rot=(0, math.pi / 2, 0)).location.x = ex + 2
+block("red", (ex - 1.6, -2, .5), 1.6, 1.9, 2.0, top=.9); block("black", (ex - 1.6, -2, 2.5), 1.8, 2.1, .25)
+log_("black", (ex + 1.6, -2, 2.0), .5, 1.4, 7, .7); log_("black", (ex - .2, -2, 2.2), .3, .9, 6, .2)
+block("fire", (ex + 2.6, -2, 1.0), .1, 1.2, .7)
+for wx in (-1.8, .2, 1.6):
+    for y in (-3.2, -.8): log_("black", (ex + wx, y, .7), .7, .25, 8, rot=(math.pi / 2, 0, 0))
+block("steel", (ex + 2.6, -2, .3), 1.0, 1.8, .4); glowlamp((1, .5, .15), 350, (ex + 3.2, -2, 1.2))
+# flat wagons loaded with stacked logs
+for k, wx in enumerate((0, 3.6, 7.2)):
+    block("plank", (wx, -2, .45), 3.0, 1.9, .25)
+    for y in (-3.0, -1.0): log_("black", (wx, y, .3), .3, .2, 7, rot=(math.pi / 2, 0, 0))
+    for row, cnt in enumerate((4, 3, 2)):
+        for j in range(cnt):
+            log_("logbark", (wx - 1.3 + j * .65 + row * .32, -2.5 + row * .45, .7 + row * .55), .28, 3.0, 6, rot=(0, math.pi / 2, 0))
+# loader crane: A-frame, boom, hook and a log
+cx, cy = 9.5, -7.5
+for s in (-1, 1): beam("red", (cx + s * 1.2, cy, 0), (cx, cy, 6.5), .35)
+beam("red", (cx, cy, 6.5), (cx - 5.5, cy, 5.0), .3); beam("steel", (cx - 5.5, cy, 5.0), (cx - 5.5, cy, 3.0), .1)
+log_("logbark", (cx - 5.5, cy, 2.4), .35, 3.0, 6, rot=(0, math.pi / 2, 0))
+block("steel", (cx, cy, 0), 2.6, 1.4, .5)
+# camp hut with a chimney, glowing window and a campfire
+block("plank", (-9, 7, 0), 5, 3.6, 2.4); block("roof", (-9, 7, 2.4), 5.8, 4.4, .3, top=.7)
+block("roof", (-9, 7, 2.65), 5.4, 4.0, .3, top=.6); block("black", (-7.2, 7, 2.8), .6, .6, 1.8)
+block("fire", (-9, 5.15, 1.0), 1.2, .1, .9); block("black", (-11.2, 5.15, 0), .9, .1, 1.8); glowlamp((1, .55, .2), 500, (-9, 4.2, 1.4))
+for k in range(6):
+    a = k * math.pi / 3; log_("black", (-4 + math.cos(a) * .8, 4 + math.sin(a) * .8, 0), .2, .5, 5)
+log_("fire", (-4, 4, 0), .5, .8, 5, .05); glowlamp((1, .5, .15), 400, (-4, 4, 1.2))
+# pines
+for i in range(30):
+    x, y = random.uniform(-13, 13), random.uniform(-12, 12)
+    if abs(y + 2) < 3 or abs(y - 2.5) < 1.8 or (abs(x + 9) < 4 and abs(y - 7) < 3) or (abs(x + 4) < 2 and abs(y - 4) < 2) or (abs(x - 9.5) < 4 and abs(y + 7.5) < 3): continue
+    h = random.uniform(4, 7); log_("logbark", (x, y, 0), .25, h * .3, 5)
+    for k in range(3): log_("pine" if k % 2 else "pine2", (x, y, h * .25 + k * h * .22), 1.7 - k * .45, h * .38, 7, .05)
+for col, w, p in (((.55, .75, .9), 4.5, (-26, -14, 9)), ((.9, .55, .3), 2.2, (22, 22, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("mist"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .025, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3)); co.location = t + Vector((14, -58, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

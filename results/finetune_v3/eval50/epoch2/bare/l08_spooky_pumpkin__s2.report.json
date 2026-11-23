@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: Value after * must be an iterable, not float",
+ "error_line": "b.inputs[\"Base Color\"].default_value = (*rgb, 1); b.inputs[\"Roughness\"].default_value = rough",
+ "n_renderable_objects": 0,
+ "object_types": {},
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.7321,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.8,
+ "image": true
+}

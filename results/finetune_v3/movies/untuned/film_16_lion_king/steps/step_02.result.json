@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.7,
+ "error": "AttributeError: 'ShaderNodeTexSky' object has no attribute 'dust_density'",
+ "error_line": "sky_node.dust_density = 4.0",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 0,
+ "n_lights": 1,
+ "n_materials": 0,
+ "own_camera": true,
+ "render_error": null
+}

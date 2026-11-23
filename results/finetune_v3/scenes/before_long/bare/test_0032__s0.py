@@ -1,0 +1,213 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Materials
+def make_mat(name, color, metallic=0.0, rough=0.5, emission=None):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Metallic"].default_value = metallic
+    bsdf.inputs["Roughness"].default_value = rough
+    if emission:
+        bsdf.inputs["Emission Color"].default_value = emission[0]
+        bsdf.inputs["Emission Strength"].default_value = emission[1]
+    return mat
+
+white_stone = make_mat("WhiteStone", (0.92, 0.90, 0.85, 1), rough=0.8)
+gold = make_mat("Gold", (1.0, 0.85, 0.2, 1), metallic=1.0, rough=0.3)
+gold_emiss = make_mat("GoldEmis", (1.0, 0.9, 0.3, 1), metallic=1.0, rough=0.2, emission=((1.0, 0.9, 0.3, 1), 2.0))
+mud = make_mat("Mud", (0.25, 0.18, 0.10, 1), rough=0.95)
+banner_red = make_mat("BannerRed", (0.8, 0.1, 0.1, 1), rough=0.7)
+banner_blue = make_mat("BannerBlue", (0.1, 0.2, 0.8, 1), rough=0.7)
+water = make_mat("Water", (0.4, 0.6, 0.9, 1), rough=0.1, metallic=0.1)
+shield_mat = make_mat("ShieldSteel", (0.7, 0.7, 0.75, 1), metallic=0.9, rough=0.3)
+wood = make_mat("Wood", (0.35, 0.2, 0.1, 1), rough=0.8)
+
+# Ground (muddy field)
+bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.data.materials.append(mud)
+ground.name = "MuddyField"
+
+# Helper: box
+def box(loc, size, mat, name="box"):
+    bpy.ops.mesh.primitive_cube_add(location=loc, size=1)
+    o = bpy.context.active_object
+    o.scale = (size[0], size[1], size[2])
+    o.data.materials.append(mat)
+    o.name = name
+    return o
+
+# Helper: cylinder
+def cyl(loc, r, depth, mat, name="cyl", verts=32):
+    bpy.ops.mesh.primitive_cylinder_add(location=loc, radius=r, depth=depth, vertices=verts)
+    o = bpy.context.active_object
+    o.data.materials.append(mat)
+    o.name = name
+    return o
+
+# Chapel body
+body = box((0, 0, 3), (10, 14, 6), white_stone, "ChapelBody")
+
+# Chapel roof (pyramid-ish via cone)
+bpy.ops.mesh.primitive_cone_add(location=(0, 0, 6), radius1=9, radius2=0, depth=4, vertices=4)
+roof = bpy.context.active_object
+roof.rotation_euler = (0, 0, math.radians(45))
+roof.scale = (1, 1.2, 1)
+roof.data.materials.append(white_stone)
+roof.name = "ChapelRoof"
+
+# Front gable / entrance
+door_frame = box((0, -7, 2), (2.5, 0.4, 4), white_stone, "DoorFrame")
+door = box((0, -7.1, 1.5), (2, 0.2, 3), wood, "Door")
+
+# Columns on front
+for x in [-3, 3]:
+    cyl((x, -7.2, 3), 0.4, 6, white_stone, "Column")
+
+# Sunburst window on front face
+# Outer ring
+bpy.ops.mesh.primitive_torus_add(location=(0, -7.1, 5), major_radius=1.5, minor_radius=0.15, major_segments=32, minor_segments=8)
+ring = bpy.context.active_object
+ring.rotation_euler = (math.radians(90), 0, 0)
+ring.data.materials.append(gold)
+ring.name = "SunburstRing"
+
+# Sun rays
+for i in range(16):
+    angle = i * (2 * math.pi / 16)
+    ray_len = 1.8 if i % 2 == 0 else 1.2
+    ray = box((0, -7.1, 5), (0.12, 0.12, ray_len), gold_emiss, f"Ray{i}")
+    ray.rotation_euler = (0, 0, angle)
+    # Position ray at center of window
+    ray.location = (0, -7.1, 5)
+    # Offset along local z
+    ray.location.x += math.sin(angle) * 0.9
+    ray.location.z += math.cos(angle) * 0.9
+
+# Central sun disc
+bpy.ops.mesh.primitive_cylinder_add(location=(0, -7.1, 5), radius=0.6, depth=0.1, vertices=32)
+sun_disc = bpy.context.active_object
+sun_disc.rotation_euler = (math.radians(90), 0, 0)
+sun_disc.data.materials.append(gold_emiss)
+sun_disc.name = "SunDisc"
+
+# Shield rack: a wall of shields on the right side
+rack_x = 6.5
+for row in range(3):
+    for col in range(4):
+        sx = rack_x + col * 1.5
+        sy = -2 + row * 1.5
+        sz = 2 + row * 0.5
+        # Shield: flattened cylinder
+        bpy.ops.mesh.primitive_cylinder_add(location=(sx, sy, sz), radius=0.5, depth=0.08, vertices=24)
+        sh = bpy.context.active_object
+        sh.rotation_euler = (0, math.radians(90), 0)
+        sh.scale = (1, 1, 0.8)
+        sh.data.materials.append(shield_mat)
+        sh.name = f"Shield_{row}_{col}"
+        # Shield boss
+        bpy.ops.mesh.primitive_uv_sphere_add(location=(sx, sy, sz), radius=0.15, segments=12, ring_count=8)
+        boss = bpy.context.active_object
+        boss.data.materials.append(gold)
+        boss.name = f"Boss_{row}_{col}"
+
+# Rack frame
+box((rack_x + 2.25, -2, 1), (6, 0.3, 0.3), wood, "RackTop")
+box((rack_x + 2.25, -2, 0.2), (6, 0.3, 0.3), wood, "RackBottom")
+box((rack_x, -2, 1.5), (0.3, 0.3, 3), wood, "RackLeft")
+box((rack_x + 4.5, -2, 1.5), (0.3, 0.3, 3), wood, "RackRight")
+
+# Healing well in front-left
+well_x, well_y = -8, -10
+# Well base
+bpy.ops.mesh.primitive_cylinder_add(location=(well_x, well_y, 0.5), radius=2, depth=1, vertices=24)
+well_base = bpy.context.active_object
+well_base.data.materials.append(white_stone)
+well_base.name = "WellBase"
+
+# Well water
+bpy.ops.mesh.primitive_cylinder_add(location=(well_x, well_y, 0.9), radius=1.8, depth=0.1, vertices=24)
+well_water = bpy.context.active_object
+well_water.data.materials.append(water)
+well_water.name = "WellWater"
+
+# Well posts
+for dx in [-1.5, 1.5]:
+    cyl((well_x + dx, well_y, 2), 0.2, 3, wood, "WellPost")
+
+# Well roof
+bpy.ops.mesh.primitive_cone_add(location=(well_x, well_y, 3.5), radius1=2.2, radius2=0, depth=1.5, vertices=4)
+well_roof = bpy.context.active_object
+well_roof.rotation_euler = (0, 0, math.radians(45))
+well_roof.data.materials.append(white_stone)
+well_roof.name = "WellRoof"
+
+# Banners flying over the field
+banner_positions = [
+    (-15, -15, banner_red),
+    (15, -15, banner_blue),
+    (-15, 15, banner_blue),
+    (15, 15, banner_red),
+    (0, -20, banner_red),
+]
+
+for i, (bx, by, bmat) in enumerate(banner_positions):
+    # Pole
+    cyl((bx, by, 4), 0.15, 8, wood, f"BannerPole{i}")
+    # Banner: plane
+    bpy.ops.mesh.primitive_plane_add(location=(bx, by, 6), size=1)
+    banner = bpy.context.active_object
+    banner.scale = (1.5, 2.5, 1)
+    banner.rotation_euler = (0, math.radians(90), 0)
+    banner.data.materials.append(bmat)
+    banner.name = f"Banner{i}"
+    # Add slight wave via subdivision and displacement-like vertex offsets
+    mod = banner.modifiers.new("Subdiv", 'SUBSURF')
+    mod.levels = 3
+    mod.render_levels = 3
+    # Simulate wave with simple deform
+    wave = banner.modifiers.new("Wave", 'SIMPLE_DEFORM')
+    wave.deform_method = 'WAVE'
+    wave.angle = math.radians(15)
+    wave.deform_axis = 'Z'
+
+# Lighting
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(20, -20, 30))
+sun_light = bpy.context.active_object
+sun_light.data.energy = 3
+sun_light.rotation_euler = (math.radians(45), math.radians(20), 0)
+sun_light.name = "SunLight"
+
+# Ambient
+bpy.ops.object.light_add(type='AREA', location=(0, 0, 20))
+amb = bpy.context.active_object
+amb.data.energy = 50
+amb.data.size = 30
+amb.name = "Ambient"
+
+# Camera
+bpy.ops.object.camera_add(location=(0, -25, 5))
+cam = bpy.context.active_object
+cam.rotation_euler = (math.radians(80), 0, 0)
+cam.data.lens = 35
+bpy.context.scene.camera = cam
+
+# World background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.7, 0.8, 0.95, 1)
+bg.inputs["Strength"].default_value = 1.0

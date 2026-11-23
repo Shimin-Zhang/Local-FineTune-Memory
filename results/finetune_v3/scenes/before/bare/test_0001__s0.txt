@@ -1,0 +1,229 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.data.meshes.clear()
+bpy.data.materials.clear()
+bpy.data.cameras.clear()
+bpy.data.lights.clear()
+
+# --- Materials ---
+def create_material(name, base_color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (*base_color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+mat_wood = create_material("OldWood", (0.15, 0.10, 0.06), 0.9)
+mat_rust = create_material("Rust", (0.4, 0.15, 0.05), 0.7, 0.6)
+mat_rock = create_material("Rock", (0.3, 0.28, 0.25), 0.95)
+mat_dirt = create_material("Dirt", (0.2, 0.15, 0.1), 1.0)
+mat_sign = create_material("SignWood", (0.25, 0.18, 0.1), 0.85)
+mat_paper = create_material("OldPaper", (0.7, 0.65, 0.5), 0.9)
+
+# --- Helper Functions ---
+def add_box(name, size, location, material, rotation=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(material)
+    return obj
+
+def add_cylinder(name, radius, depth, location, material, rotation=(0,0,0), vertices=16):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, rotation=rotation, vertices=vertices)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(material)
+    return obj
+
+def add_sphere(name, radius, location, material, segments=16, rings=8):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=segments, rings=rings)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(material)
+    return obj
+
+def add_rock_cluster(center, count=5, scale_range=(0.5, 2.0)):
+    for i in range(count):
+        offset = Vector((random.uniform(-2, 2), random.uniform(-2, 2), random.uniform(0, 0.5)))
+        loc = center + offset
+        size = random.uniform(*scale_range)
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=size * 0.5, location=loc)
+        obj = bpy.context.active_object
+        obj.name = f"Rock_{i}"
+        obj.scale = (random.uniform(0.8, 1.2), random.uniform(0.8, 1.2), random.uniform(0.5, 0.8))
+        obj.rotation_euler = Euler((random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi)))
+        obj.data.materials.append(mat_rock)
+
+# --- Ground / Hillside ---
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(mat_dirt)
+
+# Create hillside by displacing vertices
+import bmesh
+bm = bmesh.new()
+bm.from_mesh(ground.data)
+for v in bm.verts:
+    # Gentle hill slope
+    slope = 0.05 * v.co.x + 0.03 * v.co.y
+    noise = random.uniform(-0.2, 0.2)
+    v.co.z += slope + noise
+bm.to_mesh(ground.data)
+bm.free()
+ground.data.update()
+
+# --- Winding Road ---
+road_points = []
+for i in range(20):
+    t = i / 19.0
+    x = -40 + t * 80
+    y = math.sin(t * math.pi * 2) * 15 + t * 10
+    road_points.append((x, y))
+
+for i, (rx, ry) in enumerate(road_points):
+    # Road segment
+    segment = add_box(f"Road_{i}", (4, 3, 0.1), (rx, ry, 0.05), mat_dirt)
+    # Slight random rotation for winding feel
+    segment.rotation_euler.z = math.atan2(
+        (road_points[min(i+1, len(road_points)-1)][1] - road_points[max(i-1, 0)][1]),
+        (road_points[min(i+1, len(road_points)-1)][0] - road_points[max(i-1, 0)][0])
+    )
+
+# --- Company Store with Fallen Sign ---
+store_center = Vector((10, 5, 0))
+# Main building
+store_body = add_box("Store_Body", (12, 8, 6), store_center + Vector((0, 0, 3)), mat_wood)
+# Roof
+roof = add_box("Store_Roof", (13, 9, 0.5), store_center + Vector((0, 0, 6.25)), mat_wood)
+roof.rotation_euler.z = 0.1
+# Broken window frames
+for wx in [-3, 0, 3]:
+    for wy in [-2, 2]:
+        window = add_box(f"Window_{wx}_{wy}", (1.5, 1.5, 0.1), store_center + Vector((wx, wy, 3)), mat_paper)
+        # Some windows broken (tilted)
+        if random.random() > 0.5:
+            window.rotation_euler.x = random.uniform(-0.3, 0.3)
+# Door
+door = add_box("Store_Door", (2, 0.2, 3), store_center + Vector((0, -4.1, 1.5)), mat_wood)
+# Fallen sign
+sign_post = add_cylinder("Sign_Post", 0.15, 4, store_center + Vector((6, -5, 2)), mat_wood)
+sign_post.rotation_euler.x = math.pi / 2.5  # Fallen
+sign_board = add_box("Sign_Board", (4, 0.2, 1.5), store_center + Vector((6, -5, 0.8)), mat_sign)
+sign_board.rotation_euler.x = math.pi / 2.5
+sign_board.rotation_euler.z = 0.3
+
+# --- Rusted Ore Cart ---
+cart_center = Vector((-5, -10, 0))
+# Cart body
+cart_body = add_box("Cart_Body", (4, 2.5, 1.5), cart_center + Vector((0, 0, 1.5)), mat_rust)
+# Cart wheels
+for wx in [-1.5, 1.5]:
+    for wy in [-1.2, 1.2]:
+        wheel = add_cylinder(f"Cart_Wheel_{wx}_{wy}", 0.6, 0.2, cart_center + Vector((wx, wy, 0.6)), mat_rust)
+        wheel.rotation_euler.y = math.pi / 2
+# Tilted cart
+cart_body.rotation_euler.z = 0.2
+for obj in bpy.data.objects:
+    if obj.name.startswith("Cart_Wheel"):
+        obj.rotation_euler.z = 0.2
+
+# --- Shuttered Cabins ---
+cabin_positions = [
+    Vector((-15, 15, 0)),
+    Vector((-25, 20, 0)),
+    Vector((-10, 25, 0)),
+    Vector((-30, 10, 0)),
+    Vector((-20, 30, 0)),
+]
+
+for i, pos in enumerate(cabin_positions):
+    # Cabin body
+    size = (random.uniform(5, 8), random.uniform(4, 6), random.uniform(4, 5))
+    cabin = add_box(f"Cabin_{i}", size, pos + Vector((0, 0, size[2]/2)), mat_wood)
+    # Roof
+    roof_cabin = add_box(f"Cabin_Roof_{i}", (size[0]+1, size[1]+1, 0.4), pos + Vector((0, 0, size[2]+0.2)), mat_wood)
+    roof_cabin.rotation_euler.z = random.uniform(-0.1, 0.1)
+    # Shuttered windows (dark panels)
+    for side in [-1, 1]:
+        shutter = add_box(f"Cabin_Shutter_{i}_{side}", (1.2, 0.1, 1.5), pos + Vector((side * size[0]/2, 0, size[2]*0.6)), mat_wood)
+        shutter.rotation_euler.y = side * 0.1  # Slightly ajar
+    # Door shutter
+    door_shutter = add_box(f"Cabin_Door_{i}", (1.5, 0.1, 2), pos + Vector((0, -size[1]/2, size[2]*0.5)), mat_wood)
+    # Random tilt for decay
+    cabin.rotation_euler.z = random.uniform(-0.05, 0.05)
+    if random.random() > 0.7:
+        cabin.rotation_euler.x = random.uniform(-0.05, 0.05)
+
+# --- Scattered Rocks on Hillside ---
+rock_positions = [
+    Vector((20, -20, 0)),
+    Vector((30, -10, 0)),
+    Vector((15, -30, 0)),
+    Vector((35, -25, 0)),
+    Vector((25, -35, 0)),
+    Vector((40, -15, 0)),
+    Vector((-35, -5, 0)),
+    Vector((-40, 5, 0)),
+]
+
+for i, pos in enumerate(rock_positions):
+    add_rock_cluster(pos, count=random.randint(3, 6), scale_range=(0.5, 1.5))
+
+# --- Fallen Trees / Logs ---
+for i in range(5):
+    x = random.uniform(-30, 30)
+    y = random.uniform(-20, 30)
+    length = random.uniform(3, 6)
+    log = add_cylinder(f"Log_{i}", 0.3, length, (x, y, 0.3), mat_wood)
+    log.rotation_euler = Euler((0, math.pi/2, random.uniform(0, math.pi)))
+
+# --- Camera ---
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam = bpy.data.objects.new("Camera", cam_data)
+bpy.context.collection.objects.link(cam)
+cam.location = Vector((0, -40, 15))
+cam.rotation_euler = Euler((math.radians(75), 0, math.radians(10)))
+bpy.context.scene.camera = cam
+
+# --- Lighting ---
+# Sun
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 3
+sun_data.angle = math.radians(5)
+sun = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun)
+sun.rotation_euler = Euler((math.radians(45), math.radians(20), 0))
+
+# Ambient fill
+fill_data = bpy.data.lights.new("Fill", type='AREA')
+fill_data.energy = 50
+fill_data.size = 50
+fill = bpy.data.objects.new("Fill", fill_data)
+bpy.context.collection.objects.link(fill)
+fill.location = (0, 0, 30)
+fill.rotation_euler = Euler((0, 0, 0))
+
+# World background
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.4, 0.45, 0.5, 1.0)
+    bg_node.inputs[1].default_value = 0.5
+
+print("Ghost mining village scene created.")
+```

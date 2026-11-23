@@ -1,0 +1,75 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1849)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def marble(r, g, b, glow=0):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (r, g, b, 1); p.inputs["Roughness"].default_value = .2
+    if glow: p.inputs["Emission Color"].default_value = (r, g, b, 1); p.inputs["Emission Strength"].default_value = glow
+    return m
+BOARD, WHITE, VEIN, GOLD, DARK, EMBER, WOOD = marble(.12, .08, .06), marble(.5, .5, .52), marble(.22, .22, .26), marble(.5, .35, .1), marble(.04, .04, .05), marble(1, .35, .05, 6), marble(.2, .12, .08)
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return make(bm, m, at, rot)
+def lathe(pts, n, m, at=(0, 0, 0)):
+    bm = bmesh.new(); rings = []
+    for r, z in pts: rings.append([bm.verts.new((r * math.cos(k * 6.2832 / n), r * math.sin(k * 6.2832 / n), z)) for k in range(n)])
+    for a, b in zip(rings, rings[1:]):
+        for k in range(n): bm.faces.new((a[k], a[(k + 1) % n], b[(k + 1) % n], b[k]))
+    bm.faces.new(rings[-1][::-1]); bm.faces.new(rings[0])
+    return make(bm, m, at)
+def ball(at, r, m):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r); return make(bm, m, at)
+def lamp(at, col, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = col, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+# board slab, tapered underneath, with a rough keel
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co.x *= .7; v.co.y *= .7; v.co.z -= random.uniform(0, .3)
+    v.co = Vector((v.co.x * 15, v.co.y * 15, v.co.z * 2 - 1))
+make(bm, BOARD)
+# 8x8 squares in two tones, only the near half of the board is in frame
+for i in range(8):
+    for j in range(8):
+        cube((-7 + i * 1.75 + .875, -7 + j * 1.75 + .875, 0), (1.7, 1.7, .25), WOOD if (i + j) % 2 else DARK)
+# the marble pawn, huge, on the e4 square
+px, py = -1.75, -1.75
+lathe([(0, 0), (2.6, 0), (2.6, .3), (1.9, .9), (1.5, 1.5), (1.2, 2.2), (1.9, 3.6), (2.2, 4.3), (1.5, 4.6), (1.4, 5.0)], 8, WHITE, (px, py, .25))
+lathe([(1.5, 4.6), (2.2, 4.3), (2.25, 4.45), (1.55, 4.75)], 8, GOLD, (px, py, .25))
+ball((px, py, 6.6), 1.45, WHITE)
+# grey veins: thin dark slivers winding across the shaft and the head
+for k in range(14):
+    z0 = random.uniform(.5, 7.2); r0 = 1.55 if z0 < 4.5 else 1.45
+    a = random.uniform(0, 6.28); pts = []
+    for s in range(6):
+        z = z0 + s * .18; r = r0 + .03 if z0 < 4.5 else 1.45
+        pts.append(Vector((px + r * math.cos(a + s * .35), py + r * math.sin(a + s * .35), z + .25)))
+    for p, q in zip(pts, pts[1:]):
+        d = q - p; cube(p, (.12, .12, d.length), VEIN, rot=d.to_track_quat('Z', 'Y').to_euler())
+# a few fallen pieces and the glowing ember of a burned candle
+for k, (x, y) in enumerate([(-5.5, 3), (4, 2.5), (5.5, -4)]):
+    lathe([(0, 0), (1, 0), (1, .2), (.7, .5), (.5, .9), (.9, 1.4), (.4, 1.6)], 6, WHITE, (x, y, .25), (1.57, 0, k))
+cube((-4, 3.5, .25), (1.6, 1.6, .5), WHITE, (0, 0, .4)); ball((-4, 3.5, 1.1), .5, WHITE)
+lathe([(0, 0), (.5, 0), (.5, 1.2), (.4, 1.2), (.4, 1.8)], 6, GOLD, (4.5, -3.5, .25)); ball((4.5, -3.5, 2.0), .3, EMBER)
+lamp((4.5, -3.5, 2.4), (1, .35, .05), 250)
+# cold moonlight from the left, violet rim from behind
+for col, w, at in (((.7, .8, 1), 5, (-26, -16, 12)), ((.6, .3, .9), 2, (22, 24, 10))):
+    S = bpy.data.lights.new("s", "SUN"); S.color, S.energy = col, w
+    o = bpy.data.objects.new("s", S); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("night"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .01, .025, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+tg = Vector((0, 0, 2.5)); co.location = tg + Vector((8, -52, 34))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

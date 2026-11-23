@@ -1,0 +1,100 @@
+test_0004__s0.py             exit 0       4.7s image=True objects=136 viewport_only_materials=0 error=None
+test_0005__s0.py             exit 0       4.7s image=True objects=105 viewport_only_materials=0 error=None
+test_0002__s0.py             exit 0       4.8s image=True objects=83 viewport_only_materials=0 error=None
+test_0007__s0.py             exit 0       4.9s image=True objects=170 viewport_only_materials=0 error=None
+test_0003__s0.py             exit 0       5.0s image=True objects=116 viewport_only_materials=0 error=None
+test_0006__s0.py             exit 0       5.0s image=True objects=112 viewport_only_materials=0 error=None
+test_0001__s0.py             exit 0       5.2s image=True objects=177 viewport_only_materials=0 error=None
+test_0000__s0.py             exit 0       5.4s image=True objects=88 viewport_only_materials=0 error=None
+test_0009__s0.py             exit 0       4.2s image=True objects=118 viewport_only_materials=0 error=None
+test_0014__s0.py             exit 0       4.2s image=True objects=6 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 2
+test_0008__s0.py             exit 0       4.8s image=True objects=159 viewport_only_materials=0 error=None
+test_0015__s0.py             exit 0       4.1s image=True objects=52 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0010__s0.py             exit 0       4.7s image=True objects=98 viewport_only_materials=0 error=None
+test_0013__s0.py             exit 0       4.5s image=True objects=168 viewport_only_materials=0 error=None
+test_0011__s0.py             exit 0       4.7s image=True objects=153 viewport_only_materials=0 error=None
+test_0012__s0.py             exit 0       4.6s image=True objects=186 viewport_only_materials=0 error=None
+test_0016__s0.py             exit 0       2.9s image=True objects=132 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0017__s0.py             exit 0       2.5s image=True objects=9 viewport_only_materials=0 error=TypeError: 'float' object is not subscriptable
+test_0019__s0.py             exit 0       4.6s image=True objects=132 viewport_only_materials=0 error=None
+test_0022__s0.py             exit 0       5.1s image=True objects=222 viewport_only_materials=0 error=None
+test_0021__s0.py             exit 0       5.1s image=True objects=163 viewport_only_materials=0 error=None
+test_0020__s0.py             exit 0       5.2s image=True objects=70 viewport_only_materials=0 error=None
+test_0018__s0.py             exit 0       5.3s image=True objects=94 viewport_only_materials=0 error=None
+test_0023__s0.py             exit 0       5.3s image=True objects=92 viewport_only_materials=0 error=None
+test_0024__s0.py             exit 0       3.2s image=True objects=104 viewport_only_materials=0 error=None
+test_0025__s0.py             exit 0       3.6s image=True objects=119 viewport_only_materials=0 error=None
+test_0026__s0.py             exit 0       5.0s image=True objects=195 viewport_only_materials=0 error=None
+test_0028__s0.py             exit 0       4.7s image=True objects=164 viewport_only_materials=0 error=None
+test_0027__s0.py             exit 0       5.4s image=True objects=247 viewport_only_materials=0 error=None
+test_0029__s0.py             exit 0       5.4s image=True objects=119 viewport_only_materials=0 error=None
+test_0031__s0.py             exit 0       5.3s image=True objects=122 viewport_only_materials=0 error=None
+test_0030__s0.py             exit 0       5.6s image=True objects=143 viewport_only_materials=0 error=None
+test_0032__s0.py             exit 0       5.2s image=True objects=81 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not int
+test_0033__s0.py             exit 0       5.2s image=True objects=218 viewport_only_materials=0 error=None
+test_0035__s0.py             exit 0       3.1s image=True objects=77 viewport_only_materials=0 error=TypeError: lump() takes 3 positional arguments but 4 were given
+test_0034__s0.py             exit 0       4.6s image=True objects=157 viewport_only_materials=0 error=None
+test_0038__s0.py             exit 0       3.8s image=True objects=29 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0039__s0.py             exit 0       4.0s image=True objects=119 viewport_only_materials=0 error=None
+test_0036__s0.py             exit 0       4.7s image=True objects=230 viewport_only_materials=0 error=None
+test_0040__s0.py             exit 0       4.5s image=True objects=72 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0041__s0.py             exit 0       4.2s image=True objects=1 viewport_only_materials=0 error=SyntaxError: unmatched ')' (script.py, line 49)
+test_0037__s0.py             exit 0       4.9s image=True objects=409 viewport_only_materials=0 error=None
+test_0042__s0.py             exit 0       3.8s image=True objects=165 viewport_only_materials=0 error=None
+test_0043__s0.py             exit 0       4.2s image=True objects=163 viewport_only_materials=0 error=None
+test_0044__s0.py             exit 0       4.7s image=True objects=75 viewport_only_materials=0 error=None
+test_0048__s0.py             exit 0       4.2s image=True objects=90 viewport_only_materials=0 error=None
+test_0045__s0.py             exit 0       4.8s image=True objects=171 viewport_only_materials=0 error=None
+test_0046__s0.py             exit 0       4.9s image=True objects=19 viewport_only_materials=0 error=TypeError: slab() missing 2 required positional arguments: 'h' and 'k'
+test_0050__s0.py             exit 0       3.5s image=True objects=21 viewport_only_materials=0 error=AttributeError: BMeshOpsModule: operator "join" doesn't exist
+test_0049__s0.py             exit 0       5.0s image=True objects=84 viewport_only_materials=0 error=None
+test_0047__s0.py             exit 0       5.4s image=True objects=94 viewport_only_materials=0 error=None
+test_0051__s0.py             exit 0       5.5s image=True objects=282 viewport_only_materials=0 error=None
+test_0054__s0.py             exit 0       4.5s image=True objects=20 viewport_only_materials=0 error=ValueError: not enough values to unpack (expected 3, got 2)
+test_0052__s0.py             exit 0       6.1s image=True objects=69 viewport_only_materials=0 error=None
+test_0055__s0.py             exit 0       5.0s image=True objects=126 viewport_only_materials=0 error=None
+test_0053__s0.py             exit 0       5.6s image=True objects=228 viewport_only_materials=0 error=None
+test_0056__s0.py             exit 0       5.0s image=True objects=55 viewport_only_materials=0 error=AttributeError: 'Vector' object has no attribute 'perp'
+test_0057__s0.py             exit 0       4.8s image=True objects=114 viewport_only_materials=0 error=None
+test_0058__s0.py             exit 0       4.5s image=True objects=87 viewport_only_materials=0 error=None
+test_0059__s0.py             exit 0       3.7s image=True objects=71 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0062__s0.py             exit 0       3.2s image=True objects=1 viewport_only_materials=0 error=ReferenceError: BMesh data of type BMesh has been removed
+test_0063__s0.py             exit 0       3.8s image=True objects=2 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0060__s0.py             exit 0       5.1s image=True objects=234 viewport_only_materials=0 error=None
+test_0061__s0.py             exit 0       4.2s image=True objects=102 viewport_only_materials=0 error=None
+test_0066__s0.py             exit 0       4.4s image=True objects=0 viewport_only_materials=0 error=TypeError: Matrix.Diagonal() takes exactly one argument (2 given)
+test_0065__s0.py             exit 0       5.0s image=True objects=356 viewport_only_materials=0 error=None
+test_0064__s0.py             exit 0       5.1s image=True objects=140 viewport_only_materials=0 error=None
+test_0067__s0.py             exit 0       3.7s image=True objects=88 viewport_only_materials=0 error=None
+test_0068__s0.py             exit 0       3.9s image=True objects=92 viewport_only_materials=0 error=None
+test_0069__s0.py             exit 0       4.8s image=True objects=16 viewport_only_materials=0 error=ValueError: too many values to unpack (expected 2)
+test_0072__s0.py             exit 0       4.3s image=True objects=180 viewport_only_materials=0 error=None
+test_0071__s0.py             exit 0       5.1s image=True objects=215 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0070__s0.py             exit 0       5.6s image=True objects=285 viewport_only_materials=0 error=None
+test_0073__s0.py             exit 0       5.9s image=True objects=152 viewport_only_materials=0 error=None
+test_0075__s0.py             exit 0       4.7s image=True objects=150 viewport_only_materials=0 error=None
+test_0074__s0.py             exit 0       6.2s image=True objects=112 viewport_only_materials=0 error=None
+test_0077__s0.py             exit 0       4.1s image=True objects=85 viewport_only_materials=0 error=None
+test_0076__s0.py             exit 0       7.0s image=True objects=128 viewport_only_materials=0 error=None
+test_0079__s0.py             exit 0       5.9s image=True objects=225 viewport_only_materials=0 error=None
+test_0078__s0.py             exit 0       7.3s image=True objects=136 viewport_only_materials=0 error=None
+test_0080__s0.py             exit 0       7.0s image=True objects=78 viewport_only_materials=0 error=None
+test_0082__s0.py             exit 0       5.8s image=True objects=136 viewport_only_materials=0 error=None
+test_0081__s0.py             exit 0       6.0s image=True objects=221 viewport_only_materials=0 error=None
+test_0083__s0.py             exit 0       5.8s image=True objects=166 viewport_only_materials=0 error=None
+test_0084__s0.py             exit 0       4.9s image=True objects=125 viewport_only_materials=0 error=None
+test_0085__s0.py             exit 0       5.4s image=True objects=118 viewport_only_materials=0 error=None
+test_0086__s0.py             exit 0       4.8s image=True objects=255 viewport_only_materials=0 error=None
+test_0089__s0.py             exit 0       4.6s image=True objects=7 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0088__s0.py             exit 0       5.1s image=True objects=205 viewport_only_materials=0 error=IndexError: tuple index out of range
+test_0090__s0.py             exit 0       4.8s image=True objects=120 viewport_only_materials=0 error=None
+test_0087__s0.py             exit 0       5.8s image=True objects=264 viewport_only_materials=0 error=None
+test_0091__s0.py             exit 0       5.0s image=True objects=265 viewport_only_materials=0 error=None
+test_0092__s0.py             exit 0       5.1s image=True objects=113 viewport_only_materials=0 error=None
+test_0093__s0.py             exit 0       3.7s image=True objects=113 viewport_only_materials=0 error=None
+test_0094__s0.py             exit 0       4.0s image=True objects=59 viewport_only_materials=0 error=TypeError: IDMaterials.append(): error with argument 1, "material" -  Function.material expected a Material type, not function
+test_0098__s0.py             exit 0       2.9s image=True objects=0 viewport_only_materials=0 error=TypeError: 'Material' object is not callable
+test_0097__s0.py             exit 0       3.5s image=True objects=101 viewport_only_materials=0 error=None
+test_0095__s0.py             exit 0       4.1s image=True objects=114 viewport_only_materials=0 error=None
+test_0099__s0.py             exit 0       3.3s image=True objects=125 viewport_only_materials=0 error=None
+test_0096__s0.py             exit 0       3.9s image=True objects=124 viewport_only_materials=0 error=None

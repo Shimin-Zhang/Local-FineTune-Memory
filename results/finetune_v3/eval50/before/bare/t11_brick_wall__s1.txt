@@ -1,0 +1,179 @@
+```python
+import bpy
+import bmesh
+from mathutils import Vector
+from math import radians
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the brick wall as a mesh
+# Wall dimensions
+wall_width = 6.0
+wall_height = 4.0
+wall_thickness = 0.3
+
+# Window opening dimensions
+win_width = 1.5
+win_height = 1.2
+win_center_x = 0.0
+win_center_y = wall_height / 2.0
+win_bottom = win_center_y - win_height / 2.0
+win_top = win_center_y + win_height / 2.0
+win_left = win_center_x - win_width / 2.0
+win_right = win_center_x + win_width / 2.0
+
+# Create mesh data
+mesh = bpy.data.meshes.new("BrickWall")
+obj = bpy.data.objects.new("BrickWall", mesh)
+bpy.context.collection.objects.link(obj)
+
+bm = bmesh.new()
+bm.from_mesh(mesh)
+
+# Define vertices for the wall with a window hole (front face)
+# We'll create the wall as a flat plane with a rectangular hole, then extrude for thickness
+
+# Front face vertices (z=0)
+# Outer rectangle: (-w/2, 0, 0), (w/2, 0, 0), (w/2, h, 0), (-w/2, h, 0)
+# Window hole: (wl, wb, 0), (wr, wb, 0), (wr, wt, 0), (wl, wt, 0)
+
+x0 = -wall_width / 2
+x1 = wall_width / 2
+y0 = 0
+y1 = wall_height
+z0 = 0
+z1 = wall_thickness
+
+# Create outer rectangle vertices
+v_outer = [
+    bm.verts.new((x0, y0, z0)),  # 0: bottom-left
+    bm.verts.new((x1, y0, z0)),  # 1: bottom-right
+    bm.verts.new((x1, y1, z0)),  # 2: top-right
+    bm.verts.new((x0, y1, z0)),  # 3: top-left
+]
+
+# Create window hole vertices (on front face)
+v_win = [
+    bm.verts.new((win_left, win_bottom, z0)),   # 4: win bottom-left
+    bm.verts.new((win_right, win_bottom, z0)),  # 5: win bottom-right
+    bm.verts.new((win_right, win_top, z0)),     # 6: win top-right
+    bm.verts.new((win_left, win_top, z0)),      # 7: win top-left
+]
+
+# Create faces for front face with hole
+# Bottom section (below window)
+bm.faces.new([v_outer[0], v_outer[1], v_win[5], v_win[4]])
+# Right section (right of window)
+bm.faces.new([v_win[5], v_outer[1], v_outer[2], v_win[6]])
+# Top section (above window)
+bm.faces.new([v_win[6], v_outer[2], v_outer[3], v_win[7]])
+# Left section (left of window)
+bm.faces.new([v_win[7], v_outer[3], v_outer[0], v_win[4]])
+
+# Now create back face (z = wall_thickness)
+v_outer_back = [
+    bm.verts.new((x0, y0, z1)),  # 8
+    bm.verts.new((x1, y0, z1)),  # 9
+    bm.verts.new((x1, y1, z1)),  # 10
+    bm.verts.new((x0, y1, z1)),  # 11
+]
+
+v_win_back = [
+    bm.verts.new((win_left, win_bottom, z1)),   # 12
+    bm.verts.new((win_right, win_bottom, z1)),  # 13
+    bm.verts.new((win_right, win_top, z1)),     # 14
+    bm.verts.new((win_left, win_top, z1)),      # 15
+]
+
+# Back faces (reversed winding for outward normals)
+bm.faces.new([v_outer_back[0], v_win_back[4], v_win_back[5], v_outer_back[1]])
+bm.faces.new([v_win_back[5], v_win_back[6], v_outer_back[2], v_outer_back[1]])
+bm.faces.new([v_win_back[6], v_outer_back[3], v_outer_back[2], v_win_back[7]])
+bm.faces.new([v_win_back[7], v_outer_back[0], v_outer_back[3], v_win_back[4]])
+
+# Side faces connecting front and back
+# Outer sides
+# Bottom outer
+bm.faces.new([v_outer[0], v_outer[1], v_outer_back[1], v_outer_back[0]])
+# Right outer
+bm.faces.new([v_outer[1], v_outer[2], v_outer_back[2], v_outer_back[1]])
+# Top outer
+bm.faces.new([v_outer[2], v_outer[3], v_outer_back[3], v_outer_back[2]])
+# Left outer
+bm.faces.new([v_outer[3], v_outer[0], v_outer_back[0], v_outer_back[3]])
+
+# Window inner sides
+# Window bottom
+bm.faces.new([v_win[4], v_win[5], v_win_back[5], v_win_back[4]])
+# Window right
+bm.faces.new([v_win[5], v_win[6], v_win_back[6], v_win_back[5]])
+# Window top
+bm.faces.new([v_win[6], v_win[7], v_win_back[7], v_win_back[6]])
+# Window left
+bm.faces.new([v_win[7], v_win[4], v_win_back[4], v_win_back[7]])
+
+# Recalculate normals
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+bm.to_mesh(mesh)
+bm.free()
+
+# Add a brick-like material
+mat = bpy.data.materials.new("BrickMaterial")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Create texture coordinates and mapping
+tex_coord = nodes.new('ShaderNodeTexCoord')
+mapping = nodes.new('ShaderNodeMapping')
+links.new(tex_coord.outputs['Object'], mapping.inputs['Vector'])
+
+# Brick texture
+brick_tex = nodes.new('ShaderNodeTexBrick')
+brick_tex.inputs['Scale'].default_value = 0.5
+brick_tex.inputs['Mortar Size'].default_value = 0.02
+brick_tex.inputs['Color1'].default_value = (0.6, 0.2, 0.15, 1.0)  # Brick color
+brick_tex.inputs['Color2'].default_value = (0.5, 0.15, 0.1, 1.0)  # Brick color variation
+brick_tex.inputs['Mortar'].default_value = (0.8, 0.75, 0.7, 1.0)  # Mortar color
+brick_tex.inputs['Bias'].default_value = 0.0
+brick_tex.inputs['Brick Width'].default_value = 1.0
+brick_tex.inputs['Row Height'].default_value = 0.4
+links.new(mapping.outputs['Vector'], brick_tex.inputs['Vector'])
+
+# Roughness
+roughness = nodes.new('ShaderNodeValue')
+roughness.outputs[0].default_value = 0.8
+
+# Principled BSDF
+bsdf = nodes.get('Principled BSDF')
+links.new(brick_tex.outputs['Color'], bsdf.inputs['Base Color'])
+links.new(roughness.outputs[0], bsdf.inputs['Roughness'])
+
+# Assign material to the wall
+obj.data.materials.append(mat)
+
+# Add a simple lighting setup
+# Directional light
+light_data = bpy.data.lights.new("SunLight", type='SUN')
+light_data.energy = 3.0
+light_data.angle = radians(5)
+light_obj = bpy.data.objects.new("SunLight", light_data)
+bpy.context.collection.objects.link(light_obj)
+light_obj.rotation_euler = (radians(45), radians(30), radians(0))
+light_obj.location = (0, 0, 5)
+
+# Camera
+cam_data = bpy.data.cameras.new("Camera")
+cam_obj = bpy.data.objects.new("Camera", cam_data)
+bpy.context.collection.objects.link(cam_obj)
+cam_obj.location = (0, -3, 2)
+cam_obj.rotation_euler = (radians(90), 0, radians(180))
+
+# Set camera as active
+bpy.context.scene.camera = cam_obj
+
+print("Brick wall with window opening created successfully.")
+```

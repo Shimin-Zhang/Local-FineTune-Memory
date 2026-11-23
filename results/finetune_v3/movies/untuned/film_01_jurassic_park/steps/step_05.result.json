@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.6,
+ "error": "TypeError: bpy_struct.keyframe_insert() property \"energy\" not found",
+ "error_line": "lightning.keyframe_insert(data_path=\"energy\", frame=1)",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 268,
+ "n_lights": 5,
+ "n_materials": 29,
+ "own_camera": true,
+ "render_error": null
+}

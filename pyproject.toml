@@ -1,0 +1,33 @@
+[project]
+name = "local-finetune-memory"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=1.15.0",
+    "bitsandbytes>=0.50.2",
+    "causal-conv1d>=1.7.0",
+    "datasets>=5.2.0",
+    "flash-linear-attention>=0.6.0",
+    "matplotlib>=3.11.2",
+    "ninja>=1.13.2",
+    "pandas>=3.1.1",
+    "peft>=0.21.2",
+    "safetensors>=0.8.0",
+    "torch==2.14.1",
+    "transformers>=5.22.2",
+]
+
+# The NVIDIA driver on this machine (565.77) supports CUDA 12.x only, so torch is pinned
+# to the newest build for CUDA 12.6 instead of the default CUDA 13 wheel.
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
+# causal-conv1d ships source only and must compile against the torch already in this environment
+# (not a fresh one in an isolated build), using the system CUDA toolkit: set CUDA_HOME when installing.
+[tool.uv]
+no-build-isolation-package = ["causal-conv1d"]

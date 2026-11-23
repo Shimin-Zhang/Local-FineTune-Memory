@@ -1,0 +1,101 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1897)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+mats = {}
+def dye(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .6
+    if glow:
+        n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    mats[name] = m
+def solid(bm, name, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(name, me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(mats[name]); return o
+def bar(name, at, size, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * size[0], v.co.y * size[1], v.co.z * size[2]))
+    return solid(bm, name, at, rot)
+def rod(name, a, b, r, n=6, r2=None):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=d.length)
+    for v in bm.verts: v.co = q @ Vector((v.co.x, v.co.y, v.co.z + d.length / 2)) + a
+    return solid(bm, name)
+def orb(name, at, r, s=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], v.co.z * s[2]))
+    return solid(bm, name, at)
+def fin(name, at, size, rot=(0, 0, 0)):
+    bm = bmesh.new(); f = bm.faces.new([bm.verts.new(p) for p in size])
+    r = bmesh.ops.extrude_face_region(bm, geom=[f])
+    bmesh.ops.translate(bm, vec=(0, 0, .2), verts=[g for g in r["geom"] if isinstance(g, bmesh.types.BMVert)])
+    return solid(bm, name, at, rot)
+def lamp(kind, rgb, w, at, aim=None):
+    d = bpy.data.lights.new(kind, kind); d.color = rgb; d.energy = w
+    o = bpy.data.objects.new(kind, d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+def shark(x, y, z, yaw, scale, name):
+    c, s = math.cos(yaw), math.sin(yaw)
+    def at(dx, dy, dz): return (x + dx * c - dy * s, y + dx * s + dy * c, z + dz)
+    body = bmesh.new(); bmesh.ops.create_icosphere(body, subdivisions=2, radius=1)
+    for v in body.verts:
+        v.co = Vector((v.co.x * 4.6 * scale, v.co.y * 1.0 * scale, v.co.z * .95 * scale))
+        if v.co.x > 2: v.co.z *= .55; v.co.y *= .7
+        if v.co.x < -2: v.co.y *= .15
+    solid(body, name, at(0, 0, 0), (0, 0, yaw))
+    fin(name, at(.2, 0, .85 * scale), [(-1.0 * scale, 0, 0), (1.0 * scale, 0, 0), (0, 0, 1.5 * scale)], (0, 0, yaw))
+    fin(name, at(-3.2 * scale, 0, 0), [(-.9 * scale, 0, 0), (.9 * scale, 0, 0), (0, 0, 1.4 * scale)], (0, 0, yaw))
+    for sd in (-1, 1):
+        fin(name, at(-2.5 * scale, sd * .5 * scale, -.1 * scale), [(-.5 * scale, 0, 0), (.5 * scale, 0, 0), (0, sd * 1.1 * scale, 0)], (0, 0, yaw))
+        orb("eye", at(3.4 * scale, sd * .55 * scale, .35 * scale), .17 * scale)
+    fin("tooth", at(3.6 * scale, 0, -.5 * scale), [(-.5 * scale, 0, 0), (.5 * scale, 0, 0), (0, 0, -.35 * scale)], (0, 0, yaw))
+
+dye("water", (.02, .12, .22)); dye("hull", (.35, .08, .06)); dye("deck", (.3, .26, .2)); dye("steel", (.3, .32, .35)); dye("rope", (.55, .45, .25))
+dye("shark", (.32, .38, .42)); dye("belly", (.7, .72, .75)); dye("eye", (.02, .02, .03)); dye("tooth", (.9, .95, .95))
+dye("bait", (.9, .15, .1)); dye("line", (.9, .9, .8)); dye("lamp", (.8, 1, 1), 25); dye("buoy", (.9, .5, .05)); dye("sail", (.75, .72, .65)); dye("dark", (.04, .05, .06))
+
+# water block, rough keel
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 26, v.co.y * 22, v.co.z * 7 - 3.5))
+    if v.co.z < -3: v.co = Vector((v.co.x * .7 + random.uniform(-1.5, 1.5), v.co.y * .7 + random.uniform(-1.5, 1.5), v.co.z - random.uniform(0, 2.5)))
+solid(bm, "water", (0, 0, 0))
+# the boat: red hull, deck, cabin, mast, sail, stern lantern
+bar("hull", (0, 0, 1.0), (16, 5, 2.4)); bar("deck", (0, 0, 2.4), (16.2, 5.2, .25))
+for sx in (-1, 1): bar("hull", (0, sx * 2.5, 1.0), (16, .2, 2.4))
+bar("deck", (-4, 0, 3.6), (4, 3.4, 2.2)); bar("sail", (3.5, 0, 7.2), (6, .12, 6)); rod("steel", (3.5, 0, 2.5), (3.5, 0, 12), .12, 5)
+bar("dark", (-4, -1.72, 3.8), (1.2, .06, .8)); orb("lamp", (-7.4, 0, 3.2), .45)
+lamp("POINT", (.7, 1, 1), 500, (-7.4, 0, 3.2))
+# steel cage hanging from the hull on ropes, with a bait light inside
+cz = -3.0
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        rod("steel", (7 + sx * 1.3, sy * 1.1, cz + 1.2), (7 + sx * 1.3, sy * 1.1, cz - 1.2), .07, 5)
+        rod("rope", (7 + sx * 1.1, sy * .9, 2.4), (7 + sx * 1.3, sy * 1.1, cz + 1.2), .05, 4)
+for k in range(5):
+    z = cz - 1.2 + k * .6
+    for sx in (-1, 1): rod("steel", (7 + sx * 1.3, -1.1, z), (7 + sx * 1.3, 1.1, z), .05, 4)
+    for sy in (-1, 1): rod("steel", (5.7, sy * 1.1, z), (8.3, sy * 1.1, z), .05, 4)
+orb("lamp", (7, 0, cz), .5); lamp("POINT", (.7, 1, 1), 1600, (7, 0, cz))
+for k in range(5): orb("steel", (7 + random.uniform(-.6, .6), random.uniform(-.6, .6), cz - 1.0), .22)
+# bait lines drifting from the bow, each with a weight and a bait ball
+for i, (bx, by) in enumerate(((-6, -2.4), (-4.5, -2.7), (-8, -1.8))):
+    rod("line", (bx, by, 2.4), (bx + .6, by - .3, -2.2), .04, 4); orb("bait", (bx + .6, by - .3, -2.4), .35); orb("steel", (bx + .6, by - .3, -1.0), .15)
+# two great whites passing the cage
+shark(-1, -2, -1.6, .12, 1.35, "shark"); shark(1, 3, -3.8, 1.2, 1.1, "shark")
+# bubbles and light shafts
+for i in range(14): orb("belly", (random.uniform(-10, 10), random.uniform(-9, 9), random.uniform(-4, 3)), random.uniform(.1, .22))
+for i in range(4): bar("lamp", (-9 + i * 6, 4, 2), (.3, .3, 12)).rotation_euler = (0, .25, 0)
+lamp("SUN", (.4, .85, .95), 5.5, (-14, -14, 18), (0, 0, -2))
+lamp("SUN", (.2, .35, .9), 2.2, (16, 16, 8), (0, 0, -2))
+w = bpy.data.worlds.new("deep"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.0, .02, .05, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, -1)); co.location = t + Vector((26, -64, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

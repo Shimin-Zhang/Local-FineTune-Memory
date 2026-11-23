@@ -1,0 +1,75 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized",
+ "error_line": "bpy.ops.mesh.primitive_cone_add(vertices=4, radius=2, depth=2.5, location=(0, 0, 1.25))",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "LIGHT": 1,
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Ground",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.3,
+    0.5,
+    0.2
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    10.0,
+    10.0,
+    20.0
+   ],
+   "direction": [
+    -0.75,
+    0.25,
+    -0.6124
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  50.0,
+  50.0,
+  0.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 35.3553,
+ "process": "exit 0",
+ "seconds": 0.6,
+ "image": false
+}

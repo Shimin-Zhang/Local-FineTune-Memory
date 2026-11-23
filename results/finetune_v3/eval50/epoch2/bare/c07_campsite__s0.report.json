@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "ValueError: not enough values to unpack (expected 13, got 11)",
+ "error_line": "moss, dirt, logc, bark, pine, pine2, canvas, canvas2, stone, rope, flame, flame2, ember = [shade(c) for c in [(.07,.14,.08),(.14,.1,.07),(.3,.2,.12),(.15,.09,.06),(.04,.15,.1),(.06,.2,.12),(.65,.2,.1)",
+ "n_renderable_objects": 0,
+ "object_types": {},
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.7321,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 2.5,
+ "image": true
+}

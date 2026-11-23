@@ -1,0 +1,92 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1595)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tone(rgb, glow=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+moss, moss2, path, stone, wood, dark, water, rain, roof, leaf = (tone(c) for c in (
+    (.1, .26, .12), (.14, .3, .15), (.3, .3, .28), (.28, .28, .3), (.3, .17, .09), (.12, .07, .05), (.08, .16, .2), (.7, .85, 1), (.1, .13, .16), (.1, .3, .12)))
+lantern = tone((1, .65, .25), 16)
+def add(bm, m, loc=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location, o.rotation_euler = loc, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(loc, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, loc, rot)
+def col(loc, r, h, m, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, loc, rot)
+def stone_blob(loc, r, m, sq=.7):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(.85, 1.2), v.co.y * random.uniform(.85, 1.2), v.co.z * sq * random.uniform(.85, 1.2)))
+    return add(bm, m, loc)
+def lit(kind, c, w, loc, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = loc; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# mossy base with a stream running through the middle
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=5, radius2=11.5, depth=3.5)
+for v in bm.verts:
+    v.co.x *= 1.1; v.co.y *= .9
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    v.co.z -= 1.75
+add(bm, moss)
+for i in range(18): stone_blob((random.uniform(-10, 10), random.uniform(-8, 8), 0), random.uniform(.8, 1.5), moss2, .4)
+blk((0, -2.2, .02), (22, 3.0, .1), water)
+for i in range(7): blk((random.uniform(-9, 9), random.choice((-3.7, -.6)), .12), (1.2, .3, .05), tone((.5, .7, .8)), (0, 0, random.uniform(-.3, .3)))
+# stepping stones and the plank bridge
+for i in range(11):
+    x = -8 + i * 1.6
+    blk((x, 0, .05), (1.3, 1.1, .25), path, (0, 0, random.uniform(-.2, .2)))
+    if i % 3 == 1: blk((x + .5, 1.2, .03), (.5, .4, .12), stone, (0, 0, .4))
+for i in range(9): blk((0, -3.4 + i * .3, .55), (2.2, .26, .1), wood)
+for sx in (-1.05, 1.05):
+    for y in (-4.1, -.1): col((sx, y, 0), .1, 1.2, wood, 5)
+    blk((sx, -2.2, 1.0), (.1, 3.4, .1), wood)
+# torii-style wooden gate
+for sx in (-1, 1): col((sx * 2.4, 3.6, 0), .35, 5.2, wood, 6)
+blk((0, 3.6, 4.6), (6.6, .7, .4), wood); blk((0, 3.6, 5.0), (5.6, .45, .3), dark); blk((0, 3.6, 3.4), (4.4, .3, .22), wood)
+# mossy temple at the end of the path
+blk((0, 7.5, 0), (7, 4.5, 2.4), stone)
+for sx in (-2.5, 2.5): col((sx, 5.2, 0), .3, 2.4, wood, 6)
+blk((0, 5.2, 2.4), (7.6, 1.2, .3), wood)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 8.4, v.co.y * 5.6, (v.co.z + .5) * 1.8))
+    if v.co.z > .9: v.co.x *= .35; v.co.y *= .35
+add(bm, roof, (0, 7.5, 2.7))
+blk((0, 5.2, 0), (1.6, .2, 2.0), dark)
+blk((0, 5.2, 2.0), (2.0, .2, .3), lantern)
+for i in range(3): blk((-1.2 + i * 1.2, 5.2, .05), (1.0, .8, .12), path)
+# stone lanterns either side of the path
+for i in range(5):
+    for sx in (-1, 1):
+        x = -6.5 + i * 3.2; y = sx * 2.4
+        col((x, y, 0), .5, .3, stone, 6); col((x, y, .3), .18, 1.0, stone, 6); col((x, y, 1.3), .6, .15, stone, 6)
+        blk((x, y, 1.45), (.7, .7, .8), lantern); col((x, y, 2.25), .55, .3, stone, 6, .15)
+        lit("POINT", (1, .65, .25), 130, (x, y, 1.9))
+# pines and rocks
+for x, y in ((-9, 5), (-8, -5), (8.5, 5.5), (9, -5), (-6, 8), (6, 8.5)):
+    col((x, y, 0), .3, 1.5, wood, 5)
+    for k in range(3): col((x, y, 1.2 + k * 1.1), 1.8 - k * .5, 1.6, leaf, 7, .1)
+for i in range(8): stone_blob((random.choice((-1, 1)) * random.uniform(8, 10), random.uniform(-7, 8), .2), random.uniform(.5, 1), stone, .8)
+# light rain
+for i in range(110):
+    blk((random.uniform(-11, 11), random.uniform(-8, 9), random.uniform(2, 12)), (.03, .03, 1.5), rain, (0, .25, 0))
+lit("SUN", (.7, .85, 1), 3.5, (-22, -14, 10), (0, 0, 2)); lit("SUN", (.3, .5, .8), 2, (18, 20, 8), (0, 0, 2))
+w = bpy.data.worlds.new("rain"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .03, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 2, 2.5)); co.location = t + Vector((10, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

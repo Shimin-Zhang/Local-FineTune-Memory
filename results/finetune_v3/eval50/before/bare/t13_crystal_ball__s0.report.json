@@ -1,0 +1,26 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "KeyError: 'bpy_prop_collection[key]: key \"Transmission Weight\" not found'",
+ "error_line": "glass.inputs['Transmission Weight'].default_value = 1.0",
+ "n_renderable_objects": 4,
+ "object_types": {
+  "MESH": 4
+ },
+ "default_cube_still_there": false,
+ "materials": [],
+ "objects_without_material": 4,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.2
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.4,
+ "image": true
+}

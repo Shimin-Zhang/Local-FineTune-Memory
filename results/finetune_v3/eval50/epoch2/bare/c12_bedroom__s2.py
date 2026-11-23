@@ -1,0 +1,84 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1349)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(c, glow=0, r=.85):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*c, 1); b.inputs["Roughness"].default_value = r
+    if glow: b.inputs["Emission Color"].default_value = (*c, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+oak, oak2, wall, wall2, floor = paint((.32, .18, .09)), paint((.22, .12, .06)), paint((.2, .2, .27)), paint((.14, .14, .2)), paint((.28, .17, .1))
+bed, blanket, blanket2, pillow, rug = paint((.7, .7, .75)), paint((.5, .12, .15)), paint((.3, .1, .2)), paint((.8, .78, .7)), paint((.35, .12, .2))
+rug2, moon, frame, glass, brass = paint((.55, .35, .15)), paint((.7, .8, 1), 3), paint((.1, .08, .08)), paint((.2, .3, .55), 1.5), paint((.8, .6, .2), 0, .3)
+book1, book2, book3, plant, shade = paint((.6, .1, .1)), paint((.1, .3, .5)), paint((.7, .5, .1)), paint((.1, .35, .15)), paint((1, .7, .3), 6)
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("o", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(at, s, m, rot=(0, 0, 0), peak=False):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+        if peak and v.co.z > 0: v.co.x = 0
+    return make(bm, m, at, rot)
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at, rot)
+def ball(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return make(bm, m, at)
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# floor slab, tapered underneath
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 15, v.co.y * 13, v.co.z * 2.4 - 1.2))
+    if v.co.z < 0: v.co.x *= .7; v.co.y *= .7; v.co.z -= random.uniform(0, 1.2)
+make(bm, floor)
+for i in range(10): box((-7 + i * 1.5, 0, 0), (.06, 12.6, .03), oak2)
+# two walls: back with a moonlit window, left plain
+box((0, 6.4, 0), (15, .6, 7), wall); box((-7.4, 0, 0), (.6, 13, 7), wall2)
+box((-7.1, 0, 6.6), (.8, 13, .4), oak2); box((0, 6.1, 6.6), (15, .8, .4), oak2)
+box((4.5, 6.0, 2.2), (4.2, .3, 4.2), glass); box((4.5, 5.8, 2.2), (4.4, .15, .2), frame); box((4.5, 5.8, 4.2), (4.4, .15, .2), frame)
+box((4.5, 5.8, 2.2), (.2, .15, 4.2), frame); box((4.5, 5.8, 4.3), (4.2, .15, .2), frame); box((4.5, 5.8, 2.1), (4.6, .5, .2), oak)
+box((4.5, 5.7, 6.0), (4.8, .3, .3), frame); box((4.5, 5.6, 6.3), (4.8, .1, .1), frame)
+# bed with posts, headboard, blanket and pillows
+box((-1.5, 2.5, 0), (6.2, 4.2, 1.0), oak); box((-1.5, 2.5, 1.0), (5.8, 3.8, .5), bed)
+box((-1.5, 2.4, 1.5), (5.6, 2.6, .35), blanket); box((-1.5, 3.9, 1.5), (5.6, 1.0, .3), blanket2)
+box((-1.5, 4.5, 1.0), (5.8, .3, 2.4), oak2)
+for x in (-4.3, 1.3):
+    for y in (1.0, 4.0): cyl((x, y, 0), .18, 3.4, 6, oak2)
+for x in (-3.0, -.5): box((x, 3.8, 1.5), (1.8, .8, .5), pillow, (0, 0, random.uniform(-.2, .2)))
+box((-1.5, 3.6, 2.0), (1.6, .6, .3), pillow)
+# nightstand with lamp, books and a clock
+box((3.0, 4.6, 0), (1.8, 1.5, 1.5), oak); box((3.0, 4.6, 1.5), (2.0, 1.7, .15), oak2)
+cyl((3.0, 4.7, 1.65), .1, .9, 6, brass); cyl((3.0, 4.7, 2.55), .5, .7, 8, shade, .25); glow((3.0, 4.7, 2.8), (1, .65, .25), 380)
+for i, m in enumerate((book1, book2, book3)): box((2.4, 4.3, 1.65 + i * .13), (.7, .5, .12), m, (0, 0, i * .3))
+cyl((3.6, 4.9, 1.65), .25, .15, 8, brass); cyl((3.6, 4.9, 1.8), .22, .22, 8, brass)
+# wardrobe with doors, handles and crown
+box((-5.0, 5.3, 0), (4.4, 1.6, 5.2), oak); box((-5.0, 5.3, 5.2), (4.8, 1.8, .3), oak2)
+for sx in (-1, 1): box((-5.0 + sx * 1.1, 4.4, .2), (2.0, .12, 4.6), oak2); box((-5.0 + sx * .1, 4.3, 2.2), (.12, .12, .8), brass)
+for z in (1.4, 3.4): box((-5.0, 4.3, z), (4.2, .08, .08), frame)
+# rug and a chair with a plant
+for i, m in enumerate((rug, rug2)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=3.4 - i * .6, radius2=3.4 - i * .6, depth=.06)
+    make(bm, m, (0, -1.5, .03 + i * .04))
+box((4.5, -2.5, 0), (2.0, 2.0, .9), blanket2, (0, 0, .3)); box((4.5, -3.3, .9), (2.0, .3, 1.6), blanket2, (0, 0, .3))
+cyl((-6.0, -3.5, 0), .7, 1.0, 7, book1, .5); cyl((-6.0, -3.5, 1.0), .5, .2, 7, paint((.2, .12, .06)))
+for k in range(5): ball((-6.0 + math.cos(k * 1.3) * .3, -3.5 + math.sin(k * 1.3) * .3, 1.9 + k * .2), .45, plant)
+# moonlit night: cool key from the window side, violet rim, lamp glow
+for c, w, p in (((.55, .65, 1), 4.5, (22, -14, 9)), ((.7, .4, .9), 2, (-14, 18, 8))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("night"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .012, .035, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+tg = Vector((0, 1, 2.5)); co.location = tg + Vector((14, -41, 28))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

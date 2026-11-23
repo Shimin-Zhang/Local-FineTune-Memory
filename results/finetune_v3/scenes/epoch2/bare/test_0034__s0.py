@@ -1,0 +1,94 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(554)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def colour(rgb, glow=0):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .85
+    if glow: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    return m
+grass, grass2, soil, bark, leaf, leaf2, apple, plank, rope, iron, cloth = (colour((.08, .22, .1)), colour((.12, .27, .1)), colour((.12, .08, .06)), colour((.2, .12, .08)),
+    colour((.1, .3, .12)), colour((.18, .22, .1)), colour((1, .7, .05), 14), colour((.32, .2, .1)), colour((.5, .4, .25)), colour((.08, .08, .1)), colour((.5, .1, .12)))
+def part(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(at, size, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * size[0], v.co.y * size[1], (v.co.z + .5) * size[2]))
+    return part(bm, m, at, rot)
+def stem(a, b, w, m):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * w, (v.co.z + .5) * d.length))
+    return part(bm, m, a, d.to_track_quat('Z', 'Y').to_euler())
+def lump(at, r, m, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.8, 1.2); v.co.z *= sq
+    return part(bm, m, at)
+def shine(kind, rgb, w, at, aim=None):
+    L = bpy.data.lights.new("s", kind); L.color, L.energy = rgb, w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=11, depth=3)
+for v in bm.verts:
+    v.co.x *= 1.25
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.2, .3)))
+    v.co.z -= 1.5
+part(bm, soil)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=10.8, radius2=10.8, depth=.3)
+for v in bm.verts: v.co.x *= 1.25; v.co.z += .15
+part(bm, grass)
+for i in range(26):
+    a, r = random.uniform(0, 6.28), random.uniform(1, 10)
+    lump((math.cos(a) * r * 1.2, math.sin(a) * r, .3), random.uniform(.6, 1.2), grass2, .15)
+# the gate: two posts, a lintel, three slats, an iron latch
+for s in (-1, 1):
+    cube((s * 1.6, -8.2, .3), (.45, .45, 2.6), plank); cube((s * 1.6, -8.2, 2.9), (.7, .7, .25), bark)
+cube((0, -8.2, 2.3), (3.4, .3, .3), plank)
+for k in range(3): cube((-.8 + k * .8, -8.2, .3), (.55, .12, 2.0), plank, (0, 0, 0))
+stem((-1.0, -8.3, 1.2), (1.0, -8.3, 1.2), .08, iron); cube((0, -8.4, 1.0), (.3, .1, .4), iron)
+stem((1.6, -8.2, 2.9), (1.6, -8.2, 3.6), .06, iron); cube((1.5, -8.2, 3.5), (.4, .06, .3), cloth)
+# orchard: seven trees, trunks with roots, lumps of leaves, clusters of glowing apples
+trees = ((-6, 2), (-1.5, 5.5), (4, 3), (-8, 7), (8, 7.5), (0, -2), (6.5, -3.5))
+for i, (x, y) in enumerate(trees):
+    h = random.uniform(2.6, 3.2)
+    stem((x, y, .3), (x + random.uniform(-.2, .2), y, h), .55, bark)
+    for k in range(3):
+        a = k * 2.1 + i
+        stem((x, y, .5), (x + math.cos(a) * 1.1, y + math.sin(a) * 1.1, .3), .22, bark)
+    for k in range(4):
+        lump((x + random.uniform(-1.2, 1.2), y + random.uniform(-1.2, 1.2), h + 1 + random.uniform(-.2, .5)), random.uniform(1.4, 1.9), leaf if k % 2 else leaf2, .9)
+    for k in range(7):
+        a = k * 0.9 + i * .7; r = random.uniform(1.2, 2.1)
+        lump((x + math.cos(a) * r, y + math.sin(a) * r, h + random.uniform(.2, 1.6)), .22, apple, 1)
+    shine("POINT", (1, .65, .1), 120, (x, y, h + 1.5))
+# ladder leaning on the nearest tree
+tx, ty, h = 0, -2, 3.0
+for s in (-.35, .35): stem((tx + s, ty - 2.6, .3), (tx + s * .6, ty - .8, h + 1.0), .1, plank)
+for k in range(1, 8):
+    t = k / 8.5
+    stem((tx - .35 + .14 * t, ty - 2.6 + 1.8 * t, .3 + 1.7 * t), (tx + .35 - .14 * t, ty - 2.6 + 1.8 * t, .3 + 1.7 * t), .07, plank)
+# fallen fruit, glowing, and a basket and a cloth
+for i in range(26):
+    x, y = random.uniform(-9, 9), random.uniform(-7, 8)
+    if math.hypot(x, y) < 11 and not any(math.hypot(x - tx, y - ty) < 1.2 for tx, ty, _ in trees): lump((x, y, .45), .26, apple, .8)
+for x, y in ((-2.5, -4.5), (3, 1.5), (-5, 0)): shine("POINT", (1, .7, .1), 90, (x, y, .9))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=.5, radius2=.75, depth=.7)
+part(bm, rope, (5.5, -5.5, .65)); lump((5.5, -5.5, 1.0), .3, apple, .8); lump((5.9, -5.3, 1.0), .3, apple, .8)
+cube((7.2, -1.5, .3), (1.8, 1.2, .12), cloth, (0, 0, .4))
+# a low wall of stones at the back, and a few mushrooms for the enchantment
+for i in range(14):
+    lump((-10 + i * 1.55, 9.5 + random.uniform(-.3, .3), .5), random.uniform(.5, .8), grass2, .7)
+for x, y in ((-4, 5), (2.5, 7), (-7.5, 4)):
+    stem((x, y, .3), (x, y, .8), .08, plank); lump((x, y, .9), .3, cloth, .7)
+# dusk: violet-pink key from the right, cool teal rim from the back-left
+shine("SUN", (1, .5, .5), 5, (24, -12, 8), (0, 0, 2)); shine("SUN", (.3, .6, .8), 2.2, (-20, 20, 9), (0, 0, 2))
+w = bpy.data.worlds.new("dusk"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .015, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 2.5)); co.location = t + Vector((-6, -58, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

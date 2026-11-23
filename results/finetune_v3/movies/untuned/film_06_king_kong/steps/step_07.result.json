@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 45.2,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene refined: camera fixed, materials boosted, crown lights, moon glow, stars, contrails, city, searchlights\n",
+ "state_saved": true,
+ "n_objects": 1978,
+ "n_lights": 10,
+ "n_materials": 20,
+ "own_camera": true,
+ "render_error": null
+}

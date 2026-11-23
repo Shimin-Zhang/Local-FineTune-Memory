@@ -1,0 +1,70 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1274)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def glaze(c, e=0):
+    m = bpy.data.materials.new("g"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = .3
+    n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+lawn, soil, trunk, leaf, leaf2, petal, petal2, path, stem, bubble, rim = (glaze((.1, .26, .1)), glaze((.16, .1, .07)), glaze((.25, .15, .09)), glaze((.1, .3, .12)), glaze((.16, .38, .12)),
+    glaze((.9, .4, .5)), glaze((.9, .75, .3)), glaze((.3, .26, .22)), glaze((.1, .3, .1)), glaze((.7, .85, 1), 1.2), glaze((1, .8, .3), 6))
+def mk(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def orb(p, r, m, sq=1.0, sub=2):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co.z *= sq; v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1, 1))) * r * .03
+    return mk(bm, m, p)
+def stem(a, b, w, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * w, v.co.y * w, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def lamp(kind, p, c, e, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = e
+    o = bpy.data.objects.new("l", L); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=4, radius2=10, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.3, 1.3), random.uniform(-1.3, 1.3), random.uniform(-1.5, .2)))
+mk(bm, soil); orb((0, 0, 0), 9.6, lawn, .05)
+# winding stepping-stone path
+for i in range(9):
+    t = i / 8; x = -7 + 6 * t + 1.5 * math.sin(t * 5); y = -6.5 + 7 * t
+    orb((x, y, .1), .7, path, .25)
+# trees
+for tx, ty, h in ((-7.5, 5, 4.5), (7.5, 5.5, 5), (-6, -5.5, 3.8)):
+    stem((tx, ty, 0), (tx, ty, h), .5, trunk)
+    for k in range(3): orb((tx + random.uniform(-.8, .8), ty + random.uniform(-.8, .8), h + 1 + k * .8), 2.6 - k * .6, random.choice((leaf, leaf2)), .9)
+# flower bed: stems, leaves and blooms
+for i in range(26):
+    a = random.uniform(0, 6.28); r = random.uniform(4.5, 8.2)
+    x, y = math.cos(a) * r, math.sin(a) * r * .85
+    if abs(x) < 2 and y < 0: continue
+    h = random.uniform(.8, 1.6); stem((x, y, 0), (x, y, h), .08, stem)
+    orb((x, y, h + .15), .35, random.choice((petal, petal2)), .8)
+# the bubble: translucent shell with a bright rainbow rim, lit from inside
+orb((0, 0, 5.2), 2.6, bubble, 1.0)
+rim_bm = bmesh.new(); bmesh.ops.create_icosphere(rim_bm, subdivisions=2, radius=2.62)
+bmesh.ops.delete(rim_bm, geom=[v for v in rim_bm.verts if v.co.z > .1], context='VERTS')
+mk(rim_bm, rim, (0, 0, 5.2))
+lamp("POINT", (0, 0, 5.2), (.6, .8, 1), 500)
+# bubbles drifting away
+for x, y, z, r in ((4, -2, 3.5, .5), (5.5, -3.5, 2.2, .35), (-4, 2, 7.5, .6), (-5.5, 3.5, 8.8, .4)): orb((x, y, z), r, bubble)
+# a few fireflies
+for i in range(8): orb((random.uniform(-8, 8), random.uniform(-7, 7), random.uniform(1, 6)), .12, rim)
+lamp("SUN", (-24, -14, 9), (.55, .7, 1), 4, (0, 0, 3))
+lamp("SUN", (20, 22, 10), (1, .5, .7), 2.2, (0, 0, 3))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .015, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3.8)); co.location = t + Vector((12, -46, 28))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

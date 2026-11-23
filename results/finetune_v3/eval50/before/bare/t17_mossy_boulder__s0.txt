@@ -1,0 +1,303 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, noise
+
+# Clear default objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Create the boulder base
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=64, ring_count=32, location=(0, 0, 0))
+boulder = bpy.context.active_object
+boulder.name = "Boulder"
+
+# Scale to make it look like a boulder (wider than tall)
+boulder.scale = (1.2, 1.0, 0.8)
+bpy.ops.object.transform_apply(scale=True)
+
+# Add displacement for irregular shape
+mod = boulder.modifiers.new(name="Displace", type='DISPLACE')
+mod.strength = 0.4
+mod.mid_level = 0.5
+mod.texture_coords = 'LOCAL'
+mod.direction = 'NORMAL'
+
+# Create a cloud texture for the displacement
+tex = bpy.data.textures.new(name="BoulderNoise", type='CLOUDS')
+tex.noise_scale = 0.8
+tex.noise_depth = 4
+mod.texture = tex
+
+# Apply the modifier
+bpy.context.view_layer.objects.active = boulder
+bpy.ops.object.modifier_apply(modifier="Displace")
+
+# Add a second smaller displacement for finer detail
+mod2 = boulder.modifiers.new(name="DisplaceFine", type='DISPLACE')
+mod2.strength = 0.1
+mod2.mid_level = 0.5
+mod2.texture_coords = 'LOCAL'
+mod2.direction = 'NORMAL'
+
+tex2 = bpy.data.textures.new(name="BoulderNoiseFine", type='CLOUDS')
+tex2.noise_scale = 0.2
+tex2.noise_depth = 3
+mod2.texture = tex2
+
+bpy.ops.object.modifier_apply(modifier="DisplaceFine")
+
+# Recalculate normals
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.normals_make_consistent(inside=False)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Create moss material
+moss_mat = bpy.data.materials.new(name="MossMaterial")
+moss_mat.use_nodes = True
+nodes = moss_mat.node_tree.nodes
+links = moss_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+output_node = nodes.new(type='ShaderNodeOutputMaterial')
+output_node.location = (800, 0)
+
+bsdf_node = nodes.new(type='ShaderNodeBsdfPrincipled')
+bsdf_node.location = (500, 0)
+bsdf_node.inputs['Base Color'].default_value = (0.15, 0.35, 0.08, 1.0)  # Moss green
+bsdf_node.inputs['Roughness'].default_value = 0.9
+bsdf_node.inputs['Specular IOR Level'].default_value = 0.1
+
+# Add some color variation using a noise texture
+noise_node = nodes.new(type='ShaderNodeTexNoise')
+noise_node.location = (100, 0)
+noise_node.inputs['Scale'].default_value = 8.0
+noise_node.inputs['Detail'].default_value = 6.0
+noise_node.inputs['Roughness'].default_value = 0.7
+
+# Mix colors based on noise
+mix_node = nodes.new(type='ShaderNodeMixRGB')
+mix_node.location = (300, 0)
+mix_node.inputs['Color1'].default_value = (0.12, 0.30, 0.06, 1.0)  # Darker moss
+mix_node.inputs['Color2'].default_value = (0.20, 0.45, 0.10, 1.0)  # Lighter moss
+
+links.new(noise_node.outputs['Fac'], mix_node.inputs['Fac'])
+links.new(mix_node.outputs['Color'], bsdf_node.inputs['Base Color'])
+
+# Add bump for texture
+bump_node = nodes.new(type='ShaderNodeBump')
+bump_node.location = (300, -200)
+bump_node.inputs['Strength'].default_value = 0.3
+bump_node.inputs['Distance'].default_value = 0.05
+
+noise2_node = nodes.new(type='ShaderNodeTexNoise')
+noise2_node.location = (100, -200)
+noise2_node.inputs['Scale'].default_value = 20.0
+noise2_node.inputs['Detail'].default_value = 8.0
+
+links.new(noise2_node.outputs['Fac'], bump_node.inputs['Height'])
+links.new(bump_node.outputs['Normal'], bsdf_node.inputs['Normal'])
+
+links.new(bsdf_node.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign moss material to boulder
+boulder.data.materials.clear()
+boulder.data.materials.append(moss_mat)
+
+# Add a second material for exposed rock areas
+rock_mat = bpy.data.materials.new(name="RockMaterial")
+rock_mat.use_nodes = True
+nodes_r = rock_mat.node_tree.nodes
+links_r = rock_mat.node_tree.links
+
+for node in nodes_r:
+    nodes_r.remove(node)
+
+output_r = nodes_r.new(type='ShaderNodeOutputMaterial')
+output_r.location = (800, 0)
+
+bsdf_r = nodes_r.new(type='ShaderNodeBsdfPrincipled')
+bsdf_r.location = (500, 0)
+bsdf_r.inputs['Base Color'].default_value = (0.35, 0.30, 0.25, 1.0)  # Grey-brown rock
+bsdf_r.inputs['Roughness'].default_value = 0.85
+bsdf_r.inputs['Specular IOR Level'].default_value = 0.1
+
+noise_r = nodes_r.new(type='ShaderNodeTexNoise')
+noise_r.location = (100, 0)
+noise_r.inputs['Scale'].default_value = 5.0
+noise_r.inputs['Detail'].default_value = 6.0
+
+mix_r = nodes_r.new(type='ShaderNodeMixRGB')
+mix_r.location = (300, 0)
+mix_r.inputs['Color1'].default_value = (0.30, 0.25, 0.20, 1.0)
+mix_r.inputs['Color2'].default_value = (0.40, 0.35, 0.30, 1.0)
+
+links_r.new(noise_r.outputs['Fac'], mix_r.inputs['Fac'])
+links_r.new(mix_r.outputs['Color'], bsdf_r.inputs['Base Color'])
+
+bump_r = nodes_r.new(type='ShaderNodeBump')
+bump_r.location = (300, -200)
+bump_r.inputs['Strength'].default_value = 0.5
+bump_r.inputs['Distance'].default_value = 0.08
+
+noise_r2 = nodes_r.new(type='ShaderNodeTexNoise')
+noise_r2.location = (100, -200)
+noise_r2.inputs['Scale'].default_value = 15.0
+noise_r2.inputs['Detail'].default_value = 8.0
+
+links_r.new(noise_r2.outputs['Fac'], bump_r.inputs['Height'])
+links_r.new(bump_r.outputs['Normal'], bsdf_r.inputs['Normal'])
+
+links_r.new(bsdf_r.outputs['BSDF'], output_r.inputs['Surface'])
+
+# Assign rock material as second slot
+boulder.data.materials.append(rock_mat)
+
+# Create a vertex group to control moss vs rock based on normal direction (top-facing gets more moss)
+vertex_group = boulder.vertex_groups.new(name="MossMask")
+
+# Get boulder in edit mode to assign vertex groups
+bpy.context.view_layer.objects.active = boulder
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Assign weights based on Z normal (upward facing = more moss)
+boulder.data.use_auto_smooth = False if hasattr(boulder.data, 'use_auto_smooth') else None
+for poly in boulder.data.polygons:
+    normal_z = poly.normal.z
+    # Map normal Z from -1 to 1 to 0 to 1
+    weight = max(0, min(1, (normal_z + 0.3) / 1.0))
+    for v in poly.vertices:
+        vertex_group.add([v], weight, 'REPLACE')
+
+# Set material index based on vertex group
+# We need to use a node setup that uses the vertex group to mix materials
+# Actually, let's use a different approach: use the vertex group in the shader
+
+# Update moss material to use vertex group for blending
+moss_nodes = moss_mat.node_tree.nodes
+moss_links = moss_mat.node_tree.links
+
+# Add attribute node for vertex group
+attr_node = moss_nodes.new(type='ShaderNodeAttribute')
+attr_node.location = (-200, 0)
+attr_node.attribute_name = "MossMask"
+attr_node.attribute_type = 'GEOMETRY'
+
+# Mix shader node to blend moss and rock
+mix_shader = moss_nodes.new(type='ShaderNodeMixShader')
+mix_shader.location = (650, 0)
+
+# Rock BSDF
+rock_bsdf = moss_nodes.new(type='ShaderNodeBsdfPrincipled')
+rock_bsdf.location = (500, -300)
+rock_bsdf.inputs['Base Color'].default_value = (0.35, 0.30, 0.25, 1.0)
+rock_bsdf.inputs['Roughness'].default_value = 0.85
+
+# Connect
+moss_links.new(attr_node.outputs['Fac'], mix_shader.inputs['Fac'])
+moss_links.new(bsdf_node.outputs['BSDF'], mix_shader.inputs[1])  # Moss shader
+moss_links.new(rock_bsdf.outputs['BSDF'], mix_shader.inputs[2])  # Rock shader
+moss_links.new(mix_shader.outputs['Shader'], output_node.inputs['Surface'])
+
+# Remove the old direct connection
+for link in list(moss_links):
+    if link.to_node == output_node and link.from_node == bsdf_node:
+        moss_links.remove(link)
+
+# Add a ground plane
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, -0.75))
+ground = bpy.context.active_object
+ground.name = "Ground"
+
+ground_mat = bpy.data.materials.new(name="GroundMaterial")
+ground_mat.use_nodes = True
+gnodes = ground_mat.node_tree.nodes
+glinks = ground_mat.node_tree.links
+
+for node in gnodes:
+    gnodes.remove(node)
+
+goutput = gnodes.new(type='ShaderNodeOutputMaterial')
+goutput.location = (500, 0)
+
+gbsdf = gnodes.new(type='ShaderNodeBsdfPrincipled')
+gbsdf.location = (300, 0)
+gbsdf.inputs['Base Color'].default_value = (0.25, 0.22, 0.18, 1.0)
+gbsdf.inputs['Roughness'].default_value = 0.95
+
+gnoise = gnodes.new(type='ShaderNodeTexNoise')
+gnoise.location = (0, 0)
+gnoise.inputs['Scale'].default_value = 10.0
+gnoise.inputs['Detail'].default_value = 8.0
+
+gmix = gnodes.new(type='ShaderNodeMixRGB')
+gmix.location = (150, 0)
+gmix.inputs['Color1'].default_value = (0.20, 0.18, 0.14, 1.0)
+gmix.inputs['Color2'].default_value = (0.30, 0.27, 0.22, 1.0)
+
+glinks.new(gnoise.outputs['Fac'], gmix.inputs['Fac'])
+glinks.new(gmix.outputs['Color'], gbsdf.inputs['Base Color'])
+glinks.new(gbsdf.outputs['BSDF'], goutput.inputs['Surface'])
+
+ground.data.materials.append(ground_mat)
+
+# Add some small moss patches on the ground
+for i in range(15):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(0.5, 3.0)
+    x = math.cos(angle) * dist
+    y = math.sin(angle) * dist
+    
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=random.uniform(0.05, 0.15), location=(x, y, -0.72))
+    patch = bpy.context.active_object
+    patch.name = f"MossPatch_{i}"
+    patch.scale = (random.uniform(0.8, 1.5), random.uniform(0.8, 1.5), random.uniform(0.3, 0.6))
+    bpy.ops.object.transform_apply(scale=True)
+    patch.data.materials.append(moss_mat)
+
+# Set up lighting
+# Key light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10), rotation=(math.radians(45), 0, math.radians(45)))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.95, 0.85)
+
+# Fill light
+bpy.ops.object.light_add(type='AREA', location=(-5, -3, 5), rotation=(math.radians(60), 0, math.radians(-30)))
+fill = bpy.context.active_object
+fill.data.energy = 50.0
+fill.data.size = 5.0
+fill.data.color = (0.8, 0.9, 1.0)
+
+# Set up camera
+bpy.ops.object.camera_add(location=(4, -4, 2), rotation=(math.radians(60), 0, math.radians(45)))
+camera = bpy.context.active_object
+camera.name = "Camera"
+bpy.context.scene.camera = camera
+
+# Set render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+
+# Set world background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get('Background')
+if bg_node:
+    bg_node.inputs['Color'].default_value = (0.7, 0.8, 0.9, 1.0)
+    bg_node.inputs['Strength'].default_value = 0.5
+
+print("Moss-covered boulder scene created successfully!")
+```

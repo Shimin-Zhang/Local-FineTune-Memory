@@ -1,0 +1,120 @@
+```python
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up world - dark background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+bg_node.inputs[0].default_value = (0.01, 0.02, 0.01, 1.0)  # Very dark green-black
+bg_node.inputs[1].default_value = 1.0
+
+# Create a pumpkin-like object using a UV sphere with some deformation
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=32, ring_count=16, location=(0, 0, 1.0))
+pumpkin = bpy.context.active_object
+pumpkin.name = "Pumpkin"
+
+# Scale to make it look like a pumpkin (slightly wider than tall)
+pumpkin.scale = (1.2, 1.2, 0.9)
+
+# Add some bumps to make it look more pumpkin-like
+# Use a displacement modifier with a noise texture
+tex = bpy.data.textures.new("PumpkinBump", type='CLOUDS')
+tex.noise_scale = 0.3
+mod = pumpkin.modifiers.new(name="Displace", type='DISPLACE')
+mod.texture = tex
+mod.strength = 0.1
+mod.mid_level = 0.5
+
+# Add a stem
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.4, location=(0, 0, 2.05))
+stem = bpy.context.active_object
+stem.name = "Stem"
+stem.scale = (1, 1, 1)
+
+# Create ground plane
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+
+# Set up materials
+# Pumpkin material - orange with some roughness
+pumpkin_mat = bpy.data.materials.new(name="PumpkinMat")
+pumpkin_mat.use_nodes = True
+bsdf = pumpkin_mat.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.8, 0.3, 0.05, 1.0)  # Orange
+bsdf.inputs["Roughness"].default_value = 0.6
+bsdf.inputs["Subsurface Weight"].default_value = 0.3
+bsdf.inputs["Subsurface Radius"].default_value = (0.5, 0.2, 0.05)
+pumpkin.data.materials.append(pumpkin_mat)
+
+# Stem material - brown
+stem_mat = bpy.data.materials.new(name="StemMat")
+stem_mat.use_nodes = True
+bsdf_stem = stem_mat.node_tree.nodes.get("Principled BSDF")
+bsdf_stem.inputs["Base Color"].default_value = (0.2, 0.15, 0.05, 1.0)  # Brown
+bsdf_stem.inputs["Roughness"].default_value = 0.8
+stem.data.materials.append(stem_mat)
+
+# Ground material - dark
+ground_mat = bpy.data.materials.new(name="GroundMat")
+ground_mat.use_nodes = True
+bsdf_ground = ground_mat.node_tree.nodes.get("Principled BSDF")
+bsdf_ground.inputs["Base Color"].default_value = (0.05, 0.08, 0.03, 1.0)  # Dark green-black
+bsdf_ground.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(ground_mat)
+
+# Create a green point light below the pumpkin
+light_data = bpy.data.lights.new(name="GreenLight", type='POINT')
+light_data.energy = 50  # Bright enough to light from below
+light_data.color = (0.2, 1.0, 0.2)  # Green
+light_data.shadow_soft_size = 0.5
+
+light_obj = bpy.data.objects.new(name="GreenLight", object_data=light_data)
+light_obj.location = (0, 0, 0.1)  # Just above the ground, below the pumpkin
+bpy.context.collection.objects.link(light_obj)
+
+# Add a dim ambient light for overall visibility
+ambient_data = bpy.data.lights.new(name="Ambient", type='SUN')
+ambient_data.energy = 0.1
+ambient_data.color = (0.1, 0.15, 0.1)  # Slight green tint
+ambient_obj = bpy.data.objects.new(name="Ambient", object_data=ambient_data)
+ambient_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+bpy.context.collection.objects.link(ambient_obj)
+
+# Set up camera
+bpy.ops.object.camera_add(location=(0, -5, 2.5))
+camera = bpy.context.active_object
+camera.name = "Camera"
+
+# Point camera at the pumpkin
+direction = (0, 0, 1.0) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set camera as active
+bpy.context.scene.camera = camera
+
+# Set render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+
+# Add some fog for atmosphere
+world.node_tree.nodes.get("Background").inputs[0].default_value = (0.01, 0.03, 0.01, 1.0)
+
+# Enable bloom for a more spooky glow effect
+bpy.context.scene.view_settings.bloom_intensity = 0.3
+bpy.context.scene.view_settings.bloom_threshold = 1.0
+bpy.context.scene.view_settings.bloom_radius = 0.5
+
+print("Spooky pumpkin scene created!")
+```

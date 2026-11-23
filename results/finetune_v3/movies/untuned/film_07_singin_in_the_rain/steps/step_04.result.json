@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 5.2,
+ "error": null,
+ "error_line": null,
+ "printed": "Fixed: camera repositioned, fog removed, rain reduced, lights boosted, cornices added, car/onlooker/bench/trash/sign added, render settings improved\n",
+ "state_saved": true,
+ "n_objects": 283,
+ "n_lights": 20,
+ "n_materials": 38,
+ "own_camera": true,
+ "render_error": null
+}

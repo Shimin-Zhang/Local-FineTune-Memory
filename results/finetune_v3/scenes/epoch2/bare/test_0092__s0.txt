@@ -1,0 +1,102 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1811)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+D = {}
+def paint(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .8
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    D[name] = m
+for k, v in dict(snow=(.42, .46, .55), stone=(.34, .32, .33), stone2=(.22, .2, .22), slate=(.07, .08, .11), brass=(.5, .35, .1),
+                 door=(.04, .05, .06), glass=(.06, .08, .12), wood=(.2, .1, .06), coat=(.03, .03, .04), skin=(.5, .33, .25),
+                 red=(.55, .05, .05), gold=(.7, .5, .1), sack=(.35, .25, .15)).items(): paint(k, v)
+paint("win", (1, .65, .25), 6); paint("clockface", (1, .85, .5), 8); paint("bulb", (1, .8, .4), 14); paint("green", (.05, .3, .12), 0)
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("d"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("d", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(D[m]); return o
+def blk(at, s, m, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, (rx, 0, rz))
+def col(at, r, h, n, m, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at)
+def ball(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return mk(bm, m, at)
+def beam(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def lite(kind, c, w, at, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 26, v.co.y * 18, v.co.z * 2.4 - 1.2))
+    if v.co.z < 0: v.co = Vector((v.co.x * .6 + random.uniform(-1, 1), v.co.y * .6 + random.uniform(-1, 1), v.co.z - random.uniform(0, 1.5)))
+mk(bm, "snow")
+blk((0, -8.4, 0), (26, 1.6, .12), "stone2"); blk((0, -6.6, 0), (26, 1.6, .1), "stone2")
+# store: three floors, corner at x=8 y=-3, long display windows on the front
+blk((0, 3, 0), (22, 10, 8.2), "stone")
+for z in (2.7, 5.4): blk((0, -2.1, z), (22.2, .4, .3), "stone2")
+blk((0, 3, 8.2), (22.6, 10.6, .4), "stone2"); blk((0, 3, 8.6), (21.4, 9.4, .5), "slate")
+for i in range(8):
+    x = -9.5 + i * 2.7
+    for z in (.7, 3.4): blk((x, -2.05, z), (1.7, .12, 1.7), "win"); blk((x, -2.0, z - .15), (2.0, .15, .15), "stone2")
+for z in (.7, 3.4): blk((8.2, -2.05, z), (1.7, .12, 1.7), "win")
+for i in range(5): blk((-9.5 + i * 2.7, 8.0, 3.4), (1.3, .1, 1.5), "win")
+for i in range(8): blk((-9.5 + i * 2.7, -2.4, 0), (.3, .3, .5), "stone2")
+# domed corner entrance
+blk((8.2, -2.2, 0), (4.4, 3.4, 4.6), "stone2"); blk((8.2, -4.0, 0), (2.2, .2, 3.0), "door")
+for sx in (-1, 1): col((8.2 + sx * 1.4, -3.9, 0), .22, 3.4, 6, "brass")
+col((8.2, -2.2, 4.6), 2.4, .5, 8, "stone"); col((8.2, -2.2, 5.1), 2.1, 1.5, 8, "stone2", .9)
+col((8.2, -2.2, 6.6), .9, .6, 8, "stone", .3); col((8.2, -2.2, 7.2), .12, .5, 5, "brass")
+for k in range(8):
+    a = k * math.pi / 4; blk((8.2 + 1.9 * math.cos(a), -2.2 + 1.9 * math.sin(a), 5.1), (.25, .25, 1.2), "win", rz=a + math.pi / 2)
+blk((8.2, -4.2, 3.4), (3.0, .2, .6), "win"); lite("POINT", (1, .65, .25), 900, (8.2, -5.2, 2.4))
+# clock on the parapet
+blk((0, -2.2, 8.6), (2.4, .6, 2.6), "stone2"); col((0, -2.55, 10.0), .95, .12, 10, "clockface").rotation_euler = (math.pi / 2, 0, 0)
+for k in range(12):
+    a = k * math.pi / 6; beam((0, -2.7, 10.0), (.8 * math.cos(a), -2.7, 10.0 + .8 * math.sin(a)), .08, "door")
+beam((0, -2.7, 10.0), (.0, -2.7, 10.7), .09, "door"); beam((0, -2.7, 10.0), (.5, -2.7, 9.7), .09, "door")
+lite("POINT", (1, .8, .4), 300, (0, -3.6, 10.0))
+# doorman in a great coat, red gloves and a top hat, at the door
+dx, dy = 6.0, -6.2
+col((dx, dy, 0), .55, 1.6, 6, "coat", .35); ball((dx, dy, 1.95), .3, "skin"); col((dx, dy, 2.1), .38, .5, 6, "coat", .3)
+beam((dx + .3, dy, 1.2), (dx + 1.2, dy - .3, 1.6), .14, "coat"); beam((dx - .3, dy, 1.2), (dx - .9, dy + .2, 1.0), .14, "coat")
+for s in (-.25, .25): blk((dx + s, dy, 0), (.3, .4, .15), "door")
+# string of bulbs over the windows
+for i in range(13):
+    x = -10 + i * 1.65; z = 5.3 - .5 * math.sin(i / 12 * math.pi)
+    ball((x, -2.5, z), .16, "bulb")
+lite("POINT", (1, .75, .35), 500, (-5, -3.6, 5.0)); lite("POINT", (1, .75, .35), 500, (4, -3.6, 5.0))
+# delivery carts, sacks, crates, and a snowman
+for cx, cy, rz in ((-6, -7.5, 0), (-1.5, -7.6, .15)):
+    blk((cx, cy, .55), (2.2, 1.2, .15), "wood")
+    for sx in (-.8, .8):
+        for sy in (-.6, .6): col((cx + sx, cy + sy, .4), .4, .12, 7, "door").rotation_euler = (0, math.pi / 2, 0)
+    for k in range(3): ball((cx - .6 + k * .6, cy + .1, 1.1), .5, "sack", .9)
+    beam((cx + 1.1, cy, .6), (cx + 2.2, cy, 1.2), .1, "wood")
+for i in range(4): blk((10.8 + (i % 2) * .0, -6 + i * .9, 0), (.9, .8, .7 + .2 * (i % 2)), "wood", rz=i * .3)
+for i in range(3): ball((-11.2 + i * .1, -5.5 + i * .3, .4 + i * .7), .5 - i * .08, "snow")
+col((-11.2, -5.2, 1.3), .25, .3, 5, "red", .05)
+for i in range(6): ball((random.uniform(-11, 11), random.uniform(-8.5, -6.5), .1), random.uniform(.3, .6), "snow", .6)
+# winter dusk: blue key from the right, magenta rim from behind
+lite("SUN", (.5, .6, 1), 4.5, (26, -12, 9), (0, 0, 3)); lite("SUN", (.9, .35, .7), 2.2, (-24, 20, 10), (0, 0, 3))
+w = bpy.data.worlds.new("winter"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .02, .05, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 4)); co.location = t + Vector((-14, -66, 42))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

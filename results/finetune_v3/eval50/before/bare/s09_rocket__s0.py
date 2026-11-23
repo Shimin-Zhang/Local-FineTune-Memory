@@ -1,0 +1,96 @@
+import bpy
+import math
+import bmesh
+from mathutils import Vector
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Create Rocket Body (Cylinder) ---
+bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=3.0, location=(0, 0, 1.5))
+body = bpy.context.active_object
+body.name = "Rocket_Body"
+
+# --- Create Nose Cone ---
+bpy.ops.mesh.primitive_cone_add(radius1=0.5, radius2=0.0, depth=1.0, location=(0, 0, 3.5))
+nose = bpy.context.active_object
+nose.name = "Rocket_Nose"
+
+# --- Create Round Window (Torus) ---
+bpy.ops.mesh.primitive_torus_add(
+    major_radius=0.15,
+    minor_radius=0.05,
+    major_segments=32,
+    minor_segments=16,
+    location=(0, 0.5, 2.0)
+)
+window = bpy.context.active_object
+window.name = "Rocket_Window"
+# Rotate the window to face outward (towards +Y)
+window.rotation_euler = (math.radians(90), 0, 0)
+
+# --- Create Three Fins ---
+fin_positions = [0, 120, 240]  # Degrees around the rocket
+
+for i, angle_deg in enumerate(fin_positions):
+    angle_rad = math.radians(angle_deg)
+    
+    # Create a simple fin shape using a plane, then extrude/solidify
+    # Fin dimensions: length along rocket axis ~1.0, width ~0.4, thickness ~0.05
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, 0))
+    fin = bpy.context.active_object
+    fin.name = f"Rocket_Fin_{i+1}"
+    
+    # Scale the plane to fin dimensions
+    # X: width of fin (perpendicular to rocket axis in local), Y: length along rocket
+    fin.scale = (0.2, 0.5, 0.025)  # 0.4 wide, 1.0 long, 0.05 thick
+    
+    # Position the fin: attach it to the side of the rocket
+    # The fin should extend outward from the rocket surface
+    # Rocket radius is 0.5, so place the fin base at radius 0.5
+    # Fin center should be at radius 0.5 + (fin_width/2) = 0.5 + 0.2 = 0.7
+    # But we want the fin to start at the rocket surface, so offset by half the width
+    offset = 0.5 + 0.2  # 0.7
+    
+    x_pos = offset * math.cos(angle_rad)
+    y_pos = offset * math.sin(angle_rad)
+    z_pos = 0.5  # Place fin lower on the rocket
+    
+    fin.location = (x_pos, y_pos, z_pos)
+    
+    # Rotate the fin to align with the rocket axis and face outward
+    # The plane is in XY by default. We want it vertical (in XZ or YZ plane)
+    # Rotate 90 degrees around X to make it vertical (now in XZ plane)
+    fin.rotation_euler = (math.radians(90), 0, angle_rad)
+
+# --- Apply Materials (Optional but nice) ---
+
+# Create materials
+body_mat = bpy.data.materials.new(name="Rocket_Body_Mat")
+body_mat.use_nodes = True
+body_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 1, 1, 1)  # White
+
+nose_mat = bpy.data.materials.new(name="Rocket_Nose_Mat")
+nose_mat.use_nodes = True
+nose_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 0, 0, 1)  # Red
+
+window_mat = bpy.data.materials.new(name="Rocket_Window_Mat")
+window_mat.use_nodes = True
+window_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.2, 0.5, 1, 1)  # Blue
+
+fin_mat = bpy.data.materials.new(name="Rocket_Fin_Mat")
+fin_mat.use_nodes = True
+fin_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 0.5, 0, 1)  # Orange
+
+# Assign materials
+body.data.materials.append(body_mat)
+nose.data.materials.append(nose_mat)
+window.data.materials.append(window_mat)
+
+for i in range(3):
+    fin_obj = bpy.data.objects.get(f"Rocket_Fin_{i+1}")
+    if fin_obj:
+        fin_obj.data.materials.append(fin_mat)
+
+print("Rocket with three fins and a round window created successfully.")

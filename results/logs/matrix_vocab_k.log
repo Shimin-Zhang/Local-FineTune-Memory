@@ -1,0 +1,10 @@
+matrix vocab: 9 probes, 0 already done
+[1/9] Qwen3.5-2B-Base lora_bf16 ckpt=0 1x512 loss=vanilla vocab_size=32000 -> ok  peak 4.78 GiB 13.8s 
+[2/9] Qwen3.5-2B-Base lora_bf16 ckpt=1 1x512 loss=vanilla vocab_size=32000 -> ok  peak 3.15 GiB 8.9s 
+[3/9] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=vanilla vocab_size=32000 -> ok  peak 5.00 GiB 8.2s 
+[4/9] Qwen3.5-2B-Base lora_bf16 ckpt=0 1x512 loss=vanilla vocab_size=128000 -> ok  peak 5.78 GiB 10.0s 
+[5/9] Qwen3.5-2B-Base lora_bf16 ckpt=1 1x512 loss=vanilla vocab_size=128000 -> ok  peak 4.16 GiB 7.2s 
+[6/9] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=vanilla vocab_size=128000 -> ok  peak 10.49 GiB 8.4s 
+[7/9] Qwen3.5-2B-Base lora_bf16 ckpt=0 1x512 loss=vanilla  -> ok  peak 7.05 GiB 7.2s 
+[8/9] Qwen3.5-2B-Base lora_bf16 ckpt=1 1x512 loss=vanilla  -> ok  peak 5.42 GiB 7.3s 
+[9/9] Qwen3.5-2B-Base lora_bf16 ckpt=1 2x2048 loss=vanilla  -> ok  peak 17.38 GiB 8.6s 

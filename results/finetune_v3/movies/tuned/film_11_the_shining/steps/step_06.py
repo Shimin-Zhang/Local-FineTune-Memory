@@ -1,0 +1,94 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(37)
+sc = bpy.context.scene
+def tint(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+snow, hedge, hedge2, path, trunk = tint((.55, .6, .72)), tint((.04, .13, .08)), tint((.06, .17, .09)), tint((.5, .45, .4)), tint((.14, .08, .05))
+lampc, dark, pine = tint((1, .8, .45), 14), tint((.03, .03, .04)), tint((.04, .14, .1))
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def cone(at, r, h, n, m, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at)
+def drift(at, r, sq=.45):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(.85, 1.2), v.co.y * random.uniform(.85, 1.2), v.co.z * sq))
+    return put(bm, snow, at)
+def lamp(kind, at, col, w, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = col; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+gx, gy, pitch, H = -6, -3, 2.6, 1.5
+# hedge walls from a spanning tree, each with a ragged snow cap
+walls = set()
+cells = [(x, y) for x in range(6) for y in range(5)]
+order = cells[:]; random.shuffle(order)
+seen = {order[0]}; stack = [order[0]]
+def link(a, b):
+    if a[0] == b[0]:
+        for y in range(min(a[1], b[1]), max(a[1], b[1]) + 1): walls.add((a[0], y))
+    else:
+        for x in range(min(a[0], b[0]), max(a[0], b[0]) + 1): walls.add((x, a[1]))
+while stack:
+    c = stack[-1]
+    nb = [n for n in ((c[0] + 1, c[1]), (c[0] - 1, c[1]), (c[0], c[1] + 1), (c[0], c[1] - 1)) if n in cells and n not in seen]
+    if not nb: stack.pop(); continue
+    n = random.choice(nb); seen.add(n); stack.append(n); link(c, n)
+for (a, b) in zip(cells, cells[1:]):
+    if abs(a[0] - b[0]) + abs(a[1] - b[1]) == 1 and not ((a[0], b[1]) in walls or (b[0], a[1]) in walls): walls.add((a[0], b[1]) if a[0] == b[0] else (b[0], a[1]))
+for i in range(6): walls.add((i, 5)); walls.add((i, 0))
+for j in range(1, 5): walls.add((6, j)); walls.add((0, j))
+for (i, j) in walls:
+    x, y = gx + i * pitch, gy + j * pitch
+    w = pitch + .1 if i < 6 else pitch * .6
+    d = pitch + .1 if j < 5 else pitch * .6
+    blk((x, y, 0), (w, d, H), hedge if (i + j) % 2 else hedge2)
+    blk((x, y, H - .05), (w + .08, d + .08, .3), snow)
+# winding path through the maze, with footprints either side
+def cell(c): return Vector((gx + (c[0] + .5) * pitch, gy + (c[1] + .5) * pitch))
+route = [(2, 0), (2, 1), (1, 1), (1, 2), (2, 2), (3, 2), (3, 3), (2, 3), (2, 4), (3, 4), (4, 4), (4, 5), (4, 6)]
+for a, b in zip(route, route[1:]):
+    pa, pb = cell(a), cell(b)
+    for k in range(4):
+        q = pa.lerp(pb, k / 4); blk((q.x, q.y, .02), (1.3, 1.3, .05), path, (0, 0, random.uniform(-.1, .1)))
+# lamp posts at the gate and one inside the maze, a bench, a snowman
+for (px, py) in ((gx + 3 * pitch - 1.6, gy - 3.5), (gx + 3 * pitch + 1.6, gy - 3.5), (gx + 4.5 * pitch, gy + 4.5 * pitch)):
+    cone((px, py, 0), .12, 3.2, 5, trunk, .08); blk((px, py, 3.2), (.5, .5, .55), lampc)
+    lamp("POINT", (px, py, 3.4), (1, .75, .4), 380)
+blk((gx + 2.5 * pitch, gy + 1.5 * pitch, .02), (1.1, .4, .15), trunk)
+for (r, z) in ((.7, .6), (.55, 1.7), (.4, 2.6)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r); put(bm, snow, (-1.5, -9.5, z))
+cone((-1.5, -9.5, 2.9), .45, .12, 6, dark, .45); cone((-1.5, -9.5, 3.0), .25, .5, 6, dark, .2)
+cone((-1.5, -9.9, 2.65), .08, .5, 4, tint((.9, .4, .05), 3), .02)
+# the Overlook: steps, porch lamps, chimneys, snow-laden roof, lit windows
+hx, hy = 0, 10.5
+for k in range(3): blk((hx, hy - 3.6 - k * .6, 0), (2.4 - k * .3, .6, .25 + .2 * (2 - k)), tint((.35, .3, .28)))
+for sx in (-1, 1):
+    cone((hx + sx * 3.4, hy - 3.4, 0), .08, 2.0, 5, trunk, .06); blk((hx + sx * 3.4, hy - 3.4, 2.0), (.4, .4, .4), lampc)
+    lamp("POINT", (hx + sx * 3.4, hy - 3.4, 2.2), (1, .75, .4), 300)
+for x in (-8, 8):
+    blk((x, hy + 1.5, 4.5), (1.2, 1.2, 2.4), tint((.25, .1, .08))); blk((x, hy + 1.5, 6.9), (1.5, 1.5, .25), snow)
+for k in range(6): cone((-10 + k * 4, hy - 3.6, 0), 1.5, .5, 6, snow, .2)
+# snow-covered pines round the base
+for (x, y, s) in ((-16, 6, 1.3), (-15, 12, 1.1), (15, 8, 1.4), (16, 13, 1.0), (-12, -10, 1.2), (12, -10, 1.3), (17, -3, 1.0), (-17, -2, 1.1)):
+    cone((x, y, 0), .3, 1.2, 5, trunk, .2)
+    for k in range(3):
+        cone((x, y, 1 + k * 1.1 * s), 1.9 * s - k * .5 * s, 1.6 * s, 6, pine, .1)
+        cone((x, y, 1.2 + k * 1.1 * s), 1.6 * s - k * .5 * s, .1, 6, snow, .1)
+lamp("SUN", (-26, -18, 12), (.45, .55, 1), 4.5, (0, 0, 2)); lamp("SUN", (22, 24, 14), (.5, .6, 1), 2.2, (0, 0, 2))
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 3)); co.location = t + Vector((8, -76, 46))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

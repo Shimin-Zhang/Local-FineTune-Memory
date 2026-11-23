@@ -1,0 +1,208 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Materials
+def mat(name, col, rough=0.8, metal=0.0):
+    m = bpy.data.materials.get(name)
+    if not m:
+        m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = col
+        bsdf.inputs["Roughness"].default_value = rough
+        bsdf.inputs["Metallic"].default_value = metal
+    return m
+
+wood = mat("wood", (0.35, 0.22, 0.10), 0.85)
+thatch = mat("thatch", (0.65, 0.55, 0.25), 0.95)
+stone = mat("stone", (0.45, 0.45, 0.42), 0.9)
+soil = mat("soil", (0.30, 0.20, 0.10), 0.95)
+grass = mat("grass", (0.30, 0.45, 0.15), 0.9)
+pig_skin = mat("pig", (0.75, 0.55, 0.55), 0.7)
+veg_green = mat("veg", (0.15, 0.50, 0.15), 0.8)
+pit_dirt = mat("pit", (0.20, 0.14, 0.08), 0.95)
+loom_wood = mat("loomwood", (0.30, 0.18, 0.08), 0.85)
+weight_stone = mat("weight", (0.55, 0.55, 0.50), 0.85)
+thread = mat("thread", (0.85, 0.85, 0.80), 0.6)
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(size=60, location=(0,0,0))
+ground = bpy.context.active_object
+ground.data.materials.append(grass)
+
+# Shallow pit under hut
+bpy.ops.mesh.primitive_cylinder_add(radius=3.5, depth=0.4, location=(0, 0, -0.15))
+pit = bpy.context.active_object
+pit.data.materials.append(pit_dirt)
+
+# Timber Hut
+def add_box(loc, size, m):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    o = bpy.context.active_object
+    o.scale = (size[0], size[1], size[2])
+    o.data.materials.append(m)
+    return o
+
+# Posts
+for x in [-2.5, 2.5]:
+    for y in [-2.0, 2.0]:
+        add_box((x, y, 1.2), (0.18, 0.18, 2.4), wood)
+
+# Lintel beams
+add_box((0, -2.0, 2.45), (5.2, 0.18, 0.18), wood)
+add_box((0, 2.0, 2.45), (5.2, 0.18, 0.18), wood)
+add_box((-2.5, 0, 2.45), (0.18, 4.2, 0.18), wood)
+add_box((2.5, 0, 2.45), (0.18, 4.2, 0.18), wood)
+
+# Walls (timber)
+add_box((0, -2.0, 1.25), (5.0, 0.12, 2.2), wood)
+add_box((0, 2.0, 1.25), (5.0, 0.12, 2.2), wood)
+add_box((-2.5, 0, 1.25), (0.12, 4.0, 2.2), wood)
+add_box((2.5, 0, 1.25), (0.12, 4.0, 2.2), wood)
+
+# Thatch roof
+bpy.ops.mesh.primitive_cone_add(radius1=4.2, radius2=0.0, depth=2.0, location=(0, 0, 3.6))
+roof = bpy.context.active_object
+roof.scale = (1.0, 0.85, 1.0)
+roof.data.materials.append(thatch)
+
+# Door
+add_box((0, -2.08, 1.0), (0.9, 0.06, 1.8), wood)
+
+# Warp-weighted Loom
+def add_cyl(loc, r, d, m, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=d, location=loc, rotation=rot)
+    o = bpy.context.active_object
+    o.data.materials.append(m)
+    return o
+
+loom_x, loom_y = 5.0, 2.0
+# Frame posts
+for dx in [-1.2, 1.2]:
+    for dy in [-1.0, 1.0]:
+        add_cyl((loom_x+dx, loom_y+dy, 1.0), 0.06, 2.0, loom_wood)
+# Top and bottom beams
+add_cyl((loom_x, loom_y-1.0, 1.9), 0.06, 2.6, loom_wood, rot=(0, math.radians(90), 0))
+add_cyl((loom_x, loom_y-1.0, 0.1), 0.06, 2.6, loom_wood, rot=(0, math.radians(90), 0))
+add_cyl((loom_x, loom_y+1.0, 1.9), 0.06, 2.6, loom_wood, rot=(0, math.radians(90), 0))
+add_cyl((loom_x, loom_y+1.0, 0.1), 0.06, 2.6, loom_wood, rot=(0, math.radians(90), 0))
+
+# Warp threads and hanging stones
+random.seed(42)
+for i in range(12):
+    tx = loom_x - 1.1 + i * (2.2/11)
+    # thread
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.008, depth=1.6, location=(tx, loom_y, 1.1))
+    t = bpy.context.active_object
+    t.data.materials.append(thread)
+    # hanging stone
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=0.10, location=(tx, loom_y, 0.15))
+    s = bpy.context.active_object
+    s.scale = (1, 1, 0.7)
+    s.data.materials.append(weight_stone)
+
+# Pig pen
+pen_x, pen_y = -5.5, 3.5
+# Fence posts
+for i in range(6):
+    ang = i * math.radians(60)
+    px = pen_x + 2.0 * math.cos(ang)
+    py = pen_y + 2.0 * math.sin(ang)
+    add_cyl((px, py, 0.5), 0.05, 1.0, wood)
+# Fence rails (simplified as boxes between posts)
+for i in range(6):
+    a1 = i * math.radians(60)
+    a2 = (i+1) % 6 * math.radians(60)
+    p1 = Vector((pen_x + 2.0*math.cos(a1), pen_y + 2.0*math.sin(a1), 0.4))
+    p2 = Vector((pen_x + 2.0*math.cos(a2), pen_y + 2.0*math.sin(a2), 0.4))
+    mid = (p1 + p2) / 2
+    length = (p2 - p1).length
+    ang_z = math.atan2(p2.y - p1.y, p2.x - p1.x)
+    rail = add_box(tuple(mid), (length, 0.06, 0.06), wood)
+    rail.rotation_euler = (0, 0, ang_z)
+
+# Pigs
+for i in range(3):
+    px = pen_x + random.uniform(-1.2, 1.2)
+    py = pen_y + random.uniform(-1.2, 1.2)
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.35, location=(px, py, 0.35))
+    body = bpy.context.active_object
+    body.scale = (1.4, 1.0, 0.9)
+    body.data.materials.append(pig_skin)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2, location=(px+0.5, py, 0.35))
+    head = bpy.context.active_object
+    head.data.materials.append(pig_skin)
+    # Legs
+    for lx in [-0.25, 0.25]:
+        for ly in [-0.15, 0.15]:
+            add_cyl((px+lx, py+ly, 0.12), 0.05, 0.25, pig_skin)
+
+# Vegetable plot
+plot_x, plot_y = 0.0, -6.0
+# Soil bed
+bpy.ops.mesh.primitive_cube_add(size=1, location=(plot_x, plot_y, 0.05))
+bed = bpy.context.active_object
+bed.scale = (3.0, 2.0, 0.1)
+bed.data.materials.append(soil)
+
+# Rows of vegetables
+random.seed(123)
+for row in range(4):
+    ry = plot_y - 0.75 + row * 0.5
+    for col in range(6):
+        vx = plot_x - 1.2 + col * 0.48
+        # Plant
+        bpy.ops.mesh.primitive_cone_add(radius1=0.08, radius2=0.0, depth=0.25, location=(vx, ry, 0.2))
+        plant = bpy.context.active_object
+        plant.data.materials.append(veg_green)
+        # Leaves
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.12, location=(vx, ry, 0.35))
+        leaf = bpy.context.active_object
+        leaf.scale = (1.2, 1.2, 0.6)
+        leaf.data.materials.append(veg_green)
+
+# Some scattered stones around clearing
+for i in range(15):
+    sx = random.uniform(-8, 8)
+    sy = random.uniform(-8, 8)
+    if abs(sx) < 3.5 and abs(sy) < 3.5:
+        continue
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=random.uniform(0.08, 0.2), location=(sx, sy, 0.05))
+    st = bpy.context.active_object
+    st.scale = (1, 0.8, 0.6)
+    st.data.materials.append(stone)
+
+# Simple lighting
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.95, 0.85)
+
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 5))
+fill = bpy.context.active_object
+fill.data.energy = 100
+fill.data.color = (0.9, 0.9, 1.0)
+
+# Camera
+bpy.ops.object.camera_add(location=(12, -12, 6))
+cam = bpy.context.active_object
+cam.rotation_euler = (math.radians(70), 0, math.radians(45))
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1280
+bpy.context.scene.render.resolution_y = 720
+bpy.context.scene.render.film_transparent = False
+```

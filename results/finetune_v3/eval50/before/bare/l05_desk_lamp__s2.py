@@ -1,0 +1,152 @@
+import bpy
+import math
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Create Desk ---
+# Top
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.75))
+top = bpy.context.active_object
+top.name = "DeskTop"
+top.scale = (1.2, 0.6, 0.025)
+bpy.ops.object.transform_apply(scale=True)
+
+# Legs
+leg_positions = [(-1.1, -0.5), (1.1, -0.5), (-1.1, 0.5), (1.1, 0.5)]
+for i, (x, y) in enumerate(leg_positions):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.375))
+    leg = bpy.context.active_object
+    leg.name = f"DeskLeg{i}"
+    leg.scale = (0.05, 0.05, 0.375)
+    bpy.ops.object.transform_apply(scale=True)
+
+# --- Create Lamp ---
+# Base
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.03, location=(0.5, 0.2, 0.785))
+lamp_base = bpy.context.active_object
+lamp_base.name = "LampBase"
+
+# Stem
+bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.4, location=(0.5, 0.2, 1.0))
+lamp_stem = bpy.context.active_object
+lamp_stem.name = "LampStem"
+
+# Shade (cone)
+bpy.ops.mesh.primitive_cone_add(radius1=0.08, radius2=0.15, depth=0.15, location=(0.5, 0.2, 1.25))
+lamp_shade = bpy.context.active_object
+lamp_shade.name = "LampShade"
+
+# --- Create Light (Point Light inside lamp shade) ---
+bpy.ops.object.light_add(type='POINT', location=(0.5, 0.2, 1.22))
+light = bpy.context.active_object
+light.name = "LampLight"
+light.data.energy = 100  # Watts
+light.data.color = (1.0, 0.9, 0.7)  # Warm light
+light.data.shadow_soft_size = 0.05
+
+# --- Create Dark Room (Floor and Walls) ---
+# Floor
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, 0))
+floor = bpy.context.active_object
+floor.name = "Floor"
+
+# Back wall
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, -5, 2.5))
+back_wall = bpy.context.active_object
+back_wall.name = "BackWall"
+back_wall.rotation_euler = (math.radians(90), 0, 0)
+
+# Left wall
+bpy.ops.mesh.primitive_plane_add(size=10, location=(-5, 0, 2.5))
+left_wall = bpy.context.active_object
+left_wall.name = "LeftWall"
+left_wall.rotation_euler = (math.radians(90), 0, math.radians(90))
+
+# Right wall
+bpy.ops.mesh.primitive_plane_add(size=10, location=(5, 0, 2.5))
+right_wall = bpy.context.active_object
+right_wall.name = "RightWall"
+right_wall.rotation_euler = (math.radians(90), 0, math.radians(-90))
+
+# Ceiling
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, 5))
+ceiling = bpy.context.active_object
+ceiling.name = "Ceiling"
+ceiling.rotation_euler = (math.radians(180), 0, 0)
+
+# --- Set Up Materials ---
+# Dark material for room
+dark_mat = bpy.data.materials.new("DarkRoom")
+dark_mat.use_nodes = True
+bsdf = dark_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.02, 0.02, 0.02, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+
+for obj in [floor, back_wall, left_wall, right_wall, ceiling]:
+    obj.data.materials.clear()
+    obj.data.materials.append(dark_mat)
+
+# Wood material for desk
+wood_mat = bpy.data.materials.new("Wood")
+wood_mat.use_nodes = True
+bsdf = wood_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.3, 0.15, 0.05, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.5
+
+for obj in [top] + [bpy.data.objects[f"DeskLeg{i}"] for i in range(4)]:
+    obj.data.materials.clear()
+    obj.data.materials.append(wood_mat)
+
+# Metal material for lamp
+metal_mat = bpy.data.materials.new("Metal")
+metal_mat.use_nodes = True
+bsdf = metal_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.8, 0.8, 0.8, 1.0)
+bsdf.inputs["Metallic"].default_value = 1.0
+bsdf.inputs["Roughness"].default_value = 0.3
+
+for obj in [lamp_base, lamp_stem]:
+    obj.data.materials.clear()
+    obj.data.materials.append(metal_mat)
+
+# Emissive material for lamp shade (so it glows)
+shade_mat = bpy.data.materials.new("LampShade")
+shade_mat.use_nodes = True
+bsdf = shade_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (1.0, 0.9, 0.7, 1.0)
+bsdf.inputs["Emission Color"].default_value = (1.0, 0.9, 0.7, 1.0)
+bsdf.inputs["Emission Strength"].default_value = 2.0
+bsdf.inputs["Roughness"].default_value = 0.6
+
+lamp_shade.data.materials.clear()
+lamp_shade.data.materials.append(shade_mat)
+
+# --- Set Up Camera ---
+bpy.ops.object.camera_add(location=(2.5, 2.5, 1.5))
+camera = bpy.context.active_object
+camera.name = "Camera"
+
+# Point camera at desk
+direction = (0, 0, 0.75) - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set camera as active
+bpy.context.scene.camera = camera
+
+# --- Set Up World (Dark) ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes["Background"]
+bg_node.inputs["Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+bg_node.inputs["Strength"].default_value = 0.0
+
+# --- Render Settings ---
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True

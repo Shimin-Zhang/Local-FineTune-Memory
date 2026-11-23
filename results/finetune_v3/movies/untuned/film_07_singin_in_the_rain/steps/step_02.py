@@ -1,0 +1,300 @@
+import bpy, math, random
+from mathutils import Vector
+
+# ============ MATERIALS ============
+def cm(name, col, met=0, rgh=0.5, em=0, ecol=(0,0,0,1)):
+    m = bpy.data.materials.get(name)
+    if m: return m
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    n = m.node_tree.nodes; l = m.node_tree.links; n.clear()
+    b = n.new('ShaderNodeBsdfPrincipled'); o = n.new('ShaderNodeOutputMaterial')
+    o.location=(300,0); b.location=(0,0)
+    b.inputs['Base Color'].default_value = col
+    b.inputs['Metallic'].default_value = met
+    b.inputs['Roughness'].default_value = rgh
+    if em > 0:
+        b.inputs['Emission Color'].default_value = ecol
+        b.inputs['Emission Strength'].default_value = em
+    l.new(b.outputs['BSDF'], o.inputs['Surface'])
+    return m
+
+mA = cm("WetAsphalt",(0.01,0.01,0.015,1),0.3,0.02)
+mB1 = cm("Brick1",(0.25,0.08,0.05,1),0,0.8)
+mB2 = cm("Brick2",(0.35,0.12,0.08,1),0,0.8)
+mB3 = cm("Brick3",(0.18,0.10,0.06,1),0,0.8)
+mSt = cm("Stone",(0.3,0.28,0.25,1),0,0.9)
+mWL = cm("WinLit",(1,0.9,0.6,1),0,0.1,2.0,(1,0.85,0.5,1))
+mWD = cm("WinDark",(0.05,0.05,0.08,1),0,0.1)
+mWF = cm("WinFrame",(0.1,0.08,0.05,1),0,0.7)
+mSG = cm("StoreGlass",(0.9,0.85,0.7,1),0,0.1,1.5,(1,0.9,0.6,1))
+mSF = cm("StoreFrame",(0.05,0.05,0.05,1),0,0.3)
+mAw = cm("Awning",(0.15,0.02,0.02,1),0,0.9)
+mLP = cm("LampPost",(0.05,0.05,0.05,1),0.8,0.3)
+mLG = cm("LampGlass",(1,0.9,0.5,1),0,0.1,3.0,(1,0.85,0.4,1))
+mLB = cm("LampBase",(0.03,0.03,0.03,1),0.9,0.2)
+mSk = cm("Skin",(0.8,0.6,0.5,1),0,0.7)
+mSu = cm("Suit",(0.02,0.02,0.02,1),0,0.6)
+mSh = cm("Shoes",(0.01,0.01,0.01,1),0.3,0.2)
+mHa = cm("Hair",(0.05,0.03,0.02,1),0,0.9)
+mUm = cm("Umbrella",(0.05,0.05,0.05,1),0,0.4)
+mUh = cm("UmbHandle",(0.3,0.2,0.1,1),0,0.5)
+mCu = cm("Curb",(0.15,0.15,0.15,1),0,0.8)
+mFH = cm("FireHydrant",(0.6,0.05,0.05,1),0,0.5)
+mMH = cm("Manhole",(0.08,0.08,0.08,1),0.5,0.4)
+mPu = cm("Puddle",(0.02,0.02,0.03,1),0.9,0.01)
+mNe = cm("Neon",(1,0.2,0.2,1),0,0.1,5.0,(1,0.1,0.1,1))
+mNb = cm("NeonBlue",(0.2,0.4,1,1),0,0.1,5.0,(0.1,0.3,1,1))
+
+# World
+w = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = w
+w.use_nodes = True
+bg = w.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.005,0.005,0.015,1)
+    bg.inputs[1].default_value = 1.0
+
+# ============ GROUND ============
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0,0,0))
+road = bpy.context.active_object; road.name="Road"
+road.scale = (20, 50, 1)
+road.data.materials.append(mA)
+
+# Sidewalks
+for s in [-1,1]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(s*11.5, 0, 0.075))
+    sw = bpy.context.active_object; sw.name=f"Sw_{s}"
+    sw.scale = (3, 50, 0.15)
+    sw.data.materials.append(mSt)
+
+# Curbs
+for s in [-1,1]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(s*10, 0, 0.075))
+    cu = bpy.context.active_object; cu.name=f"Curb_{s}"
+    cu.scale = (0.4, 50, 0.15)
+    cu.data.materials.append(mCu)
+
+# ============ BUILDINGS ============
+def bldg(x, z, w_, d_, h_, mat, nf=4, wpf=4):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, h_/2, z))
+    b = bpy.context.active_object; b.name=f"B_{x}_{z}"
+    b.scale = (w_, h_, d_)
+    b.data.materials.append(mat)
+    # Windows on street-facing side
+    fh = h_ / nf
+    ww = w_ / (wpf * 2)
+    wh = fh * 0.5
+    for f in range(nf):
+        for wi in range(wpf):
+            wx = x - w_/2 + ww*(wi*2+1)
+            wy = fh*f + fh*0.25
+            wz = z + d_/2 + 0.01
+            bpy.ops.mesh.primitive_plane_add(size=1, location=(wx, wy, wz))
+            wo = bpy.context.active_object; wo.name=f"W_{x}_{z}_{f}_{wi}"
+            wo.scale = (ww*0.8, wh*0.8, 1)
+            wo.data.materials.append(mWL if random.random()>0.3 else mWD)
+
+# Left buildings
+bldg(-13,-15,6,8,15,mB1,5,4)
+bldg(-13,-5,6,8,12,mB2,4,3)
+bldg(-13,5,6,8,18,mB3,6,4)
+bldg(-13,15,6,8,14,mB1,5,3)
+# Right buildings
+bldg(13,-15,6,8,16,mB2,5,4)
+bldg(13,-5,6,8,13,mB3,4,3)
+bldg(13,5,6,8,20,mB1,6,4)
+bldg(13,15,6,8,15,mB2,5,3)
+
+# ============ STOREFRONTS ============
+def sf(x, z, w_, d_):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 2, z))
+    s = bpy.context.active_object; s.name=f"SF_{x}_{z}"
+    s.scale = (w_, 4, d_)
+    s.data.materials.append(mB1)
+    # Glass
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(x, 2, z + d_/2 + 0.02))
+    g = bpy.context.active_object; g.name=f"SG_{x}_{z}"
+    g.scale = (w_*0.8, 3, 1)
+    g.data.materials.append(mSG)
+    # Awning
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 3.5, z + d_/2 + 0.75))
+    a = bpy.context.active_object; a.name=f"Aw_{x}_{z}"
+    a.scale = (w_*0.85, 0.1, 1.5)
+    a.data.materials.append(mAw)
+
+for zz in [-15,-5,5,15]:
+    sf(-11, zz, 5, 6)
+    sf(11, zz, 5, 6)
+
+# ============ LAMP POSTS ============
+def lamp(x, z, main=False):
+    # Base
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.35 if main else 0.25, depth=0.3, location=(x,0.15,z), vertices=12)
+    bpy.context.active_object.data.materials.append(mLB)
+    # Pole
+    ph = 5 if main else 4
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08 if main else 0.06, depth=ph, location=(x, ph/2, z), vertices=12)
+    bpy.context.active_object.data.materials.append(mLP)
+    # Ring
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.12, minor_radius=0.02, location=(x, ph*0.5, z), major_segments=12, minor_segments=6)
+    bpy.context.active_object.data.materials.append(mLP)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3 if main else 0.2, location=(x, ph+0.2, z), segments=16, ring_count=8)
+    bpy.context.active_object.data.materials.append(mLG)
+    # Cap
+    bpy.ops.mesh.primitive_cone_add(radius1=0.12, radius2=0.03, depth=0.2, location=(x, ph+0.5, z), vertices=12)
+    bpy.context.active_object.data.materials.append(mLP)
+
+lamp(-9,-10); lamp(-9,0); lamp(-9,10)
+lamp(9,-10); lamp(9,10)
+lamp(2, 0, main=True)  # Main lamp post
+
+# ============ CHARACTER ============
+cx, cy, cz = 2.5, 3.5, 0
+
+# Torso
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.8, location=(cx,cy,cz), vertices=12)
+t = bpy.context.active_object; t.name="Torso"
+t.rotation_euler = (0, math.radians(30), 0)
+t.data.materials.append(mSu)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(cx+0.2, cy+0.5, cz), segments=16, ring_count=8)
+bpy.context.active_object.data.materials.append(mSk)
+
+# Hair
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.16, location=(cx+0.2, cy+0.55, cz-0.02), segments=16, ring_count=8)
+h = bpy.context.active_object; h.scale=(1,0.8,1)
+h.data.materials.append(mHa)
+
+# Left arm (reaching up to lamp)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.7, location=(cx+0.3, cy+0.8, cz), vertices=8)
+la = bpy.context.active_object; la.rotation_euler=(0, math.radians(-45), 0)
+la.data.materials.append(mSu)
+
+# Right arm (holding umbrella)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.7, location=(cx-0.3, cy+0.2, cz), vertices=8)
+ra = bpy.context.active_object; ra.rotation_euler=(math.radians(45), math.radians(30), 0)
+ra.data.materials.append(mSu)
+
+# Left leg (kicked up)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.8, location=(cx+0.1, cy-0.6, cz), vertices=8)
+ll = bpy.context.active_object; ll.rotation_euler=(0, math.radians(-60), 0)
+ll.data.materials.append(mSu)
+
+# Right leg (extended down)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.8, location=(cx-0.1, cy-0.7, cz), vertices=8)
+rl = bpy.context.active_object; rl.rotation_euler=(0, math.radians(20), 0)
+rl.data.materials.append(mSu)
+
+# Shoes
+bpy.ops.mesh.primitive_cube_add(size=0.15, location=(cx+0.25, cy-1.0, cz))
+s1 = bpy.context.active_object; s1.scale=(1,1.5,1); s1.rotation_euler=(0,math.radians(-60),0)
+s1.data.materials.append(mSh)
+bpy.ops.mesh.primitive_cube_add(size=0.15, location=(cx-0.15, cy-1.1, cz))
+s2 = bpy.context.active_object; s2.scale=(1,1.5,1); s2.rotation_euler=(0,math.radians(20),0)
+s2.data.materials.append(mSh)
+
+# ============ UMBRELLA ============
+ux, uy, uz = cx-0.5, cy+0.4, cz+0.3
+# Canopy
+bpy.ops.mesh.primitive_cone_add(radius1=0.6, radius2=0.05, depth=0.4, location=(ux, uy+0.2, uz), vertices=16)
+bpy.context.active_object.data.materials.append(mUm)
+# Handle
+bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.5, location=(ux, uy, uz), vertices=8)
+bpy.context.active_object.data.materials.append(mUh)
+
+# ============ LIGHTS ============
+# Main lamp light
+bpy.ops.object.light_add(type='POINT', location=(2, 5.4, 0))
+ll1 = bpy.context.active_object; ll1.name="LampLight_Main"
+ll1.data.energy = 200
+ll1.data.color = (1.0, 0.85, 0.5)
+ll1.data.shadow_soft_size = 0.3
+
+# Storefront lights
+for zz in [-15,-5,5,15]:
+    bpy.ops.object.light_add(type='AREA', location=(-11, 2, zz))
+    al1 = bpy.context.active_object; al1.name=f"StoreL_{-11}_{zz}"
+    al1.data.energy = 50
+    al1.data.color = (1.0, 0.9, 0.6)
+    al1.data.size = 3
+    al1.rotation_euler = (math.radians(90), 0, 0)
+    
+    bpy.ops.object.light_add(type='AREA', location=(11, 2, zz))
+    al2 = bpy.context.active_object; al2.name=f"StoreL_{11}_{zz}"
+    al2.data.energy = 50
+    al2.data.color = (1.0, 0.9, 0.6)
+    al2.data.size = 3
+    al2.rotation_euler = (math.radians(90), 0, 0)
+
+# Other lamp lights
+for lx, lz in [(-9,-10),(-9,0),(-9,10),(9,-10),(9,10)]:
+    bpy.ops.object.light_add(type='POINT', location=(lx, 4.2, lz))
+    ol = bpy.context.active_object; ol.name=f"LampL_{lx}_{lz}"
+    ol.data.energy = 100
+    ol.data.color = (1.0, 0.85, 0.5)
+    ol.data.shadow_soft_size = 0.2
+
+# Neon sign accents
+bpy.ops.object.light_add(type='POINT', location=(-11, 3, -10))
+nl1 = bpy.context.active_object; nl1.name="NeonL1"
+nl1.data.energy = 30
+nl1.data.color = (1.0, 0.1, 0.1)
+
+bpy.ops.object.light_add(type='POINT', location=(11, 3, 5))
+nl2 = bpy.context.active_object; nl2.name="NeonL2"
+nl2.data.energy = 30
+nl2.data.color = (0.1, 0.3, 1.0)
+
+# ============ CAMERA ============
+bpy.ops.object.camera_add(location=(-5, 4, 8))
+cam = bpy.context.active_object; cam.name="MainCam"
+cam.rotation_euler = (math.radians(75), 0, math.radians(-20))
+bpy.context.scene.camera = cam
+
+# ============ PODDLES ============
+for i in range(8):
+    px = random.uniform(-8, 8)
+    pz = random.uniform(-20, 20)
+    pr = random.uniform(0.3, 1.0)
+    bpy.ops.mesh.primitive_circle_add(radius=pr, fill_type='NGON', location=(px, 0.01, pz), vertices=16)
+    p = bpy.context.active_object; p.name=f"Puddle_{i}"
+    p.data.materials.append(mPu)
+
+# ============ FIRE HYDRANT ============
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.5, location=(-9.5, 0.25, -8), vertices=12)
+fh = bpy.context.active_object; fh.name="FireHydrant"
+fh.data.materials.append(mFH)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.1, location=(-9.5, 0.5, -8), vertices=12)
+fh2 = bpy.context.active_object; fh2.name="FireHydrantTop"
+fh2.data.materials.append(mFH)
+
+# ============ MANHOLE COVERS ============
+for mz in [-10, 0, 10]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.02, location=(0, 0.01, mz), vertices=16)
+    mh = bpy.context.active_object; mh.name=f"Manhole_{mz}"
+    mh.data.materials.append(mMH)
+
+# ============ NEON SIGNS ============
+# Simple neon tube shapes on buildings
+bpy.ops.mesh.primitive_torus_add(major_radius=0.5, minor_radius=0.03, location=(-11, 3.5, -10), major_segments=16, minor_segments=8)
+ns1 = bpy.context.active_object; ns1.name="NeonSign1"
+ns1.rotation_euler = (0, math.radians(90), 0)
+ns1.data.materials.append(mNe)
+
+bpy.ops.mesh.primitive_torus_add(major_radius=0.4, minor_radius=0.03, location=(11, 3.5, 5), major_segments=16, minor_segments=8)
+ns2 = bpy.context.active_object; ns2.name="NeonSign2"
+ns2.rotation_euler = (0, math.radians(90), 0)
+ns2.data.materials.append(mNb)
+
+# ============ WET REFLECTION PLANE ============
+# A slightly above-ground plane with high gloss for wet street reflection
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0.02, 0))
+wr = bpy.context.active_object; wr.name="WetReflection"
+wr.scale = (20, 50, 1)
+mWet = cm("WetReflect",(0.01,0.01,0.01,1),0.9,0.01)
+wr.data.materials.append(mWet)
+
+print("Scene built: wet street, buildings, storefronts, lamp posts, character swinging, umbrella, lights, puddles, neon signs")

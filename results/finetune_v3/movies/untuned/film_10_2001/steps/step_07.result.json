@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 8.0,
+ "error": "AttributeError: 'ParticleSettings' object has no attribute 'halo_size'",
+ "error_line": "psys.settings.halo_size = 0.05",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 272,
+ "n_lights": 4,
+ "n_materials": 151,
+ "own_camera": true,
+ "render_error": null
+}

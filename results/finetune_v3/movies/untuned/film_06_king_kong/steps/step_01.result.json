@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.4,
+ "error": "ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3",
+ "error_line": "bsdf.inputs['Base Color'].default_value = color",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 0,
+ "n_lights": 0,
+ "n_materials": 0,
+ "own_camera": false,
+ "render_error": null
+}

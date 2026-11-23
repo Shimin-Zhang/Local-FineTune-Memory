@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 7.9,
+ "error": "KeyError: 'bpy_prop_collection[key]: key \"Volume Scatter Density\" not found'",
+ "error_line": "mat_fog.node_tree.nodes[\"Principled BSDF\"].inputs[\"Volume Scatter Density\"].default_value = 0.02",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 133,
+ "n_lights": 4,
+ "n_materials": 21,
+ "own_camera": true,
+ "render_error": null
+}

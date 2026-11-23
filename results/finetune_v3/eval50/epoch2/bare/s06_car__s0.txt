@@ -1,0 +1,64 @@
+```python
+import bpy, bmesh, random
+from mathutils import Vector
+random.seed(1373)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, em=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (r, g, b, 1); p.inputs["Roughness"].default_value = .5
+    if em: p.inputs["Emission Color"].default_value = (r, g, b, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+road, roadline, blue, blue2, glass, tyre, chrome, kerb, neon1, neon2, head, tail, trunk = (paint(*c) for c in (
+    (.04, .04, .05), (.7, .65, .1), (.05, .3, 1), (.03, .15, .6), (.02, .03, .06), (.02, .02, .025), (.5, .5, .55), (.12, .12, .15), (1, .1, .6), (.1, .9, 1), (1, 1, .8), (1, .05, .05), (.03, .03, .04)))
+def make(kind, m, loc, size, rot=(0, 0, 0), n=8, top=1.0):
+    bm = bmesh.new()
+    if kind == "box": bmesh.ops.create_cube(bm, size=1)
+    elif kind == "cyl": bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=.5, radius2=.5 * top, depth=1)
+    else: bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.5)
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = loc; o.scale = size; o.rotation_euler = rot
+    sc.collection.objects.link(o); me.materials.append(m); return o
+def bar(a, b, r, m):
+    a, b = Vector(a), Vector(b); o = make("cyl", m, (a + b) / 2, (r, r, (b - a).length), n=5)
+    o.rotation_euler = (b - a).to_track_quat('Z', 'Y').to_euler(); return o
+def shine(kind, c, w, loc, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = loc; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# base: a road slab with a rough underside, a kerb and a line of dashes
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=13, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    v.co.z -= 1.5
+me = bpy.data.meshes.new("b"); bm.to_mesh(me); bm.free(); b = bpy.data.objects.new("b", me); sc.collection.objects.link(b); me.materials.append(road)
+make("box", kerb, (0, 4.6, .1), (21, .6, .3)); make("box", kerb, (0, -4.6, .1), (21, .6, .3))
+for i in range(8): make("box", roadline, (-9 + i * 2.5, 0, .03), (1.2, .18, .05))
+# car body: tapered slab, cabin, sloped windscreen, spoiler
+make("box", blue, (0, 0, 1.1), (6.2, 2.5, 1.1), top=.85); make("box", blue2, (0, 0, .6), (6.3, 2.5, .35)); make("box", blue2, (0, 0, 1.7), (5.4, 2.3, .15))
+make("box", blue, (-.2, 0, 2.2), (3.0, 2.0, 1.0), top=.8); make("box", glass, (-.2, 0, 2.3), (2.9, 1.9, .8), top=.8)
+make("box", glass, (-1.9, 0, 2.1), (.12, 1.7, .6), rot=(0, .5, 0)); make("box", glass, (1.5, 0, 2.1), (.12, 1.7, .6), rot=(0, -.5, 0))
+make("box", blue2, (-3.1, 0, 2.0), (.5, 2.0, .15)); make("box", blue2, (-3.1, 0, 1.5), (.1, 1.8, .5))
+for sy in (-1, 1):
+    make("box", head, (3.1, sy * .8, 1.1), (.15, .8, .3)); make("box", tail, (-3.1, sy * .8, 1.2), (.15, .8, .3))
+    make("box", blue2, (.5, sy * 1.27, 1.2), (1.2, .06, .12))
+# four black wheels with chrome hubs
+for wx in (-2.1, 2.1):
+    for wy in (-1.25, 1.25):
+        make("cyl", tyre, (wx, wy, .7), (1.4, 1.4, .7), rot=(1.5708, 0, 0), n=8)
+        make("cyl", chrome, (wx, wy * 1.02, .7), (.6, .6, .72), rot=(1.5708, 0, 0), n=6)
+# a trunk on the roof, a neon sign and a street lamp at the kerb
+make("box", trunk, (-.3, 0, 2.95), (1.8, 1.4, .8))
+for sx in (-1, 1): bar((6.5, sx * 2.5, 0), (6.5, sx * 2.5, 5.5), .15, kerb)
+make("box", neon1, (6.5, 0, 5.2), (.3, 5.4, .6)); make("box", neon2, (6.5, 0, 4.4), (.3, 3.6, .3))
+bar((-8, 4.2, 0), (-8, 4.2, 6.5), .12, kerb); make("box", head, (-8, 3.2, 6.5), (.4, 1.6, .3)); make("box", head, (-8, 3.2, 6.5), (.5, 1.7, .15))
+shine("POINT", (1, .1, .6), 900, (6.5, 0, 5)); shine("POINT", (.1, .9, 1), 400, (6.5, 0, 4.4)); shine("POINT", (1, 1, .8), 500, (-8, 3.2, 6.5))
+shine("SUN", (.55, .5, 1), 4, (-24, -16, 9), (0, 0, 1)); shine("SUN", (1, .2, .6), 2.5, (22, 20, 10), (0, 0, 1))
+w = bpy.data.worlds.new("w"); w.use_nodes = True; sc.world = w
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .01, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co); sc.camera = co
+co.location = Vector((0, 0, 1.5)) + Vector((14, -48, 27))
+co.rotation_euler = (Vector((0, 0, 1.5)) - co.location).to_track_quat('-Z', 'Y').to_euler()
+```

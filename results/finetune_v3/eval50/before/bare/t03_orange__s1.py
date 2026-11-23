@@ -1,0 +1,192 @@
+import bpy
+import bmesh
+import math
+import random
+from mathutils import Vector
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Create Orange (Dimpled Sphere) ---
+bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=1.0, location=(0, 0, 0))
+orange = bpy.context.active_object
+orange.name = "Orange"
+
+# Add Subdivision Surface for smoothness
+subsurf = orange.modifiers.new(name="Subsurf", type='SUBSURF')
+subsurf.levels = 2
+subsurf.render_levels = 2
+
+# Apply modifiers to get mesh for displacement
+bpy.ops.object.modifier_apply(modifier="Subsurf")
+
+# Add Displacement Modifier for dimples
+tex = bpy.data.textures.new(name="DimpleTex", type='CLOUDS')
+tex.noise_scale = 0.05
+tex.noise_depth = 3
+
+disp = orange.modifiers.new(name="Displacement", type='DISPLACE')
+disp.texture = tex
+disp.strength = 0.03
+disp.mid_level = 0.5
+disp.direction = 'NORMAL'
+
+# Apply displacement
+bpy.ops.object.modifier_apply(modifier="Displacement")
+
+# Smooth shade
+bpy.ops.object.shade_smooth()
+
+# Create Orange Material
+orange_mat = bpy.data.materials.new(name="OrangeSkin")
+orange_mat.use_nodes = True
+nodes = orange_mat.node_tree.nodes
+links = orange_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+bsdf.location = (0, 0)
+bsdf.inputs['Base Color'].default_value = (0.85, 0.35, 0.05, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.4
+bsdf.inputs['Specular IOR Level'].default_value = 0.5
+
+output = nodes.new(type='ShaderNodeOutputMaterial')
+output.location = (300, 0)
+
+# Add noise texture for color variation
+noise = nodes.new(type='ShaderNodeTexNoise')
+noise.location = (-300, 0)
+noise.inputs['Scale'].default_value = 10.0
+noise.inputs['Detail'].default_value = 5.0
+
+# ColorRamp for orange variation
+ramp = nodes.new(type='ShaderNodeValToRGB')
+ramp.location = (-100, 0)
+ramp.color_ramp.elements[0].color = (0.8, 0.3, 0.02, 1.0)
+ramp.color_ramp.elements[1].color = (0.9, 0.45, 0.08, 1.0)
+
+links.new(noise.outputs['Fac'], ramp.inputs['Fac'])
+links.new(ramp.outputs['Color'], bsdf.inputs['Base Color'])
+links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+orange.data.materials.append(orange_mat)
+
+# --- Create Stem ---
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.3, location=(0, 0, 1.05))
+stem = bpy.context.active_object
+stem.name = "Stem"
+bpy.ops.object.shade_smooth()
+
+stem_mat = bpy.data.materials.new(name="StemMaterial")
+stem_mat.use_nodes = True
+bsdf_stem = stem_mat.node_tree.nodes['Principled BSDF']
+bsdf_stem.inputs['Base Color'].default_value = (0.3, 0.2, 0.1, 1.0)
+bsdf_stem.inputs['Roughness'].default_value = 0.8
+stem.data.materials.append(stem_mat)
+
+# --- Create Leaf ---
+bpy.ops.mesh.primitive_plane_add(size=1.0, location=(0.3, 0.1, 1.15))
+leaf = bpy.context.active_object
+leaf.name = "Leaf"
+
+# Shape the leaf
+bm = bmesh.new()
+bm.from_mesh(leaf.data)
+
+# Modify vertices to create leaf shape
+for vert in bm.verts:
+    # Taper the leaf
+    vert.co.y *= 0.6
+    # Curve the leaf
+    vert.co.z += vert.co.y * 0.1
+    # Make it smaller
+    vert.co.x *= 0.5
+    vert.co.y *= 0.4
+
+bm.to_mesh(leaf.data)
+bm.free()
+
+# Add subdivision for smoothness
+leaf_subsurf = leaf.modifiers.new(name="LeafSubsurf", type='SUBSURF')
+leaf_subsurf.levels = 2
+leaf_subsurf.render_levels = 2
+
+bpy.ops.object.modifier_apply(modifier="LeafSubsurf")
+bpy.ops.object.shade_smooth()
+
+# Rotate leaf
+leaf.rotation_euler = (math.radians(30), math.radians(20), math.radians(45))
+
+# Create Leaf Material
+leaf_mat = bpy.data.materials.new(name="LeafMaterial")
+leaf_mat.use_nodes = True
+nodes_leaf = leaf_mat.node_tree.nodes
+links_leaf = leaf_mat.node_tree.links
+
+bsdf_leaf = nodes_leaf['Principled BSDF']
+bsdf_leaf.inputs['Base Color'].default_value = (0.1, 0.5, 0.1, 1.0)
+bsdf_leaf.inputs['Roughness'].default_value = 0.3
+bsdf_leaf.inputs['Transmission Weight'].default_value = 0.2
+bsdf_leaf.inputs['IOR'].default_value = 1.3
+
+# Add vein pattern
+leaf_noise = nodes_leaf.new(type='ShaderNodeTexNoise')
+leaf_noise.location = (-300, 0)
+leaf_noise.inputs['Scale'].default_value = 20.0
+
+leaf_ramp = nodes_leaf.new(type='ShaderNodeValToRGB')
+leaf_ramp.location = (-100, 0)
+leaf_ramp.color_ramp.elements[0].color = (0.08, 0.4, 0.08, 1.0)
+leaf_ramp.color_ramp.elements[1].color = (0.15, 0.6, 0.15, 1.0)
+
+links_leaf.new(leaf_noise.outputs['Fac'], leaf_ramp.inputs['Fac'])
+links_leaf.new(leaf_ramp.outputs['Color'], bsdf_leaf.inputs['Base Color'])
+
+leaf.data.materials.append(leaf_mat)
+
+# --- Add Lighting ---
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 5))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Point light for fill
+bpy.ops.object.light_add(type='POINT', location=(-3, -3, 3))
+fill = bpy.context.active_object
+fill.name = "FillLight"
+fill.data.energy = 100
+fill.data.color = (1.0, 0.9, 0.8)
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(3, -3, 2))
+camera = bpy.context.active_object
+camera.name = "Camera"
+
+# Point camera at origin
+direction = Vector((0, 0, 0)) - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+bpy.context.scene.camera = camera
+
+# Set up render settings
+bpy.context.scene.render.resolution_x = 1024
+bpy.context.scene.render.resolution_y = 1024
+bpy.context.scene.render.film_transparent = False
+
+# Background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes['Background']
+bg.inputs['Color'].default_value = (0.9, 0.9, 0.95, 1.0)
+bg.inputs['Strength'].default_value = 1.0

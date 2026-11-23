@@ -1,0 +1,6 @@
+wrote results/finetune_v3/scenes/report_3way/scenes_1.png (1584, 11654)
+wrote results/finetune_v3/scenes/report_3way/scenes_2.png (1584, 11654)
+wrote results/finetune_v3/scenes/report_3way/scenes_3.png (1584, 11654)
+wrote results/finetune_v3/scenes/report_3way/scenes_4.png (1584, 11654)
+wrote results/finetune_v3/scenes/report_3way/scenes_5.png (1584, 11654)
+{"Qwen3.8-27B, untuned": {"cut off": 29, "error": 58, "no own camera": 3, "camera shows nothing": 9, "picture": 1}, "Qwen3.8-27B, fine-tuned (2 epochs)": {"picture": 84, "cut off": 1, "error": 15}, "Claude Sonnet (the reference)": {"picture": 100}}

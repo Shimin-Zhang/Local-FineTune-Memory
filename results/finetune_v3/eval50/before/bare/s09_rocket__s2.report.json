@@ -1,0 +1,26 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 8,
+ "object_types": {
+  "MESH": 8
+ },
+ "default_cube_still_there": false,
+ "materials": [],
+ "objects_without_material": 8,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.05,
+  2.119,
+  6.5
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.7,
+ "image": true
+}

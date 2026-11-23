@@ -1,0 +1,150 @@
+import bpy
+import math
+import bmesh
+from mathutils import Vector
+
+# Clear default scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a profile curve for the vase using a bmesh
+# We'll create a vase by revolving a profile curve
+profile_points = [
+    (0.0, 0.0),       # bottom center
+    (0.4, 0.0),       # bottom edge
+    (0.5, 0.1),
+    (0.55, 0.3),
+    (0.55, 0.6),
+    (0.5, 0.9),
+    (0.4, 1.2),
+    (0.35, 1.4),
+    (0.35, 1.6),
+    (0.4, 1.8),
+    (0.45, 2.0),
+    (0.5, 2.2),
+    (0.55, 2.4),
+    (0.5, 2.5),       # top rim
+    (0.0, 2.5),       # top center (close the top)
+]
+
+# Create a mesh from the profile and spin it
+mesh = bpy.data.meshes.new("VaseProfile")
+obj = bpy.data.objects.new("FrostedGlassVase", mesh)
+bpy.context.collection.objects.link(obj)
+
+bm = bmesh.new()
+bm.from_mesh(mesh)
+
+# Create the profile vertices
+verts = [bm.verts.new((x, 0, z)) for x, z in profile_points]
+edges = []
+for i in range(len(verts) - 1):
+    edges.append(bm.edges.new((verts[i], verts[i + 1])))
+
+# Spin the profile around the Z axis
+bmesh.ops.spin(
+    bm,
+    geom=bm.verts[:] + bm.edges[:],
+    cent=(0, 0, 0),
+    axis=(0, 0, 1),
+    dvec=(0, 0, 1),
+    angle=2 * math.pi,
+    steps=64,
+    use_merge=True,
+    use_duplicate=False
+)
+
+# Remove duplicate vertices
+bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.001)
+
+# Recalculate normals
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+bm.to_mesh(mesh)
+bm.free()
+
+# Smooth shading
+bpy.context.view_layer.objects.active = obj
+obj.select_set(True)
+bpy.ops.object.shade_smooth()
+
+# Create a frosted glass material
+mat = bpy.data.materials.new("FrostedGlass")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Output node
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (600, 0)
+
+# Glass BSDF
+glass_node = nodes.new('ShaderNodeBsdfGlass')
+glass_node.location = (300, 0)
+glass_node.inputs['Color'].default_value = (0.9, 0.95, 1.0, 1.0)
+glass_node.inputs['Roughness'].default_value = 0.4  # Frosted effect
+glass_node.inputs['IOR'].default_value = 1.45
+glass_node.inputs['Distribution'].default_value = 'GGX'
+
+# Mix in some translucency for a more frosted look
+translucent_node = nodes.new('ShaderNodeBsdfTranslucent')
+translucent_node.location = (300, -200)
+translucent_node.inputs['Color'].default_value = (0.85, 0.9, 0.95, 1.0)
+
+# Mix shader
+mix_node = nodes.new('ShaderNodeMixShader')
+mix_node.location = (450, 0)
+mix_node.inputs['Fac'].default_value = 0.3
+
+# Link nodes
+links.new(glass_node.outputs['BSDF'], mix_node.inputs[1])
+links.new(translucent_node.outputs['BSDF'], mix_node.inputs[2])
+links.new(mix_node.outputs['Shader'], output_node.inputs['Surface'])
+
+# Assign material to object
+obj.data.materials.append(mat)
+
+# Add a subtle bump for frosted texture
+bump_node = nodes.new('ShaderNodeBump')
+bump_node.location = (100, -300)
+bump_node.inputs['Strength'].default_value = 0.05
+bump_node.inputs['Distance'].default_value = 0.01
+
+noise_node = nodes.new('ShaderNodeTexNoise')
+noise_node.location = (-100, -300)
+noise_node.inputs['Scale'].default_value = 50.0
+noise_node.inputs['Detail'].default_value = 8.0
+
+links.new(noise_node.outputs['Fac'], bump_node.inputs['Height'])
+links.new(bump_node.outputs['Normal'], glass_node.inputs['Normal'])
+
+# Set up a simple lighting for visualization
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs['Color'].default_value = (0.05, 0.05, 0.08, 1.0)
+    bg_node.inputs['Strength'].default_value = 0.5
+
+# Add a sun light
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 3.0
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Add a point light for better reflections
+point_data = bpy.data.lights.new("PointLight", type='POINT')
+point_data.energy = 100
+point_obj = bpy.data.objects.new("PointLight", point_data)
+bpy.context.collection.objects.link(point_obj)
+point_obj.location = (3, 3, 4)
+
+print("Frosted glass vase created successfully!")

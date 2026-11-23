@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.9,
+ "error": "TypeError: shine() takes from 4 to 5 positional arguments but 6 were given",
+ "error_line": "shine(\"POINT\", (1, .8, .4), 60, c.x + q.x * 3, c.y + q.y * 3, c.z - .5)",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 251,
+ "n_lights": 1,
+ "n_materials": 11,
+ "own_camera": false,
+ "render_error": null
+}

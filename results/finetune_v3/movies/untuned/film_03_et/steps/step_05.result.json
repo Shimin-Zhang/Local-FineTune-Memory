@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 15.9,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene refined: fixed moon, improved bike visibility, added details!\n",
+ "state_saved": true,
+ "n_objects": 1049,
+ "n_lights": 5,
+ "n_materials": 27,
+ "own_camera": true,
+ "render_error": null
+}

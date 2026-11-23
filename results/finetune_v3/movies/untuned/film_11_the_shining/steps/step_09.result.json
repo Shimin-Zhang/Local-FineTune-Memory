@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 9.7,
+ "error": "AttributeError: 'Vector' object has no attribute 'to_4x4'",
+ "error_line": "rot_matrix = right.to_4x4()",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1279,
+ "n_lights": 24,
+ "n_materials": 22,
+ "own_camera": true,
+ "render_error": null
+}

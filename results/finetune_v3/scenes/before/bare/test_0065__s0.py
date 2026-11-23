@@ -1,0 +1,216 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.data.meshes.clear()
+bpy.data.materials.clear()
+bpy.data.cameras.clear()
+bpy.data.lights.clear()
+
+# Materials
+def create_mat(name, color, rough=0.7, metal=0.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    return m
+
+mat_ground = create_mat("Ground", (0.15, 0.10, 0.05), rough=0.9)
+mat_bark = create_mat("Bark", (0.25, 0.15, 0.08), rough=0.95)
+mat_log = create_mat("Log", (0.35, 0.20, 0.10), rough=0.85)
+mat_rail = create_mat("Rail", (0.3, 0.3, 0.32), rough=0.4, metal=0.8)
+mat_tie = create_mat("Tie", (0.20, 0.12, 0.06), rough=0.9)
+mat_wagon = create_mat("Wagon", (0.15, 0.15, 0.18), rough=0.6, metal=0.5)
+mat_wheel = create_mat("Wheel", (0.1, 0.1, 0.1), rough=0.3, metal=0.7)
+mat_engine_body = create_mat("EngineBody", (0.08, 0.08, 0.10), rough=0.4, metal=0.6)
+mat_engine_boiler = create_mat("Boiler", (0.05, 0.05, 0.06), rough=0.3, metal=0.7)
+mat_smokestack = create_mat("Smokestack", (0.02, 0.02, 0.02), rough=0.3, metal=0.8)
+mat_hut_wall = create_mat("HutWall", (0.30, 0.20, 0.10), rough=0.9)
+mat_hut_roof = create_mat("HutRoof", (0.15, 0.10, 0.05), rough=0.95)
+mat_crane_arm = create_mat("CraneArm", (0.5, 0.3, 0.1), rough=0.7, metal=0.3)
+mat_crane_base = create_mat("CraneBase", (0.3, 0.3, 0.3), rough=0.5, metal=0.6)
+mat_pine_needle = create_mat("PineNeedle", (0.05, 0.18, 0.05), rough=0.95)
+mat_pine_trunk = create_mat("PineTrunk", (0.20, 0.12, 0.06), rough=0.95)
+
+# Ground plane
+bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.data.materials.append(mat_ground)
+
+# Track: temporary narrow-gauge logging railway along X axis
+def make_tie(x, z=0):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0, 0.05))
+    tie = bpy.context.active_object
+    tie.scale = (0.15, 0.6, 0.04)
+    tie.data.materials.append(mat_tie)
+    return tie
+
+def make_rail(z_off):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, z_off, 0.10))
+    rail = bpy.context.active_object
+    rail.scale = (25, 0.04, 0.03)
+    rail.data.materials.append(mat_rail)
+    return rail
+
+# Ties every 1m from -20 to 20
+for i in range(-20, 21):
+    make_tie(i)
+
+# Two rails
+make_rail(z_off=-0.3)
+make_rail(z_off=0.3)
+
+# Flat wagons stacked with logs
+def make_flat_wagon(x, y=0):
+    # Flatbed
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.25))
+    bed = bpy.context.active_object
+    bed.scale = (2.0, 1.2, 0.05)
+    bed.data.materials.append(mat_wagon)
+    # Wheels (4)
+    for wx in [-0.7, 0.7]:
+        for wy in [-0.5, 0.5]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.06, location=(x+wx, y+wy, 0.12), rotation=(0, math.pi/2, 0))
+            wheel = bpy.context.active_object
+            wheel.data.materials.append(mat_wheel)
+    return bed
+
+def make_log_stack(x, y, z_base, count=3):
+    for i in range(count):
+        angle = random.uniform(0, math.pi)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=1.8, location=(x + random.uniform(-0.2, 0.2), y + random.uniform(-0.2, 0.2), z_base + i*0.16), rotation=(0, angle, 0))
+        log = bpy.context.active_object
+        log.data.materials.append(mat_log)
+
+# Place 3 flat wagons
+wagon_positions = [5, 8, 11]
+for i, x in enumerate(wagon_positions):
+    make_flat_wagon(x)
+    make_log_stack(x, 0, 0.32, count=3)
+
+# Loader crane (simple articulated arm on a base)
+def make_crane(x, y):
+    # Base
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=0.3, location=(x, y, 0.15))
+    base = bpy.context.active_object
+    base.data.materials.append(mat_crane_base)
+    # Vertical mast
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 1.0))
+    mast = bpy.context.active_object
+    mast.scale = (0.2, 0.2, 1.5)
+    mast.data.materials.append(mat_crane_arm)
+    # Arm (angled)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x + 0.8, y, 1.8), rotation=(0, math.radians(-20), 0))
+    arm = bpy.context.active_object
+    arm.scale = (1.5, 0.15, 0.15)
+    arm.data.materials.append(mat_crane_arm)
+    # Hook
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.5, location=(x + 1.5, y, 1.4))
+    hook = bpy.context.active_object
+    hook.data.materials.append(mat_crane_base)
+
+make_crane(x=3, y=-1.5)
+
+# Camp hut
+def make_hut(x, y):
+    # Walls
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.75))
+    walls = bpy.context.active_object
+    walls.scale = (2.5, 2.0, 1.5)
+    walls.data.materials.append(mat_hut_wall)
+    # Roof (pyramid-ish)
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=2.2, radius2=0, depth=1.0, location=(x, y, 1.75), rotation=(0, 0, math.pi/4))
+    roof = bpy.context.active_object
+    roof.data.materials.append(mat_hut_roof)
+    # Door
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y + 1.01, 0.5))
+    door = bpy.context.active_object
+    door.scale = (0.5, 0.02, 1.0)
+    door.data.materials.append(mat_hut_roof)
+
+make_hut(x=-5, y=-3)
+
+# Small steam engine
+def make_steam_engine(x, y):
+    # Chassis
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.3))
+    chassis = bpy.context.active_object
+    chassis.scale = (2.5, 1.0, 0.15)
+    chassis.data.materials.append(mat_engine_body)
+    # Boiler
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=1.8, location=(x, y, 0.6), rotation=(0, math.pi/2, 0))
+    boiler = bpy.context.active_object
+    boiler.data.materials.append(mat_engine_boiler)
+    # Smokestack
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.6, location=(x + 0.8, y, 1.1))
+    stack = bpy.context.active_object
+    stack.data.materials.append(mat_smokestack)
+    # Cab
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x - 0.8, y, 0.7))
+    cab = bpy.context.active_object
+    cab.scale = (0.8, 0.9, 0.7)
+    cab.data.materials.append(mat_engine_body)
+    # Wheels (4 large)
+    for wx in [-0.8, 0.5]:
+        for wy in [-0.5, 0.5]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.08, location=(x+wx, y+wy, 0.25), rotation=(0, math.pi/2, 0))
+            wheel = bpy.context.active_object
+            wheel.data.materials.append(mat_wheel)
+    # Driving rod
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=1.3, location=(x - 0.15, y + 0.5, 0.25), rotation=(math.pi/2, 0, 0))
+    rod = bpy.context.active_object
+    rod.data.materials.append(mat_crane_base)
+
+make_steam_engine(x=-1.5, y=0)
+
+# Pine forest: scatter pines around
+def make_pine(x, y, scale=1.0):
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.1*scale, depth=2.0*scale, location=(x, y, 1.0*scale))
+    trunk = bpy.context.active_object
+    trunk.data.materials.append(mat_pine_trunk)
+    # 3 cone layers
+    for i, (r, h, z) in enumerate([(0.8, 1.2, 1.5), (0.6, 1.0, 2.2), (0.4, 0.8, 2.8)]):
+        bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=r*scale, radius2=0, depth=h*scale, location=(x, y, z*scale))
+        cone = bpy.context.active_object
+        cone.data.materials.append(mat_pine_needle)
+
+# Scatter pines
+random.seed(42)
+for i in range(40):
+    px = random.uniform(-30, 30)
+    py = random.uniform(-25, 25)
+    # Avoid track area
+    if abs(py) < 2 and -22 < px < 22:
+        continue
+    make_pine(px, py, scale=random.uniform(0.8, 1.5))
+
+# Camera
+bpy.ops.object.camera_add(location=(20, 15, 10), rotation=(math.radians(65), 0, math.radians(-45)))
+cam = bpy.context.active_object
+bpy.context.scene.camera = cam
+
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.95, 0.85)
+sun.rotation_euler = (math.radians(45), math.radians(20), 0)
+
+# World
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs[0].default_value = (0.6, 0.7, 0.85, 1.0)
+bg.inputs[1].default_value = 0.8
+
+print("Logging railway scene created.")

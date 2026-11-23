@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 36.1,
+ "error": null,
+ "error_line": null,
+ "printed": "Info: Deleted 12 data-block(s)\nScene built successfully!\nObjects in scene: 1068\n",
+ "state_saved": true,
+ "n_objects": 1063,
+ "n_lights": 4,
+ "n_materials": 10,
+ "own_camera": true,
+ "render_error": null
+}

@@ -1,0 +1,236 @@
+import bpy
+import math
+import random
+
+# Clear default scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up basic scene
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+
+# Create ground (beach sand)
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Beach"
+
+# Sand material
+sand_mat = bpy.data.materials.new("Sand")
+sand_mat.use_nodes = True
+bsdf = sand_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.85, 0.75, 0.55, 1)
+bsdf.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(sand_mat)
+
+# Create water plane (tide)
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, -30, 0.1))
+water = bpy.context.active_object
+water.name = "Tide"
+water.scale = (1, 0.5, 1)
+
+# Water material
+water_mat = bpy.data.materials.new("Water")
+water_mat.use_nodes = True
+wbsdf = water_mat.node_tree.nodes["Principled BSDF"]
+wbsdf.inputs["Base Color"].default_value = (0.1, 0.3, 0.5, 1)
+wbsdf.inputs["Roughness"].default_value = 0.1
+wbsdf.inputs["Transmission Weight"].default_value = 0.8
+wbsdf.inputs["IOR"].default_value = 1.33
+water.data.materials.append(water_mat)
+
+# Helper function to create a sand sculpture
+def create_sand_sculpture(location, scale=1.0, name="Sculpture"):
+    """Create an elaborate sand sculpture with multiple parts"""
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=scale, location=location)
+    base = bpy.context.active_object
+    base.name = name + "_Base"
+    base.scale = (1, 1, 1.3)
+    
+    # Add top part
+    bpy.ops.mesh.primitive_cone_add(radius1=scale*0.6, radius2=scale*0.2, depth=scale*1.5, location=(location[0], location[1], location[2] + scale*1.5))
+    top = bpy.context.active_object
+    top.name = name + "_Top"
+    
+    # Add decorative elements
+    for i in range(5):
+        angle = i * (2 * math.pi / 5)
+        offset_x = math.cos(angle) * scale * 0.8
+        offset_y = math.sin(angle) * scale * 0.8
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=scale*0.15, location=(location[0]+offset_x, location[1]+offset_y, location[2] + scale*0.5))
+        deco = bpy.context.active_object
+        deco.name = f"{name}_Deco_{i}"
+    
+    # Apply sand material to all parts
+    for obj in [base, top] + [o for o in bpy.data.objects if o.name.startswith(name)]:
+        obj.data.materials.clear()
+        obj.data.materials.append(sand_mat)
+    
+    return base
+
+# Create line of sand sculptures
+sculpture_positions = [(-15, 5, 0), (-10, 5, 0), (-5, 5, 0), (0, 5, 0), (5, 5, 0), (10, 5, 0), (15, 5, 0)]
+sculpture_names = ["Dragon", "Castle", "Ship", "Tower", "Animal", "Figure", "Monster"]
+
+for pos, name in zip(sculpture_positions, sculpture_names):
+    create_sand_sculpture(pos, scale=1.2, name=name)
+
+# Create flags
+flag_colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (1, 1, 0), (1, 0, 1), (0, 1, 1), (1, 0.5, 0)]
+for i, (pos, color) in enumerate(zip(sculpture_positions, flag_colors)):
+    # Flag pole
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=3, location=(pos[0], pos[1], pos[2] + 1.5))
+    pole = bpy.context.active_object
+    pole.name = f"FlagPole_{i}"
+    
+    # Flag
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(pos[0] + 0.5, pos[1], pos[2] + 2.5))
+    flag = bpy.context.active_object
+    flag.name = f"Flag_{i}"
+    flag.rotation_euler = (0, math.radians(90), 0)
+    flag.scale = (1, 0.7, 1)
+    
+    # Flag material
+    flag_mat = bpy.data.materials.new(f"FlagMat_{i}")
+    flag_mat.use_nodes = True
+    fbsdf = flag_mat.node_tree.nodes["Principled BSDF"]
+    fbsdf.inputs["Base Color"].default_value = (*color, 1)
+    fbsdf.inputs["Roughness"].default_value = 0.5
+    flag.data.materials.append(flag_mat)
+    
+    # Pole material
+    pole_mat = bpy.data.materials.new(f"PoleMat_{i}")
+    pole_mat.use_nodes = True
+    pbsdf = pole_mat.node_tree.nodes["Principled BSDF"]
+    pbsdf.inputs["Base Color"].default_value = (0.3, 0.2, 0.1, 1)
+    pole.data.materials.append(pole_mat)
+
+# Create roped-off area
+def create_rope_barrier(start, end, num_posts=5):
+    """Create a rope barrier with posts"""
+    post_mat = bpy.data.materials.new("PostMat")
+    post_mat.use_nodes = True
+    pbsdf = post_mat.node_tree.nodes["Principled BSDF"]
+    pbsdf.inputs["Base Color"].default_value = (0.5, 0.3, 0.1, 1)
+    
+    rope_mat = bpy.data.materials.new("RopeMat")
+    rope_mat.use_nodes = True
+    rbsdf = rope_mat.node_tree.nodes["Principled BSDF"]
+    rbsdf.inputs["Base Color"].default_value = (0.9, 0.8, 0.6, 1)
+    
+    posts = []
+    for i in range(num_posts):
+        t = i / (num_posts - 1)
+        x = start[0] + (end[0] - start[0]) * t
+        y = start[1] + (end[1] - start[1]) * t
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=1.2, location=(x, y, 0.6))
+        post = bpy.context.active_object
+        post.name = f"RopePost_{i}"
+        post.data.materials.append(post_mat)
+        posts.append(post)
+    
+    # Create rope between posts
+    for i in range(len(posts) - 1):
+        p1 = posts[i].location
+        p2 = posts[i+1].location
+        mid = ((p1[0]+p2[0])/2, (p1[1]+p2[1])/2, 0.8)
+        length = math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2)
+        
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=length, location=mid)
+        rope = bpy.context.active_object
+        rope.name = f"Rope_{i}"
+        # Rotate to align between posts
+        dx = p2[0] - p1[0]
+        dy = p2[1] - p1[1]
+        angle = math.atan2(dy, dx)
+        rope.rotation_euler = (0, math.radians(90), angle)
+        rope.data.materials.append(rope_mat)
+
+# Rope barriers around sculptures
+create_rope_barrier((-18, 2), (18, 2), num_posts=8)
+create_rope_barrier((-18, 8), (18, 8), num_posts=8)
+create_rope_barrier((-18, 2), (-18, 8), num_posts=4)
+create_rope_barrier((18, 2), (18, 8), num_posts=4)
+
+# Create judge's table
+def create_judges_table(location):
+    """Create a judge's table with chairs"""
+    table_mat = bpy.data.materials.new("TableMat")
+    table_mat.use_nodes = True
+    tbsdf = table_mat.node_tree.nodes["Principled BSDF"]
+    tbsdf.inputs["Base Color"].default_value = (0.6, 0.4, 0.2, 1)
+    
+    # Table top
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(location[0], location[1], 0.75))
+    table_top = bpy.context.active_object
+    table_top.name = "JudgeTable_Top"
+    table_top.scale = (2, 1, 0.1)
+    table_top.data.materials.append(table_mat)
+    
+    # Table legs
+    for dx in [-0.9, 0.9]:
+        for dy in [-0.4, 0.4]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.75, location=(location[0]+dx, location[1]+dy, 0.375))
+            leg = bpy.context.active_object
+            leg.name = "JudgeTable_Leg"
+            leg.data.materials.append(table_mat)
+    
+    # Chairs
+    chair_mat = bpy.data.materials.new("ChairMat")
+    chair_mat.use_nodes = True
+    cbsdf = chair_mat.node_tree.nodes["Principled BSDF"]
+    cbsdf.inputs["Base Color"].default_value = (0.2, 0.2, 0.2, 1)
+    
+    for dx in [-1.5, 0, 1.5]:
+        # Chair seat
+        bpy.ops.mesh.primitive_cube_add(size=0.5, location=(location[0]+dx, location[1]+1.2, 0.45))
+        seat = bpy.context.active_object
+        seat.name = f"Chair_Seat_{dx}"
+        seat.scale = (1, 1, 0.2)
+        seat.data.materials.append(chair_mat)
+        
+        # Chair back
+        bpy.ops.mesh.primitive_cube_add(size=0.5, location=(location[0]+dx, location[1]+1.4, 0.75))
+        back = bpy.context.active_object
+        back.name = f"Chair_Back_{dx}"
+        back.scale = (1, 0.3, 1.2)
+        back.data.materials.append(chair_mat)
+        
+        # Chair legs
+        for ldx in [-0.2, 0.2]:
+            for ldy in [-0.2, 0.2]:
+                bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.45, location=(location[0]+dx+ldx, location[1]+1.2+ldy, 0.225))
+                cleg = bpy.context.active_object
+                cleg.name = "Chair_Leg"
+                cleg.data.materials.append(chair_mat)
+
+create_judges_table((0, -5))
+
+# Add some ambient lighting
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.name = "Sunlight"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Add world background
+world = bpy.data.worlds.new("BeachWorld")
+scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.5, 0.7, 1.0, 1)
+bg.inputs["Strength"].default_value = 0.5
+
+# Set camera
+bpy.ops.object.camera_add(location=(0, -20, 8))
+camera = bpy.context.active_object
+camera.name = "MainCamera"
+scene.camera = camera
+
+# Point camera at the sculptures
+direction = (0, 5, 2) - (0, -20, 8)
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+print("Scene created: Sand sculpture competition with flags, rope barriers, judge's table, and incoming tide.")

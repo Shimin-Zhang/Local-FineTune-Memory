@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 2.5,
+ "error": "NameError: name 'rain' is not defined",
+ "error_line": "rain.from_pydata(rain_verts, [], rain_faces)",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 168,
+ "n_lights": 0,
+ "n_materials": 25,
+ "own_camera": false,
+ "render_error": null
+}

@@ -1,0 +1,34 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: bpy_prop \"MeshPolygon.center\" is read-only",
+ "error_line": "for f in o.data.polygons: f.center.z += at",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  13.631,
+  13.691,
+  3.875
+ ],
+ "scene_center": [
+  -0.0414,
+  0.0504,
+  -1.6624
+ ],
+ "scene_radius": 9.852,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.5,
+ "image": true
+}

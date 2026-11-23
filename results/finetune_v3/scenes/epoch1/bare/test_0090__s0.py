@@ -1,0 +1,100 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1324)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+T = {}
+def alloy(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .85
+    if glow:
+        p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    T[name] = m
+for k, c in (("dust", (.4, .24, .13)), ("dirt", (.28, .15, .08)), ("steel", (.34, .3, .26)), ("steel2", (.22, .2, .19)), ("rust", (.45, .15, .06)),
+             ("brick", (.4, .17, .1)), ("roof", (.25, .13, .09)), ("wood", (.3, .18, .09)), ("white", (.5, .46, .38)), ("tyre", (.03, .03, .03)), ("cactus", (.12, .28, .12))):
+    alloy(k, c)
+alloy("neon", (1, .1, .2), 14); alloy("sodium", (1, .75, .3), 12)
+def shape(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("t"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("t", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(T[k]); return o
+def slab(at, d, k, rot=(0, 0, 0), top=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        s = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * d[0] * s, v.co.y * d[1] * s, (v.co.z + .5) * d[2]))
+    return shape(bm, k, at, rot)
+def pipe(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return shape(bm, k, at, rot)
+def spar(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return shape(bm, k)
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# desert ground with ruts and a dusty road
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=11, radius1=6, radius2=13, depth=3.5)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.75
+shape(bm, "dust")
+slab((0, -7, 0), (24, 3.4, .12), "dirt"); slab((0, -7, .12), (24, .5, .05), "dust", (0, 0, 0), .8)
+for i in range(6): slab((-9 + i * 3.6, -7, .17), (1.8, .15, .05), "dirt")
+# the water tank: four legs, cross braces, the tank and a roof
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        spar((3 + sx * 3.2, -2 + sy * 3.2, 0), (3 + sx * 1.6, -2 + sy * 1.6, 7.5), .45, "steel2")
+for z in (2.2, 4.6, 7.0):
+    for s in (-1, 1):
+        spar((3 + s * 3.2, -5.2, z), (3 + s * 3.2, 1.2, z), .18, "steel2"); spar((3 - 3.2, -2 + s * 3.2, z), (3 + 3.2, -2 + s * 3.2, z), .18, "steel2")
+    for sx, sy in ((-1, -1), (1, 1), (1, -1), (-1, 1)):
+        spar((3 + sx * 3.2, -2 + sy * 3.2, z), (3 + sx * 2.4, -2 + sy * 2.4, z + 1.6), .14, "rust")
+pipe((3, -2, 7.5), 2.8, 3.6, 10, "steel"); pipe((3, -2, 7.5), 2.9, .3, 10, "rust"); pipe((3, -2, 10.9), 2.9, .3, 10, "rust")
+pipe((3, -2, 11.1), 3.0, .8, 10, "steel2", .2); pipe((3, -2, 11.9), .15, 1.0, 5, "steel2")
+slab((.2, -2, 8.0), (.2, .2, 3.2), "rust")
+# rusty ladder up the near leg
+for s in (-.5, .5): spar((3 + s * .5 - 1.5, -2 - 3.2, 0), (3 + s * .5 - .7, -2 - 1.6, 7.4), .1, "rust")
+for i in range(12): spar((3 - 1.5 + i * .065, -2 - 3.2 + i * .13, .3 + i * .6), (3 - .9 + i * .065, -2 - 1.9 + i * .13, .3 + i * .6), .1, "rust")
+# windmill pump with tail vane and water tank
+pipe((-8, 3, 0), .35, 7.5, 6, "steel2"); spar((-8, 3, 7.5), (-8, 3, 7.5), .1, "steel2")
+for i in range(8):
+    a = i * math.pi / 4; spar((-8, 3, 7.5), (-8 + math.cos(a) * 2.6, 3 + math.sin(a) * 2.6, 7.5), .12, "steel")
+    spar((-8 + math.cos(a) * 2.6, 3 + math.sin(a) * 2.6, 7.5), (-8 + math.cos(a) * 2.4, 3 + math.sin(a) * 2.4, 7.2), .3, "steel2")
+slab((-8, 3, 7.2), (3.2, .1, .8), "steel2", (0, 0, .5)); spar((-8, 3, 7.5), (-5.2, 3, 7.5), .12, "steel")
+slab((-8, 3, 0), (1.6, 1.6, 1.2), "steel2", (0, 0, 0), .8); pipe((-8, 3, 1.2), .3, .5, 6, "rust")
+pipe((-8, 3, 1.7), .3, .4, 6, "rust", .3); slab((-9.6, 3, .8), (1.6, .8, .8), "rust")
+# a dusty roadside store with a neon sign
+slab((-6, -3.5, 0), (7, 4, 3.2), "brick"); slab((-6, -3.5, 3.2), (7.6, 4.6, .3), "roof", (0, 0, 0), .9)
+slab((-6, -5.55, 0), (7, .1, 2.2), "wood"); slab((-4.5, -5.6, 0), (1.2, .1, 2.0), "tyre"); slab((-8.5, -5.6, 1.0), (1.2, .1, 1.0), "white")
+slab((-6, -5.6, 3.0), (4.2, .15, 1.0), "neon"); slab((-6, -5.7, 3.2), (3.4, .1, .6), "white")
+glow((-6, -6.6, 3.5), (1, .1, .2), 700)
+slab((-1.5, -3.5, 0), (1.2, 1.2, 3.8), "brick"); slab((-1.5, -3.5, 3.8), (1.6, 1.6, .3), "rust")
+# a pickup truck parked on the road
+slab((4, -7, .8), (3.6, 1.7, .9), "white"); slab((5.2, -7, 1.7), (1.4, 1.5, .8), "white", (0, 0, 0), .85)
+slab((2.6, -7, 1.7), (1.2, 1.5, .1), "wood")
+for x in (2.9, 5.3): pipe((x, -8.2, .6), .6, .3, 8, "tyre", rot=(math.pi / 2, 0, 0)); pipe((x, -5.8, .6), .6, .3, 8, "tyre", rot=(math.pi / 2, 0, 0))
+# cactus, rocks and a sodium lamp
+for x, y, h in ((-11, -6, 2.6), (10, 6, 3.2), (-10, 8, 2.0), (9, -3, 1.8)):
+    pipe((x, y, 0), .4, h, 6, "cactus"); pipe((x + .6, y, h * .5), .22, .8, 5, "cactus"); pipe((x + .6, y, h * .5 + .5), .22, .6, 5, "cactus", rot=(0, math.pi / 2, 0))
+for i in range(8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.4, .9))
+    for v in bm.verts: v.co *= Vector((random.uniform(.8, 1.3), random.uniform(.8, 1.3), .6))
+    shape(bm, "dirt", (random.uniform(-12, 12), random.uniform(3, 11), .1))
+spar((0, -5.2, 0), (0, -5.2, 5.0), .15, "steel2"); slab((.8, -5.2, 4.8), (1.6, .2, .15), "steel2"); slab((1.5, -5.2, 4.5), (.8, .5, .3), "sodium")
+glow((1.5, -5.2, 4.2), (1, .75, .3), 500)
+for c, e, p in (((1, .72, .45), 6.5, (-24, -12, 30)), ((.5, .35, .8), 2.0, (22, 24, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = e
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, -1, 4)); co.location = t + Vector((10, -66, 40))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

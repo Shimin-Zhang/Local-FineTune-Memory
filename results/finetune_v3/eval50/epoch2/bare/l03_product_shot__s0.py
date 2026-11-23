@@ -1,0 +1,79 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(827)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def glaze(c, e=0, r=.6, a=1.0):
+    m = bpy.data.materials.new("g"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r; n.inputs["Alpha"].default_value = a
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+def mk(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(m, p, s, r=(0, 0, 0), k=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = k if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return mk(bm, m, p, r)
+def cyl(m, p, r1, r2, h, n=8, r=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, p, r)
+def orb(m, p, s, r=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], v.co.z * s[2]))
+    return mk(bm, m, p, r)
+def lamp(kind, c, w, p, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+    return o
+paper = glaze((.5, .5, .52)); paper2 = glaze((.4, .4, .42)); under = glaze((.08, .08, .1))
+glass = glaze((.9, .75, .4), .5, .05, .4); juice = glaze((.85, .35, .1), 1.5, .1)
+gold = glaze((.9, .62, .15), 0, .3); label = glaze((.95, .93, .88)); ink = glaze((.1, .08, .07)); spritz = glaze((.8, .9, 1), 2, .1)
+# base: a round white plinth with a dark tapered underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=5.5, radius2=11, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-.8, .8), random.uniform(-.8, .8), random.uniform(-1, .2)))
+    v.co.z -= 1.5
+mk(bm, under)
+cyl(paper, (0, 0, -.2), 10.6, 10.6, .4, 10); cyl(paper2, (0, 0, .2), 9.8, 9.8, .15, 10)
+# the bottle: faceted glass body with a shoulder, a neck and a gold cap
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    f = 1 if v.co.z < 0 else (.62 if v.co.z > .8 else 1)
+    v.co = Vector((v.co.x * 5.2 * f, v.co.y * 3.6 * f, (v.co.z + .5) * 7.0))
+    if v.co.z > 3.5: v.co.x *= .75
+mk(bm, glass, (0, 0, .3))
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts: v.co = Vector((v.co.x * 4.7 * (1 if v.co.z < 0 else .6), v.co.y * 3.2 * (1 if v.co.z < 0 else .6), (v.co.z + .5) * 6.0))
+mk(bm, juice, (0, 0, .6))
+cyl(glass, (0, 0, 7.3), .9, .9, 1.4, 8); cyl(gold, (0, 0, 8.7), 1.2, 1.2, .5, 8)
+cyl(gold, (0, 0, 9.2), 1.5, 1.1, 1.6, 8); cyl(gold, (0, 0, 10.8), 1.1, .8, .5, 8); cyl(gold, (0, 0, 11.3), .8, .8, .3, 8)
+# label plate on the front with ink lines, and a spray nozzle on the side
+box(label, (0, -1.86, 2.2), (3.0, .12, 2.4), k=.97)
+for i, (z, w) in enumerate(((3.9, 1.8), (3.4, 1.2), (1.0, 1.5))): box(ink, (0, -1.95, z), (w, .06, .14))
+box(ink, (0, -1.95, 2.2), (.1, .06, 1.4))
+box(gold, (2.62, 0, 5.4), (.5, .35, .35)); box(gold, (3.1, 0, 5.45), (.35, .22, .2))
+# a few loose droplets and a spray mist drifting off the nozzle
+for i in range(5): orb(spritz, (3.9 + i * .5, random.uniform(-.3, .3), 5.5 + i * .35), (.12, .12, .12))
+for i in range(7): orb(spritz, (random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), 0), (.22, .22, .15))
+# a folded ribbon and a small box beside the bottle for scale
+box(label, (-7.2, -2.5, 0), (3.2, 2.4, 1.8), (0, 0, .4), k=.95); box(gold, (-7.2, -2.5, 1.8), (3.3, 2.5, .12), (0, 0, .4))
+box(gold, (-6.9, -2.7, 1.9), (.25, 2.6, .14), (0, 0, .4)); box(gold, (-7.5, -2.3, 1.9), (3.3, .25, .14), (0, 0, .4))
+cyl(label, (7.0, 3.0, 0), 1.2, 1.2, .5, 8); cyl(gold, (7.0, 3.0, .5), 1.0, 1.0, .12, 8)
+lamp("POINT", (1, .6, .25), 300, (0, -1.5, 3.5))
+lamp("SUN", (1, .96, .9), 5.5, (-6, -14, 24), (0, 0, 4)); lamp("SUN", (.55, .65, 1), 2.2, (14, 18, 12), (0, 0, 4))
+w = lamp("POINT", (.7, .8, 1), 250, (0, 0, 17))
+w.data.node_tree if False else None
+w.data.spot_size = 1.2; w.data.spot_blend = .6
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .022, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 5.5)); co.location = t + Vector((8, -42, 26))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

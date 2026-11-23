@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.5,
+ "error": "TypeError: bpy_struct: item.attr = val: enum \"NISHITA\" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')",
+ "error_line": "sky_node.sky_type = 'NISHITA'",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 383,
+ "n_lights": 0,
+ "n_materials": 15,
+ "own_camera": false,
+ "render_error": null
+}

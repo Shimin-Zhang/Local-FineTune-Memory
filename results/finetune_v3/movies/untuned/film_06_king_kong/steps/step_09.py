@@ -1,0 +1,164 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is still too dark. Let's take a different approach:
+# 1. Set a bright background
+# 2. Make all materials emissive with high strength
+# 3. Fix camera to a good position
+# 4. Add a strong sun light
+
+# 1. Bright background
+world = bpy.context.scene.world
+if world:
+    bg = world.node_tree.nodes.get('Background')
+    if bg:
+        bg.inputs['Color'].default_value = (0.1, 0.15, 0.25, 1.0)
+        bg.inputs['Strength'].default_value = 5.0
+
+# 2. Make ALL materials strongly emissive
+for mat in bpy.data.materials:
+    if mat.use_nodes:
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            # Get current color and boost it
+            c = bsdf.inputs['Base Color'].default_value
+            bsdf.inputs['Base Color'].default_value = (
+                min(1.0, c[0] * 2 + 0.4),
+                min(1.0, c[1] * 2 + 0.4),
+                min(1.0, c[2] * 2 + 0.4),
+                1.0
+            )
+            bsdf.inputs['Emission Color'].default_value = (
+                min(1.0, c[0] * 2 + 0.5),
+                min(1.0, c[1] * 2 + 0.5),
+                min(1.0, c[2] * 2 + 0.5),
+                1.0
+            )
+            bsdf.inputs['Emission Strength'].default_value = 5.0
+
+# 3. Add a strong sun light
+sun = bpy.data.lights.new('StrongSun', type='SUN')
+sun.energy = 20.0
+sun.color = (1.0, 0.95, 0.8)
+sun_obj = bpy.data.objects.new('StrongSun', sun)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(45), math.radians(15), math.radians(30))
+
+# 4. Fix camera - position to see the whole scene
+cam_obj = bpy.data.objects.get('Camera')
+if cam_obj:
+    cam_obj.location = (120, 120, 350)
+    target = Vector((0, 0, 300))
+    direction = target - cam_obj.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam_obj.rotation_euler = rot_quat.to_euler()
+    cam_obj.data.lens = 28
+
+# 5. Recreate Kong with bright material (remove old first)
+for obj in list(bpy.data.objects):
+    if obj.name.startswith('Kong_') or obj.name.startswith('Fur_'):
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+mat_kong_bright = bpy.data.materials.new('KongBright2')
+mat_kong_bright.use_nodes = True
+bsdf_kb = mat_kong_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_kb.inputs['Base Color'].default_value = (0.7, 0.6, 0.5, 1.0)
+bsdf_kb.inputs['Emission Color'].default_value = (0.7, 0.6, 0.5, 1.0)
+bsdf_kb.inputs['Emission Strength'].default_value = 8.0
+
+# Kong body
+bpy.ops.mesh.primitive_uv_sphere_add(radius=22, location=(0, 0, 490), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_Torso'
+obj.scale = (1.3, 1.0, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=13, location=(0, 0, 528), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_Head'
+obj.scale = (1, 1, 1.1)
+obj.data.materials.append(mat_kong_bright)
+
+# Arms
+bpy.ops.mesh.primitive_uv_sphere_add(radius=9, location=(-14, 0, 505), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_ArmL'
+obj.scale = (0.6, 0.6, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=9, location=(14, 0, 505), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_ArmR'
+obj.scale = (0.6, 0.6, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+# Legs
+bpy.ops.mesh.primitive_uv_sphere_add(radius=10, location=(-12, 0, 468), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_LegL'
+obj.scale = (0.8, 0.8, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=10, location=(12, 0, 468), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_LegR'
+obj.scale = (0.8, 0.8, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+# Eyes
+mat_eye_bright = bpy.data.materials.new('EyeBright')
+mat_eye_bright.use_nodes = True
+bsdf_eb = mat_eye_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_eb.inputs['Base Color'].default_value = (1.0, 1.0, 0.3, 1.0)
+bsdf_eb.inputs['Emission Color'].default_value = (1.0, 1.0, 0.3, 1.0)
+bsdf_eb.inputs['Emission Strength'].default_value = 30.0
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3.5, location=(-5, 9, 530), segments=8, ring_count=4)
+obj = bpy.context.active_object
+obj.name = 'Kong_EyeL'
+obj.data.materials.append(mat_eye_bright)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3.5, location=(5, 9, 530), segments=8, ring_count=4)
+obj = bpy.context.active_object
+obj.name = 'Kong_EyeR'
+obj.data.materials.append(mat_eye_bright)
+
+# 6. Make ESB bright
+mat_esb_bright = bpy.data.materials.new('ESBBright')
+mat_esb_bright.use_nodes = True
+bsdf_eb2 = mat_esb_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_eb2.inputs['Base Color'].default_value = (0.6, 0.6, 0.7, 1.0)
+bsdf_eb2.inputs['Emission Color'].default_value = (0.6, 0.6, 0.7, 1.0)
+bsdf_eb2.inputs['Emission Strength'].default_value = 5.0
+
+for obj_name in ['ESB_Main', 'ESB_Upper', 'ESB_Setback', 'ESB_Crown', 'ESB_SpireBase', 'ESB_Spire', 'ESB_SpireTip']:
+    obj = bpy.data.objects.get(obj_name)
+    if obj:
+        obj.data.materials.clear()
+        obj.data.materials.append(mat_esb_bright)
+
+# 7. Make biplanes bright
+mat_plane_bright = bpy.data.materials.new('PlaneBright')
+mat_plane_bright.use_nodes = True
+bsdf_pb = mat_plane_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_pb.inputs['Base Color'].default_value = (1.0, 0.3, 0.3, 1.0)
+bsdf_pb.inputs['Emission Color'].default_value = (1.0, 0.3, 0.3, 1.0)
+bsdf_pb.inputs['Emission Strength'].default_value = 8.0
+
+for obj in bpy.data.objects:
+    if 'Biplane' in obj.name or 'BrightPlane' in obj.name:
+        obj.data.materials.clear()
+        obj.data.materials.append(mat_plane_bright)
+
+# 8. Add a point light right next to Kong to ensure he's lit
+kong_light = bpy.data.lights.new('KongLight', type='POINT')
+kong_light.energy = 3000
+kong_light.color = (1.0, 0.9, 0.7)
+kong_light_obj = bpy.data.objects.new('KongLight', kong_light)
+bpy.context.collection.objects.link(kong_light_obj)
+kong_light_obj.location = (30, 30, 520)
+
+print("Scene dramatically brightened: background, all materials emissive, strong sun, bright Kong/ESB/biplanes, kong light")

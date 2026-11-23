@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.6,
+ "error": "TypeError: IDMaterials.append(): error with argument 1, \"material\" -  Function.material expected a Material type, not function",
+ "error_line": "sc.collection.objects.link(o); o.data.materials.append(m); return o",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 20,
+ "n_lights": 0,
+ "n_materials": 6,
+ "own_camera": false,
+ "render_error": null
+}

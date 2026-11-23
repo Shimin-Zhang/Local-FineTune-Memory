@@ -1,0 +1,55 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3",
+ "error_line": "bsdf.inputs[\"Base Color\"].default_value = base_color",
+ "n_renderable_objects": 0,
+ "object_types": {
+  "LIGHT": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 4.5,
+   "color": [
+    1.0,
+    0.95,
+    0.85
+   ],
+   "location": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "direction": [
+    -0.3016,
+    0.0644,
+    -0.9513
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.7321,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.4,
+ "image": true
+}

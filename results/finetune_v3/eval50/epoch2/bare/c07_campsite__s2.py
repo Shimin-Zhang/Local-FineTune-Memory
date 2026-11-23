@@ -1,0 +1,72 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(475)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tone(rgb, em=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    o.data.materials.append(m); sc.collection.objects.link(o); return o
+def blk(m, at, s, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, rot)
+def cone(m, at, r, h, n=7, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at)
+def bar(m, a, b, t):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+grass, soil, pine, bark, canvas, canvas2, log, coal, flame, rock = (tone((.1, .2, .1)), tone((.14, .1, .07)), tone((.05, .2, .12)), tone((.2, .12, .07)),
+    tone((.7, .35, .1)), tone((.55, .25, .08)), tone((.3, .18, .1)), tone((.04, .03, .03)), tone((1, .4, .05), 16), tone((.25, .25, .27)))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=7, radius2=14, depth=3.5)
+for v in bm.verts:
+    v.co.z -= 1.75
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .2)))
+mk(bm, grass)
+for i in range(5): blk(soil, (random.uniform(-9, 9), random.uniform(-9, 6), 0), (2.5, 1.6, .06), (0, 0, i))
+# the tent: a ridge prism with a glowing doorway, guy lines and stakes
+blk(canvas, (-4, 3, 0), (5, 4, 2.4), (0, 0, .15)); blk(canvas2, (-4, 3, 2.4), (5.4, 4.4, .2), (0, 0, .15))
+blk(canvas2, (-4, 3, 2.6), (5.2, .4, .25), (0, 0, .15))
+blk(flame, (-4.1, .98, 0), (1.4, .12, 1.9), (0, 0, .15))
+lamp('POINT', (1, .5, .15), 450, (-4.1, -.3, 1.2))
+for sx in (-1, 1): bar(bark, (-4 + sx * 2.6, .9, .1), (-4 + sx * 4.2, -1.4, 0), .06)
+# campfire: ring of stones, crossed logs, coals and a layered flame
+for i in range(10):
+    a = i * math.pi / 5
+    blk(rock, (math.cos(a) * 1.6, math.sin(a) * 1.6, 0), (.7, .6, .45), (0, 0, a))
+for i in range(4): bar(log, (math.cos(i * 1.57) * 1.2, math.sin(i * 1.57) * 1.2, .3), (-math.cos(i * 1.57) * 1.2, -math.sin(i * 1.57) * 1.2, .7), .26)
+cone(coal, (0, 0, .2), 1.1, .3, 8, .9)
+cone(flame, (0, 0, .4), .9, 1.8, 6); cone(flame, (.2, .1, .4), .55, 2.6, 5); cone(flame, (-.2, -.1, .4), .4, 2.0, 5)
+lamp('POINT', (1, .45, .08), 1200, (0, 0, 1.6))
+# log bench: three logs on two cross pieces, plus a lantern post and a sleeping bag
+for i in range(3): cone(log, (-7 + i * 1.7, -4.5, .5), .45, 3.2, 6).rotation_euler = (0, math.pi / 2, 0)
+for x in (-7.8, -3.4): cone(log, (x, -4.5, .25), .22, 3.4, 5).rotation_euler = (0, math.pi / 2, 0)
+bar(bark, (7, -3, 0), (7, -3, 3.4), .2); blk(canvas2, (7.4, -3.4, 2.8), (.8, .8, .9)); blk(flame, (7.4, -3.8, 2.9), (.6, .08, .6))
+lamp('POINT', (1, .6, .2), 300, (7.4, -3.8, 3.2))
+blk(canvas, (3, 4, 0), (2, 3.6, .4), (0, 0, .3)); blk(canvas2, (3, 5.4, .4), (1.8, .8, .3), (0, 0, .3))
+# pines: faceted trunks and three stacked cones each
+for x, y, s in ((-11, 5, 1.2), (-9, 9, 1), (0, 11, 1.3), (9, 10, 1.1), (11, 3, 1), (-12, -2, 1), (12, -4, 1.1), (-6, -10, .9), (6, -10, 1), (-11, -8, .8)):
+    cone(bark, (x, y, 0), .35 * s, 2 * s, 5)
+    for k in range(3): cone(pine, (x, y, (1.2 + k * 1.5) * s), (2.4 - k * .6) * s, 2.4 * s, 7)
+for i in range(14): blk(rock, (random.uniform(-12, 12), random.uniform(-11, 11), 0), (.5, .4, .35), (0, 0, i))
+lamp('SUN', (.4, .55, 1), 4, (-24, -16, 10), (0, 0, 1)); lamp('SUN', (.8, .35, .6), 2, (22, 20, 12), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.5)); co.location = t + Vector((14, -58, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

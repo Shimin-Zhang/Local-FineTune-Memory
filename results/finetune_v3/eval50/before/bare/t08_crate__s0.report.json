@@ -1,0 +1,137 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 39,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 2,
+  "MESH": 39
+ },
+ "default_cube_still_there": true,
+ "materials": [
+  {
+   "name": "Wood",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 11,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MAPPING",
+    "MIX_RGB",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "TEX_WAVE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "DarkWood",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 11,
+   "principled_base_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "MAPPING",
+    "MIX_RGB",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "TEX_WAVE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Ground",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.3,
+    0.25,
+    0.2
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "type": "SUN",
+   "energy": 1.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "left_out_of_framing": "Plane",
+ "bbox_size": [
+  2.345,
+  2.03,
+  1.96
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 6.1,
+ "image": true
+}

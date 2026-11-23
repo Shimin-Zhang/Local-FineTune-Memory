@@ -1,0 +1,386 @@
+import bpy
+import math
+import mathutils
+import random
+from mathutils import Vector
+
+# Fix the scene: The camera is too close and the composition is off.
+# We need to reposition everything for a proper "binary sunset" composition.
+# Luke should be in the foreground, the homestead in the midground, and the two suns on the horizon.
+
+# First, let's adjust the camera for a better composition
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (-2, 12, 1.6)
+    cam.rotation_euler = (math.radians(88), 0, math.radians(195))
+    cam.data.lens = 40
+
+# Reposition Luke to be in the foreground, looking toward the sunset
+luke_parts = ["LukeTorso", "LukeHead", "LukeHair", "LukeLeg_-1", "LukeLeg_1", "LukeArm_-1", "LukeArm_1", "LukeBelt"]
+for name in luke_parts:
+    obj = bpy.data.objects.get(name)
+    if obj:
+        # Move Luke to be closer to camera, in front of the homestead
+        obj.location.y = 8
+        obj.location.x = 0
+        # Make Luke slightly larger for visibility
+        obj.scale = (1.2, 1.2, 1.2)
+
+# Reposition the dome and homestead to be in the midground
+dome_obj = bpy.data.objects.get("Dome")
+if dome_obj:
+    dome_obj.location = (0, -15, 0)
+
+# Move all dome-related objects
+for i in range(12):
+    rib = bpy.data.objects.get(f"Rib_{i}")
+    if rib:
+        rib.location = (0, -15, 0)
+
+for ring_z in [1.5, 3.0, 4.0]:
+    ring = bpy.data.objects.get(f"Ring_{ring_z}")
+    if ring:
+        ring.location = (0, -15, 0)
+
+door_obj = bpy.data.objects.get("Door")
+if door_obj:
+    door_obj.location = (0, -10.2, 1.4)
+
+step_obj = bpy.data.objects.get("DoorStep")
+if step_obj:
+    step_obj.location = (0, -9.8, 0.15)
+
+# Move annexes
+for side in [-1, 1]:
+    annex = bpy.data.objects.get(f"Annex_{side}")
+    if annex:
+        annex.location = (side * 7, -12, 1.1)
+    
+    small_dome = bpy.data.objects.get(f"SmallDome_{side}")
+    if small_dome:
+        small_dome.location = (side * 7, -12, 2.2)
+    
+    window = bpy.data.objects.get(f"Window_{side}")
+    if window:
+        window.location = (side * 7, -9.5, 1.5)
+
+antenna_obj = bpy.data.objects.get("Antenna")
+if antenna_obj:
+    antenna_obj.location = (0, -15, 5)
+
+dish_obj = bpy.data.objects.get("Dish")
+if dish_obj:
+    dish_obj.location = (0, -15, 9)
+
+for i in range(6):
+    pipe = bpy.data.objects.get(f"Pipe_{i}")
+    if pipe:
+        pipe.location = (0, -15, 0)
+
+# Now let's add the TWO SUNS as visible objects on the horizon
+# Sun 1 - larger, lower
+sun1_mesh_data = bpy.data.meshes.new("Sun1Mesh")
+sun1_obj = bpy.data.objects.new("Sun1", sun1_mesh_data)
+bpy.context.scene.collection.objects.link(sun1_obj)
+
+import bmesh
+bm_sun1 = bmesh.new()
+bmesh.ops.create_uvsphere(bm_sun1, u_segments=32, v_segments=16, radius=3)
+bm_sun1.to_mesh(sun1_mesh_data)
+bm_sun1.free()
+
+sun1_obj.location = (-15, -80, 2)
+
+# Emissive material for sun 1
+sun1_mat = bpy.data.materials.new("Sun1Mat")
+sun1_mat.use_nodes = True
+sun1_nodes = sun1_mat.node_tree.nodes
+sun1_links = sun1_mat.node_tree.links
+
+for node in sun1_nodes:
+    sun1_nodes.remove(node)
+
+bsdf_sun1 = sun1_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_sun1.inputs['Base Color'].default_value = (1.0, 0.3, 0.05, 1)
+bsdf_sun1.inputs['Emission Color'].default_value = (1.0, 0.4, 0.1, 1)
+bsdf_sun1.inputs['Emission Strength'].default_value = 50.0
+
+sun1_links.new(bsdf_sun1.outputs['BSDF'], sun1_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+sun1_obj.data.materials.append(sun1_mat)
+
+# Sun 2 - smaller, higher and to the side
+sun2_mesh_data = bpy.data.meshes.new("Sun2Mesh")
+sun2_obj = bpy.data.objects.new("Sun2", sun2_mesh_data)
+bpy.context.scene.collection.objects.link(sun2_obj)
+
+bm_sun2 = bmesh.new()
+bmesh.ops.create_uvsphere(bm_sun2, u_segments=32, v_segments=16, radius=2)
+bm_sun2.to_mesh(sun2_mesh_data)
+bm_sun2.free()
+
+sun2_obj.location = (5, -85, 5)
+
+# Emissive material for sun 2
+sun2_mat = bpy.data.materials.new("Sun2Mat")
+sun2_mat.use_nodes = True
+sun2_nodes = sun2_mat.node_tree.nodes
+sun2_links = sun2_mat.node_tree.links
+
+for node in sun2_nodes:
+    sun2_nodes.remove(node)
+
+bsdf_sun2 = sun2_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_sun2.inputs['Base Color'].default_value = (1.0, 0.4, 0.1, 1)
+bsdf_sun2.inputs['Emission Color'].default_value = (1.0, 0.5, 0.15, 1)
+bsdf_sun2.inputs['Emission Strength'].default_value = 40.0
+
+sun2_links.new(bsdf_sun2.outputs['BSDF'], sun2_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+sun2_obj.data.materials.append(sun2_mat)
+
+# Add a sun glow effect using a larger, transparent sphere
+for sun_name, sun_obj, glow_color in [("Sun1", sun1_obj, (1.0, 0.3, 0.05)), ("Sun2", sun2_obj, (1.0, 0.4, 0.1))]:
+    glow_data = bpy.data.meshes.new(f"{sun_name}Glow")
+    glow_obj = bpy.data.objects.new(f"{sun_name}Glow", glow_data)
+    bpy.context.scene.collection.objects.link(glow_obj)
+    
+    bm_glow = bmesh.new()
+    bmesh.ops.create_uvsphere(bm_glow, u_segments=32, v_segments=16, radius=5)
+    bm_glow.to_mesh(glow_data)
+    bm_glow.free()
+    
+    glow_obj.location = sun_obj.location
+    
+    glow_mat = bpy.data.materials.new(f"{sun_name}GlowMat")
+    glow_mat.use_nodes = True
+    glow_mat.blend_method = 'BLEND'
+    glow_nodes = glow_mat.node_tree.nodes
+    glow_links = glow_mat.node_tree.links
+    
+    for node in glow_nodes:
+        glow_nodes.remove(node)
+    
+    bsdf_glow = glow_nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf_glow.inputs['Base Color'].default_value = (*glow_color, 1)
+    bsdf_glow.inputs['Emission Color'].default_value = (*glow_color, 1)
+    bsdf_glow.inputs['Emission Strength'].default_value = 5.0
+    bsdf_glow.inputs['Alpha'].default_value = 0.3
+    
+    glow_links.new(bsdf_glow.outputs['BSDF'], glow_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+    glow_obj.data.materials.append(glow_mat)
+
+# Add more distant dunes for depth
+for i in range(12):
+    dune_data = bpy.data.meshes.new(f"DistantDune_{i}")
+    dune_obj = bpy.data.objects.new(f"DistantDune_{i}", dune_data)
+    bpy.context.scene.collection.objects.link(dune_obj)
+    
+    bm_dune = bmesh.new()
+    bmesh.ops.create_uvsphere(bm_dune, u_segments=16, v_segments=8, radius=15)
+    for v in bm_dune.verts:
+        v.co.z *= 0.2
+    verts_to_remove = [v for v in bm_dune.verts if v.co.z < -0.5]
+    for v in verts_to_remove:
+        bm_dune.verts.remove(v)
+    bm_dune.to_mesh(dune_data)
+    bm_dune.free()
+    
+    dune_obj.location = (random.uniform(-60, 60), random.uniform(-70, -40), 0)
+    dune_obj.scale = (random.uniform(0.8, 2.0), random.uniform(0.8, 2.0), 1)
+    
+    # Use sand material
+    sand_mat = bpy.data.materials.get("DesertSand")
+    if sand_mat:
+        dune_obj.data.materials.append(sand_mat)
+
+# Add some distant rocks
+rock_mat = bpy.data.materials.get("RockMat")
+for i in range(10):
+    rock_data = bpy.data.meshes.new(f"DistantRock_{i}")
+    rock_obj = bpy.data.objects.new(f"DistantRock_{i}", rock_data)
+    bpy.context.scene.collection.objects.link(rock_obj)
+    
+    bm_rock = bmesh.new()
+    bmesh.ops.create_icosphere(bm_rock, subdivisions=2, radius=0.5)
+    for v in bm_rock.verts:
+        v.co += Vector((random.uniform(-0.1, 0.1), random.uniform(-0.1, 0.1), random.uniform(-0.1, 0.1)))
+    bm_rock.to_mesh(rock_data)
+    bm_rock.free()
+    
+    rock_obj.location = (random.uniform(-40, 40), random.uniform(-50, -20), 0.1)
+    rock_obj.scale = (random.uniform(0.5, 3), random.uniform(0.5, 3), random.uniform(0.3, 1.5))
+    if rock_mat:
+        rock_obj.data.materials.append(rock_mat)
+
+# Add a path/road leading to the door
+path_data = bpy.data.meshes.new("Path")
+path_obj = bpy.data.objects.new("Path", path_data)
+bpy.context.scene.collection.objects.link(path_obj)
+
+bm_path = bmesh.new()
+bmesh.ops.create_grid(bm_path, x_segments=10, y_segments=30, size=1)
+for v in bm_path.verts:
+    v.co.x *= 1.5
+    v.co.y *= 8
+    v.co.z = 0.02
+bm_path.to_mesh(path_data)
+bm_path.free()
+
+path_obj.location = (0, -6, 0)
+
+path_mat = bpy.data.materials.new("PathMat")
+path_mat.use_nodes = True
+path_nodes = path_mat.node_tree.nodes
+path_links = path_mat.node_tree.links
+
+for node in path_nodes:
+    path_nodes.remove(node)
+
+bsdf_path = path_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_path.inputs['Base Color'].default_value = (0.5, 0.4, 0.3, 1)
+bsdf_path.inputs['Roughness'].default_value = 0.9
+
+path_links.new(bsdf_path.outputs['BSDF'], path_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+path_obj.data.materials.append(path_mat)
+
+# Add some small details - sand ripples
+for i in range(30):
+    ripple_data = bpy.data.meshes.new(f"Ripple_{i}")
+    ripple_obj = bpy.data.objects.new(f"Ripple_{i}", ripple_data)
+    bpy.context.scene.collection.objects.link(ripple_obj)
+    
+    bm_ripple = bmesh.new()
+    bmesh.ops.create_grid(bm_ripple, x_segments=5, y_segments=20, size=1)
+    for v in bm_ripple.verts:
+        v.co.x *= 0.5
+        v.co.y *= 2
+        v.co.z = 0.01 * math.sin(v.co.y * 2)
+    bm_ripple.to_mesh(ripple_data)
+    bm_ripple.free()
+    
+    ripple_obj.location = (random.uniform(-8, 8), random.uniform(-5, 5), 0)
+    ripple_obj.rotation_euler = (0, 0, random.uniform(0, math.pi))
+    
+    sand_mat = bpy.data.materials.get("DesertSand")
+    if sand_mat:
+        ripple_obj.data.materials.append(sand_mat)
+
+# Add a wind direction indicator - some bent grass/tufts
+for i in range(15):
+    grass_data = bpy.data.curves.new(f"Grass_{i}", type='CURVE')
+    grass_data.dimensions = '3D'
+    grass_data.bevel_depth = 0.02
+    grass_data.bevel_resolution = 2
+    
+    spline = grass_data.splines.new('BEZIER')
+    spline.bezier_points.add(2)
+    
+    base_x = random.uniform(-6, 6)
+    base_y = random.uniform(-3, 3)
+    
+    spline.bezier_points[0].co = (base_x, base_y, 0)
+    spline.bezier_points[1].co = (base_x + 0.1, base_y + 0.05, 0.15)
+    spline.bezier_points[2].co = (base_x + 0.3, base_y + 0.1, 0.25)
+    
+    for bp in spline.bezier_points:
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+    
+    grass_obj = bpy.data.objects.new(f"Grass_{i}", grass_data)
+    bpy.context.scene.collection.objects.link(grass_obj)
+    
+    grass_mat = bpy.data.materials.new(f"GrassMat_{i}")
+    grass_mat.use_nodes = True
+    grass_nodes = grass_mat.node_tree.nodes
+    grass_links = grass_mat.node_tree.links
+    
+    for node in grass_nodes:
+        grass_nodes.remove(node)
+    
+    bsdf_grass = grass_nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf_grass.inputs['Base Color'].default_value = (0.4, 0.3, 0.1, 1)
+    bsdf_grass.inputs['Roughness'].default_value = 0.9
+    
+    grass_links.new(bsdf_grass.outputs['BSDF'], grass_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+    grass_obj.data.materials.append(grass_mat)
+
+# Add a second smaller dome structure in the background
+bg_dome_data = bpy.data.meshes.new("BGDome")
+bg_dome_obj = bpy.data.objects.new("BGDome", bg_dome_data)
+bpy.context.scene.collection.objects.link(bg_dome_obj)
+
+bm_bgdome = bmesh.new()
+bmesh.ops.create_uvsphere(bm_bgdome, u_segments=24, v_segments=12, radius=3)
+verts_to_remove = [v for v in bm_bgdome.verts if v.co.z < -0.1]
+for v in verts_to_remove:
+    bm_bgdome.verts.remove(v)
+bm_bgdome.to_mesh(bg_dome_data)
+bm_bgdome.free()
+
+bg_dome_obj.location = (-20, -35, 0)
+
+dome_mat = bpy.data.materials.get("DomeMaterial")
+if dome_mat:
+    bg_dome_obj.data.materials.append(dome_mat)
+
+# Add another distant structure
+bg_struct_data = bpy.data.meshes.new("BGStruct")
+bg_struct_obj = bpy.data.objects.new("BGStruct", bg_struct_data)
+bpy.context.scene.collection.objects.link(bg_struct_obj)
+
+bm_bgstruct = bmesh.new()
+bmesh.ops.create_cube(bm_bgstruct, size=1)
+for v in bm_bgstruct.verts:
+    v.co.x *= 2
+    v.co.y *= 1.5
+    v.co.z *= 1.5
+bm_bgstruct.to_mesh(bg_struct_data)
+bm_bgstruct.free()
+
+bg_struct_obj.location = (25, -40, 0.75)
+if dome_mat:
+    bg_struct_obj.data.materials.append(dome_mat)
+
+# Adjust sun light positions to match the visible suns
+sun1_light = bpy.data.objects.get("Sun1")
+if sun1_light:
+    sun1_light.rotation_euler = (math.radians(80), 0, math.radians(195))
+
+sun2_light = bpy.data.objects.get("Sun2")
+if sun2_light:
+    sun2_light.rotation_euler = (math.radians(70), 0, math.radians(185))
+
+# Add lens flare effect hint with a bright spot
+flare_data = bpy.data.meshes.new("Flare")
+flare_obj = bpy.data.objects.new("Flare", flare_data)
+bpy.context.scene.collection.objects.link(flare_obj)
+
+bm_flare = bmesh.new()
+bmesh.ops.create_circle(bm_flare, cap_ends=True, segments=16, radius=0.5)
+bm_flare.to_mesh(flare_data)
+bm_flare.free()
+
+flare_obj.location = (-15, -79, 2)
+flare_obj.rotation_euler = (math.radians(90), 0, 0)
+
+flare_mat = bpy.data.materials.new("FlareMat")
+flare_mat.use_nodes = True
+flare_nodes = flare_mat.node_tree.nodes
+flare_links = flare_mat.node_tree.links
+
+for node in flare_nodes:
+    flare_nodes.remove(node)
+
+bsdf_flare = flare_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_flare.inputs['Base Color'].default_value = (1.0, 0.5, 0.2, 1)
+bsdf_flare.inputs['Emission Color'].default_value = (1.0, 0.6, 0.3, 1)
+bsdf_flare.inputs['Emission Strength'].default_value = 100.0
+
+flare_links.new(bsdf_flare.outputs['BSDF'], flare_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+flare_obj.data.materials.append(flare_mat)
+
+# Final render settings
+scene = bpy.context.scene
+scene.view_settings.exposure = 0.3
+scene.cycles.samples = 256
+
+print("Scene refined with binary sunset composition!")

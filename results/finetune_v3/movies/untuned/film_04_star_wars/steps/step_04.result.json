@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 5.1,
+ "error": null,
+ "error_line": null,
+ "printed": "Binary sunset composition refined!\n",
+ "state_saved": true,
+ "n_objects": 169,
+ "n_lights": 2,
+ "n_materials": 34,
+ "own_camera": true,
+ "render_error": null
+}

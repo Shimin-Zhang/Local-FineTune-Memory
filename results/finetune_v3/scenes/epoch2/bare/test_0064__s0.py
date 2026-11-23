@@ -1,0 +1,107 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1156)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def paint(name, rgb, glow=0, metal=0, rough=.85):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough; n.inputs["Metallic"].default_value = metal
+    if glow: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    M[name] = m
+for k, c in dict(paving=(.13, .12, .14), brick=(.32, .12, .08), slate=(.1, .11, .16), iron=(.06, .09, .1), timber=(.28, .17, .09),
+                 timber2=(.18, .1, .06), roof=(.2, .08, .06), kiosk=(.1, .22, .18), dark=(.02, .02, .03), post=(.04, .04, .05), window=(.5, .3, .1)).items(): paint(k, c)
+paint("lamp", (1, .7, .3), 16); paint("pane", (1, .6, .25), 7); paint("lit", (1, .55, .2), 6)
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(M[m]); return o
+def box(x, y, z, w, d, h, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return put(bm, m, (x, y, z), (0, 0, rz))
+def beam(a, b, r, m, n=5):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r, depth=d.length)
+    for v in bm.verts: v.co.z += d.length / 2
+    return put(bm, m, a, d.to_track_quat('Z', 'Y').to_euler())
+def roofed(x, y, z, w, d, h, m, ridge=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d * (0 if v.co.z > 0 and ridge else 1), (v.co.z + .5) * h))
+    return put(bm, m, (x, y, z))
+def lamp(x, y, z, w):
+    box(x, y, z, .5, .5, .5, "lamp", 0, .8)
+    L = bpy.data.lights.new("l", "POINT"); L.color = (1, .65, .3); L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = (x, y, z + .25); sc.collection.objects.link(o)
+# street base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=14, depth=4)
+for v in bm.verts:
+    v.co.y *= .72
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1, 1), random.uniform(-1.2, .3)))
+    v.co.z -= 2
+put(bm, "paving")
+# the elevated viaduct: iron girders on piers, deck at z=6.2
+for i, x in enumerate((-9, -3, 3, 9)):
+    box(x, 0, 0, 1.6, 2.2, 6.2, "brick", 0, .8)
+    box(x, 0, 5.6, 2.2, 2.6, .3, "iron")
+for x in (-9, -3, 3, 9):
+    for y in (-1.1, 1.1): beam((x, y, 5.9), (x, y, 6.2), .12, "iron")
+box(0, 0, 6.2, 21, 3.0, .3, "iron")
+for y in (-1.4, 1.4):
+    for x in range(-10, 11): box(x, y, 6.5, .12, .12, .9, "iron")
+    beam((-10.5, y, 7.4), (10.5, y, 7.4), .07, "iron")
+box(0, 0, 6.5, 21, .12, .12, "iron")
+# timber station shed: platform, posts, pitched roof, lit windows
+box(0, 3.6, 6.5, 14, 2.6, .25, "timber2")
+for i in range(7):
+    for y in (2.5, 4.7): box(-6 + i * 2, y, 6.75, .22, .22, 2.6, "timber")
+for i in range(6): box(-5 + i * 2, 4.7, 7.2, 1.6, .1, 1.1, "pane")
+box(0, 4.7, 8.4, 14, .2, .2, "timber")
+for y in (2.5, 4.7): beam((-7, y, 9.1), (7, y, 9.1), .16, "timber2", 6)
+roofed(0, 3.6, 9.1, 14.6, 3.0, 1.3, "roof")
+box(-5.5, 3.6, 6.75, .1, 2.0, .1, "timber")
+# stair down to the street on the left, with railings
+for i in range(13):
+    box(-9.6 - i * .45, 0, 0, .5, 1.8, 6.5 - i * .5, "timber2")
+for y in (-.9, .9):
+    for i in range(0, 13, 2): beam((-9.6 - i * .45, y, 6.5 - i * .5), (-9.6 - i * .45, y, 7.3 - i * .5), .06, "iron")
+beam((-9.6, -.9, 7.4), (-15.3, -.9, 1.4), .06, "iron"); beam((-9.6, .9, 7.4), (-15.3, .9, 1.4), .06, "iron")
+# news kiosk with a striped awning and a glowing window
+box(4.5, -3.6, 0, 2.6, 2.2, 2.4, "kiosk")
+box(4.5, -4.75, .8, 1.8, .1, 1.1, "pane")
+roofed(4.5, -3.6, 2.4, 3.0, 2.6, .5, "roof")
+for i in range(5): box(3.5 + i * .5, -5.0, 2.1, .5, .9, .08, "timber2" if i % 2 else "roof")
+box(4.5, -3.6, 2.9, .1, .1, .1, "dark")
+box(6.4, -3.6, 0, .1, .1, 1.6, "dark")
+box(6.4, -3.6, 1.6, .9, .1, .5, "lit", 0, 1)
+# gas lamps on the street
+for x, y in ((-6, -4.5), (0, -4.8), (9, -4.5)):
+    beam((x, y, 0), (x, y, 4.2), .1, "post", 5); box(x, y, 4.2, .55, .55, .6, "lamp", 0, .8); lamp(x, y, 4.4, 380)
+# street-side buildings with pitched roofs and lit windows
+for i, (x, w, h) in enumerate([(-11, 4, 4.2), (8.5, 5, 5.2), (12.5, 3.4, 3.8)]):
+    box(x, -7.6, 0, w, 3.2, h, "brick" if i != 1 else "slate")
+    roofed(x, -7.6, h, w + .3, 3.6, 1.4, "slate")
+    for k in range(int(w // 1.3)):
+        box(x - w / 2 + .9 + k * 1.3, -9.25, 1.0, .7, .1, 1.0, "lit" if (i + k) % 3 else "dark")
+        box(x - w / 2 + .9 + k * 1.3, -9.25, 2.6, .7, .1, 1.0, "dark" if (i + k) % 3 else "lit")
+box(-6.5, -7.6, 0, 3.4, 3.2, 3.2, "slate"); roofed(-6.5, -7.6, 3.2, 3.7, 3.6, 1.2, "roof")
+for x, y, h in ((-11.5, 5.5, 4.5), (-6, 6.5, 3.5), (11, 5.5, 5.5)):
+    box(x, y, 0, 3.6, 3.0, h, "brick" if x < 0 else "slate"); roofed(x, y, h, 3.9, 3.4, 1.3, "roof")
+for i in range(3): box(-11.5 + (i - 1) * 1.0, 3.9, 1.5, .6, .1, .9, "lit")
+# a small carriage on the deck, with lit windows
+box(5.5, -.1, 6.5, 4.4, 1.6, 1.4, "kiosk", 0, .9); roofed(5.5, -.1, 7.9, 4.6, 1.8, .4, "roof")
+for i in range(3): box(4.2 + i * 1.3, -1.0, 7.0, .8, .08, .6, "pane")
+lamp(5.5, -1.4, 7.2, 220)
+for c, w, p in (((.5, .6, 1), 5, (-26, -14, 10)), ((1, .45, .2), 2.2, (24, 22, 8))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .02, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 4)); co.location = t + Vector((6, -60, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

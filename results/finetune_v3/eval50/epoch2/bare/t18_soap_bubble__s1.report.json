@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "NameError: name 'r' is not defined",
+ "error_line": "lawn, lawn2, stem, petal, dirt, rockm, pond, foam, glass = (surf(c, r) for c in ((.1, .26, .12), (.15, .32, .14), (.12, .22, .1), (.9, .35, .6), (.14, .1, .08), (.3, .3, .34), (.05, .2, .35), (.8, .9,",
+ "n_renderable_objects": 0,
+ "object_types": {},
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.7321,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 2.8,
+ "image": true
+}

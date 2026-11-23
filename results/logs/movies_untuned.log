@@ -1,0 +1,167 @@
+server ready after 4s; 20 sessions, 32768 tokens each, 2 at a time
+film_02_titanic              turn  1  4781 tokens   113.7s  TypeError: bpy_struct: item.attr = val: enum "NISHITA" not f  objects=0  used 4928/32768
+film_01_jurassic_park        turn  1  5644 tokens   135.0s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=0  used 5793/32768
+film_01_jurassic_park        turn  2  5343 tokens   132.0s  KeyError: 'bpy_prop_collection[key]: key "Volume Scatter Den  objects=133  used 11852/32768
+film_02_titanic              turn  2  8192 tokens   203.1s  cut off  objects=None  used 13857/32768
+film_02_titanic              turn  3  3304 tokens    84.7s  ran  objects=50  used 17243/32768
+film_01_jurassic_park        turn  3  5370 tokens   138.3s  ran  objects=133  used 17941/32768
+film_02_titanic              turn  4  2739 tokens    71.7s  ran  objects=91  used 20648/32768
+film_02_titanic              turn  5  2900 tokens    77.5s  ran  objects=155  used 24221/32768
+film_01_jurassic_park        turn  4  5681 tokens   150.5s  ran  objects=200  used 24290/32768
+film_02_titanic              turn  6  1496 tokens    41.2s  AttributeError: 'Scene' object has no attribute 'node_tree'  objects=183  used 26387/32768
+film_01_jurassic_park        turn  5  2092 tokens    57.5s  TypeError: bpy_struct.keyframe_insert() property "energy" no  objects=268  used 27051/32768
+film_02_titanic              turn  7  1505 tokens    41.9s  AttributeError: 'Scene' object has no attribute 'node_tree'  objects=183  used 28583/32768
+film_02_titanic              turn  8  881 tokens    25.0s  ran  objects=175  used 30155/32768
+film_02_titanic              turn  9  1018 tokens    29.0s  ran  objects=170  used 31850/32768
+film_02_titanic              done: out of context; 9 turns, 8 runs, 170 objects, 12.2 min
+film_01_jurassic_park        done: out of context (the last reply was cut off and not run); 6 turns, 5 runs, 268 objects, 13.0 min
+film_03_et                   turn  1  7211 tokens   178.9s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=0  used 7359/32768
+film_04_star_wars            turn  1  6184 tokens   152.9s  ReferenceError: BMesh data of type BMVert has been removed  objects=23  used 6331/32768
+film_03_et                   turn  2  6387 tokens   162.4s  TypeError: bpy_struct: item.attr = val: enum "Medium High Co  objects=539  used 14450/32768
+film_04_star_wars            turn  2  7916 tokens   198.7s  ran  objects=70  used 14941/32768
+film_04_star_wars            turn  3  4342 tokens   112.6s  ran  objects=145  used 19957/32768
+film_03_et                   turn  3  6277 tokens   163.1s  ran  objects=684  used 21500/32768
+film_04_star_wars            turn  4  3130 tokens    86.2s  ran  objects=169  used 23759/32768
+film_04_star_wars            turn  5  3234 tokens    89.6s  NameError: name 'bmesh' is not defined  objects=138  used 27662/32768
+film_03_et                   turn  4  6572 tokens   179.6s  ran  objects=849  used 28746/32768
+film_04_star_wars            turn  6  2001 tokens    55.6s  ran  objects=155  used 30355/32768
+film_03_et                   turn  5  2224 tokens    62.0s  ran  objects=1049  used 31642/32768
+film_03_et                   done: out of context; 5 turns, 5 runs, 1049 objects, 13.6 min
+film_04_star_wars            done: out of context (the last reply was cut off and not run); 7 turns, 6 runs, 155 objects, 13.0 min
+film_06_king_kong            turn  1  2174 tokens    52.7s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=0  used 2318/32768
+film_05_wizard_of_oz         turn  1  8192 tokens   197.2s  cut off  objects=None  used 8345/32768
+film_05_wizard_of_oz         turn  2  4959 tokens   115.3s  ran  objects=1261  used 13386/32768
+film_06_king_kong            turn  2  4411 tokens   106.6s  timeout  objects=None  used 7445/32768
+film_06_king_kong            turn  3  3364 tokens    86.0s  ran  objects=1468  used 10886/32768
+film_05_wizard_of_oz         turn  3  6741 tokens   164.1s  ran  objects=1571  used 20789/32768
+film_05_wizard_of_oz         turn  4  350 tokens     9.9s  ran  objects=1571  used 21810/32768
+film_06_king_kong            turn  4  2657 tokens    65.9s  ran  objects=1667  used 14212/32768
+film_05_wizard_of_oz         turn  5  1405 tokens    35.2s  ran  objects=1958  used 23877/32768
+film_06_king_kong            turn  5  2075 tokens    49.1s  ran  objects=1700  used 16976/32768
+film_06_king_kong            turn  6  2261 tokens    58.3s  KeyError: 'bpy_prop_collection[key]: key "Transmission" not   objects=1700  used 19924/32768
+film_05_wizard_of_oz         turn  6  1659 tokens    46.1s  ran  objects=2120  used 26197/32768
+film_05_wizard_of_oz         turn  7  1859 tokens    51.0s  ran  objects=2148  used 28717/32768
+film_06_king_kong            turn  7  2659 tokens    71.4s  ran  objects=1978  used 23290/32768
+film_05_wizard_of_oz         turn  8  1154 tokens    29.5s  ran  objects=2231  used 30532/32768
+film_05_wizard_of_oz         turn  9  771 tokens    22.0s  ran  objects=2208  used 31964/32768
+film_05_wizard_of_oz         done: out of context; 9 turns, 8 runs, 2208 objects, 15.8 min
+film_06_king_kong            turn  8  2526 tokens    69.9s  SyntaxError: cannot use assignment expressions with attribut  objects=1978  used 26506/32768
+film_06_king_kong            turn  9  2186 tokens    57.9s  ran  objects=1958  used 29394/32768
+film_06_king_kong            turn 10  1599 tokens    43.1s  ran  objects=2073  used 31685/32768
+film_06_king_kong            done: out of context; 10 turns, 10 runs, 2073 objects, 18.3 min
+film_07_singin_in_the_rain   turn  1  8192 tokens   209.1s  cut off  objects=None  used 8343/32768
+film_07_singin_in_the_rain   turn  2  5012 tokens   123.5s  ran  objects=237  used 13437/32768
+film_08_jaws                 turn  1  8192 tokens   204.8s  cut off  objects=None  used 8341/32768
+film_07_singin_in_the_rain   turn  3  3367 tokens    87.9s  NameError: name 'cm' is not defined  objects=388  used 17494/32768
+film_08_jaws                 turn  2  4845 tokens   123.7s  ran  objects=20  used 13268/32768
+film_07_singin_in_the_rain   turn  4  3245 tokens    84.6s  ran  objects=283  used 21468/32768
+film_07_singin_in_the_rain   turn  5  2217 tokens    58.9s  ran  objects=373  used 24385/32768
+film_07_singin_in_the_rain   turn  6  2234 tokens    60.2s  ran  objects=403  used 27318/32768
+film_07_singin_in_the_rain   turn  7  1884 tokens    51.7s  ran  objects=453  used 29895/32768
+film_08_jaws                 turn  3  8192 tokens   217.4s  cut off  objects=None  used 22120/32768
+film_07_singin_in_the_rain   turn  8  1505 tokens    42.3s  ran  objects=453  used 32092/32768
+film_07_singin_in_the_rain   done: out of context; 8 turns, 7 runs, 453 objects, 12.7 min
+film_08_jaws                 turn  4  4524 tokens   122.1s  SyntaxError: invalid syntax (script.py, line 254)  objects=20  used 26726/32768
+film_08_jaws                 turn  5  2900 tokens    77.4s  SyntaxError: unterminated string literal (detected at line 1  objects=20  used 30317/32768
+film_09_fellowship           turn  1  6273 tokens   167.4s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=0  used 6427/32768
+film_08_jaws                 turn  6  1553 tokens    45.0s  SyntaxError: '(' was never closed (script.py, line 118)  objects=20  used 32579/32768
+film_08_jaws                 done: out of context; 6 turns, 4 runs, 20 objects, 13.5 min
+film_09_fellowship           turn  2  6164 tokens   157.4s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=84  used 13307/32768
+film_10_2001                 turn  1  5695 tokens   142.3s  TypeError: bpy_struct: item.attr = val: enum "NISHITA" not f  objects=0  used 5846/32768
+film_09_fellowship           turn  3  2733 tokens    69.8s  ran  objects=176  used 16771/32768
+film_09_fellowship           turn  4  2586 tokens    66.8s  ran  objects=218  used 20043/32768
+film_10_2001                 turn  2  5704 tokens   146.7s  AttributeError: 'ShaderNodeTexSky' object has no attribute '  objects=0  used 12288/32768
+film_09_fellowship           turn  5  2527 tokens    66.9s  TypeError: bpy_struct: item.attr = val: enum "AgX - Base" no  objects=218  used 23260/32768
+film_09_fellowship           turn  6  2186 tokens    58.5s  ran  objects=336  used 26226/32768
+film_10_2001                 turn  3  5667 tokens   151.0s  TypeError: bpy_struct: item.attr = val:  objects=0  used 18663/32768
+film_09_fellowship           turn  7  2601 tokens    71.0s  ran  objects=468  used 29520/32768
+film_09_fellowship           turn  8  1561 tokens    43.3s  ran  objects=573  used 31766/32768
+film_09_fellowship           done: out of context; 8 turns, 8 runs, 573 objects, 12.2 min
+film_10_2001                 turn  4  5619 tokens   149.7s  ran  objects=219  used 24986/32768
+film_10_2001                 turn  5  2625 tokens    69.1s  ran  objects=271  used 28288/32768
+film_10_2001                 turn  6  436 tokens    12.2s  TypeError: bpy_struct: item.attr = val: enum "Medium High Co  objects=271  used 29403/32768
+film_11_the_shining          turn  1  6676 tokens   175.0s  SyntaxError: '[' was never closed (script.py, line 119)  objects=1  used 6818/32768
+film_10_2001                 turn  7  982 tokens    27.4s  AttributeError: 'ParticleSettings' object has no attribute '  objects=272  used 31157/32768
+film_10_2001                 turn  8  574 tokens    16.2s  ran  objects=271  used 32430/32768
+film_10_2001                 done: out of context; 8 turns, 8 runs, 271 objects, 12.5 min
+film_11_the_shining          turn  2  3413 tokens    88.3s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=0  used 10985/32768
+film_11_the_shining          turn  3  3006 tokens    75.0s  AttributeError: 'ParticleSettings' object has no attribute '  objects=555  used 14707/32768
+film_12_back_to_the_future   turn  1  8192 tokens   203.2s  cut off  objects=None  used 8345/32768
+film_11_the_shining          turn  4  2478 tokens    63.1s  TypeError: bpy_struct: item.attr = val: enum "Medium High Co  objects=930  used 17888/32768
+film_11_the_shining          turn  5  2442 tokens    63.7s  NameError: name 'hotel_height' is not defined  objects=964  used 21103/32768
+film_12_back_to_the_future   turn  2  4072 tokens   106.2s  SyntaxError: '(' was never closed (script.py, line 199)  objects=1  used 12499/32768
+film_11_the_shining          turn  6  2466 tokens    67.0s  ran  objects=1074  used 24286/32768
+film_12_back_to_the_future   turn  3  3973 tokens   104.5s  SyntaxError: '(' was never closed (script.py, line 181)  objects=1  used 17188/32768
+film_11_the_shining          turn  7  2899 tokens    78.4s  ran  objects=1273  used 27871/32768
+film_11_the_shining          turn  8  1304 tokens    37.3s  ran  objects=1279  used 29858/32768
+film_11_the_shining          turn  9  1086 tokens    30.6s  AttributeError: 'Vector' object has no attribute 'to_4x4'  objects=1279  used 31717/32768
+film_11_the_shining          done: out of context; 9 turns, 9 runs, 1279 objects, 13.5 min
+film_12_back_to_the_future   turn  4  6085 tokens   161.4s  ran  objects=235  used 23989/32768
+film_12_back_to_the_future   turn  5  2384 tokens    65.0s  ran  objects=323  used 27032/32768
+film_13_raiders              turn  1  4582 tokens   125.3s  AttributeError: 'Material' object has no attribute 'emission  objects=0  used 4727/32768
+film_12_back_to_the_future   turn  6  2422 tokens    64.7s  ran  objects=397  used 30114/32768
+film_12_back_to_the_future   turn  7  693 tokens    19.2s  ran  objects=397  used 31468/32768
+film_12_back_to_the_future   done: out of context; 7 turns, 6 runs, 397 objects, 12.5 min
+film_13_raiders              turn  2  4420 tokens   111.7s  AttributeError: 'Material' object has no attribute 'alpha'  objects=0  used 9882/32768
+film_13_raiders              turn  3  4363 tokens   107.8s  ran  objects=1063  used 14960/32768
+film_13_raiders              turn  4  5111 tokens   124.9s  NameError: name 'passage_width' is not defined  objects=1213  used 20762/32768
+film_14_blade_runner         turn  1  6776 tokens   168.3s  timeout  objects=None  used 6927/32768
+film_13_raiders              turn  5  4527 tokens   118.8s  AttributeError: 'PointLight' object has no attribute 'distan  objects=1491  used 26009/32768
+film_14_blade_runner         turn  2  5697 tokens   148.1s  NameError: name 'rain' is not defined  objects=168  used 12701/32768
+film_13_raiders              turn  6  3451 tokens    96.6s  ran  objects=1753  used 30154/32768
+film_14_blade_runner         turn  3  5684 tokens   151.9s  ValueError: bpy_struct: item.attr = val: sequences of dimens  objects=169  used 19090/32768
+film_13_raiders              done: out of context (the last reply was cut off and not run); 7 turns, 6 runs, 1753 objects, 14.9 min
+film_15_spirited_away        turn  1  3969 tokens   103.6s  ran  objects=116  used 4111/32768
+film_14_blade_runner         turn  4  5757 tokens   153.2s  ran  objects=169  used 25578/32768
+film_14_blade_runner         turn  5  1820 tokens    48.4s  ran  objects=243  used 28069/32768
+film_15_spirited_away        turn  2  3817 tokens   100.5s  ran  objects=222  used 8589/32768
+film_14_blade_runner         turn  6  1606 tokens    44.8s  ran  objects=337  used 30346/32768
+film_15_spirited_away        turn  3  1705 tokens    47.6s  AttributeError: 'PointLight' object has no attribute 'distan  objects=232  used 10955/32768
+film_14_blade_runner         turn  7  1138 tokens    33.2s  ran  objects=403  used 32155/32768
+film_14_blade_runner         done: out of context; 7 turns, 7 runs, 403 objects, 16.9 min
+film_15_spirited_away        turn  4  3567 tokens    93.3s  ran  objects=297  used 15281/32768
+film_15_spirited_away        turn  5  2341 tokens    59.5s  ran  objects=482  used 18284/32768
+film_15_spirited_away        turn  6  1951 tokens    50.5s  ran  objects=512  used 20897/32768
+film_16_lion_king            turn  1  7844 tokens   199.4s  TypeError: bpy_struct: item.attr = val: enum "NISHITA" not f  objects=0  used 7993/32768
+film_15_spirited_away        turn  7  1982 tokens    55.4s  ran  objects=527  used 23636/32768
+film_15_spirited_away        turn  8  2067 tokens    55.1s  ran  objects=557  used 26364/32768
+film_15_spirited_away        turn  9  1825 tokens    49.3s  ran  objects=558  used 28850/32768
+film_16_lion_king            turn  2  5802 tokens   155.8s  AttributeError: 'ShaderNodeTexSky' object has no attribute '  objects=0  used 14519/32768
+film_15_spirited_away        turn 10  1300 tokens    37.1s  ran  objects=559  used 30811/32768
+film_15_spirited_away        turn 11  926 tokens    26.2s  ran  objects=558  used 32686/32768
+film_15_spirited_away        done: out of context; 11 turns, 11 runs, 558 objects, 12.3 min
+film_16_lion_king            turn  3  5791 tokens   152.7s  ran  objects=274  used 21009/32768
+film_16_lion_king            turn  4  3838 tokens    99.7s  ran  objects=463  used 25524/32768
+film_17_casablanca           turn  1  7842 tokens   202.6s  ran  objects=134  used 7996/32768
+film_16_lion_king            turn  5  2025 tokens    56.4s  ran  objects=571  used 28225/32768
+film_16_lion_king            turn  6  1948 tokens    52.7s  ran  objects=668  used 30849/32768
+film_16_lion_king            done: out of context (the last reply was cut off and not run); 7 turns, 6 runs, 668 objects, 13.0 min
+film_17_casablanca           turn  2  5256 tokens   142.7s  AttributeError: bpy_prop_collection: attribute "unlink" not   objects=134  used 13926/32768
+film_17_casablanca           turn  3  5161 tokens   132.3s  ran  objects=191  used 19779/32768
+film_18_ghostbusters         turn  1  6359 tokens   162.3s  ran  objects=380  used 6509/32768
+film_17_casablanca           turn  4  4485 tokens   118.5s  AttributeError: 'CyclesRenderSettings' object has no attribu  objects=171  used 24939/32768
+film_18_ghostbusters         turn  2  5691 tokens   148.7s  ran  objects=629  used 12870/32768
+film_17_casablanca           turn  5  3681 tokens    97.1s  ran  objects=171  used 29320/32768
+film_17_casablanca           done: out of context (the last reply was cut off and not run); 6 turns, 5 runs, 171 objects, 13.7 min
+film_18_ghostbusters         turn  3  5508 tokens   149.9s  ran  objects=786  used 19049/32768
+film_19_good_bad_ugly        turn  1  5954 tokens   150.1s  TypeError: Converting py args to operator properties:: keywo  objects=245  used 6104/32768
+film_18_ghostbusters         turn  4  4322 tokens   111.5s  ran  objects=958  used 24043/32768
+film_19_good_bad_ugly        turn  2  3455 tokens    88.0s  TypeError: bpy_struct: item.attr = val: enum "NISHITA" not f  objects=383  used 10289/32768
+film_18_ghostbusters         turn  5  2787 tokens    74.2s  ran  objects=1067  used 27499/32768
+film_18_ghostbusters         turn  6  2226 tokens    60.3s  ran  objects=1124  used 30399/32768
+film_19_good_bad_ugly        turn  3  5020 tokens   129.0s  TypeError: bpy_struct: item.attr = val: enum "Medium High Co  objects=929  used 16049/32768
+film_18_ghostbusters         done: out of context (the last reply was cut off and not run); 7 turns, 6 runs, 1124 objects, 15.5 min
+film_19_good_bad_ugly        turn  4  4221 tokens   110.9s  ran  objects=1484  used 21043/32768
+film_19_good_bad_ugly        turn  5  2925 tokens    69.9s  AttributeError: 'ShaderNodeTexSky' object has no attribute '  objects=1484  used 24646/32768
+film_20_up                   turn  1  3775 tokens    92.3s  timeout  objects=None  used 3913/32768
+film_19_good_bad_ugly        turn  6  4057 tokens    97.0s  ran  objects=1960  used 29408/32768
+film_19_good_bad_ugly        turn  7  2038 tokens    54.7s  ran  objects=2051  used 32126/32768
+film_19_good_bad_ugly        done: out of context; 7 turns, 7 runs, 2051 objects, 14.5 min
+film_20_up                   turn  2  4069 tokens   101.6s  timeout  objects=None  used 8059/32768
+film_20_up                   turn  3  3491 tokens    79.5s  ran  objects=1247  used 11627/32768
+film_20_up                   turn  4  4294 tokens    97.7s  ran  objects=1604  used 16597/32768
+film_20_up                   turn  5  5066 tokens   117.2s  NameError: name 'mat_town_roof' is not defined  objects=1787  used 22339/32768
+film_20_up                   turn  6  4494 tokens   105.8s  ran  objects=2249  used 27534/32768
+film_20_up                   turn  7  3336 tokens    79.8s  ran  objects=2325  used 31545/32768
+film_20_up                   done: out of context; 7 turns, 7 runs, 2325 objects, 23.3 min
+done in 151 min

@@ -1,0 +1,87 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(860)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def sweet(rgb, em=0):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .3
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+red, white, snow, snow2, ice, pine, pink, gold = (sweet(c) for c in ((.6, .04, .07), (.62, .62, .64), (.3, .38, .55), (.22, .3, .45), (.1, .25, .4), (.03, .15, .1), (.7, .15, .4), (.7, .5, .1)))
+fairy, warm = sweet((.3, .9, 1), 12), sweet((1, .65, .25), 10)
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("c"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("c", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def rod(a, b, r, m, n=6, r2=None):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=d.length)
+    for v in bm.verts: v.co = q @ Vector((v.co.x, v.co.y, v.co.z + d.length / 2)) + a
+    return put(bm, m)
+def bulb(at, r, m):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r); return put(bm, m, at)
+def shine(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("s", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=12, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.3, 1.3), random.uniform(-1.3, 1.3), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.05, .05)
+    v.co.z -= 1.5
+put(bm, snow)
+# the candy cane: a tube swept down the stem and round the hook, in red and white spiral stripes
+def cane(p, t): return Vector((p + 3.0 * math.cos(t), 0, p + 3.0 * math.sin(t)))
+bm = bmesh.new(); rings = []
+for i in range(30):
+    p = 9.0 - i * .32; t = p / 1.0
+    n = cane(p + .1, t) - cane(p - .1, t); n.normalize()
+    up = Vector((0, 1, 0)); ring = []
+    for k in range(8):
+        a = k * math.pi / 4; d = up * math.cos(a) + n * math.sin(a) * .9
+        ring.append(bm.verts.new(cane(p, t) + d * .9))
+    rings.append(ring)
+for a, b in zip(rings, rings[1:]):
+    for k in range(8): bm.faces.new((a[k], a[(k + 1) % 8], b[(k + 1) % 8], b[k]))
+bm.faces.new(rings[0][::-1]); bm.faces.new(rings[-1])
+me = bpy.data.meshes.new("cane"); bm.to_mesh(me); bm.free()
+for m in (red, white): me.materials.append(m)
+cane_o = bpy.data.objects.new("cane", me); sc.collection.objects.link(cane_o)
+for f in me.polygons:
+    p = 9.0 - f.index // 8 * .32
+    f.material_index = 0 if int(p / 1.0 + f.center.x * .6) % 2 else 1
+# snowy drifts, a little ice pond, pine trees with lit tips
+for i in range(8):
+    a = i * .8 + .3; bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(1.4, 2.4))
+    for v in bm.verts: v.co.z *= .35
+    put(bm, snow2, (math.cos(a) * 9.5, math.sin(a) * 9.5, .1))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=3.0, radius2=3.0, depth=.15); put(bm, ice, (-5.5, -4.5, .08))
+for i, (x, y, h) in enumerate(((-8, 4, 6), (-6, 7.5, 4.5), (8, 5, 5.5), (6.5, 8, 4), (-9, -3, 4))):
+    rod((x, y, 0), (x, y, 1.2), .35, gold, 5)
+    for k in range(3):
+        rod((x, y, 1.0 + k * h * .22), (x, y, 1.6 + k * h * .22 + h * .35), 1.7 - k * .45, pine, 7, .15)
+        bulb((x, y, 1.4 + k * h * .22 + h * .3), .22, fairy)
+    shine("POINT", (.3, .9, 1), 90, (x, y - 1, h * .6))
+# a gift pile and a candy-striped pole with a glowing star, plus a few wrapped sweets
+for i, (x, y, s, m) in enumerate(((-2.5, -4.5, 1.6, red), (-.5, -4.0, 1.2, pink), (-1.6, -3.2, 1.0, white))):
+    cube((x, y, 0), (s, s, s), m); cube((x, y, 0), (s * 1.05, .3, s * 1.02), gold); cube((x, y, 0), (.3, s * 1.05, s * 1.02), gold)
+rod((3.5, -5, 0), (3.5, -5, 7.5), .2, white, 6)
+for k in range(6): rod((3.5, -5, .6 + k * 1.2), (3.5, -5, 1.4 + k * 1.2), .21, red, 6)
+bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.7); put(bm, warm, (3.5, -5, 8.0))
+shine("POINT", (1, .65, .25), 450, (3.5, -5.5, 8.0))
+shine("POINT", (1, .3, .4), 300, (0, -3, 4))
+shine("SUN", (.55, .65, 1), 4.5, (-24, -16, 10), (0, 0, 4)); shine("SUN", (.9, .3, .6), 2.2, (20, 22, 12), (0, 0, 4))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .018, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 4.5)); co.location = t + Vector((6, -50, 28))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

@@ -1,0 +1,89 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1737)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+mt = {}
+def dye(name, rgb, em=0, rough=.9):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    mt[name] = m
+for k, c in (("grass", (.1, .16, .08)), ("cliff", (.2, .17, .15)), ("marble", (.55, .52, .46)), ("marble2", (.42, .4, .36)), ("sea", (.04, .16, .22)),
+             ("bronze", (.45, .22, .08)), ("goat", (.4, .36, .3)), ("goat2", (.12, .1, .1)), ("rock", (.25, .24, .24)), ("path", (.3, .24, .17))): dye(k, c)
+dye("flame", (1, .5, .1), 18); dye("rim", (1, .7, .3), 4)
+def part(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("t"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("t", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(mt[m]); return o
+def blk(m, p, s, r=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return part(bm, m, p, r)
+def col(m, p, r, h, n=8, r2=None, r_=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return part(bm, m, p, r_)
+def ball(m, p, r, sq=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2]))
+    return part(bm, m, p)
+def beam(m, a, b, t):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return part(bm, m)
+def glow(kind, c, w, p, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+
+# floating base: cape land on the north side, sea on the south, rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z > 0: v.co = Vector((v.co.x * 27, v.co.y * 22, 0))
+    else: v.co = Vector((v.co.x * 11 + random.uniform(-2, 2), v.co.y * 9 + random.uniform(-2, 2), -5 + random.uniform(-1, 1)))
+part(bm, "grass")
+blk("sea", (0, -7.5, 0), (27, 7, .15))
+for i in range(8): blk("marble2", (-12 + i * 3.4, -3.6 + random.uniform(-.3, .3), 0), (3.4, .5, .2))
+# cliff face at the cape edge with rock ledges
+for i in range(6):
+    x = -11 + i * 4.4; ball("cliff", (x, -3.4, .3), 2.4, (1, .6, .8))
+    ball("rock", (x + 1.2, -3.1, .1), 1.3, (1, .7, .6))
+# stepped base (stylobate), then the cella walls, columns, entablature and pediments
+for i, (w, d) in enumerate(((15, 10.5), (14, 9.5), (13, 8.5))): blk("marble2" if i % 2 else "marble", (0, 1, i * .55), (w, d, .55))
+blk("marble2", (0, 1.5, 1.65), (9, 4.4, 3.6))
+for sx in (-1, 1):
+    blk("marble2", (sx * 5.4, 1, 1.65), (1.2, 8.4, 3.6))
+blk("marble2", (0, 5.2, 1.65), (12, 1.2, 3.6)); blk("marble", (0, -2.2, 1.65), (3.2, .5, 2.6))
+for i in range(8):
+    x = -6.3 + i * 1.8
+    col("marble", (x, -2.6, 1.65), .5, .25, 8); col("marble", (x, -2.6, 1.9), .42, 3.2, 8, .34)
+    for k in range(5): beam("marble2", (x + .38 * math.cos(k * 1.26), -2.6 + .38 * math.sin(k * 1.26), 2.0), (x + .3 * math.cos(k * 1.26), -2.6 + .3 * math.sin(k * 1.26), 4.9), .07)
+    col("marble", (x, -2.6, 5.1), .55, .3, 8)
+blk("marble", (0, -1.5, 5.4), (14, 5.4, .8)); blk("rim", (0, -4.1, 5.4), (14, .3, .2))
+for sx in (-1, 1):
+    bm = bmesh.new(); a = bm.verts.new((sx * 7.2, -1.5, 5.4)); b = bm.verts.new((sx * 7.2, -1.5, 6.8)); c = bm.verts.new((0, -1.5, 6.8))
+    bm.faces.new((a, b, c)); part(bm, "marble", (0, 0, 0))
+    blk("marble2", (sx * 3.6, -1.5, 5.9), (7.2, .3, .5), (0, -sx * .33, 0))
+for i in range(3): blk("marble2", (-3 + i * 3, 1, 5.2), (.4, .4, .3))
+# bronze brazier on a stone plinth, with a flame
+col("rock", (0, -5.6, 0), .8, .8, 6); col("bronze", (0, -5.6, .8), .15, .9, 5); col("bronze", (0, -5.6, 1.7), .7, .35, 8, .5)
+col("bronze", (0, -5.6, 2.0), .5, .2, 8, .6); col("flame", (0, -5.6, 2.2), .38, .8, 5, .05)
+glow("POINT", (1, .5, .1), 900, (0, -5.6, 2.8))
+# goat path: a winding trodden track from the shore up to the steps, with two goats
+pts = [(-7, -9), (-6.5, -7), (-8, -5), (-6, -3.5), (-4, -2.2), (-2.5, -1)]
+for a, b in zip(pts, pts[1:]): beam("path", (*a, .08), (*b, .08), .9)
+for gx, gy, a in ((-6.2, -6.6, .5), (-5.2, -4.2, 2.5)):
+    ball("goat", (gx, gy, .8), .55, (1.4, .8, .9)); ball("goat2", (gx + .75 * math.cos(a), gy + .75 * math.sin(a), 1.0), .28)
+    for dx, dy in ((.3, .2), (.3, -.2), (-.3, .2), (-.3, -.2)): beam("goat2", (gx + dx, gy + dy, 0), (gx + dx, gy + dy, .5), .1)
+    for s in (-1, 1): beam("goat2", (gx + .7 * math.cos(a), gy + .7 * math.sin(a), 1.2), (gx + .7 * math.cos(a) - s * .15, gy + .7 * math.sin(a) + s * .2, 1.6), .05)
+# first light: low gold sun from the sea side, cool rose rim from behind
+glow("SUN", (1, .75, .45), 5, (22, -20, 8), (0, 0, 2)); glow("SUN", (.6, .5, .9), 2, (-18, 22, 10), (0, 0, 2))
+w = bpy.data.worlds.new("dawn"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, -1, 2.5)); co.location = t + Vector((-12, -62, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

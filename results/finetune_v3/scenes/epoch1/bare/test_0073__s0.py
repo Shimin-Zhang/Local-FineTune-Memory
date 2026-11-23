@@ -1,0 +1,92 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1495)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def clay(rgb, em=0):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .95
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+dust, mud1, mud2, mud3, mud4, mud5, mud6, sand, stone, canvas, canvas2, wood, thatch, soil, brick, lampm = (clay(c) for c in (
+    (.3,.22,.14),(.42,.3,.19),(.3,.2,.13),(.45,.36,.24),(.24,.17,.12),(.36,.25,.17),(.2,.13,.1),(.5,.4,.28),(.35,.33,.3),(.55,.5,.4),(.45,.3,.22),(.25,.15,.08),(.4,.3,.15),(.3,.2,.12),(.45,.3,.18),(.2,.12,.08)))
+lamp = clay((1, .65, .25), 14); fire = clay((1, .4, .08), 12)
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(x, y, z, w, d, h, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return mk(bm, m, (x, y, z), rot)
+def drum(x, y, z, r, h, m, n=8, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, (x, y, z), rot)
+def heap(x, y, z, r, m, sq=.5):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(.85, 1.2), v.co.y * random.uniform(.85, 1.2), v.co.z * sq))
+    return mk(bm, m, (x, y, z))
+def glow(x, y, z, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# plain base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=13.5, depth=3.4)
+for v in bm.verts:
+    v.co.x *= 1.1; v.co.z -= 1.7
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+mk(bm, dust)
+# the mound: a flat-topped stepped hill built of stacked rings of earth, with a trench cut into the front
+def hill(x, y, z, r, h, m):
+    drum(x, y, z, r, h, m, n=8, r2=r * .92)
+    for k in range(6):
+        a = k * math.pi / 3
+        heap(x + math.cos(a) * r * .95, y + math.sin(a) * r * .95, z + h * .3, r * .22, m, .7)
+for r, h, z, m in ((10, 2.6, 0, mud5), (8.2, 2.4, 2.6, mud6), (6.4, 2.2, 5.0, mud5), (4.6, 2.0, 7.2, mud6), (3.0, 2.0, 9.2, mud5)):
+    hill(0, 2.5, z, r, h, m)
+for i in range(9): heap(random.uniform(-3, 3), 2.5 + random.uniform(-1.5, 1.5), 11.3, random.uniform(.5, .9), mud6, .5)
+# the trench: a stepped cut down the front of the mound, each step showing a different layer of old mud-brick
+for i, (y, z, m) in enumerate(((-2.0, 0, mud5), (-4.2, 2.6, mud6), (-6.4, 5.0, mud5), (-8.4, 7.2, mud6), (-10.2, 9.2, mud5))):
+    box(0, y, z, 5.2, 2.6, .5, m)
+    for k in range(6):
+        box(-1.9 + k * .8, y, z + .5, .7, .5, .5 + (k % 2) * .2, [mud1, mud2, mud3, mud4, mud2, mud1][k])
+    for k in range(4): box(-1.2 + k * .8, y + 1.2, z + .5, .1, .1, .4, mud6)
+# dig house at the foot: stone walls, thatch roof, door and window, with a glowing lamp inside
+box(-7.5, -7.5, 0, 4.2, 3.2, 2.0, stone)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 4.8, v.co.y * 3.8, (v.co.z + .5) * 1.6))
+    if v.co.z > .8: v.co.y *= .1
+mk(bm, thatch, (-7.5, -7.5, 2.0))
+box(-7.5, -9.15, 0, 1.0, .15, 1.6, wood); box(-6.2, -9.15, .9, .9, .15, .8, lamp); box(-8.9, -9.15, .9, .9, .15, .8, lamp)
+glow(-7.5, -10, 1.4, (1, .65, .25), 380)
+# tents at the foot: canvas pyramids with poles
+for x, y, c in ((-3.5, -9.5, canvas), (.5, -9.0, canvas2), (4.5, -9.5, canvas)):
+    drum(x, y, 0, 1.7, 2.0, c, n=4, r2=.15, rot=(0, 0, math.pi / 4))
+    drum(x, y, 0, .12, 2.3, wood, n=5)
+    box(x, y - 1.2, 0, .8, .1, 1.1, wood)
+# camp fire with stones and a few tools: trowel, sieve, buckets, crates
+drum(2.0, -6.0, 0, .5, .5, fire, n=6, r2=.1)
+for k in range(7): box(2.0 + math.cos(k * .9) * .8, -6.0 + math.sin(k * .9) * .8, 0, .35, .3, .3, stone, rot=(0, 0, k))
+glow(2.0, -6.0, 1.2, (1, .5, .15), 320)
+for x, y in ((-1.2, -7.0), (-.4, -7.6), (-1.0, -8.2)): box(x, y, 0, .7, .7, .6, wood)
+for x, y in ((6.0, -6.5), (6.8, -6.0)): drum(x, y, 0, .35, .8, canvas, n=6, r2=.45)
+# a survey pole with a flag, a ladder on the trench, and a path of stones to the dig house
+box(9.5, -4.5, 0, .1, .1, 4.0, wood); box(9.9, -4.5, 3.0, .8, .05, .5, canvas2)
+for s in (-.3, .3): box(-2.6 + s, -5.5, 0, .08, .08, 5.0, wood, rot=(.2, 0, 0))
+for k in range(6): box(-2.6, -5.5 - k * .05, .6 + k * .8, .8, .08, .08, wood)
+for k in range(7): box(-3.0 - k * .6, -6.5 + k * .3, 0, .5, .4, .06, stone, rot=(0, 0, k))
+# a few boulders and dry grass tufts on the plain
+for x, y in ((-10, 3), (10, 1), (8, -8), (-9, -2)): heap(x, y, 0, random.uniform(.6, 1.0), stone, .7)
+for x, y in ((-5, -5), (7, -3), (-11, -6), (11, -6)): drum(x, y, 0, .25, .8, mud4, n=4, r2=.02)
+for col, w, p in (((.9, .55, .3), 5, (-24, -14, 8)), ((.3, .5, .7), 2.2, (22, 20, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 4)); co.location = t + Vector((8, -62, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

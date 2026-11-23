@@ -1,0 +1,89 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(841)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def hue(rgb, em=0, rough=.8):
+    m = bpy.data.materials.new("h"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+oak, wall, frost, stem, leaf = hue((.25, .15, .09)), hue((.2, .2, .24)), hue((.55, .7, .75), .5, .4), hue((.1, .3, .15)), hue((.15, .4, .2))
+bloom, ember, book, book2, cup, lamp = hue((.9, .85, .9)), hue((.8, .2, .1)), hue((.5, .1, .12)), hue((.1, .25, .4)), hue((.7, .65, .6)), hue((.3, .3, .35))
+def mesh(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return mesh(bm, m, at, (0, 0, rz))
+def rod(a, b, r, m, n=5):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r, depth=d.length)
+    for v in bm.verts: v.co.z += d.length / 2
+    return mesh(bm, m, a, d.to_track_quat('Z', 'Y').to_euler())
+def bulb(at, r, m, sq=1.0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.9, 1.1); v.co.z *= sq
+    return mesh(bm, m, at)
+def lit(kind, at, col, w, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = col, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# floating oak floor slab with rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=5, radius2=9, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-.8, .8), random.uniform(-.8, .8), random.uniform(-1, .3)))
+    v.co.z -= 1.5
+mesh(bm, oak)
+# two walls of a cosy room
+slab((0, 6.5, 0), (15, .5, 9), wall); slab((-7.5, 0, 0), (.5, 13.5, 9), wall)
+slab((0, 6.1, 0), (15, .6, .5), oak); slab((-7.1, 0, 0), (.6, 13.5, .5), oak)
+# the vase: frosted glass, faceted, with a lit core inside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=1.2, radius2=.6, depth=2.8)
+for v in bm.verts:
+    v.co.z += 1.4
+    if v.co.z > 1.4: v.co.x *= 1.3; v.co.y *= 1.3
+mesh(bm, frost, (0, 0, 1.5))
+core = bmesh.new(); bmesh.ops.create_cone(core, cap_ends=True, segments=8, radius1=.9, radius2=.4, depth=2.2)
+for v in core.verts: v.co.z += 1.1
+mesh(core, hue((.7, .9, .9), 1.5), (0, 0, 1.5))
+slab((0, 0, 0), (2.6, 2.6, 1.5), oak, top=.95)
+lit("POINT", (0, 0, 2.4), (.6, .9, .9), 500)
+# stems and flowers inside
+for i in range(6):
+    a = i * 1.1; top = Vector((math.cos(a) * .7, math.sin(a) * .7, 5.2 + (i % 3) * .4))
+    rod((math.cos(a) * .3, math.sin(a) * .3, 3.2), top, .05, stem)
+    bulb(top, .42, bloom if i % 2 else ember, .8)
+    for k in range(4):
+        b = k * 1.57 + a
+        bulb(top + Vector((math.cos(b) * .4, math.sin(b) * .4, -.1)), .22, leaf, .6)
+# books, candle and a cup on the table
+for i, (m, x) in enumerate(((book, -3.2), (book2, -2.5), (book, -1.9))): slab((x, -.6, 1.5), (.9, 1.2, .22 + i * .08), m, i * .2)
+rod((3.4, -.8, 1.5), (3.4, -.8, 2.6), .22, cup, 6); bulb((3.4, -.8, 2.75), .2, hue((1, .7, .25), 12), .8)
+lit("POINT", (3.4, -.8, 3.0), (1, .65, .25), 220)
+# a shelf on the back wall with books and a plant
+slab((-1, 5.9, 4.2), (7, 1.0, .2), oak)
+for i in range(7): slab((-3.8 + i * .55, 5.9, 4.4), (.4, .6, 1.0 + (i % 3) * .15), (book, book2, bloom)[i % 3], 0)
+rod((2.2, 5.8, 4.4), (2.2, 5.8, 5.2), .35, cup, 6)
+for i in range(5): rod((2.2, 5.8, 5.2), (2.2 + math.cos(i * 1.3) * .8, 5.8 + math.sin(i * 1.3) * .8, 5.9 + (i % 2) * .4), .06, leaf)
+# floor lamp beside the table
+rod((-5.2, 3.5, 0), (-5.2, 3.5, 5.2), .1, lamp, 5); rod((-5.2, 3.5, 0), (-4.4, 3.5, 0), .5, lamp, 5); rod((-5.2, 3.5, 0), (-6, 3.5, 0), .5, lamp, 5)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=.7, radius2=1.1, depth=1.1)
+for v in bm.verts: v.co.z += .55
+mesh(bm, hue((1, .75, .4), 6), (-5.2, 3.5, 5.2))
+lit("POINT", (-5.2, 3.5, 5.6), (1, .75, .4), 600)
+lit("SUN", (-18, -14, 9), (.55, .7, 1), 4.5, (0, 0, 3))
+lit("SUN", (16, 14, 8), (.9, .45, .55), 2.2, (0, 0, 3))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .02, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((-.5, 0, 3.2)); co.location = t + Vector((13, -38, 24))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

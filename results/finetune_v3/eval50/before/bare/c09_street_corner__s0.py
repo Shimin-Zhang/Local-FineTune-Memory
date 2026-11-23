@@ -1,0 +1,140 @@
+import bpy
+import math
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create materials
+def create_material(name, color, roughness=0.5):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = roughness
+    return mat
+
+# Materials
+mat_building1 = create_material("Building1", (0.7, 0.7, 0.65, 1), 0.8)
+mat_building2 = create_material("Building2", (0.6, 0.55, 0.5, 1), 0.8)
+mat_street = create_material("Street", (0.3, 0.3, 0.3, 1), 0.9)
+mat_crosswalk = create_material("Crosswalk", (0.9, 0.9, 0.9, 1), 0.5)
+mat_lamp_pole = create_material("LampPole", (0.15, 0.15, 0.15, 1), 0.4)
+mat_lamp_head = create_material("LampHead", (0.9, 0.85, 0.6, 1), 0.3)
+mat_mailbox = create_material("Mailbox", (0.8, 0.2, 0.1, 1), 0.5)
+mat_bench = create_material("Bench", (0.5, 0.35, 0.2, 1), 0.7)
+mat_sidewalk = create_material("Sidewalk", (0.55, 0.55, 0.55, 1), 0.8)
+
+# Helper: create a cube and assign material
+def create_box(name, location, size, material, rotation=(0, 0, 0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(material)
+    return obj
+
+# Street (ground plane)
+bpy.ops.mesh.primitive_plane_add(size=40, location=(0, 0, 0))
+street = bpy.context.active_object
+street.name = "Street"
+street.data.materials.append(mat_street)
+
+# Sidewalks (two strips forming the corner)
+# Sidewalk along X axis (left-right)
+create_box("Sidewalk_X", (0, 5.5, 0.05), (40, 3, 0.1), mat_sidewalk)
+# Sidewalk along Y axis (front-back)
+create_box("Sidewalk_Y", (5.5, 0, 0.05), (3, 40, 0.1), mat_sidewalk)
+
+# Crosswalk stripes (across the street in X direction, near Y=0)
+for i in range(6):
+    x = -3 + i * 1.2
+    create_box(f"Crosswalk_{i}", (x, 0, 0.02), (0.8, 4, 0.04), mat_crosswalk)
+
+# Building 1 (left side, along X axis)
+create_box("Building1", (-10, 8, 5), (12, 4, 10), mat_building1)
+# Add windows to Building 1
+for row in range(3):
+    for col in range(4):
+        wx = -14 + col * 2.5
+        wy = 8
+        wz = 2 + row * 3
+        create_box(f"B1_Window_{row}_{col}", (wx, wy - 2.05, wz), (1.2, 0.1, 1.5), mat_lamp_head)
+
+# Building 2 (front side, along Y axis)
+create_box("Building2", (8, -10, 5), (4, 12, 10), mat_building2)
+# Add windows to Building 2
+for row in range(3):
+    for col in range(4):
+        wx = 8
+        wy = -14 + col * 2.5
+        wz = 2 + row * 3
+        create_box(f"B2_Window_{row}_{col}", (wx - 2.05, wy, wz), (0.1, 1.2, 1.5), mat_lamp_head)
+
+# Street Lamp (at the corner)
+# Pole
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=4, location=(4, 4, 2))
+pole = bpy.context.active_object
+pole.name = "Lamp_Pole"
+pole.data.materials.append(mat_lamp_pole)
+
+# Lamp head (box on top)
+create_box("Lamp_Head", (4, 4, 4.1), (0.6, 0.6, 0.3), mat_lamp_head)
+
+# Add a point light for the lamp
+bpy.ops.object.light_add(type='POINT', location=(4, 4, 4.0))
+light = bpy.context.active_object
+light.name = "Lamp_Light"
+light.data.energy = 100
+light.data.color = (1.0, 0.95, 0.8)
+
+# Mailbox (on the sidewalk near the corner)
+# Base post
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=1.2, location=(3, 6, 0.6))
+mb_post = bpy.context.active_object
+mb_post.name = "Mailbox_Post"
+mb_post.data.materials.append(mat_lamp_pole)
+
+# Mailbox body
+create_box("Mailbox_Body", (3, 6, 1.3), (0.5, 0.3, 0.4), mat_mailbox)
+
+# Bench (on the sidewalk)
+# Seat
+create_box("Bench_Seat", (6, 3, 0.5), (1.5, 0.5, 0.08), mat_bench)
+# Legs
+for i, lx in enumerate([5.4, 6.6]):
+    for j, ly in enumerate([2.7, 3.3]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.5, location=(lx, ly, 0.25))
+        leg = bpy.context.active_object
+        leg.name = f"Bench_Leg_{i}_{j}"
+        leg.data.materials.append(mat_bench)
+# Backrest
+create_box("Bench_Back", (6, 3.45, 0.9), (1.5, 0.06, 0.5), mat_bench)
+
+# Set up a basic camera and light for viewing
+bpy.ops.object.camera_add(location=(15, 15, 10))
+camera = bpy.context.active_object
+camera.name = "Camera"
+bpy.context.scene.camera = camera
+
+# Aim camera at the corner
+direction = (0, 0, 2) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Add a sun light
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), math.radians(0))
+
+# Set viewport to camera view
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+        for space in area.spaces:
+            if space.type == 'VIEW_3D':
+                space.shading.type = 'MATERIAL'
+                space.region_3d.view_perspective = 'CAMERA'

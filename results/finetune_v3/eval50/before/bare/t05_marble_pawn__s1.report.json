@@ -1,0 +1,84 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation",
+ "error_line": "direction = (0, 0, 0.5) - camera_obj.location",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 2,
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "WhiteMarble",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 8,
+   "principled_base_color": [
+    0.9,
+    0.9,
+    0.9
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "MAPPING",
+    "MIX",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 1000.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    3.0,
+    3.0,
+    4.0
+   ]
+  },
+  {
+   "type": "POINT",
+   "energy": 500.0,
+   "color": [
+    0.9,
+    0.9,
+    1.0
+   ],
+   "location": [
+    -3.0,
+    -2.0,
+    3.0
+   ]
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  0.7,
+  0.7,
+  1.05
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.9,
+ "image": true
+}

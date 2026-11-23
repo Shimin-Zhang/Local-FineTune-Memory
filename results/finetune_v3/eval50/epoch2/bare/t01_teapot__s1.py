@@ -1,0 +1,76 @@
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(1616)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+S = bpy.context.scene
+def glaze(c, e=0, r=.3):
+    m = bpy.data.materials.new("g"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+def shape(bm, m, p=(0, 0, 0), rz=0):
+    d = bpy.data.meshes.new("d"); bm.to_mesh(d); bm.free()
+    o = bpy.data.objects.new("o", d); o.location = p; o.rotation_euler.z = rz
+    S.collection.objects.link(o); d.materials.append(m); return o
+def ball(r, m, p, sq=1, sub=2):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return shape(bm, m, p)
+def cyl(r, r2, h, n, m, p, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    o = shape(bm, m, p); o.rotation_euler = rot; return o
+def lump(r, m, p, sc):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
+    for v in bm.verts: v.co = V((v.co.x * sc[0], v.co.y * sc[1], v.co.z * sc[2])) * random.uniform(.88, 1.12)
+    return shape(bm, m, p)
+def rod(a, b, t, m):
+    a, b = V(a), V(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=t, radius2=t * .7, depth=d.length)
+    for v in bm.verts: v.co = q @ (v.co + V((0, 0, d.length / 2))) + a
+    return shape(bm, m)
+def aura(p, c, w):
+    L = bpy.data.lights.new("a", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("a", L); o.location = p; S.collection.objects.link(o)
+purple, deep, cloud, steam = glaze((.35, .12, .55), r=.2), glaze((.2, .07, .35), r=.25), glaze((.9, .88, .95), r=.6), glaze((.8, .75, 1), 1.5)
+gold, wood, leaf, tea = glaze((.8, .55, .15), r=.4), glaze((.22, .12, .07)), glaze((.08, .3, .12)), glaze((.3, .05, .15))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=4, radius2=9, depth=2.2)
+for v in bm.verts:
+    v.co.z -= 1.1
+    if v.co.z < 0: v.co += V((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .2)))
+shape(bm, deep)
+cyl(7.4, 7.4, .3, 8, purple, (0, 0, 0)); cyl(7.1, 7.1, .25, 8, deep, (0, 0, .3))
+cyl(2.2, 2.2, .5, 8, wood, (0, 0, .55)); cyl(2.0, 2.0, .2, 8, tea, (0, 0, 1.0))
+# the pot: a squat icosphere body, a neck, a lid with a gold finial, spout and handle
+ball(3.1, purple, (0, 0, 4.3), .85)
+cyl(1.3, 1.0, 1.0, 8, deep, (0, 0, 6.5)); cyl(1.5, 1.5, .35, 8, purple, (0, 0, 7.5)); cyl(.9, .3, .6, 6, gold, (0, 0, 7.85)); ball(.35, gold, (0, 0, 8.7), 1, 1)
+sp = rod((2.6, 0, 4.0), (5.0, 0, 6.2), .55, purple); rod((5.0, 0, 6.2), (5.4, 0, 6.9), .4, purple)
+for i in range(6):
+    a = -1.0 + i * .4
+    rod((-3.0 * math.cos(a), 0, 4.2 + 3.0 * math.sin(a)), (-3.0 * math.cos(a + .4), 0, 4.2 + 3.0 * math.sin(a + .4)), .22, deep)
+# clouds painted on the pot: puffs that follow the body, with a glowing mist inside
+for k, (a, z, r) in enumerate(((-.9, 4.2, 1.0), (.2, 5.4, .8), (1.2, 3.6, .9), (-.3, 2.8, .7))):
+    for j in range(4):
+        aa = a + j * .28
+        lump(r * (.8 + .2 * j), cloud, (3.0 * math.cos(aa) * .98, 3.0 * math.sin(aa) * .98, z), (.9, .9, .6))
+aura((0, -4.5, 4.2), (.9, .7, 1), 300)
+# rising steam: pale wisps above the lid
+for i in range(7):
+    ball(.5 - i * .03, steam, (math.sin(i * 1.7) * .5, math.cos(i * 1.3) * .3, 9.4 + i * .8), .8)
+# a teacup on a saucer, a leaf sprig, a stack of books
+cyl(1.1, 1.1, .2, 8, cloud, (-5.0, -2.5, .55)); cyl(.8, .6, .8, 8, cloud, (-5.0, -2.5, .75)); cyl(.6, .6, .1, 8, tea, (-5.0, -2.5, 1.45))
+for i in range(3): cyl(1.2, 1.2, .5, 6, (glaze((.5, .1, .15)), glaze((.1, .25, .4)), glaze((.5, .4, .1)))[i], (5.2, -3.0, .55 + i * .5), (0, 0, i * .5))
+for i in range(7):
+    a = random.uniform(0, 6.28); r = random.uniform(5.5, 7.0)
+    lump(random.uniform(.4, .8), leaf, (r * math.cos(a), r * math.sin(a), .4), (1, 1, .5))
+for c, w, p in (((.8, .55, 1), 5, (-16, -12, 8)), ((.3, .8, .9), 2.5, (14, 16, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; S.collection.objects.link(o)
+    o.rotation_euler = (V((0, 0, 4)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+S.world = bpy.data.worlds.new("w"); S.world.use_nodes = True
+next(n for n in S.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .01, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); S.collection.objects.link(co)
+t = V((0, 0, 4.5)); co.location = t + V((14, -44, 26))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); S.camera = co

@@ -1,0 +1,13 @@
+{
+ "process": "timeout",
+ "seconds": 240.1,
+ "error": null,
+ "error_line": null,
+ "printed": null,
+ "state_saved": false,
+ "n_objects": null,
+ "n_lights": null,
+ "n_materials": null,
+ "own_camera": false,
+ "render_error": null
+}

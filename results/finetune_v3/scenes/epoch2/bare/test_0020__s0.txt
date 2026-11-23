@@ -1,0 +1,82 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1535)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def dye(k, c, e=0, a=1, r=.9):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, a); n.inputs["Roughness"].default_value = r; n.inputs["Alpha"].default_value = a
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    M[k] = m
+for k, c in (("rust", (.5, .2, .06)), ("rust2", (.38, .16, .05)), ("spoil", (.3, .13, .06)), ("tin", (.55, .55, .5)), ("tin2", (.3, .3, .32)), ("black", (.03, .03, .03)), ("red", (.6, .06, .05)), ("white", (.6, .58, .5))): dye(k, c)
+dye("door", (1, .6, .2), 14); dye("beacon", (1, .1, .05), 30); dye("glass", (1, .8, .4), 8)
+def mk(bm, k, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(M[k]); return o
+def slab(p, s, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return mk(bm, k, p, (0, 0, rz))
+def pipe(p, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, k, p, rot)
+def mound(p, r, k, sq=.6, n=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=n, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return mk(bm, k, p)
+def beam(a, b, r, k):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=r, radius2=r, depth=d.length)
+    return mk(bm, k, (a + b) / 2, d.to_track_quat('Z', 'Y').to_euler())
+def lamp(kind, c, w, p, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# floating slab of rust with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.08, .08)
+    v.co.z -= 1.5
+mk(bm, "rust2")
+for i in range(10): slab((random.uniform(-10, 10), random.uniform(-10, 10), 0), (random.uniform(1.5, 3), random.uniform(1.5, 3), .06), "rust", random.uniform(0, 3))
+# the hillside with dugout doors along its foot
+hill = mound((-3, 6.5, 0), 8.5, "rust", .62, 2); hill.scale.y = .8
+for i, x in enumerate((-8, -4.5, -1, 2.5, 6)):
+    y = 6.5 - 8.5 * .8 * math.sqrt(max(0, 1 - ((x + 3) / 8.5) ** 2)) + .3
+    slab((x, y - .3, 0), (1.5, .5, 1.7), "black"); slab((x, y - .6, 0), (1.2, .1, 1.5), "door" if i % 2 == 0 else "black")
+    slab((x, y - .8, 0), (1.7, .8, .2), "tin2")
+    if i % 2 == 0: lamp("POINT", (1, .6, .2), 140, (x, y - 1.6, 1.0))
+# ventilation pipes: stacked collars, some with red beacons
+for x, y, h, r in ((-9, -3, 5.5, .9), (-5, -6, 4, .7), (3, -4, 6, 1.0), (8, -6, 4.5, .8), (9, 1, 3.5, .6), (-1, -8.5, 3.2, .6)):
+    pipe((x, y, 0), r * 1.5, .8, 8, "tin2"); pipe((x, y, .8), r, h, 8, "tin", r * .85)
+    for k in range(3): pipe((x, y, .8 + h * (.3 + .22 * k)), r * .95, .35, 8, "tin2", r * .88)
+    pipe((x, y, .8 + h), r * .9, .5, 8, "tin2", r * .75)
+    if h > 4.5: pipe((x, y, .8 + h + .5), .25, .35, 6, "beacon"); lamp("POINT", (1, .12, .05), 220, (x, y, .8 + h + 1.2))
+# spoil mounds with lumps of ore
+for x, y, r in ((-8, 1, 2.6), (-6, 4, 1.8), (5, -9, 2.2), (9.5, -2, 2.4), (-2, -3, 1.4)):
+    mound((x, y, 0), r, "spoil", .75)
+    for k in range(4): mound((x + random.uniform(-r, r) * .6, y + random.uniform(-r, r) * .6, r * .35), .3, "rust2", 1)
+# tin sign on two posts, big letters made of plates
+for sx in (-1, 1): slab((6 + sx * 2.4, -1, 0), (.2, .2, 4.2), "tin2")
+slab((6, -1, 3.2), (6.4, .25, 2.2), "red")
+for i, (dx, w) in enumerate(((-2.4, .5), (-1.5, .5), (-.6, .9), (.6, .5), (1.6, .9))): slab((6 + dx, -1.2, 3.5), (w, .1, 1.5), "white")
+slab((6, -1.2, 3.5), (.5, .1, 1.5), "white")
+lamp("POINT", (1, .8, .5), 120, (6, -2.5, 4))
+# a lone crate and a rusty drum
+slab((-3, -2, 0), (1.4, 1.2, 1.1), "tin2", .4); pipe((-1.2, -4.5, 0), .5, 1.1, 7, "red")
+lamp("SUN", (1, .5, .22), 5, (-26, -12, 8), (0, 0, 1)); lamp("SUN", (.35, .45, .9), 2, (22, 24, 12), (0, 0, 1))
+w = bpy.data.worlds.new("dust"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .015, .01, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2)); co.location = t + Vector((10, -52, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

@@ -1,0 +1,259 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Helper: create a mesh object from vertices/faces
+def make_mesh_obj(name, verts, faces, loc=(0,0,0), scale=(1,1,1)):
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.location = loc
+    obj.scale = scale
+    return obj
+
+def make_cyl(name, radius, depth, loc=(0,0,0), segments=12, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, vertices=segments, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.rotation_euler = rot
+    return obj
+
+def make_sphere(name, radius, loc=(0,0,0), segments=16, ring=12):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, segments=segments, ring_count=ring, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+def make_plane(name, size, loc=(0,0,0), rot=(0,0,0)):
+    bpy.ops.mesh.primitive_plane_add(size=size, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.rotation_euler = rot
+    return obj
+
+def make_cone(name, radius, depth, loc=(0,0,0), segments=12):
+    bpy.ops.mesh.primitive_cone_add(radius1=radius, radius2=0, depth=depth, vertices=segments, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+def make_torus(name, major_radius, minor_radius, loc=(0,0,0)):
+    bpy.ops.mesh.primitive_torus_add(major_radius=major_radius, minor_radius=minor_radius, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    return obj
+
+# ==================== POND ====================
+# Pond basin (a shallow cylinder, slightly recessed)
+pond_basin = make_cyl("PondBasin", radius=2.0, depth=0.3, loc=(0, 0, -0.15), segments=32)
+pond_basin.scale = (1, 1, 1)
+
+# Water surface (a flat disc slightly above basin bottom)
+water = make_cyl("Water", radius=1.95, depth=0.02, loc=(0, 0, 0.02), segments=32)
+water.scale = (1, 1, 1)
+
+# Pond rim / bank (a torus around the pond)
+bank = make_torus("Bank", major_radius=2.0, minor_radius=0.25, loc=(0, 0, 0.0))
+bank.scale = (1, 1, 0.5)
+
+# ==================== STONE for frog ====================
+# Irregular stone: use a deformed icosphere
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=0.35, location=(0.8, 0.5, 0.1))
+stone = bpy.context.active_object
+stone.name = "Stone"
+# Randomize vertices for rock look
+import bmesh
+bm = bmesh.new()
+bm.from_mesh(stone.data)
+for v in bm.verts:
+    v.co += Vector((random.uniform(-0.05, 0.05), random.uniform(-0.05, 0.05), random.uniform(-0.03, 0.03)))
+bm.to_mesh(stone.data)
+bm.free()
+stone.scale = (1, 1, 0.7)  # flatten a bit
+
+# ==================== FROG on stone ====================
+frog_loc = (0.8, 0.5, 0.35)
+
+# Body
+frog_body = make_sphere("FrogBody", radius=0.18, loc=frog_loc, segments=16, ring=12)
+frog_body.scale = (1.2, 1.0, 0.8)
+
+# Head
+frog_head = make_sphere("FrogHead", radius=0.12, loc=(frog_loc[0] + 0.15, frog_loc[1], frog_loc[2] + 0.05), segments=16, ring=12)
+frog_head.scale = (1.1, 1.0, 0.9)
+
+# Eyes
+eye_l = make_sphere("FrogEyeL", radius=0.04, loc=(frog_loc[0] + 0.22, frog_loc[1] - 0.06, frog_loc[2] + 0.12), segments=12, ring=8)
+eye_r = make_sphere("FrogEyeR", radius=0.04, loc=(frog_loc[0] + 0.22, frog_loc[1] + 0.06, frog_loc[2] + 0.12), segments=12, ring=8)
+
+# Legs (simplified: small cylinders/boxes)
+# Back legs
+leg_bl = make_cyl("FrogLegBL", radius=0.03, depth=0.15, loc=(frog_loc[0] - 0.1, frog_loc[1] - 0.12, frog_loc[2] - 0.08), segments=8)
+leg_bl.rotation_euler = (0, math.radians(30), 0)
+leg_br = make_cyl("FrogLegBR", radius=0.03, depth=0.15, loc=(frog_loc[0] - 0.1, frog_loc[1] + 0.12, frog_loc[2] - 0.08), segments=8)
+leg_br.rotation_euler = (0, math.radians(-30), 0)
+
+# Front legs
+leg_fl = make_cyl("FrogLegFL", radius=0.025, depth=0.1, loc=(frog_loc[0] + 0.12, frog_loc[1] - 0.08, frog_loc[2] - 0.05), segments=8)
+leg_fl.rotation_euler = (0, math.radians(15), 0)
+leg_fr = make_cyl("FrogLegFR", radius=0.025, depth=0.1, loc=(frog_loc[0] + 0.12, frog_loc[1] + 0.08, frog_loc[2] - 0.05), segments=8)
+leg_fr.rotation_euler = (0, math.radians(-15), 0)
+
+# ==================== LILY PAD ====================
+lily_pad_loc = (-0.6, -0.4, 0.04)
+# Use a cylinder with a cutout: create a disc and cut a wedge
+bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.01, vertices=24, location=lily_pad_loc)
+lily_pad = bpy.context.active_object
+lily_pad.name = "LilyPad"
+# Cut a wedge to make the classic lily pad shape
+bm = bmesh.new()
+bm.from_mesh(lily_pad.data)
+# Delete vertices in a wedge sector (e.g., from angle 0 to 30 degrees)
+for v in list(bm.verts):
+    angle = math.atan2(v.co.y, v.co.x)
+    if -0.1 < angle < 0.5:  # ~30 degree wedge
+        bm.verts.remove(v)
+bm.to_mesh(lily_pad.data)
+bm.free()
+lily_pad.scale = (1, 1, 1)
+
+# ==================== REEDS ====================
+# Reeds: tall thin cylinders with a slight bend, placed around pond edge
+reeds_data = [
+    # (x, y, height, lean_angle, lean_dir)
+    (1.5, 1.2, 1.2, 0.1, 0.3),
+    (1.7, 0.8, 1.4, 0.15, 0.1),
+    (1.3, 1.5, 1.1, 0.08, 0.5),
+    (-1.5, 1.3, 1.3, 0.12, -0.2),
+    (-1.7, 0.9, 1.5, 0.1, -0.4),
+    (-1.4, 1.6, 1.0, 0.09, 0.1),
+    (1.6, -1.1, 1.25, 0.11, 0.2),
+    (1.4, -1.4, 1.15, 0.13, -0.1),
+    (-1.6, -1.2, 1.35, 0.1, 0.3),
+    (-1.3, -1.5, 1.2, 0.14, -0.3),
+    (0.5, 1.8, 1.1, 0.07, 0.2),
+    (-0.5, 1.8, 1.25, 0.09, -0.1),
+    (0.3, -1.8, 1.05, 0.08, 0.15),
+    (-0.3, -1.8, 1.3, 0.12, -0.25),
+    (1.8, 0.2, 1.45, 0.1, 0.05),
+    (-1.8, 0.3, 1.1, 0.06, -0.15),
+]
+
+for i, (rx, ry, rh, lean, lean_dir) in enumerate(reeds_data):
+    # Stem
+    stem = make_cyl(f"ReedStem{i}", radius=0.015, depth=rh, loc=(rx, ry, rh/2), segments=6)
+    stem.rotation_euler = (lean * math.cos(lean_dir), lean * math.sin(lean_dir), 0)
+    
+    # Reed head (a small elongated cone/ellipse at top)
+    head_h = rh * 0.25
+    head = make_cone(f"ReedHead{i}", radius=0.03, depth=head_h, loc=(rx, ry, rh + head_h/2 - 0.05), segments=8)
+    head.rotation_euler = (lean * math.cos(lean_dir), lean * math.sin(lean_dir), 0)
+    head.scale = (1, 1, 1)
+
+# ==================== DRAGONFLIES (hovering) ====================
+# Dragonfly: small body + two pairs of wings
+def make_dragonfly(name, loc, rot=(0,0,0)):
+    # Body
+    body = make_cyl(f"{name}_Body", radius=0.02, depth=0.15, loc=loc, segments=8)
+    body.rotation_euler = rot
+    body.scale = (1, 1, 1)
+    
+    # Head
+    head = make_sphere(f"{name}_Head", radius=0.025, loc=(loc[0] + 0.08, loc[1], loc[2]), segments=8, ring=6)
+    head.rotation_euler = rot
+    
+    # Wings: thin planes
+    wing_w = 0.12
+    wing_l = 0.04
+    # Left upper wing
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(loc[0] - 0.02, loc[1] - 0.06, loc[2] + 0.01))
+    w1 = bpy.context.active_object
+    w1.name = f"{name}_WingLU"
+    w1.scale = (wing_w/2, wing_l/2, 1)
+    w1.rotation_euler = (math.radians(10), math.radians(5), rot[2])
+    
+    # Right upper wing
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(loc[0] - 0.02, loc[1] + 0.06, loc[2] + 0.01))
+    w2 = bpy.context.active_object
+    w2.name = f"{name}_WingRU"
+    w2.scale = (wing_w/2, wing_l/2, 1)
+    w2.rotation_euler = (math.radians(-10), math.radians(5), rot[2])
+    
+    # Left lower wing
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(loc[0] + 0.02, loc[1] - 0.05, loc[2] + 0.005))
+    w3 = bpy.context.active_object
+    w3.name = f"{name}_WingLL"
+    w3.scale = (wing_w*0.8/2, wing_l*0.8/2, 1)
+    w3.rotation_euler = (math.radians(15), math.radians(-5), rot[2])
+    
+    # Right lower wing
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(loc[0] + 0.02, loc[1] + 0.05, loc[2] + 0.005))
+    w4 = bpy.context.active_object
+    w4.name = f"{name}_WingRL"
+    w4.scale = (wing_w*0.8/2, wing_l*0.8/2, 1)
+    w4.rotation_euler = (math.radians(-15), math.radians(-5), rot[2])
+    
+    return body
+
+# Place dragonflies hovering above the pond
+dragonfly_positions = [
+    ((0.3, 0.5, 0.8), (0, 0, math.radians(45))),
+    ((-0.5, 0.3, 0.7), (0, 0, math.radians(135))),
+    ((0.2, -0.6, 0.9), (0, 0, math.radians(-30))),
+    ((-0.3, -0.4, 0.75), (0, 0, math.radians(200))),
+]
+
+for i, (dloc, drot) in enumerate(dragonfly_positions):
+    make_dragonfly(f"Dragonfly{i}", dloc, drot)
+
+# ==================== NYMPHS (crawling from water) ====================
+# Nymphs: small elongated bodies at the water's edge, partially submerged
+# They look like small dark elongated shapes emerging from water
+nymph_positions = [
+    (1.2, 0.9, 0.02),   # near reed cluster
+    (-1.1, 0.8, 0.02),
+    (1.0, -1.0, 0.02),
+    (-1.2, -0.9, 0.02),
+    (0.6, 1.5, 0.02),
+    (-0.7, -1.4, 0.02),
+]
+
+for i, (nx, ny, nz) in enumerate(nymph_positions):
+    # Body: small elongated sphere
+    nymph_body = make_sphere(f"Nymph{i}_Body", radius=0.04, loc=(nx, ny, nz), segments=12, ring=8)
+    nymph_body.scale = (1.5, 0.8, 0.6)  # elongated horizontally
+    
+    # Tail (small cone)
+    tail = make_cone(f"Nymph{i}_Tail", radius=0.015, depth=0.05, loc=(nx - 0.06, ny, nz), segments=6)
+    tail.rotation_euler = (0, math.radians(90), 0)
+    
+    # Legs (tiny cylinders)
+    for leg_offset in [-0.02, 0, 0.02]:
+        for side in [-1, 1]:
+            leg = make_cyl(f"Nymph{i}_Leg_{leg_offset}_{side}", radius=0.005, depth=0.03, 
+                          loc=(nx + leg_offset, ny + side*0.03, nz - 0.01), segments=4)
+            leg.rotation_euler = (math.radians(45*side), 0, 0)
+
+# ==================== MATERIALS ====================
+def set_material(obj, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(f"Mat_{obj.name}")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    obj.data.materials.clear()
+    obj.data.materials.append(mat)
+
+# Water
+set_material(water, (0.1, 0.3, 0.5), roughness=0.1, metallic=0.0)
+water.data.materials[0].node_tree.nodes["Principled BSDF"].inputs["Transmission Weight"].default_value = 0.7
+water.data.materials[0].node_tree.nodes["Principled BSDF"].inputs["

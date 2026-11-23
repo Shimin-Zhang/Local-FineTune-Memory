@@ -1,0 +1,99 @@
+The camera is still tilted. The issue is the camera's up vector. Let me set it with explicit euler angles that I know will work - looking horizontally and slightly down.
+
+```python
+import bpy
+import math
+from mathutils import Vector
+
+cam = bpy.data.objects.get("Camera")
+if cam:
+    # Set camera position
+    cam.location = (40, 15, 30)
+    
+    # Use explicit euler: 
+    # X rotation: tilt down (positive X tilts camera down from looking at -Z)
+    # Y rotation: 0
+    # Z rotation: rotate to face the scene
+    # Camera at (40,15,30), want to look toward (0, 0, -20)
+    # Direction: (-40, -15, -50)
+    # The camera's -Z should point along this direction
+    
+    # Let me just use look_at with a proper up vector
+    target = Vector((0, 0, -20))
+    direction = target - cam.location
+    
+    # Build rotation matrix manually
+    # Forward = -Z of camera = direction normalized
+    fwd = direction.normalized()
+    # Up should be roughly world up
+    up = Vector((0, 1, 0))
+    # Right = up x fwd
+    right = up.cross(fwd).normalized()
+    # True up = fwd x right
+    true_up = fwd.cross(right).normalized()
+    
+    # Build rotation matrix (columns are right, true_up, -fwd)
+    # Camera -Z = fwd, so Z axis of camera = -fwd
+    rot_matrix = right.to_4x4()
+    rot_matrix[0][3] = right.x
+    rot_matrix[1][3] = right.y
+    rot_matrix[2][3] = right.z
+    
+    # Actually let me just use to_track_quat properly
+    quat = direction.to_track_quat('-Z', 'Y')
+    cam.rotation_mode = 'QUATERNION'
+    cam.rotation_quaternion = quat
+    
+    # Print to verify
+    e = quat.to_euler()
+    print(f"Final euler: X={math.degrees(e.x):.1f} Y={math.degrees(e.y):.1f} Z={math.degrees(e.z):.1f}")
+    print(f"Cam at: {cam.location}")
+    print(f"Looking at: {target}")
+
+# Add a few final touches: more snow drifts, and make sure everything is set
+import random
+random.seed(55)
+for _ in range(15):
+    dx = random.uniform(-45, 45)
+    dz = random.uniform(-35, 35)
+    if abs(dx) < 5 and dz > -10:
+        continue
+    dr = random.uniform(1, 3.5)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=dr, location=(dx, 0, dz))
+    drift = bpy.context.active_object
+    drift.scale = (1, 0.2, 1)
+    drift.data.materials.append(bpy.data.materials.get("snow"))
+
+# Add a few more trees
+mat_snow_tree = bpy.data.materials.get("snow_tree_mat")
+mat_trunk = bpy.data.materials.get("trunk_mat")
+for _ in range(10):
+    angle = random.uniform(0, 2*math.pi)
+    dist = random.uniform(45, 75)
+    tx = math.cos(angle) * dist
+    tz = math.sin(angle) * dist
+    if abs(tx) < 30 and tz < -40:
+        continue
+    s = random.uniform(0.8, 1.5)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3*s, depth=3*s, location=(tx, 1.5*s, tz))
+    t = bpy.context.active_object
+    t.data.materials.append(mat_trunk)
+    for i in range(3):
+        h = 2.5 + i * 1.5
+        r = (2.5 - i * 0.5) * s
+        bpy.ops.mesh.primitive_cone_add(radius1=r, radius2=0, depth=2*s, location=(tx, h*s, tz))
+        c = bpy.context.active_object
+        c.data.materials.append(mat_snow_tree)
+
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.view_settings.look = 'AgX - Medium High Contrast'
+scene.view_settings.exposure = 0.3
+scene.frame_set(100)
+
+print("Final touches added. Camera should be looking at the scene now.")
+```

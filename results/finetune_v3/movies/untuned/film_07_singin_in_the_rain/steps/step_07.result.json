@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 6.8,
+ "error": null,
+ "error_line": null,
+ "printed": "Fixed: camera at street level looking across, lighting reduced, buildings darkened, road darker, more rain drops, character front light added\n",
+ "state_saved": true,
+ "n_objects": 453,
+ "n_lights": 32,
+ "n_materials": 41,
+ "own_camera": true,
+ "render_error": null
+}

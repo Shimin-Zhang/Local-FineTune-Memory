@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.6,
+ "error": "ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 2",
+ "error_line": "o = bpy.data.objects.new(\"a\", me); o.location, o.rotation_euler = at, rot",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 18,
+ "n_lights": 0,
+ "n_materials": 5,
+ "own_camera": false,
+ "render_error": null
+}

@@ -1,0 +1,35 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 19,
+ "object_types": {
+  "MESH": 19
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 19,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "left_out_of_framing": "Ground",
+ "bbox_size": [
+  20.75,
+  18.741,
+  14.0
+ ],
+ "scene_center": [
+  4.875,
+  3.8705,
+  7.0
+ ],
+ "scene_radius": 15.6348,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 5.2,
+ "image": true
+}

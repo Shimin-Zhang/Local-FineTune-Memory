@@ -1,0 +1,74 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: Calling operator \"bpy.ops.transform.scale\" error, could not be found",
+ "error_line": "bpy.ops.transform.scale(value=(1.0, 1.0, 0.3))",
+ "n_renderable_objects": 3,
+ "object_types": {
+  "MESH": 3
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Blanket_Red",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.8,
+    0.1,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Blanket_White",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 2,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "left_out_of_framing": "Picnic_Blanket",
+ "bbox_size": [
+  0.76,
+  0.76,
+  0.43
+ ],
+ "scene_center": [
+  0.3,
+  0.2,
+  0.215
+ ],
+ "scene_radius": 0.5788,
+ "process": "exit 0",
+ "seconds": 0.5,
+ "image": false
+}

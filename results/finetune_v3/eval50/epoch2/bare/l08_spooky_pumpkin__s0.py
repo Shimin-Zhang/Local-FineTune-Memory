@@ -1,0 +1,82 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(535)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def stuff(rgb, glow=0):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .9
+    if glow: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    return m
+turf, soil, orange, orange2, stem, jack = stuff((.07, .13, .08)), stuff((.1, .07, .06)), stuff((.85, .3, .04)), stuff((.6, .2, .03)), stuff((.12, .22, .1)), stuff((.3, 1, .25), 14)
+grave, grave2, iron, fog, dead, bark = stuff((.22, .24, .26)), stuff((.15, .17, .2)), stuff((.04, .04, .05)), stuff((.12, .16, .16), .25), stuff((.35, .3, .25)), stuff((.1, .08, .08))
+def form(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("f"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("f", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return form(bm, m, at, rot)
+def tube(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return form(bm, m, at, rot)
+def ball(at, r, m, sq=1.0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.9, 1.1); v.co.z *= sq
+    return form(bm, m, at)
+def twig(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=t, radius2=t * .5, depth=d.length)
+    for v in bm.verts: v.co = q @ Vector((v.co.x, v.co.y, v.co.z + d.length / 2)) + a
+    return form(bm, m)
+def glow(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("g", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("g", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+form(bm, turf)
+# the pumpkin: ridged orange body with a stem, sunk into a mound of soil, lit from below by a green glow
+for i in range(10):
+    a = i * math.pi / 5
+    ball((math.cos(a) * 1.6, math.sin(a) * 1.6, 1.4), 1.6, orange if i % 2 else orange2, .95)
+ball((0, 0, 1.3), 2.3, orange2, .85)
+tube((0, 0, 2.9), .5, 1.3, 6, stem, .3)
+for k, (x, y, w, h) in enumerate(((-.9, -1.8, 1.1, 1.0), (.9, -1.8, 1.1, 1.0), (0, -2.1, 1.6, 1.3))):
+    if k < 2:
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=3, radius1=.55, radius2=.05, depth=.2)
+        form(bm, jack, (x, y - .2, 1.8), (math.pi / 2 + .3, 0, 0))
+    else:
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=.9, radius2=.05, depth=.2)
+        form(bm, jack, (x, y - .2, 1.0), (math.pi / 2, 0, 0))
+for i in range(7):
+    a = i * .9
+    ball((math.cos(a) * 3.0, math.sin(a) * 3.0, .2), 1.1, soil, .5)
+glow("POINT", (.3, 1, .25), 2500, (0, -1.5, .3))
+# graveyard: tilted headstones with crosses, a fence of iron spikes, a dead tree
+for i, (x, y, r) in enumerate(((-8, 4, .1), (-5, 7, -.2), (-1, 8, .15), (4, 7, -.1), (8, 3, .2), (-9, 0, -.15))):
+    slab((x, y, 0), (1.6, .5, 1.9 - i * .1), grave if i % 2 else grave2, (0, 0, r))
+    slab((x, y, 1.9 - i * .1), (1.0, .5, .5), grave2, (0, 0, r))
+    if i % 2 == 0: slab((x, y - .27, 1.0), (.12, .05, .8), iron, (0, 0, r)); slab((x, y - .27, 1.3), (.5, .05, .12), iron, (0, 0, r))
+for i in range(9):
+    x = -9 + i * 2.2
+    slab((x, -6, 0), (.2, .2, 1.4), iron); slab((x, -6, 1.4), (.15, .15, .3), iron)
+for z in (.5, 1.1): slab((0, -6, z), (20, .1, .1), iron)
+twig((8, -2, 0), (7.5, -2, 4), .5, bark); twig((7.5, -2, 4), (6, -2, 6.5), .3, bark); twig((7.5, -2, 3.2), (9.5, -1.5, 5.5), .25, bark); twig((7.5, -2, 2.4), (5.5, -3, 4.5), .2, bark)
+# fog banks and a pale moonlit haze
+for i in range(8):
+    a = random.uniform(0, 6.28); r = random.uniform(5, 11)
+    ball((math.cos(a) * r, math.sin(a) * r, .25), random.uniform(1.2, 2.2), fog, .12)
+glow("SUN", (.55, .6, 1), 4, (-24, -18, 10), (0, 0, 1)); glow("SUN", (.2, .8, .5), 1.8, (22, 20, 8), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((12, -56, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

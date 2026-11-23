@@ -1,0 +1,463 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Set up units
+scene = bpy.context.scene
+scene.unit_settings.system = 'METRIC'
+
+# Set up the world (night sky)
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+    scene.world = world
+world.use_nodes = True
+world_node_tree = world.node_tree
+world_node_tree.nodes.clear()
+world_bg = world_node_tree.nodes.new('ShaderNodeBackground')
+world_bg.inputs['Color'].default_value = (0.02, 0.02, 0.05, 1.0)
+world_bg.inputs['Strength'].default_value = 0.1
+world_out = world_node_tree.nodes.new('ShaderNodeOutputWorld')
+world_node_tree.links.new(world_bg.outputs['Background'], world_out.inputs['Surface'])
+
+# Set up render settings
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.camera = None
+
+# Create a helper function to make a cube
+def make_cube(name, size, location, color=(0.5, 0.5, 0.5, 1.0), bevel=0.0):
+    bpy.ops.mesh.primitive_cube_add(size=size, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    mat = bpy.data.materials.new(name + "_mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = color
+        bsdf.inputs['Roughness'].default_value = 0.7
+    obj.data.materials.append(mat)
+    if bevel > 0:
+        mod = obj.modifiers.new("Bevel", 'BEVEL')
+        mod.width = bevel
+        mod.segments = 2
+    return obj
+
+# Create ground (street)
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Street"
+mat_ground = bpy.data.materials.new("Street_mat")
+mat_ground.use_nodes = True
+bsdf = mat_ground.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.08, 0.08, 0.08, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.9
+ground.data.materials.append(mat_ground)
+
+# Create sidewalks
+for x in [-8, 8]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0, 0.05))
+    sidewalk = bpy.context.active_object
+    sidewalk.name = f"sidewalk_{x}"
+    sidewalk.scale = (2, 100, 0.1)
+    mat_sw = bpy.data.materials.new(f"sidewalk_{x}_mat")
+    mat_sw.use_nodes = True
+    bsdf = mat_sw.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.2, 0.2, 0.2, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.8
+    sidewalk.data.materials.append(mat_sw)
+
+# Create buildings on both sides
+building_colors = [
+    (0.15, 0.15, 0.2, 1.0),
+    (0.2, 0.15, 0.15, 1.0),
+    (0.1, 0.12, 0.18, 1.0),
+    (0.18, 0.18, 0.22, 1.0),
+    (0.12, 0.1, 0.15, 1.0),
+]
+
+for i in range(8):
+    y_pos = -60 + i * 16
+    # Left side buildings
+    height = random.uniform(15, 35)
+    width = random.uniform(6, 10)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-12 - width/2, y_pos, height/2))
+    bld = bpy.context.active_object
+    bld.name = f"building_L_{i}"
+    bld.scale = (width, 12, height)
+    color = random.choice(building_colors)
+    mat_b = bpy.data.materials.new(f"building_L_{i}_mat")
+    mat_b.use_nodes = True
+    bsdf = mat_b.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Roughness'].default_value = 0.8
+    bld.data.materials.append(mat_b)
+    
+    # Windows (emissive)
+    for wy in range(3):
+        for wx in range(4):
+            if random.random() > 0.3:
+                win_x = -12 - width/2 + 1.5 + wx * 2
+                win_y = y_pos - 4 + wy * 3
+                win_z = 2 + wy * 4 + random.uniform(0, 2)
+                bpy.ops.mesh.primitive_cube_add(size=0.5, location=(win_x, win_y, win_z))
+                win = bpy.context.active_object
+                win.name = f"win_L_{i}_{wy}_{wx}"
+                mat_win = bpy.data.materials.new(f"win_L_{i}_{wy}_{wx}_mat")
+                mat_win.use_nodes = True
+                bsdf_w = mat_win.node_tree.nodes.get("Principled BSDF")
+                bsdf_w.inputs['Base Color'].default_value = (1.0, 0.9, 0.5, 1.0)
+                bsdf_w.inputs['Emission Color'].default_value = (1.0, 0.8, 0.4, 1.0)
+                bsdf_w.inputs['Emission Strength'].default_value = 2.0
+                win.data.materials.append(mat_win)
+    
+    # Right side buildings
+    height = random.uniform(15, 35)
+    width = random.uniform(6, 10)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(12 + width/2, y_pos, height/2))
+    bld = bpy.context.active_object
+    bld.name = f"building_R_{i}"
+    bld.scale = (width, 12, height)
+    color = random.choice(building_colors)
+    mat_b = bpy.data.materials.new(f"building_R_{i}_mat")
+    mat_b.use_nodes = True
+    bsdf = mat_b.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Roughness'].default_value = 0.8
+    bld.data.materials.append(mat_b)
+    
+    # Windows
+    for wy in range(3):
+        for wx in range(4):
+            if random.random() > 0.3:
+                win_x = 12 + width/2 - 1.5 - wx * 2
+                win_y = y_pos - 4 + wy * 3
+                win_z = 2 + wy * 4 + random.uniform(0, 2)
+                bpy.ops.mesh.primitive_cube_add(size=0.5, location=(win_x, win_y, win_z))
+                win = bpy.context.active_object
+                win.name = f"win_R_{i}_{wy}_{wx}"
+                mat_win = bpy.data.materials.new(f"win_R_{i}_{wy}_{wx}_mat")
+                mat_win.use_nodes = True
+                bsdf_w = mat_win.node_tree.nodes.get("Principled BSDF")
+                bsdf_w.inputs['Base Color'].default_value = (1.0, 0.9, 0.5, 1.0)
+                bsdf_w.inputs['Emission Color'].default_value = (1.0, 0.8, 0.4, 1.0)
+                bsdf_w.inputs['Emission Strength'].default_value = 2.0
+                win.data.materials.append(mat_win)
+
+# Create the Stay Puft Marshmallow Man
+# Body
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3, location=(0, 0, 4))
+body = bpy.context.active_object
+body.name = "StayPuft_Body"
+body.scale = (1.0, 1.0, 1.3)
+mat_body = bpy.data.materials.new("StayPuft_Body_mat")
+mat_body.use_nodes = True
+bsdf = mat_body.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.95, 0.9, 0.85, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.9
+body.data.materials.append(mat_body)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=2.5, location=(0, 0, 8.5))
+head = bpy.context.active_object
+head.name = "StayPuft_Head"
+mat_head = bpy.data.materials.new("StayPuft_Head_mat")
+mat_head.use_nodes = True
+bsdf = mat_head.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.95, 0.9, 0.85, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.9
+head.data.materials.append(mat_head)
+
+# Eyes
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.4, location=(side * 0.8, -2.2, 9.0))
+    eye = bpy.context.active_object
+    eye.name = f"StayPuft_Eye_{side}"
+    mat_eye = bpy.data.materials.new(f"StayPuft_Eye_{side}_mat")
+    mat_eye.use_nodes = True
+    bsdf = mat_eye.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.0, 0.0, 0.0, 1.0)
+    eye.data.materials.append(mat_eye)
+    
+    # Eye highlight
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(side * 0.8 + 0.1, -2.5, 9.1))
+    hl = bpy.context.active_object
+    hl.name = f"StayPuft_EyeHL_{side}"
+    mat_hl = bpy.data.materials.new(f"StayPuft_EyeHL_{side}_mat")
+    mat_hl.use_nodes = True
+    bsdf = mat_hl.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    hl.data.materials.append(mat_hl)
+
+# Mouth (smile)
+bpy.ops.mesh.primitive_torus_add(major_radius=1.0, minor_radius=0.15, location=(0, -2.3, 7.8))
+mouth = bpy.context.active_object
+mouth.name = "StayPuft_Mouth"
+mouth.rotation_euler = (math.radians(90), 0, 0)
+mat_mouth = bpy.data.materials.new("StayPuft_Mouth_mat")
+mat_mouth.use_nodes = True
+bsdf = mat_mouth.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.2, 0.05, 0.05, 1.0)
+mouth.data.materials.append(mat_mouth)
+
+# Arms
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, location=(side * 3.5, 0, 4))
+    arm = bpy.context.active_object
+    arm.name = f"StayPuft_Arm_{side}"
+    arm.scale = (1.0, 0.8, 1.5)
+    mat_arm = bpy.data.materials.new(f"StayPuft_Arm_{side}_mat")
+    mat_arm.use_nodes = True
+    bsdf = mat_arm.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.95, 0.9, 0.85, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.9
+    arm.data.materials.append(mat_arm)
+    
+    # Hand
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.7, location=(side * 4.5, -1, 3))
+    hand = bpy.context.active_object
+    hand.name = f"StayPuft_Hand_{side}"
+    mat_hand = bpy.data.materials.new(f"StayPuft_Hand_{side}_mat")
+    mat_hand.use_nodes = True
+    bsdf = mat_hand.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.95, 0.9, 0.85, 1.0)
+    hand.data.materials.append(mat_hand)
+
+# Legs
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.2, location=(side * 1.5, 0, 1))
+    leg = bpy.context.active_object
+    leg.name = f"StayPuft_Leg_{side}"
+    leg.scale = (1.0, 0.9, 1.2)
+    mat_leg = bpy.data.materials.new(f"StayPuft_Leg_{side}_mat")
+    mat_leg.use_nodes = True
+    bsdf = mat_leg.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.95, 0.9, 0.85, 1.0)
+    leg.data.materials.append(mat_leg)
+
+# Feet
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(side * 1.5, -0.5, 0.3))
+    foot = bpy.context.active_object
+    foot.name = f"StayPuft_Foot_{side}"
+    foot.scale = (1.2, 1.5, 0.6)
+    mat_foot = bpy.data.materials.new(f"StayPuft_Foot_{side}_mat")
+    mat_foot.use_nodes = True
+    bsdf = mat_foot.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.95, 0.9, 0.85, 1.0)
+    foot.data.materials.append(mat_foot)
+
+# Belly button
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(0, -2.8, 4.5))
+belly = bpy.context.active_object
+belly.name = "StayPuft_Belly"
+mat_belly = bpy.data.materials.new("StayPuft_Belly_mat")
+mat_belly.use_nodes = True
+bsdf = mat_belly.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.85, 0.8, 0.75, 1.0)
+belly.data.materials.append(mat_belly)
+
+# Create cars
+car_colors = [
+    (0.5, 0.0, 0.0, 1.0),
+    (0.0, 0.0, 0.5, 1.0),
+    (0.8, 0.8, 0.0, 1.0),
+    (0.2, 0.2, 0.2, 1.0),
+    (0.7, 0.7, 0.7, 1.0),
+]
+
+for i in range(6):
+    x = random.choice([-3, -2, 2, 3])
+    y = -40 + i * 15 + random.uniform(-3, 3)
+    z = 0.5
+    color = random.choice(car_colors)
+    
+    # Car body
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+    car = bpy.context.active_object
+    car.name = f"Car_{i}"
+    car.scale = (1.8, 4, 1.2)
+    mat_car = bpy.data.materials.new(f"Car_{i}_mat")
+    mat_car.use_nodes = True
+    bsdf = mat_car.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Roughness'].default_value = 0.3
+    car.data.materials.append(mat_car)
+    
+    # Car cabin
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y + 0.5, z + 0.8))
+    cabin = bpy.context.active_object
+    cabin.name = f"Car_{i}_Cabin"
+    cabin.scale = (1.5, 2.5, 0.8)
+    mat_cabin = bpy.data.materials.new(f"Car_{i}_Cabin_mat")
+    mat_cabin.use_nodes = True
+    bsdf = mat_cabin.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.2
+    cabin.data.materials.append(mat_cabin)
+    
+    # Wheels
+    for wx in [-1.2, 1.2]:
+        for wy in [-1.5, 1.5]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.3, location=(x + wx, y + wy, 0.4), rotation=(0, math.radians(90), 0))
+            wheel = bpy.context.active_object
+            wheel.name = f"Car_{i}_Wheel_{wx}_{wy}"
+            mat_wheel = bpy.data.materials.new(f"Car_{i}_Wheel_{wx}_{wy}_mat")
+            mat_wheel.use_nodes = True
+            bsdf = mat_wheel.node_tree.nodes.get("Principled BSDF")
+            bsdf.inputs['Base Color'].default_value = (0.05, 0.05, 0.05, 1.0)
+            wheel.data.materials.append(mat_wheel)
+
+# Create crowd of people
+for i in range(30):
+    x = random.uniform(-7, 7)
+    y = random.uniform(-50, 50)
+    z = 0.8
+    if abs(x) < 2:  # Avoid the center where Stay Puft is
+        continue
+    
+    # Person body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(x, y, z))
+    person = bpy.context.active_object
+    person.name = f"Person_{i}"
+    person.scale = (0.8, 0.8, 1.2)
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0), (0.5, 0.3, 0.2, 1.0)]
+    color = random.choice(skin_colors)
+    mat_person = bpy.data.materials.new(f"Person_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    # Person head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2, location=(x, y, z + 0.5))
+    phead = bpy.context.active_object
+    phead.name = f"Person_{i}_Head"
+    mat_phead = bpy.data.materials.new(f"Person_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    phead.data.materials.append(mat_phead)
+
+# Create street lamps
+for i in range(10):
+    y = -50 + i * 11
+    for side in [-1, 1]:
+        x = side * 9
+        # Pole
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=5, location=(x, y, 2.5))
+        pole = bpy.context.active_object
+        pole.name = f"Lamp_Pole_{side}_{i}"
+        mat_pole = bpy.data.materials.new(f"Lamp_Pole_{side}_{i}_mat")
+        mat_pole.use_nodes = True
+        bsdf = mat_pole.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (0.1, 0.1, 0.1, 1.0)
+        pole.data.materials.append(mat_pole)
+        
+        # Lamp head
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(x, y, 5.2))
+        lamp = bpy.context.active_object
+        lamp.name = f"Lamp_Head_{side}_{i}"
+        mat_lamp = bpy.data.materials.new(f"Lamp_Head_{side}_{i}_mat")
+        mat_lamp.use_nodes = True
+        bsdf = mat_lamp.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (1.0, 0.9, 0.6, 1.0)
+        bsdf.inputs['Emission Color'].default_value = (1.0, 0.85, 0.5, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = 5.0
+        lamp.data.materials.append(mat_lamp)
+        
+        # Point light for the lamp
+        light_data = bpy.data.lights.new(f"Lamp_Light_{side}_{i}", type='POINT')
+        light_data.energy = 50
+        light_data.color = (1.0, 0.85, 0.5)
+        light_data.shadow_soft_size = 0.5
+        light_obj = bpy.data.objects.new(f"Lamp_Light_{side}_{i}", light_data)
+        light_obj.location = (x, y, 5.0)
+        bpy.context.collection.objects.link(light_obj)
+
+# Create moon
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3, location=(30, -80, 50))
+moon = bpy.context.active_object
+moon.name = "Moon"
+mat_moon = bpy.data.materials.new("Moon_mat")
+mat_moon.use_nodes = True
+bsdf = mat_moon.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs['Base Color'].default_value = (0.9, 0.9, 0.85, 1.0)
+bsdf.inputs['Emission Color'].default_value = (0.9, 0.9, 0.85, 1.0)
+bsdf.inputs['Emission Strength'].default_value = 2.0
+moon.data.materials.append(mat_moon)
+
+# Add some stars
+for i in range(100):
+    x = random.uniform(-100, 100)
+    y = random.uniform(-100, 0)
+    z = random.uniform(30, 80)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(x, y, z))
+    star = bpy.context.active_object
+    star.name = f"Star_{i}"
+    mat_star = bpy.data.materials.new(f"Star_{i}_mat")
+    mat_star.use_nodes = True
+    bsdf = mat_star.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Strength'].default_value = 3.0
+    star.data.materials.append(mat_star)
+
+# Add a few more details: fire hydrants, trash cans
+for i in range(5):
+    x = random.choice([-7.5, 7.5])
+    y = -40 + i * 20
+    # Fire hydrant
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.8, location=(x, y, 0.4))
+    hydrant = bpy.context.active_object
+    hydrant.name = f"Hydrant_{i}"
+    mat_hyd = bpy.data.materials.new(f"Hydrant_{i}_mat")
+    mat_hyd.use_nodes = True
+    bsdf = mat_hyd.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.8, 0.1, 0.1, 1.0)
+    hydrant.data.materials.append(mat_hyd)
+    
+    # Trash can
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.7, location=(x + 1, y + 2, 0.35))
+    trash = bpy.context.active_object
+    trash.name = f"Trash_{i}"
+    mat_trash = bpy.data.materials.new(f"Trash_{i}_mat")
+    mat_trash.use_nodes = True
+    bsdf = mat_trash.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.2, 0.2, 0.2, 1.0)
+    trash.data.materials.append(mat_trash)
+
+# Add a main directional light (moonlight)
+sun_data = bpy.data.lights.new("Moonlight", type='SUN')
+sun_data.energy = 0.5
+sun_data.color = (0.7, 0.7, 0.9)
+sun_data.angle = math.radians(5)
+sun_obj = bpy.data.objects.new("Moonlight", sun_data)
+sun_obj.rotation_euler = (math.radians(60), 0, math.radians(30))
+bpy.context.collection.objects.link(sun_obj)
+
+# Add a camera
+bpy.ops.object.camera_add(location=(0, -30, 5))
+camera = bpy.context.active_object
+camera.name = "MainCamera"
+camera.rotation_euler = (math.radians(85), 0, 0)
+scene.camera = camera
+
+# Add some fog/atmosphere
+scene.world.node_tree.nodes.get("Background").inputs['Color'].default_value = (0.02, 0.02, 0.05, 1.0)
+
+# Set up film
+scene.render.film_transparent = False
+scene.view_settings.view_transform = 'Filmic'
+scene.view_settings.look = 'Medium High Contrast'
+
+print("Scene built successfully!")

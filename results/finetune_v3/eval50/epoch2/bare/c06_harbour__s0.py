@@ -1,0 +1,82 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(803)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def hue(rgb, glow=0, rough=.85):
+    m = bpy.data.materials.new("h"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+sea, land, stone, plank, white, red, rust, rope, crate, crate2, tar, glass = (
+    hue((.03, .12, .17), 0, .25), hue((.1, .13, .1)), hue((.25, .25, .27)), hue((.28, .17, .1)), hue((.7, .7, .68)), hue((.65, .1, .08)), hue((.35, .13, .07)),
+    hue((.5, .4, .25)), hue((.4, .26, .12)), hue((.3, .2, .1)), hue((.05, .05, .06)), hue((1, .75, .3), 20))
+def solid(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def cube(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return solid(bm, m, at, rot)
+def cone(at, r1, r2, h, n, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return solid(bm, m, at, rot)
+def hull(at, L, W, H, m, k=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = k if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * L * f, v.co.y * W * f, (v.co.z + .5) * H))
+    return solid(bm, m, at)
+def line(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return solid(bm, m)
+def lit(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# base: a slab of harbour water with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=5, radius2=13, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.4, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 2
+solid(bm, sea)
+# quayside land on the left with a stone wall, and a small breakwater of rocks
+cube((-9.5, 0, 0), (7, 20, 1.2), land); cube((-5.9, 0, 0), (.8, 20, 1.5), stone)
+for i in range(8): cone((7 + i * .5, -8 + (i % 2) * 1.5, 0), random.uniform(.8, 1.3), .3, random.uniform(.8, 1.4), 5, stone, (0, 0, i))
+# pier: deck on piles running into the water, with mooring bollards and a lantern post
+cube((1.5, 0, 1.3), (13, 2.2, .3), plank)
+for i in range(7):
+    for s in (-1, 1): cone((-4 + i * 2, s * .9, 0), .22, .22, 1.5, 5, plank)
+for i in range(4): cone((-3 + i * 3.5, 0, 1.6), .25, .2, .5, 6, tar)
+cone((10.5, 0, 1.6), .12, .12, 2.6, 5, plank); cone((10.5, 0, 4.2), .4, .4, .6, 6, glass)
+lit("POINT", (1, .7, .3), 500, (10.5, 0, 4.6))
+# two boats: a red fishing boat tied to the pier and a blue-sailed dinghy
+hull((6.5, -4, .1), 7, 2.6, 1.5, red, .8); cube((6.5, -4, 1.5), (7.2, 2.8, .15), white)
+cube((8.5, -4, 1.6), (2, 1.8, 1.3), white); cube((8.5, -4, 2.9), (2.3, 2.1, .2), red)
+line((4.5, -4, 1.6), (4.5, -4, 6.5), .15, plank); cube((4.5, -4, 5.4), (.1, 2.4, 1.1), white)
+hull((-1, 6, .1), 4.2, 2, 1, hue((.1, .2, .45)), .8); line((-1, 6, 1), (-1, 6, 5.5), .1, plank)
+cube((-1, 6, 4.4), (.1, 2, 1.1), white); cube((-1, 6, 5.4), (.1, 1.4, .8), red)
+for p in ((-2, 5.5, 1.1), (-2, 6.5, 1.1)): cone((p[0], p[1], p[2]), .2, .2, .5, 5, plank)
+# crates and barrels on the quay, stacked in a heap
+for i, (x, y, z, w) in enumerate(((-8, -3, 1.2, 0), (-6.5, -3.2, 1.2, .3), (-7.3, -3, 2.1, .1), (-8.5, -1, 1.2, .5), (-6, -1, 1.2, 0), (-9, -5.5, 1.2, .2), (-7, -5.5, 1.2, .6))):
+    cube((x, y, z), (1.4, 1.4, 1.2), crate if i % 2 else crate2, (0, 0, w))
+for i, (x, y) in enumerate(((-8.5, 3), (-7.2, 3.4), (-8, 4.5))): cone((x, y, 1.2), .55, .5, 1.1, 7, plank)
+# lighthouse on a rocky mound at the far end of the harbour: striped tower, gallery, glass lamp room, roof
+cone((9, 8, 0), 4, 2.4, 3, 7, stone)
+for k in range(5): cone((9, 8, 3 + k * 1.8), 2.2 - k * .28, 1.9 - k * .28, 1.8, 8, red if k % 2 else white)
+cone((9, 8, 12), 2.2, 2.2, .4, 8, tar); cone((9, 8, 12.4), 1.5, 1.5, 2, 8, glass)
+cone((9, 8, 14.4), 1.9, .1, 1.8, 8, red)
+lit("POINT", (1, .75, .3), 2200, (9, 8, 13))
+lit("SUN", (1, .6, .3), 5, (-26, -18, 8), (0, 0, 2)); lit("SUN", (.3, .5, .9), 2.2, (22, 26, 12), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .02, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((1, 0, 4)); co.location = t + Vector((14, -62, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 2.7,
+ "error": "AttributeError: bpy_prop_collection: attribute \"remove\" not found",
+ "error_line": "if o.type in (\"CAMERA\", \"LIGHT\"): sc.objects.remove(o, do_unlink=True)",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 328,
+ "n_lights": 6,
+ "n_materials": 30,
+ "own_camera": true,
+ "render_error": null
+}

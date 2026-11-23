@@ -1,0 +1,79 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1646)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+col = {}
+def dye(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .9
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    col[name] = m
+for k, v in dict(moss=(.1, .22, .08), bank=(.2, .14, .08), root=(.22, .13, .07), root2=(.16, .1, .06), bark=(.2, .13, .08), leaf=(.08, .2, .06), leaf2=(.14, .26, .05),
+                 cave=(.05, .035, .03), fur=(.45, .3, .12), bone=(.6, .58, .5), water=(.06, .2, .22), ripple=(.4, .65, .6), stone=(.25, .25, .27), reed=(.2, .3, .1)).items(): dye(k, v)
+dye("moon", (.6, .85, 1), 3)
+def mesh(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(col[k]); return o
+def slab(at, s, k, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mesh(bm, k, at, rot)
+def cone(at, r, h, n, k, r2=0, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, k, at, rot)
+def lump(at, r, k, sq=(1, 1, 1), j=0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) + Vector((random.uniform(-j, j), random.uniform(-j, j), random.uniform(-j, j)))
+    return mesh(bm, k, at)
+def glow(c, w, at):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# floating base: grassy bank on the left, water on the right
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=12.5, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.5
+mesh(bm, "moss")
+slab((-6.5, 0, 0), (12, 17, .5), "bank"); slab((8, 0, 0), (8, 17, .3), "water")
+for i in range(12): lump((random.uniform(-11, -2), random.uniform(-8, 8), .5), random.uniform(.4, .9), "moss", (1, 1, .6), .1)
+# cutaway: the back wall of the den is left standing, so the chamber is open to the camera
+slab((-4.5, 6.2, 0), (7.6, .8, 4.2), "bank"); slab((-4.5, 5.8, 0), (6.4, .5, 3.2), "cave")
+slab((-4.5, 5.2, 3.0), (7.6, 2.4, 1.2), "bank"); slab((-4.5, 5.2, 3.9), (7.6, 2.4, .4), "root2")
+# roots arching over the den mouth, thick at the ends
+for i, (x, y, z) in enumerate([(-9, 5.2, 3.2), (-8, 4.6, 3.6), (-7, 4.2, 4.0), (-6, 4.0, 4.2), (-5, 4.0, 4.2), (-4, 4.0, 4.2), (-3, 4.0, 4.2), (-2, 4.2, 4.0), (-1, 4.6, 3.6), (0, 5.2, 3.2)]):
+    cone((x, y, z), .6 - abs(i - 4.5) * .05, 1.0, 6, "root", .45, (0, math.pi / 2, 0))
+    cone((x, y - .8, z - .2), .35, .9, 5, "root2", .25, (0, math.pi / 2, 0))
+for i in range(7): cone((-8 + i * 1.3, 3.6, 3.4 + abs(i - 3) * .1), .15, 1.2, 4, "root2", .05, (0, 0, 0))
+# the mother's den: two cubs curled on a fur mound, a fish bone, a glowing moonlit pool
+lump((-4.5, 5.2, .6), 1.4, "root2", (1.3, .9, .4), .1)
+for cx in (-5.6, -3.4):
+    lump((cx, 5.2, 1.2), .6, "fur", (1.2, .9, .8)); lump((cx - .5, 5.2, 1.4), .38, "fur", (1, 1, .9)); slab((cx + .3, 5.2, 1.5), (.3, .3, .1), "fur")
+slab((-4.5, 4.2, 1.0), (2.4, .2, .15), "bone"); slab((-4.5, 4.2, 1.0), (.2, 1.4, .15), "bone")
+for i in range(5): slab((-5.4 + i * .45, 4.2, 1.0), (.12, .6, .1), "bone")
+lump((-1.0, 2.0, .5), .5, "stone", (1, .8, .7)); lump((1.5, 6.5, .5), .7, "stone", (1, 1, .7), .1); lump((-9.5, -3, .5), .8, "stone", (1, 1, .6), .1)
+for i in range(9):
+    x, y = -1.5 + i * .1, 7 - i * 1.1; cone((x, y, .35), .06, 1.0, 4, "reed", .02)
+# ripple trail across the water: concentric rings fading out
+for i in range(14):
+    t = i / 13; x = 3.5 + math.sin(t * 5) * 1.6; y = 6.5 - t * 12
+    cone((x, y, .33), .5 + t * 1.3, .05, 8, "ripple", .5 + t * 1.3)
+# trees behind the den
+for x, y in [(-9.5, 2), (-1, 7.5), (-6.5, 8.5)]:
+    cone((x, y, .5), .6, 3.2, 6, "bark", .4)
+    for j in range(3): lump((x + random.uniform(-.5, .5), y, 3.6 + j * .9), 2.2 - j * .5, "leaf" if j % 2 else "leaf2", (1, 1, .7), .3)
+# moonlight key from the left, faint cyan rim from behind the water
+for c, w, at in (((.55, .7, 1), 4.5, (-30, -18, 12)), ((.3, .6, .6), 2, (22, 26, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("night"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .018, .035, 1)
+cm = bpy.data.cameras.new("cam"); cm.lens = 80
+co = bpy.data.objects.new("cam", cm); sc.collection.objects.link(co)
+aim = Vector((0, 1, 1.5)); co.location = aim + Vector((22, -46, 30))
+co.rotation_euler = (aim - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

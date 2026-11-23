@@ -1,0 +1,188 @@
+```python
+import bpy
+import math
+import random
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Materials
+mat_white = bpy.data.materials.new("White")
+mat_white.use_nodes = True
+mat_white.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.9, 0.9, 0.9, 1)
+mat_white.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.3
+
+mat_grey = bpy.data.materials.new("Grey")
+mat_grey.use_nodes = True
+mat_grey.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.5, 0.5, 1)
+mat_grey.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.6
+
+mat_orange = bpy.data.materials.new("Orange")
+mat_orange.use_nodes = True
+mat_orange.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 0.6, 0.1, 1)
+
+mat_sail = bpy.data.materials.new("Sail")
+mat_sail.use_nodes = True
+mat_sail.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.8, 0.8, 0.9, 1)
+mat_sail.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.2
+mat_sail.node_tree.nodes["Principled BSDF"].inputs["Transmission Weight"].default_value = 0.5
+
+mat_blimp = bpy.data.materials.new("Blimp")
+mat_blimp.use_nodes = True
+mat_blimp.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.9, 0.2, 0.1, 1)
+
+mat_cloud = bpy.data.materials.new("Cloud")
+mat_cloud.use_nodes = True
+mat_cloud.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1.0, 0.9, 0.4, 1)
+mat_cloud.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 1.0
+mat_cloud.node_tree.nodes["Principled BSDF"].inputs["Subsurface Weight"].default_value = 0.5
+
+# --- Habitat Dome ---
+bpy.ops.mesh.primitive_uv_sphere_add(radius=10, segments=32, ring_count=16, location=(0, 0, 0))
+dome = bpy.context.object
+dome.name = "HabitatDome"
+dome.scale = (1, 1, 0.7)  # slightly flattened
+dome.data.materials.append(mat_white)
+
+# Base ring
+bpy.ops.mesh.primitive_torus_add(major_radius=10, minor_radius=0.8, location=(0, 0, -3.5))
+ring = bpy.context.object
+ring.name = "BaseRing"
+ring.data.materials.append(mat_grey)
+
+# --- Catwalk circling the dome ---
+# Create a circular catwalk using a torus-like path
+bpy.ops.mesh.primitive_torus_add(major_radius=14, minor_radius=0.3, location=(0, 0, -2))
+catwalk = bpy.context.object
+catwalk.name = "Catwalk"
+catwalk.data.materials.append(mat_grey)
+
+# Catwalk railings (simplified as thin torus above)
+bpy.ops.mesh.primitive_torus_add(major_radius=14, minor_radius=0.05, location=(0, 0, -1.5))
+rail = bpy.context.object
+rail.name = "CatwalkRail"
+rail.data.materials.append(mat_grey)
+
+# Support struts from catwalk to dome
+for i in range(8):
+    angle = i * (2 * math.pi / 8)
+    x = 14 * math.cos(angle)
+    y = 14 * math.sin(angle)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=5, location=(x, y, -2))
+    strut = bpy.context.object
+    strut.name = f"Strut_{i}"
+    strut.rotation_euler = (0, 0, angle)
+    strut.data.materials.append(mat_grey)
+
+# --- Docking Mast ---
+bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=15, location=(0, 0, 10))
+mast = bpy.context.object
+mast.name = "DockingMast"
+mast.data.materials.append(mat_grey)
+
+# Docking port at top
+bpy.ops.mesh.primitive_cylinder_add(radius=1.5, depth=1, location=(0, 0, 17.5))
+port = bpy.context.object
+port.name = "DockingPort"
+port.data.materials.append(mat_orange)
+
+# --- Solar Sails ---
+# Four solar sail panels extending from the mast
+sail_positions = [
+    (0, 0, 12, 0, 0),
+    (0, 0, 12, math.pi/2, 0),
+    (0, 0, 12, math.pi, 0),
+    (0, 0, 12, 3*math.pi/2, 0),
+]
+
+for idx, (sx, sy, sz, rot_z, _) in enumerate(sail_positions):
+    # Sail arm
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=12, location=(sx, sy, sz))
+    arm = bpy.context.object
+    arm.name = f"SailArm_{idx}"
+    arm.rotation_euler = (math.pi/2, 0, rot_z)
+    arm.data.materials.append(mat_grey)
+
+    # Sail panel
+    bpy.ops.mesh.primitive_plane_add(size=10, location=(
+        sx + 6 * math.cos(rot_z),
+        sy + 6 * math.sin(rot_z),
+        sz
+    ))
+    sail = bpy.context.object
+    sail.name = f"SolarSail_{idx}"
+    sail.rotation_euler = (0, 0, rot_z)
+    sail.data.materials.append(mat_sail)
+
+# --- Small Blimp tied up ---
+# Blimp body (elongated sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3, segments=24, ring_count=12, location=(18, 0, 8))
+blimp = bpy.context.object
+blimp.name = "Blimp"
+blimp.scale = (1.5, 0.8, 0.8)
+blimp.data.materials.append(mat_blimp)
+
+# Blimp gondola
+bpy.ops.mesh.primitive_cube_add(size=2, location=(18, 0, 5))
+gondola = bpy.context.object
+gondola.name = "BlimpGondola"
+gondola.scale = (1.2, 0.8, 0.5)
+gondola.data.materials.append(mat_grey)
+
+# Tether cable from blimp to dome
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=12, location=(14, 0, 5))
+tether = bpy.context.object
+tether.name = "Tether"
+tether.rotation_euler = (0, math.radians(45), 0)
+tether.data.materials.append(mat_grey)
+
+# --- Clouds (yellow Venus atmosphere) ---
+random.seed(42)
+for i in range(40):
+    x = random.uniform(-60, 60)
+    y = random.uniform(-60, 60)
+    z = random.uniform(-15, 25)
+    # Keep some space around the dome
+    if math.sqrt(x*x + y*y) < 25 and abs(z) < 15:
+        continue
+    r = random.uniform(3, 8)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=12, ring_count=8, location=(x, y, z))
+    cloud = bpy.context.object
+    cloud.name = f"Cloud_{i}"
+    cloud.scale = (random.uniform(1.2, 2.0), random.uniform(0.8, 1.2), random.uniform(0.5, 0.8))
+    cloud.data.materials.append(mat_cloud)
+
+# --- Lighting ---
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(50, 50, 50))
+sun = bpy.context.object
+sun.name = "Sun"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Ambient/world
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.9, 0.8, 0.4, 1)  # yellowish Venus sky
+    bg.inputs[1].default_value = 0.5
+
+# Camera
+bpy.ops.object.camera_add(location=(35, -35, 15))
+cam = bpy.context.object
+cam.name = "Camera"
+# Point camera at dome
+direction = (0, 0, 0) - cam.location
+cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+```

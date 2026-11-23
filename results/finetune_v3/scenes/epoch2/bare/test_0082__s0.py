@@ -1,0 +1,95 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1655)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+S = {}
+def dye(k, c, e=0, a=1, r=.9):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r; n.inputs["Alpha"].default_value = a
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    S[k] = m
+for k, c in (("plank", (.2, .12, .07)), ("plank2", (.14, .08, .05)), ("wall", (.3, .17, .1)), ("sack", (.45, .36, .22)), ("brass", (.7, .45, .1)), ("wood", (.25, .14, .08)),
+             ("chilli", (.7, .05, .03)), ("stone", (.35, .3, .25)), ("cloth", (.3, .08, .06)), ("dark", (.02, .015, .015))): dye(k, c)
+for k, c in (("turmeric", (.9, .55, .03)), ("paprika", (.8, .12, .04)), ("saffron", (.9, .3, .05)), ("cumin", (.35, .2, .08)), ("mint", (.1, .4, .15)), ("ochre", (.7, .4, .08)), ("clay", (.4, .15, .08))): dye(k, c)
+dye("glass", (1, .6, .2), 3, .5, .1); dye("sun", (1, .8, .45), 1.2); dye("lamp", (1, .6, .2), 16)
+def mk(bm, k, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(S[k]); return o
+def cube(p, s, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return mk(bm, k, p, (0, 0, rz))
+def cyl(p, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, k, p, rot)
+def ball(p, r, k, s=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], v.co.z * s[2])) * random.uniform(.9, 1.1)
+    return mk(bm, k, p)
+def cord(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, k)
+def shine(kind, c, w, p, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# floor of planks, a rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 14, v.co.y * 11, v.co.z * 2.4 - 1.2))
+    if v.co.z < 0: v.co = Vector((v.co.x * .6 + random.uniform(-.5, .5), v.co.y * .6 + random.uniform(-.5, .5), v.co.z - random.uniform(0, 1.5)))
+mk(bm, "plank2")
+for i in range(10): cube((0, -4.8 + i * 1.07, 0), (14, .95, .1), "plank" if i % 2 else "plank2")
+# two walls: back and left
+cube((0, 5.2, 0), (14, .6, 7), "wall"); cube((-6.7, 0, 0), (.6, 11, 7), "wall")
+# shelves on the back wall with rows of jars
+for z in (2.0, 3.6, 5.2):
+    cube((0, 4.55, z), (12, 1.3, .15), "wood")
+    for i in range(12):
+        x = -5.5 + i * 1.0 + random.uniform(-.1, .1)
+        if random.random() < .85:
+            cyl((x, 4.5, z + .15), .38, .75, 7, "clay"); cyl((x, 4.5, z + .9), .3, .12, 7, "dark"); ball((x, 4.5, z + .95), .22, random.choice(("turmeric", "paprika", "saffron", "mint", "ochre")))
+# counter with open sacks of coloured powders
+cube((0, -1.0, 0), (9, 2.0, 1.3), "wood", top=.95); cube((0, -1.0, 1.3), (9.4, 2.4, .15), "wood")
+for i, k in enumerate(("turmeric", "paprika", "saffron", "cumin", "mint", "ochre")):
+    x = -3.6 + i * 1.45
+    ball((x, -1.0, 1.8), .85, "sack", (1, 1, .8)); ball((x, -1.0, 1.75), .6, k, (1, 1, .5))
+    for s in (-1, 1): cord((x + s * .5, -1.0, 1.9), (x + s * .9, -1.0, 2.3), .12, "sack")
+# brass scales on a side table, larger than life
+cube((5.2, 1.0, 0), (2.0, 1.6, 1.2), "wood"); cube((5.2, 1.0, 1.2), (2.2, 1.8, .12), "brass")
+cyl((5.2, 1.0, 1.3), .12, 1.4, 5, "brass"); cube((5.2, 1.0, 2.6), (2.4, .12, .12), "brass")
+for s in (-1, 1):
+    cord((5.2 + s * 1.1, 1.0, 2.6), (5.2 + s * 1.1, 1.0, 1.9), .04, "brass"); cyl((5.2 + s * 1.1, 1.0, 1.75), .55, .15, 8, "brass", .4)
+    ball((5.2 + s * 1.1, 1.0, 1.95), .3, "sack", (1, 1, .8))
+# grinding mill: stone base, hopper, handle
+cyl((-4.0, 2.8, 0), 1.2, 1.0, 8, "stone"); cyl((-4.0, 2.8, 1.0), .9, .9, 8, "stone", .5); cyl((-4.0, 2.8, 1.9), .6, .8, 8, "sack", .35)
+cord((-4.0, 2.8, 1.6), (-2.7, 2.8, 1.6), .1, "wood"); ball((-2.7, 2.8, 1.6), .18, "wood")
+cyl((-4.0, 2.8, 2.7), .3, .15, 8, "brass")
+# strings of chillies hanging from the back wall beam
+cube((0, 4.0, 6.2), (13, .2, .2), "wood")
+for i in range(6):
+    x = -4.5 + i * 1.8
+    for k in range(8):
+        ball((x, 3.85, 5.9 - k * .32), .17, "chilli", (.8, .8, 1.3))
+# hanging lamp
+cord((3.0, 3.9, 6.2), (3.0, 3.9, 5.2), .05, "dark"); cyl((3.0, 3.9, 4.8), .4, .5, 6, "lamp", .25); shine("POINT", (1, .6, .2), 300, (3.0, 3.9, 4.9))
+# the shaft of afternoon sun falling through a gap in the roof
+cube((1.5, -.5, 3.2), (2.6, 5.6, .1), "sun", rz=.35)
+for i in range(7): ball((1.5 + random.uniform(-1, 1), -.5 + random.uniform(-2, 2), 3.2), .06, "sun")
+# window glow on the left wall
+cube((-6.3, 1.0, 3.0), (.1, 2.2, 2.4), "lamp"); shine("POINT", (1, .65, .3), 400, (-5.0, 1.0, 3.2))
+shine("SUN", (1, .7, .35), 5, (22, -10, 12), (0, 0, 1)); shine("SUN", (.4, .5, .9), 1.5, (-14, 14, 9), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .012, .01, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.2)); co.location = t + Vector((11, -38, 24))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

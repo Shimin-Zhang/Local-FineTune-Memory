@@ -1,0 +1,27 @@
+server ready after 8s
+24 to generate
+bare   test_0032__s0                68.4s 2750 tokens stop
+bare   test_0050__s0                87.0s 3473 tokens stop
+bare   test_0025__s0               196.1s 7643 tokens stop
+bare   test_0052__s0               146.0s 5573 tokens stop
+bare   test_0091__s0               143.3s 5438 tokens stop
+bare   test_0092__s0                92.6s 3526 tokens stop
+bare   test_0040__s0               128.0s 4915 tokens stop
+bare   test_0076__s0                79.5s 3020 tokens stop
+bare   test_0079__s0               164.4s 6258 tokens stop
+bare   test_0027__s0                93.0s 3554 tokens stop
+bare   test_0068__s0                87.2s 3331 tokens stop
+bare   test_0045__s0                85.5s 3265 tokens stop
+bare   test_0088__s0                76.9s 2977 tokens stop
+bare   test_0056__s0               132.9s 5071 tokens stop
+bare   test_0003__s0               139.5s 5326 tokens stop
+bare   test_0008__s0                78.8s 2979 tokens stop
+bare   test_0085__s0                95.9s 3665 tokens stop
+bare   test_0009__s0                95.9s 3678 tokens stop
+bare   test_0016__s0               134.0s 5115 tokens stop
+bare   test_0005__s0               140.8s 5379 tokens stop
+bare   test_0057__s0                99.5s 3806 tokens stop
+bare   test_0024__s0               124.3s 4718 tokens stop
+bare   test_0080__s0               205.2s 4663 tokens stop
+bare   test_0082__s0               199.6s 4485 tokens stop
+done in 1028s

@@ -1,0 +1,88 @@
+import bpy
+import math
+import mathutils
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create collections
+for name in ["Church", "Chancel", "Stone_Buildings", "Gate", "Ground"]:
+    if name not in bpy.data.collections:
+        coll = bpy.data.collections.new(name)
+        bpy.context.scene.collection.children.link(coll)
+
+def link_to_collection(obj, coll_name):
+    coll = bpy.data.collections[coll_name]
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    coll.objects.link(obj)
+
+# Ground plane
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+link_to_collection(ground, "Ground")
+
+# Round church main body (cylinder)
+bpy.ops.mesh.primitive_cylinder_add(radius=5, depth=8, location=(0, 0, 4))
+church_body = bpy.context.active_object
+church_body.name = "Church_Body"
+link_to_collection(church_body, "Church")
+
+# Conical roof
+bpy.ops.mesh.primitive_cone_add(radius1=5.5, radius2=0, depth=6, location=(0, 0, 11))
+roof = bpy.context.active_object
+roof.name = "Church_Roof"
+link_to_collection(roof, "Church")
+
+# Small rectangular chancel (attached to one side)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(7, 0, 3))
+chancel = bpy.context.active_object
+chancel.name = "Chancel"
+chancel.scale = (2, 3, 3)
+bpy.ops.object.transform_apply(scale=True)
+link_to_collection(chancel, "Chancel")
+
+# Ring of low stone buildings around the church
+num_buildings = 12
+radius_ring = 12
+for i in range(num_buildings):
+    angle = (2 * math.pi * i) / num_buildings
+    x = radius_ring * math.cos(angle)
+    y = radius_ring * math.sin(angle)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 1.5))
+    bld = bpy.context.active_object
+    bld.name = f"Stone_Building_{i}"
+    bld.scale = (2, 1.5, 1.5)
+    bpy.ops.object.transform_apply(scale=True)
+    # Rotate to face center
+    bld.rotation_euler[2] = -angle + math.pi / 2
+    link_to_collection(bld, "Stone_Buildings")
+
+# Gate (two pillars + crossbeam)
+gate_x = radius_ring + 3
+gate_y = 0
+# Left pillar
+bpy.ops.mesh.primitive_cube_add(size=1, location=(gate_x, -1.5, 1.5))
+left_pillar = bpy.context.active_object
+left_pillar.name = "Gate_Left_Pillar"
+left_pillar.scale = (0.5, 0.5, 1.5)
+bpy.ops.object.transform_apply(scale=True)
+link_to_collection(left_pillar, "Gate")
+
+# Right pillar
+bpy.ops.mesh.primitive_cube_add(size=1, location=(gate_x, 1.5, 1.5))
+right_pillar = bpy.context.active_object
+right_pillar.name = "Gate_Right_Pillar"
+right_pillar.scale = (0.5, 0.5, 1.5)
+bpy.ops.object.transform_apply(scale=True)
+link_to_collection(right_pillar, "Gate")
+
+# Crossbeam
+bpy.ops.mesh.primitive_cube_add(size=1, location=(gate_x, 0, 3.2))
+crossbeam = bpy.context.active_object
+crossbeam.name = "Gate_Crossbeam"
+crossbeam.scale = (0.5, 3.5, 0.3)
+bpy.ops.object.transform_apply(scale=True)
+link_to_collection(crossbeam, "Gate")

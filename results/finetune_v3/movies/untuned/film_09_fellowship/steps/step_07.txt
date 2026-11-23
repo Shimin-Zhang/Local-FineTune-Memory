@@ -1,0 +1,221 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is still showing as a flat grey. The issue is likely that the camera is 
+# not properly framed or the lights are not illuminating the scene correctly.
+# Let's do a complete lighting overhaul and camera fix.
+
+# 1. Remove all existing lights and recreate them properly
+for light_obj in list(bpy.data.objects):
+    if light_obj.type == 'LIGHT':
+        bpy.data.objects.remove(light_obj, do_unlink=True)
+
+# 2. Create proper lighting setup
+# Main fire light from Balrog
+bpy.ops.object.light_add(type='POINT', location=(3.0, 0, 2.5))
+fire_light = bpy.context.object
+fire_light.name = "Main_Fire_Light"
+fire_light.data.energy = 8000
+fire_light.data.color = (1.0, 0.35, 0.08)
+fire_light.data.shadow_soft_size = 1.5
+
+# Warm fill from torches
+for i, (tx, ty) in enumerate([(-4, -1.2), (-2, 1.2), (0, -1.2), (2, 1.2)]):
+    bpy.ops.object.light_add(type='POINT', location=(tx, ty, 1.5))
+    tl = bpy.context.object
+    tl.name = f"Torch_Light_{i}"
+    tl.data.energy = 800
+    tl.data.color = (1.0, 0.5, 0.15)
+    tl.data.shadow_soft_size = 0.3
+
+# Cool rim from behind
+bpy.ops.object.light_add(type='POINT', location=(6, 0, 3))
+rim = bpy.context.object
+rim.name = "Rim_Light"
+rim.data.energy = 3000
+rim.data.color = (1.0, 0.4, 0.1)
+rim.data.shadow_soft_size = 1.0
+
+# Soft ambient
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
+sun = bpy.context.object
+sun.name = "Ambient"
+sun.data.energy = 0.8
+sun.data.color = (0.2, 0.25, 0.35)
+sun.rotation_euler = (math.radians(45), 0, 0)
+
+# 3. Fix camera - make sure it's actually pointing at the scene
+camera = bpy.data.objects.get("Main_Camera")
+if camera:
+    # Place camera at a good vantage point
+    camera.location = (-6, 5, 3.5)
+    # Look at the middle of the bridge where the action is
+    target = Vector((1.0, 0, 1.5))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 35
+    camera.data.sensor_width = 36
+else:
+    bpy.ops.object.camera_add(location=(-6, 5, 3.5))
+    camera = bpy.context.object
+    camera.name = "Main_Camera"
+    target = Vector((1.0, 0, 1.5))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 35
+
+bpy.context.scene.camera = camera
+
+# 4. Ensure all emission materials are bright
+for mat_name in ["Fire", "FireInner", "BalrogFire", "BalrogEye", "Glow"]:
+    mat = bpy.data.materials.get(mat_name)
+    if mat:
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            bsdf.inputs["Emission Strength"].default_value = 40.0
+
+# 5. Make sure stone materials are visible (not too dark)
+for mat_name in ["Stone", "StoneDark", "BridgeStone", "PillarStone"]:
+    mat = bpy.data.materials.get(mat_name)
+    if mat:
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            # Brighten base color slightly
+            current = bsdf.inputs["Base Color"].default_value
+            bsdf.inputs["Base Color"].default_value = (
+                min(1.0, current[0] * 1.5),
+                min(1.0, current[1] * 1.5),
+                min(1.0, current[2] * 1.5),
+                1.0
+            )
+
+# 6. Add more fire for visual impact
+mat_fire = bpy.data.materials.get("Fire")
+mat_fire_inner = bpy.data.materials.get("FireInner")
+
+# Large fireballs around Balrog
+for i in range(15):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(0.5, 3.0)
+    x = 4.5 + dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    z = 0.2 + random.uniform(0.2, 3.0)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(0.2, 0.5), location=(x, y, z))
+    fire = bpy.context.object
+    fire.name = f"FireImpact_{i}"
+    fire.data.materials.append(mat_fire_inner if random.random() > 0.4 else mat_fire)
+
+# Fire stream from Balrog to Gandalf
+for i in range(20):
+    t = i / 19.0
+    x = 3.0 - t * 4.5
+    y = (i % 3 - 1) * 0.15
+    z = 2.5 - t * 1.5 + random.uniform(-0.1, 0.1)
+    size = 0.35 - t * 0.2
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=max(0.05, size), location=(x, y, z))
+    fire = bpy.context.object
+    fire.name = f"FireJet_{i}"
+    fire.data.materials.append(mat_fire_inner if t < 0.4 else mat_fire)
+
+# 7. Add more smoke
+mat_smoke = bpy.data.materials.get("Smoke")
+if mat_smoke:
+    for i in range(15):
+        x = 4.0 + random.uniform(-1.5, 1.5)
+        y = random.uniform(-1, 1)
+        z = 3.5 + i * 0.4
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3 + i * 0.04, location=(x, y, z))
+        smoke = bpy.context.object
+        smoke.name = f"SmokeNew_{i}"
+        smoke.data.materials.append(mat_smoke)
+
+# 8. Add more embers
+mat_ember = bpy.data.materials.get("FireInner")
+if mat_ember:
+    for i in range(30):
+        x = random.uniform(-5, 6)
+        y = random.uniform(-3, 3)
+        z = random.uniform(0.5, 7)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(0.02, 0.05), location=(x, y, z))
+        ember = bpy.context.object
+        ember.name = f"EmberNew_{i}"
+        ember.data.materials.append(mat_ember)
+
+# 9. Add lava glow in chasm
+if mat_fire:
+    for i in range(8):
+        x = random.uniform(-4, 4)
+        y = random.uniform(-8, 8)
+        z = -7
+        bpy.ops.mesh.primitive_plane_add(size=1, location=(x, y, z))
+        lava = bpy.context.object
+        lava.name = f"LavaNew_{i}"
+        lava.scale = (random.uniform(1.5, 4), random.uniform(1.5, 4), 1)
+        lava.data.materials.append(mat_fire)
+        bpy.ops.object.transform_apply(scale=True)
+
+# 10. Add more architectural details
+mat_stone_pillar = bpy.data.materials.get("PillarStone")
+mat_stone_dark = bpy.data.materials.get("StoneDark")
+
+# Add more railing posts
+if mat_stone_pillar:
+    for i in range(20):
+        x = -5.5 + i * 0.55
+        for y in [-0.95, 0.95]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.7, location=(x, y, 0.55))
+            post = bpy.context.object
+            post.name = f"RailPostNew_{i}_{y}"
+            post.data.materials.append(mat_stone_pillar)
+
+# 11. Add Dwarven door on the left side (where the bridge leads)
+if mat_stone_pillar and mat_stone_dark:
+    # Door frame
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-6.5, -1.5, 1.5))
+    door_l = bpy.context.object
+    door_l.name = "Door_Frame_L"
+    door_l.scale = (0.3, 0.3, 1.5)
+    door_l.data.materials.append(mat_stone_pillar)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-6.5, 1.5, 1.5))
+    door_r = bpy.context.object
+    door_r.name = "Door_Frame_R"
+    door_r.scale = (0.3, 0.3, 1.5)
+    door_r.data.materials.append(mat_stone_pillar)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-6.5, 0, 3.1))
+    door_top = bpy.context.object
+    door_top.name = "Door_Frame_Top"
+    door_top.scale = (0.3, 1.8, 0.3)
+    door_top.data.materials.append(mat_stone_pillar)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Door itself (dark)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(-6.6, 0, 1.5))
+    door = bpy.context.object
+    door.name = "Dwarven_Door"
+    door.scale = (0.1, 1.2, 1.4)
+    door.data.materials.append(mat_stone_dark)
+    bpy.ops.object.transform_apply(scale=True)
+
+# 12. Final render settings
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.resolution_percentage = 100
+scene.view_settings.exposure = 1.5
+scene.view_settings.gamma = 1.0
+scene.view_settings.look = 'AgX - Punchy'
+
+print("Complete lighting overhaul, new camera, more fire/smoke/embers, Dwarven door, more details")
+```

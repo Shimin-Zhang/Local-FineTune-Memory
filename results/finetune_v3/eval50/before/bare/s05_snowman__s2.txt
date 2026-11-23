@@ -1,0 +1,124 @@
+```python
+import bpy
+import math
+
+# Clear existing objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Materials
+def create_material(name, color, specular=0.5, roughness=0.5):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Specular IOR Level"].default_value = specular
+    return mat
+
+white_mat = create_material("Snow", (0.95, 0.95, 0.95, 1.0), specular=0.3, roughness=0.6)
+black_mat = create_material("Black", (0.02, 0.02, 0.02, 1.0), specular=0.8, roughness=0.3)
+orange_mat = create_material("Carrot", (1.0, 0.4, 0.0, 1.0), specular=0.5, roughness=0.4)
+brown_mat = create_material("Stick", (0.3, 0.15, 0.05, 1.0), specular=0.2, roughness=0.7)
+
+# Bottom snowball
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.2, location=(0, 0, 1.2), segments=32, ring_count=16)
+bottom = bpy.context.active_object
+bottom.data.materials.append(white_mat)
+bottom.name = "BottomSnowball"
+
+# Middle snowball
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.9, location=(0, 0, 2.6), segments=32, ring_count=16)
+middle = bpy.context.active_object
+middle.data.materials.append(white_mat)
+middle.name = "MiddleSnowball"
+
+# Head snowball
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.6, location=(0, 0, 3.7), segments=32, ring_count=16)
+head = bpy.context.active_object
+head.data.materials.append(white_mat)
+head.name = "HeadSnowball"
+
+# Eyes (small black spheres)
+for x_offset in [-0.2, 0.2]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=(x_offset, 0.55, 3.85), segments=16, ring_count=8)
+    eye = bpy.context.active_object
+    eye.data.materials.append(black_mat)
+    eye.name = f"Eye_{'L' if x_offset < 0 else 'R'}"
+
+# Carrot nose (cone)
+bpy.ops.mesh.primitive_cone_add(radius1=0.08, radius2=0.0, depth=0.3, location=(0, 0.6, 3.7), rotation=(math.radians(90), 0, 0), segments=16)
+nose = bpy.context.active_object
+nose.data.materials.append(orange_mat)
+nose.name = "CarrotNose"
+
+# Top hat
+# Hat brim (cylinder)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.45, depth=0.05, location=(0, 0, 4.25), segments=32)
+brim = bpy.context.active_object
+brim.data.materials.append(black_mat)
+brim.name = "HatBrim"
+
+# Hat crown (cylinder)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.5, location=(0, 0, 4.5), segments=32)
+crown = bpy.context.active_object
+crown.data.materials.append(black_mat)
+crown.name = "HatCrown"
+
+# Arms (cylinders as sticks)
+# Left arm
+bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=1.0, location=(-0.9, 0, 2.6), rotation=(0, math.radians(45), 0), segments=8)
+left_arm = bpy.context.active_object
+left_arm.data.materials.append(brown_mat)
+left_arm.name = "LeftArm"
+
+# Right arm
+bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=1.0, location=(0.9, 0, 2.6), rotation=(0, math.radians(-45), 0), segments=8)
+right_arm = bpy.context.active_object
+right_arm.data.materials.append(brown_mat)
+right_arm.name = "RightArm"
+
+# Buttons (small black spheres on middle ball)
+for z_offset in [2.3, 2.6, 2.9]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.04, location=(0, 0.88, z_offset), segments=16, ring_count=8)
+    button = bpy.context.active_object
+    button.data.materials.append(black_mat)
+    button.name = f"Button_{z_offset}"
+
+# Mouth (small black spheres arranged in a smile)
+mouth_positions = [
+    (-0.15, 0.55, 3.55),
+    (-0.08, 0.56, 3.53),
+    (0.0, 0.565, 3.52),
+    (0.08, 0.56, 3.53),
+    (0.15, 0.55, 3.55),
+]
+for i, (mx, my, mz) in enumerate(mouth_positions):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.025, location=(mx, my, mz), segments=8, ring_count=4)
+    mouth_dot = bpy.context.active_object
+    mouth_dot.data.materials.append(black_mat)
+    mouth_dot.name = f"MouthDot_{i}"
+
+# Add a ground plane for context
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground_mat = create_material("GroundSnow", (0.9, 0.9, 0.95, 1.0), specular=0.2, roughness=0.8)
+ground.data.materials.append(ground_mat)
+
+# Set up basic lighting
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Set viewport to look at the snowman
+for area in bpy.context.screen.areas:
+    if area.type == 'VIEW_3D':
+        for space in area.spaces:
+            if space.type == 'VIEW_3D':
+                space.shading.type = 'MATERIAL'
+                space.region_3d.view_location = (0, 0, 2.5)
+                space.region_3d.view_distance = 8
+                space.region_3d.view_rotation = (0.7071, 0.7071, 0, 0)
+```

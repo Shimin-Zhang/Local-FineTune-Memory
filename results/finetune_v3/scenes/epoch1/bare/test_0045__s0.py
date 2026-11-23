@@ -1,0 +1,104 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(309)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def clr(rgb, em=0):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+rock, rock2, snow, concrete, water, foam, grass, steel, red = clr((.2, .2, .22)), clr((.14, .14, .16)), clr((.7, .72, .78)), clr((.45, .45, .47)), clr((.08, .25, .4)), clr((.8, .85, .9)), clr((.12, .22, .1)), clr((.15, .15, .17)), clr((.5, .08, .06))
+lamp, glass, cable = clr((1, .75, .3), 12), clr((1, .6, .2), 14), clr((.02, .02, .03))
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(w, d, h, m, at, rot=(0, 0, 0), top=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return mk(bm, m, at, rot)
+def cyl(r, h, n, m, at, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at, rot)
+def lump(r, m, at, sq=(1, 1, 1), j=.25):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) * random.uniform(1 - j, 1 + j)
+    return mk(bm, m, at)
+def line(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def light(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# valley floor slab with a river running along it
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 30, v.co.y * 22, v.co.z * 3.2))
+    if v.co.z < 0: v.co = Vector((v.co.x * .6 + random.uniform(-1, 1), v.co.y * .6 + random.uniform(-1, 1), v.co.z - random.uniform(0, 1.5)))
+mk(bm, rock2, (0, 0, -1.6))
+slab(30, 5.5, .15, water, (0, 0, .02))
+# two valley walls: a ring of jagged peaks, each capped with snow
+for sx in (-1, 1):
+    for i in range(5):
+        y = -8 + i * 4 + sx * 1.5; h = 6.5 + random.uniform(-1, 2.5)
+        cyl(3.0, h, 6, rock if i % 2 else rock2, (sx * 11.5 + random.uniform(-1, 1), y, 0), 1.0)
+        cyl(1.3, h * .25, 6, snow, (sx * 11.5, y, h * .75), .1)
+for sx in (-1, 1):
+    for i in range(6):
+        lump(random.uniform(1, 1.8), rock2, (sx * random.uniform(6, 8.5), random.uniform(-8, 8), .4), (1.4, 1, .7))
+# the concrete arch dam: a curved wall built from slabs, with a crest road and parapet
+for i in range(9):
+    a = -1.1 + i * .275
+    slab(2.2, 2.4, 8.5, concrete, (math.sin(a) * 6.2, math.cos(a) * 6.2, 0), (0, 0, a + math.pi / 2), .96)
+for i in range(9):
+    a = -1.1 + i * .275
+    slab(2.3, 1.2, .35, concrete, (math.sin(a) * 6.2, math.cos(a) * 6.2, 8.5), (0, 0, a + math.pi / 2))
+    slab(2.3, .2, .5, concrete, (math.sin(a) * 5.3, math.cos(a) * 5.3, 8.8), (0, 0, a + math.pi / 2))
+    slab(2.3, .3, .2, lamp, (math.sin(a) * 5.3, math.cos(a) * 5.3, 9.3), (0, 0, a + math.pi / 2))
+# spillway chute on the right flank, with a plume of water and spray
+slab(2.4, 7, .4, concrete, (8.2, 0, 4.6), (-.55, 0, 0))
+slab(2.4, 6.5, .1, water, (8.2, 0, 4.95), (-.55, 0, 0))
+slab(2.4, 2.6, .3, concrete, (8.2, -4.6, 1.2), (-.25, 0, 0))
+for i in range(7):
+    lump(random.uniform(.4, .8), foam, (8.2 + random.uniform(-.6, .6), -5.2 - i * .6, .3 + i * .1), (1.2, 1, .8))
+lump(1.4, foam, (8.2, -5.5, 1.2), (1.4, 1.2, 1.4))
+# power house at the base: concrete hall, turbine bays, glowing windows, a chimney and a switchyard
+slab(9, 4.4, 3.2, concrete, (-4, -8.2, 0), top=.95)
+slab(9.4, 4.8, .3, concrete, (-4, -8.2, 3.2))
+for i in range(4): slab(1.3, .15, 1.4, glass, (-6.7 + i * 1.8, -10.45, .8))
+slab(3.2, 1.8, 1.8, concrete, (1.5, -8.2, 3.5)); slab(3.2, 1.8, .25, red, (1.5, -8.2, 5.3))
+cyl(.5, 4.2, 6, concrete, (1.5, -8.2, 5.3), .35)
+cyl(.3, 1.0, 6, red, (1.5, -8.2, 9.5), .25)
+for i in range(3): slab(.9, .9, 1.0, steel, (4.6 + i * 1.4, -8.2, 0))
+for x in (5.3, 6.7, 8.1): cyl(.15, 2.0, 5, steel, (x, -8.2, 0)); slab(.9, .15, .3, lamp, (x, -8.2, 2.0))
+slab(9, .15, .3, lamp, (-4, -10.5, 3.2))
+light("POINT", (1, .65, .25), 900, (-4, -11.5, 2.0)); light("POINT", (1, .75, .3), 500, (6.7, -8.2, 2.6))
+# transmission pylons marching away across the right bank, with catenary-ish cables
+for k in range(4):
+    x, y = 11.2, -6 + k * 4.6
+    for sx in (-.7, .7): line((x + sx, y, 0), (x + sx * .4, y, 6.5), .14, steel)
+    for z in (1.5, 3.5, 5.5): line((x - .6, y, z), (x + .6, y, z), .08, steel)
+    line((x - 1.2, y, 6.5), (x + 1.2, y, 6.5), .12, steel)
+    for s in (-1.2, 1.2):
+        line((x + s, y, 6.5), (x + s * .5, y, 5.5), .06, steel); line((x + s, y, 6.5), (x + s * .5, y, 7.5), .06, steel)
+    if k:
+        for s in (-1.2, 1.2): line((x + s, y, 6.5), (x + s, y - 4.6, 6.5), .05, cable)
+# a few pines on the left bank and boulders
+for i in range(12):
+    x, y = random.uniform(-9, -6), random.uniform(-8, 8)
+    cyl(.12, 1.0, 5, rock2, (x, y, 0)); cyl(.7, 2.0, 6, grass, (x, y, .8), .05)
+light("SUN", (.6, .72, 1), 5, (-26, -20, 12), (0, 0, 2)); light("SUN", (.9, .5, .3), 2, (24, 22, 10), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3.5)); co.location = t + Vector((6, -76, 40))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

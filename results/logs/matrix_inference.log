@@ -1,0 +1,43 @@
+matrix inference: 42 probes, 0 already done
+[1/42] Qwen3.5-0.8B-Base inference ckpt=0 1x2048 loss=vanilla  -> ok  peak 1.80 GB 4.3s
+[2/42] Qwen3.5-0.8B-Base inference ckpt=0 1x8192 loss=vanilla  -> ok  peak 2.58 GB 4.6s
+[3/42] Qwen3.5-0.8B-Base inference ckpt=0 1x32768 loss=vanilla  -> ok  peak 5.72 GB 6.0s
+[4/42] Qwen3.5-0.8B-Base inference+nf4 ckpt=0 1x2048 loss=vanilla  -> ok  peak 1.07 GB 4.4s
+[5/42] Qwen3.5-0.8B-Base inference+nf4 ckpt=0 1x8192 loss=vanilla  -> ok  peak 1.85 GB 4.7s
+[6/42] Qwen3.5-0.8B-Base inference+nf4 ckpt=0 1x32768 loss=vanilla  -> ok  peak 4.99 GB 6.1s
+[7/42] Qwen3.5-2B-Base inference ckpt=0 1x2048 loss=vanilla  -> ok  peak 4.07 GB 4.5s
+[8/42] Qwen3.5-2B-Base inference ckpt=0 1x8192 loss=vanilla  -> ok  peak 4.89 GB 5.0s
+[9/42] Qwen3.5-2B-Base inference ckpt=0 1x32768 loss=vanilla  -> ok  peak 8.18 GB 6.6s
+[10/42] Qwen3.5-2B-Base inference+nf4 ckpt=0 1x2048 loss=vanilla  -> ok  peak 2.03 GB 4.6s
+[11/42] Qwen3.5-2B-Base inference+nf4 ckpt=0 1x8192 loss=vanilla  -> ok  peak 2.85 GB 5.0s
+[12/42] Qwen3.5-2B-Base inference+nf4 ckpt=0 1x32768 loss=vanilla  -> ok  peak 6.14 GB 6.7s
+[13/42] Qwen3.5-4B-Base inference ckpt=0 1x2048 loss=vanilla  -> ok  peak 9.04 GB 11.0s
+[14/42] Qwen3.5-4B-Base inference ckpt=0 1x8192 loss=vanilla  -> ok  peak 10.72 GB 6.2s
+[15/42] Qwen3.5-4B-Base inference ckpt=0 1x32768 loss=vanilla  -> ok  peak 17.47 GB 9.7s
+[16/42] Qwen3.5-4B-Base inference+nf4 ckpt=0 1x2048 loss=vanilla  -> ok  peak 3.74 GB 5.5s
+[17/42] Qwen3.5-4B-Base inference+nf4 ckpt=0 1x8192 loss=vanilla  -> ok  peak 5.43 GB 6.3s
+[18/42] Qwen3.5-4B-Base inference+nf4 ckpt=0 1x32768 loss=vanilla  -> ok  peak 12.18 GB 9.9s
+[19/42] Qwen3.5-9B-Base inference ckpt=0 1x2048 loss=vanilla  -> ok  peak 18.55 GB 6.4s
+[20/42] Qwen3.5-9B-Base inference ckpt=0 1x8192 loss=vanilla  -> ok  peak 20.29 GB 7.6s
+[21/42] Qwen3.5-9B-Base inference ckpt=0 1x32768 loss=vanilla  -> oom (phase inference_prefill) peak 23.05 GB 6.0s
+[22/42] Qwen3.5-9B-Base inference+nf4 ckpt=0 1x2048 loss=vanilla  -> ok  peak 8.29 GB 6.7s
+[23/42] Qwen3.5-9B-Base inference+nf4 ckpt=0 1x8192 loss=vanilla  -> ok  peak 10.03 GB 7.8s
+[24/42] Qwen3.5-9B-Base inference+nf4 ckpt=0 1x32768 loss=vanilla  -> ok  peak 17.01 GB 12.7s
+[25/42] Qwen3-14B-Base inference ckpt=0 1x2048 loss=vanilla  -> oom (phase load)  3.4s
+[26/42] Qwen3-14B-Base inference ckpt=0 1x8192 loss=vanilla  -> oom (phase load)  3.4s
+[27/42] Qwen3-14B-Base inference ckpt=0 1x32768 loss=vanilla  -> oom (phase load)  3.4s
+[28/42] Qwen3-14B-Base inference+nf4 ckpt=0 1x2048 loss=vanilla  -> ok  peak 10.73 GB 46.5s
+[29/42] Qwen3-14B-Base inference+nf4 ckpt=0 1x8192 loss=vanilla  -> ok  peak 12.52 GB 12.0s
+[30/42] Qwen3-14B-Base inference+nf4 ckpt=0 1x32768 loss=vanilla  -> ok  peak 20.13 GB 17.7s
+[31/42] Qwen3.8-27B inference ckpt=0 1x2048 loss=vanilla  -> oom (phase load)  3.3s
+[32/42] Qwen3.8-27B inference ckpt=0 1x8192 loss=vanilla  -> oom (phase load)  3.3s
+[33/42] Qwen3.8-27B inference ckpt=0 1x32768 loss=vanilla  -> oom (phase load)  3.4s
+[34/42] Qwen3.8-27B inference+nf4 ckpt=0 1x2048 loss=vanilla  -> ok  peak 18.75 GB 60.2s
+[35/42] Qwen3.8-27B inference+nf4 ckpt=0 1x8192 loss=vanilla  -> ok  peak 21.40 GB 18.0s
+[36/42] Qwen3.8-27B inference+nf4 ckpt=0 1x32768 loss=vanilla  -> oom (phase inference_prefill) peak 21.06 GB 11.4s
+[37/42] Nanbeige4.3-33B-Base inference ckpt=0 1x2048 loss=vanilla  -> oom (phase load)  3.4s
+[38/42] Nanbeige4.3-33B-Base inference ckpt=0 1x8192 loss=vanilla  -> oom (phase load)  3.4s
+[39/42] Nanbeige4.3-33B-Base inference ckpt=0 1x32768 loss=vanilla  -> oom (phase load)  3.4s
+[40/42] Nanbeige4.3-33B-Base inference+nf4 ckpt=0 1x2048 loss=vanilla  -> ok  peak 21.74 GB 80.8s
+[41/42] Nanbeige4.3-33B-Base inference+nf4 ckpt=0 1x8192 loss=vanilla  -> oom (phase inference_prefill) peak 21.77 GB 14.8s
+[42/42] Nanbeige4.3-33B-Base inference+nf4 ckpt=0 1x32768 loss=vanilla  -> oom (phase inference_prefill) peak 21.20 GB 12.7s

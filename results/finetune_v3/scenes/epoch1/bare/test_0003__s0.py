@@ -1,0 +1,111 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1160)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def dye(rgb, glow=0):
+    m = bpy.data.materials.new("d"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .85
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+snow, snow2, drift, pad, padmark = dye((.6, .68, .82)), dye((.48, .58, .75)), dye((.75, .82, .92)), dye((.16, .2, .26)), dye((.7, .7, .65))
+wood, wood2, roof, heli, heli2 = dye((.3, .17, .09)), dye((.2, .11, .06)), dye((.14, .15, .2)), dye((.6, .06, .05)), dye((.7, .7, .72))
+glass, tank, skis, pole, dark = dye((1, .72, .35), 12), dye((.1, .25, .15)), dye((.9, .5, .1)), dye((.5, .5, .55)), dye((.04, .05, .07))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("o", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(at, d, m, rz=0, rx=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return add(bm, m, at, (rx, 0, rz))
+def tube(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def lump(at, r, m, sq=(1, 1, .7), j=.15):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) + Vector((random.uniform(-j, j), random.uniform(-j, j), random.uniform(-j, j))) * r
+    return add(bm, m, at)
+def beam(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return add(bm, m)
+def lit(kind, rgb, w, at, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = rgb; l.energy = w
+    o = bpy.data.objects.new("o", l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# snowy mountain base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=12.5, depth=4)
+for v in bm.verts:
+    v.co.z -= 2
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+add(bm, snow2)
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(4, 11)
+    lump((math.cos(a) * r, math.sin(a) * r, .2), random.uniform(.8, 1.6), snow if i % 2 else drift, (1.6, 1, .5), .12)
+# heli pad
+tube((0, 3.2, 0), 4.6, .25, 10, pad)
+tube((0, 3.2, .25), 3.6, .04, 10, padmark)
+tube((0, 3.2, .25), 1.0, .05, 8, padmark)
+for k in range(4):
+    a = k * 1.57 + .78; box((math.cos(a) * 4.4, 3.2 + math.sin(a) * 4.4, 0), (.5, .5, 1.0), pole); box((math.cos(a) * 4.4, 3.2 + math.sin(a) * 4.4, 1.0), (.7, .7, .3), heli)
+# helicopter
+hx, hy, hz = 0, 3.2, .25
+box((hx, hy, hz + .9), (1.7, 3.4, 1.1), heli)
+lump((hx, hy - 1.8, hz + 1.6), .9, heli2, (1, 1, .9), .05)
+box((hx, hy - 2.5, hz + 1.1), (1.0, .5, .7), glass)
+box((hx, hy + 1.7, hz + .7), (1.9, 2.4, .15), heli2)
+beam((hx, hy + 1.7, hz + 1.0), (hx, hy + 5.6, hz + 1.2), .2, dark)
+beam((hx, hy + 5.6, hz + 1.2), (hx, hy + 6.2, hz + .6), .15, dark)
+tube((hx, hy - 1.8, hz + 2.3), .15, .3, 5, dark)
+for s in (-1, 1):
+    tube((hx + s * .1, hy - 1.8, hz + 2.6), 2.6, .06, 3, heli2, rot=(0, 0, 0)); tube((hx + s * 1.2, hy + .4, hz + .3), .5, .5, 7, dark, rot=(math.pi / 2, 0, 0))
+    beam((hx, hy + 1.2, hz + .6), (hx + s * 1.2, hy + .4, hz + .3), .12, dark)
+# the lodge
+lx, ly = -7.5, 1.5
+box((lx, ly, 0), (6, 4.4, 2.6), wood)
+box((lx, ly, 2.6), (6.6, 5.0, .3), wood2)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 6.8, v.co.y * 5.2, (v.co.z + .5) * 1.8))
+    if v.co.z > .9: v.co.y = 0
+add(bm, roof, (lx, ly, 2.9))
+box((lx, ly - 2.25, .9), (1.4, .1, 1.3), glass)
+for wx in (-2, 2): box((lx + wx, ly - 2.25, 1.0), (.9, .1, .9), glass)
+box((lx + 2.8, ly + .5, 2.6), (.7, .7, 1.8), wood2); box((lx + 2.8, ly + .5, 4.4), (.9, .9, .2), roof)
+lit("POINT", (1, .7, .35), 900, (lx, ly - 3, 1.5))
+box((lx + 1.8, ly - 2.7, 0), (1.6, .2, 1.5), glass)
+# ski rack with skis and poles
+rx, ry = 6.5, -3.0
+for s in (-1, 1):
+    beam((rx + s * 1.6, ry, 0), (rx + s * 1.6, ry, 1.8), .12, pole); beam((rx + s * 1.6, ry - .4, 0), (rx + s * 1.6, ry - .4, 1.4), .1, pole)
+beam((rx - 1.6, ry, 1.7), (rx + 1.6, ry, 1.7), .12, pole)
+for i in range(6):
+    beam((rx - 1.3 + i * .5, ry, 1.0), (rx - 1.3 + i * .5, ry, 1.8), .1, skis if i % 2 else heli)
+    beam((rx - 1.2 + i * .5, ry - .5, 0), (rx - 1.2 + i * .5, ry - .5, 1.4), .06, pole)
+# fuel cache
+fx, fy = 7.0, 4.5
+for dx in (-.8, .8):
+    for dy in (-.8, .8): beam((fx + dx, fy + dy, 0), (fx + dx, fy + dy, 1.5), .12, pole)
+box((fx, fy, 1.5), (2.4, 2.4, .15), wood2)
+box((fx, fy, 1.6), (1.9, 1.9, .1), roof)
+for i in range(3):
+    tube((fx - .6 + i * .6, fy, .1), .28, 1.3, 7, tank)
+tube((fx, fy - 1.3, .1), .2, .5, 5, heli)
+box((fx - .5, fy - 1.0, 1.6), (.1, .1, .1), pole)
+# trees
+for x, y in ((-9, 8), (-3, 9), (4, 9), (9, 8), (10, -1), (-10, -3), (-5, -9), (3, -9), (-9, 4), (10, 6)):
+    for k in range(3): tube((x, y, 1 + k * 1.0), 1.3 - k * .35, 1.5, 6, dye((.05, .17, .13)), r2=.1)
+    tube((x, y, 0), .2, 1.2, 5, wood2)
+lit("SUN", (1, .8, .6), 5, (-24, -12, 7), (0, 0, 2))
+lit("SUN", (.4, .55, 1), 2.2, (22, 20, 12), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .05, .13, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 1.5)); co.location = t + Vector((24, -52, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

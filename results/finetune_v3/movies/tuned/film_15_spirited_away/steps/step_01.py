@@ -1,0 +1,101 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1083)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+ink = {}
+def dye(name, rgb, em=0, rough=.85):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    ink[name] = m
+dye("floor", (.1, .12, .13)); dye("wood", (.3, .14, .07)); dye("wall", (.38, .22, .12)); dye("roof", (.08, .12, .15)); dye("roof2", (.12, .16, .2))
+dye("red", (.55, .08, .05)); dye("paper", (1, .6, .2), 7); dye("steam", (.55, .6, .65), .15, 1); dye("pond", (.04, .12, .16), rough=.1); dye("stone", (.25, .25, .27))
+dye("gold", (.7, .5, .12)); dye("moss", (.1, .22, .12)); dye("black", (.02, .02, .03)); dye("lantern", (1, .45, .1), 9)
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(ink[m]); return o
+def slab(at, s, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return put(bm, m, at, (0, 0, rz))
+def post(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at, rot)
+def puff(at, r, m, sq=.7):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return put(bm, m, at)
+def roof(at, w, d, h, m, over=.6):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        if v.co.z > 0: v.co.x = 0; v.co.z += h
+        v.co.x *= w + over * (v.co.z < 0) * 1 + over * (v.co.z > 0) * .3
+        v.co.y *= d + over * (v.co.z < 0) * 1 + over * (v.co.z > 0) * .3
+        v.co.z += h / 2 if v.co.z > 0 else 0
+    return put(bm, m, at)
+def lit(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# floating base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=8, radius2=17, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    v.co.z -= 2
+put(bm, "floor")
+# pond with a stone rim
+post((0, -1, 0), 11.5, .2, 10, "pond")
+for i in range(14):
+    a = i * 6.283 / 14; puff((math.cos(a) * 11.6, math.sin(a) * 11.6 - 1, .1), random.uniform(.6, 1.0), "stone", .6)
+# the hall: platform, walls, veranda, roof tiers
+slab((0, 5, 0), (14, 9, 1.2), "wood"); slab((0, 5, 1.2), (13, 8, 3.2), "wall")
+for i in range(5):
+    x = -4.8 + i * 2.4
+    slab((x, .9, 1.2), (1.4, .1, 2.4), "paper"); slab((x, .8, 1.2), (1.8, .3, .15), "wood")
+slab((0, .6, 1.2), (14, 1.4, .2), "wood"); slab((0, .6, 3.4), (14.5, 1.6, .2), "wood")
+for i in range(6): post((-6 + i * 2.4, -.2, 1.2), .18, 2.4, 6, "red")
+roof((0, 5, 4.4), 14, 9, 2.4, "roof", .8); roof((0, 5, 6.6), 9, 6, 2.0, "roof2", .6); roof((0, 5, 8.4), 5, 3.5, 1.6, "roof", .5)
+for s in (-1, 1):
+    for e in (-1, 1): post((s * 7.1, 5 + e * 4.6, 4.4), .12, 2.6, 5, "red", .02, (0, s * .5 * e * 0 + e * .5, 0))
+slab((0, .9, 3.6), (14.5, .15, .15), "gold")
+for i in range(5): slab((-4.8 + i * 2.4, .85, 3.4), (1.5, .05, .12), "gold")
+# red bridge: deck, rails, posts, curved ends
+for i in range(11):
+    x = -1.5 + i * 1.1; y = -9.5 + (i * 1.1) * .9
+    slab((x, y, .35 + (1 - abs(i - 5) / 5) * .5), (1.15, 1.5, .2), "red", 0)
+for s in (-1, 1):
+    for i in range(11):
+        x = -1.5 + i * 1.1; y = -9.5 + i * 1.1 * .9; z = .55 + (1 - abs(i - 5) / 5) * .5
+        post((x, y + s * .7, z), .07, 1.0, 5, "red")
+        if i:
+            x0 = -1.5 + (i - 1) * 1.1; y0 = -9.5 + (i - 1) * 1.1 * .9; z0 = .55 + (1 - abs(i - 1 - 5) / 5) * .5
+            d = Vector((x - x0, y - y0, z - z0)); o = post((x0, y0, z0 + 1.0), .05, d.length, 4, "red"); o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
+for i in range(5):
+    x = -1.5 + i * 2.2; y = -9.5 + i * 2.2 * .9 + .5; z = .55 + (1 - abs(i * 2.2 - 5.5) / 5.5) * .5
+    slab((x, y, z + 1.0), (.5, .5, .7), "paper", .3)
+    lit("POINT", (1, .5, .15), 90, (x, y, z + 1.8))
+# steam rising from the roof and vents
+for i, (x, y) in enumerate(((-4, 6), (3, 7), (0, 3))):
+    for k in range(4): puff((x + k * .3 * (i - 1), y, 6.5 + k * 1.5), .8 + k * .35, "steam", .8)
+# stone lanterns and trees
+for x, y in ((-9, -3), (9, -3), (-9, 4), (9, 4)):
+    post((x, y, 0), .45, 1.4, 6, "stone", .3); slab((x, y, 1.4), (.9, .9, .8), "stone", .4); slab((x, y, 1.6), (.6, .6, .4), "lantern")
+    post((x, y, 2.2), .8, .35, 6, "stone", .1); lit("POINT", (1, .5, .15), 160, (x, y, 1.9))
+for x, y, h in ((-12, 8, 5), (12, 9, 6), (-13, 2, 4.5)):
+    post((x, y, 0), .3, h, 5, "wood", .15)
+    for k in range(3): puff((x, y, h + k * .9), 1.8 - k * .4, "moss", .8)
+# glowing window spill and lights
+lit("POINT", (1, .55, .2), 700, (0, -1, 2.5)); lit("POINT", (1, .5, .2), 500, (0, 5, 7))
+lit("SUN", (.35, .5, 1), 4, (-26, -18, 12), (0, 0, 3)); lit("SUN", (.7, .35, .9), 2.2, (22, 24, 10), (0, 0, 3))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 85; cam.clip_end = 600
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 4)); co.location = t + Vector((10, -68, 42))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

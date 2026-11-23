@@ -1,0 +1,321 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set units
+scene = bpy.context.scene
+scene.unit_settings.system = 'METRIC'
+scene.unit_settings.scale_length = 1.0
+
+# Lighting - dim for night
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.01, 0.01, 0.02, 1.0)
+    bg.inputs[1].default_value = 1.0
+
+# Remove default lights if any
+for obj in list(bpy.data.objects):
+    if obj.type == 'LIGHT':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Ground - desert
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Desert_Ground"
+mat_ground = bpy.data.materials.new("Desert_Sand")
+mat_ground.use_nodes = True
+bsdf = mat_ground.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.55, 0.45, 0.3, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(mat_ground)
+
+# Add some dunes (displacement via simple geometry)
+for i in range(5):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(5, 15), location=(random.uniform(-40, 40), random.uniform(-40, 40), -3))
+    dune = bpy.context.active_object
+    dune.name = f"Dune_{i}"
+    dune.scale = (1, 1, 0.3)
+    mat_dune = bpy.data.materials.new(f"Dune_Mat_{i}")
+    mat_dune.use_nodes = True
+    bsdf_d = mat_dune.node_tree.nodes.get("Principled BSDF")
+    bsdf_d.inputs["Base Color"].default_value = (0.5, 0.4, 0.25, 1.0)
+    dune.data.materials.append(mat_dune)
+
+# Tents
+def make_tent(location, rotation=0, scale=1.0):
+    # Simple pyramid tent
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius=1.5 * scale, depth=2 * scale, location=location)
+    tent = bpy.context.active_object
+    tent.name = "Tent"
+    tent.rotation_euler = (0, 0, rotation)
+    mat_tent = bpy.data.materials.new("Tent_Fabric")
+    mat_tent.use_nodes = True
+    bsdf_t = mat_tent.node_tree.nodes.get("Principled BSDF")
+    bsdf_t.inputs["Base Color"].default_value = (0.8, 0.75, 0.6, 1.0)
+    bsdf_t.inputs["Roughness"].default_value = 0.8
+    tent.data.materials.append(mat_tent)
+    return tent
+
+# Place 3 tents
+tent_positions = [(-5, -3, 1), (0, -6, 1), (5, -4, 1)]
+for i, pos in enumerate(tent_positions):
+    make_tent(pos, rotation=i * 0.3, scale=1.0)
+
+# Telescopes (3)
+def make_telescope(location, angle=0):
+    # Tripod legs
+    for leg_angle in [0, 2.09, 4.19]:
+        leg_rot = leg_angle + angle
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=1.2, location=(
+            location[0] + 0.3 * math.cos(leg_rot),
+            location[1] + 0.3 * math.sin(leg_rot),
+            0.6
+        ))
+        leg = bpy.context.active_object
+        leg.name = "Tripod_Leg"
+        leg.rotation_euler = (0.2 * math.sin(leg_rot), 0.2 * math.cos(leg_rot), 0)
+        mat_leg = bpy.data.materials.new("Metal")
+        mat_leg.use_nodes = True
+        bsdf_l = mat_leg.node_tree.nodes.get("Principled BSDF")
+        bsdf_l.inputs["Base Color"].default_value = (0.2, 0.2, 0.2, 1.0)
+        bsdf_l.inputs["Metallic"].default_value = 0.8
+        bsdf_l.inputs["Roughness"].default_value = 0.3
+        leg.data.materials.append(mat_leg)
+
+    # Mount
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.3, location=(location[0], location[1], 1.2))
+    mount = bpy.context.active_object
+    mount.name = "Telescope_Mount"
+    mat_mount = bpy.data.materials.new("Mount_Metal")
+    mat_mount.use_nodes = True
+    bsdf_m = mat_mount.node_tree.nodes.get("Principled BSDF")
+    bsdf_m.inputs["Base Color"].default_value = (0.1, 0.1, 0.1, 1.0)
+    bsdf_m.inputs["Metallic"].default_value = 0.9
+    mount.data.materials.append(mat_mount)
+
+    # Tube
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.0, location=(location[0], location[1], 1.6))
+    tube = bpy.context.active_object
+    tube.name = "Telescope_Tube"
+    tube.rotation_euler = (math.radians(30), 0, angle)
+    mat_tube = bpy.data.materials.new("Tube_Black")
+    mat_tube.use_nodes = True
+    bsdf_tb = mat_tube.node_tree.nodes.get("Principled BSDF")
+    bsdf_tb.inputs["Base Color"].default_value = (0.05, 0.05, 0.05, 1.0)
+    bsdf_tb.inputs["Roughness"].default_value = 0.4
+    tube.data.materials.append(mat_tube)
+
+    # Lens cap (slightly lighter)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.02, location=(
+        location[0] + 0.5 * math.sin(math.radians(30)) * math.cos(angle),
+        location[1] + 0.5 * math.sin(math.radians(30)) * math.sin(angle),
+        1.6 + 0.5 * math.cos(math.radians(30))
+    ))
+    lens = bpy.context.active_object
+    lens.name = "Lens"
+    lens.rotation_euler = (math.radians(30), 0, angle)
+    mat_lens = bpy.data.materials.new("Lens_Glass")
+    mat_lens.use_nodes = True
+    bsdf_gl = mat_lens.node_tree.nodes.get("Principled BSDF")
+    bsdf_gl.inputs["Base Color"].default_value = (0.6, 0.7, 0.9, 1.0)
+    bsdf_gl.inputs["Roughness"].default_value = 0.1
+    lens.data.materials.append(mat_lens)
+
+telescope_positions = [(-2, 2, 0), (2, 3, 0), (0, 5, 0)]
+for i, pos in enumerate(telescope_positions):
+    make_telescope(pos, angle=i * 0.5)
+
+# Red lamp (small dome + light)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(3, -2, 0.5))
+lamp_base = bpy.context.active_object
+lamp_base.name = "Red_Lamp_Dome"
+lamp_base.scale = (1, 1, 0.6)
+mat_lamp = bpy.data.materials.new("Red_Lamp")
+mat_lamp.use_nodes = True
+bsdf_rl = mat_lamp.node_tree.nodes.get("Principled BSDF")
+bsdf_rl.inputs["Base Color"].default_value = (0.8, 0.1, 0.1, 1.0)
+bsdf_rl.inputs["Emission Color"].default_value = (1.0, 0.1, 0.1, 1.0)
+bsdf_rl.inputs["Emission Strength"].default_value = 2.0
+lamp_base.data.materials.append(mat_lamp)
+
+# Point light for red lamp
+bpy.ops.object.light_add(type='POINT', location=(3, -2, 0.7))
+red_light = bpy.context.active_object
+red_light.name = "Red_Lamp_Light"
+red_light.data.color = (1.0, 0.1, 0.1)
+red_light.data.energy = 50
+red_light.data.shadow_soft_size = 0.2
+
+# Folding chairs (simple)
+def make_folding_chair(location, rotation=0):
+    # Seat
+    bpy.ops.mesh.primitive_cube_add(size=0.4, location=location)
+    seat = bpy.context.active_object
+    seat.name = "Chair_Seat"
+    seat.rotation_euler = (0, 0, rotation)
+    mat_chair = bpy.data.materials.new("Chair_Fabric")
+    mat_chair.use_nodes = True
+    bsdf_c = mat_chair.node_tree.nodes.get("Principled BSDF")
+    bsdf_c.inputs["Base Color"].default_value = (0.4, 0.5, 0.6, 1.0)
+    seat.data.materials.append(mat_chair)
+
+    # Backrest
+    bpy.ops.mesh.primitive_cube_add(size=0.35, location=(
+        location[0] - 0.15 * math.sin(rotation),
+        location[1] + 0.15 * math.cos(rotation),
+        location[2] + 0.3
+    ))
+    back = bpy.context.active_object
+    back.name = "Chair_Back"
+    back.rotation_euler = (math.radians(15), 0, rotation)
+    back.scale = (0.8, 0.8, 1.2)
+    back.data.materials.append(mat_chair)
+
+    # Legs (4)
+    for dx, dy in [(-0.15, -0.15), (0.15, -0.15), (-0.15, 0.15), (0.15, 0.15)]:
+        lx = location[0] + dx * math.cos(rotation) - dy * math.sin(rotation)
+        ly = location[1] + dx * math.sin(rotation) + dy * math.cos(rotation)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.4, location=(lx, ly, location[2] - 0.2))
+        leg = bpy.context.active_object
+        leg.name = "Chair_Leg"
+        mat_leg2 = bpy.data.materials.new("Chair_Leg_Metal")
+        mat_leg2.use_nodes = True
+        bsdf_l2 = mat_leg2.node_tree.nodes.get("Principled BSDF")
+        bsdf_l2.inputs["Base Color"].default_value = (0.3, 0.3, 0.3, 1.0)
+        bsdf_l2.inputs["Metallic"].default_value = 0.7
+        leg.data.materials.append(mat_leg2)
+
+# Place 4 chairs
+chair_positions = [(-1, -1, 0.2), (1, -1, 0.2), (-1, 1, 0.2), (1, 1, 0.2)]
+for i, pos in enumerate(chair_positions):
+    make_folding_chair(pos, rotation=i * 1.57)
+
+# Milky Way - create a skydome with stars
+bpy.ops.mesh.primitive_uv_sphere_add(radius=80, location=(0, 0, 0))
+skydome = bpy.context.active_object
+skydome.name = "Sky_Dome"
+skydome.scale = (1, 1, 0.8)  # slightly flatten
+
+# Milky Way material with procedural stars
+mat_sky = bpy.data.materials.new("Milky_Way_Sky")
+mat_sky.use_nodes = True
+nodes = mat_sky.node_tree.nodes
+links = mat_sky.node_tree.links
+
+# Clear default nodes
+for node in list(nodes):
+    nodes.remove(node)
+
+# Output
+output_node = nodes.new("ShaderNodeOutputMaterial")
+output_node.location = (600, 0)
+
+# Background shader
+bg_node = nodes.new("ShaderNodeBackground")
+bg_node.location = (400, 0)
+bg_node.inputs["Strength"].default_value = 1.0
+
+# Mix of dark sky and star field
+# Use a noise texture for star pattern
+tex_coord = nodes.new("ShaderNodeTexCoord")
+tex_coord.location = (-400, 0)
+
+mapping = nodes.new("ShaderNodeMapping")
+mapping.location = (-200, 0)
+links.new(tex_coord.outputs["Generated"], mapping.inputs["Vector"])
+
+# Voronoi for stars
+voronoi = nodes.new("ShaderNodeTexVoronoi")
+voronoi.location = (0, 100)
+voronoi.inputs["Scale"].default_value = 500.0
+links.new(mapping.outputs["Vector"], voronoi.inputs["Vector"])
+
+# Threshold for stars
+math_less = nodes.new("ShaderNodeMath")
+math_less.location = (200, 100)
+math_less.operation = 'LESS_THAN'
+math_less.inputs[1].default_value = 0.05
+links.new(voronoi.outputs["Distance"], math_less.inputs[0])
+
+# Milky Way band - use a gradient along one axis
+# Separate XYZ to get Y coordinate for band
+sep_xyz = nodes.new("ShaderNodeSeparateXYZ")
+sep_xyz.location = (0, -100)
+links.new(mapping.outputs["Vector"], sep_xyz.inputs["Vector"])
+
+# Band: narrow range around Y=0
+math_abs = nodes.new("ShaderNodeMath")
+math_abs.location = (200, -100)
+math_abs.operation = 'ABSOLUTE'
+links.new(sep_xyz.outputs["Y"], math_abs.inputs[0])
+
+math_band = nodes.new("ShaderNodeMath")
+math_band.location = (350, -100)
+math_band.operation = 'LESS_THAN'
+math_band.inputs[1].default_value = 0.15
+links.new(math_abs.outputs["Value"], math_band.inputs[0])
+
+# Combine stars and band
+math_max = nodes.new("ShaderNodeMath")
+math_max.location = (400, 50)
+math_max.operation = 'MAXIMUM'
+links.new(math_less.outputs["Value"], math_max.inputs[0])
+links.new(math_band.outputs["Value"], math_max.inputs[1])
+
+# Color: dark blue background, white stars, faint milky way
+# Base dark
+mix_color = nodes.new("ShaderNodeMixRGB")
+mix_color.location = (500, -50)
+mix_color.inputs["Color1"].default_value = (0.005, 0.005, 0.015, 1.0)  # dark sky
+mix_color.inputs["Color2"].default_value = (0.8, 0.85, 1.0, 1.0)  # star white
+links.new(math_max.outputs["Value"], mix_color.inputs["Fac"])
+
+links.new(mix_color.outputs["Color"], bg_node.inputs["Color"])
+links.new(bg_node.outputs["Background"], output_node.inputs["Surface"])
+
+skydome.data.materials.append(mat_sky)
+
+# Flip normals so we see inside
+bpy.context.view_layer.objects.active = skydome
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.flip_normals()
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Add a few bright point lights to simulate stars (optional, subtle)
+for i in range(10):
+    angle = random.uniform(0, 2 * math.pi)
+    elev = random.uniform(math.radians(30), math.radians(80))
+    r = 75
+    x = r * math.cos(elev) * math.cos(angle)
+    y = r * math.cos(elev) * math.sin(angle)
+    z = r * math.sin(elev)
+    bpy.ops.object.light_add(type='POINT', location=(x, y, z))
+    star_light = bpy.context.active_object
+    star_light.name = f"Star_Light_{i}"
+    star_light.data.energy = 0.5
+    star_light.data.color = (0.9, 0.9, 1.0)
+    star_light.data.shadow_soft_size = 0.01
+
+# Camera setup
+bpy.ops.object.camera_add(location=(0, -15, 3), rotation=(math.radians(80), 0, 0))
+camera = bpy.context.active_object
+camera.name = "Camp_Camera"
+scene.camera = camera
+
+# Render settings
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+
+print("Desert astronomers' camp modeled successfully!")

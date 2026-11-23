@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 4.6,
+ "error": "AttributeError: 'Scene' object has no attribute 'node_tree'",
+ "error_line": "ct = scene.node_tree",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 183,
+ "n_lights": 5,
+ "n_materials": 21,
+ "own_camera": true,
+ "render_error": null
+}

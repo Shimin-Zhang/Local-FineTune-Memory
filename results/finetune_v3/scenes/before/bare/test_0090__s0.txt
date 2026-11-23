@@ -1,0 +1,224 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# --- Clean scene ---
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# --- World / Sky (Blazing Noon) ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+nodes.clear()
+
+bg = nodes.new('ShaderNodeBackground')
+bg.inputs[0].default_value = (0.55, 0.65, 0.85, 1.0)  # Pale blue sky
+bg.inputs[1].default_value = 1.2
+
+output = nodes.new('ShaderNodeOutputWorld')
+links.new(bg.outputs[0], output.inputs[0])
+
+# --- Sun (Harsh Noon) ---
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 4.5
+sun_data.color = (1.0, 0.95, 0.85)
+sun_data.angle = math.radians(2)
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = (math.radians(15), math.radians(10), math.radians(45))
+
+# --- Materials ---
+def create_mat(name, base_color, roughness=0.5, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = base_color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+mat_steel = create_mat("Steel", (0.55, 0.58, 0.62), roughness=0.35, metallic=0.85)
+mat_rust = create_mat("Rust", (0.35, 0.12, 0.05), roughness=0.8, metallic=0.2)
+mat_dirt = create_mat("Dirt", (0.45, 0.35, 0.22), roughness=0.95, metallic=0.0)
+mat_concrete = create_mat("Concrete", (0.55, 0.53, 0.50), roughness=0.9, metallic=0.0)
+mat_dark = create_mat("DarkMetal", (0.15, 0.15, 0.15), roughness=0.5, metallic=0.6)
+
+# --- Ground (Dusty Desert) ---
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "DesertGround"
+ground.data.materials.append(mat_dirt)
+
+# Add displacement for uneven terrain
+mod = ground.modifiers.new("Displace", 'DISPLACE')
+tex = bpy.data.textures.new("GroundNoise", type='CLOUDS')
+tex.noise_scale = 8.0
+mod.texture = tex
+mod.strength = 0.6
+
+# --- Water Tank (Steel, Cylindrical) ---
+tank_center = (0, 0, 0)
+tank_radius = 4.0
+tank_height = 6.0
+leg_height = 5.0
+
+# Tank body
+bpy.ops.mesh.primitive_cylinder_add(radius=tank_radius, depth=tank_height, location=(tank_center[0], tank_center[1], leg_height + tank_height/2))
+tank = bpy.context.active_object
+tank.name = "WaterTank"
+tank.data.materials.append(mat_steel)
+
+# Tank top (dome)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=tank_radius, location=(tank_center[0], tank_center[1], leg_height + tank_height))
+dome = bpy.context.active_object
+dome.name = "TankDome"
+dome.scale = (1, 1, 0.4)
+dome.data.materials.append(mat_steel)
+
+# Tank legs (4)
+leg_positions = [
+    (tank_radius * 0.8, tank_radius * 0.8),
+    (tank_radius * 0.8, -tank_radius * 0.8),
+    (-tank_radius * 0.8, tank_radius * 0.8),
+    (-tank_radius * 0.8, -tank_radius * 0.8)
+]
+
+for i, (lx, ly) in enumerate(leg_positions):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=leg_height, location=(lx, ly, leg_height/2))
+    leg = bpy.context.active_object
+    leg.name = f"TankLeg_{i}"
+    leg.data.materials.append(mat_steel)
+
+    # Cross brace
+    if i == 0:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=tank_radius * 1.4, location=(0, 0, leg_height * 0.5))
+        brace = bpy.context.active_object
+        brace.name = "CrossBrace_H"
+        brace.rotation_euler = (0, math.radians(90), 0)
+        brace.data.materials.append(mat_steel)
+    if i == 1:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=tank_radius * 1.4, location=(0, 0, leg_height * 0.5))
+        brace2 = bpy.context.active_object
+        brace2.name = "CrossBrace_V"
+        brace2.rotation_euler = (math.radians(90), 0, 0)
+        brace2.data.materials.append(mat_steel)
+
+# --- Rusty Ladder on Tank ---
+ladder_x = tank_radius + 0.1
+ladder_y = 0
+ladder_height = leg_height + tank_height * 0.8
+
+# Ladder rails
+for offset in [-0.2, 0.2]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=ladder_height, location=(ladder_x, ladder_y + offset, ladder_height/2))
+    rail = bpy.context.active_object
+    rail.name = f"LadderRail_{offset}"
+    rail.data.materials.append(mat_rust)
+
+# Ladder rungs
+num_rungs = int(ladder_height / 0.4)
+for j in range(num_rungs):
+    rung_z = 0.3 + j * 0.4
+    if rung_z < ladder_height:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.4, location=(ladder_x, ladder_y, rung_z))
+        rung = bpy.context.active_object
+        rung.name = f"LadderRung_{j}"
+        rung.rotation_euler = (math.radians(90), 0, 0)
+        rung.data.materials.append(mat_rust)
+
+# --- Windmill Pump (Beside the tank) ---
+wm_x = -10
+wm_y = 5
+
+# Windmill base/tower
+bpy.ops.mesh.primitive_cone_add(radius1=0.8, radius2=0.3, depth=6, location=(wm_x, wm_y, 3))
+tower = bpy.context.active_object
+tower.name = "WindmillTower"
+tower.data.materials.append(mat_steel)
+
+# Windmill head
+bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.6, location=(wm_x, wm_y, 6.2))
+head = bpy.context.active_object
+head.name = "WindmillHead"
+head.rotation_euler = (0, math.radians(90), 0)
+head.data.materials.append(mat_steel)
+
+# Windmill blades (4)
+blade_length = 3.0
+for k in range(4):
+    angle = k * math.radians(90)
+    blade_x = wm_x + math.cos(angle) * 0.5
+    blade_y = wm_y + math.sin(angle) * 0.5
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(blade_x, blade_y, 6.2))
+    blade = bpy.context.active_object
+    blade.name = f"WindmillBlade_{k}"
+    blade.scale = (blade_length, 0.3, 1)
+    blade.rotation_euler = (0, 0, angle + math.radians(90))
+    blade.data.materials.append(mat_steel)
+
+# Pump base (ground level)
+bpy.ops.mesh.primitive_cube_add(size=1.5, location=(wm_x, wm_y, 0.75))
+pump_base = bpy.context.active_object
+pump_base.name = "PumpBase"
+pump_base.data.materials.append(mat_concrete)
+
+# Pump mechanism
+bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=1.2, location=(wm_x, wm_y, 1.5))
+pump_mech = bpy.context.active_object
+pump_mech.name = "PumpMechanism"
+pump_mech.data.materials.append(mat_rust)
+
+# --- Dusty Road ---
+bpy.ops.mesh.primitive_plane_add(size=3, location=(5, 0, 0.02))
+road = bpy.context.active_object
+road.name = "DustyRoad"
+road.scale = (20, 1, 1)
+road.data.materials.append(mat_dirt)
+
+# Make road slightly lighter/dustier
+mat_road = create_mat("DustyRoadMat", (0.55, 0.45, 0.30), roughness=0.95, metallic=0.0)
+road.data.materials.clear()
+road.data.materials.append(mat_road)
+
+# --- Scattered Rocks/Debris for Texas Desert Feel ---
+random.seed(42)
+for i in range(30):
+    rx = random.uniform(-20, 20)
+    ry = random.uniform(-15, 15)
+    if abs(rx - 5) < 3 and abs(ry) < 2:  # Avoid road
+        continue
+    size = random.uniform(0.1, 0.5)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=size, subdivisions=1, location=(rx, ry, size*0.5))
+    rock = bpy.context.active_object
+    rock.name = f"Rock_{i}"
+    rock.scale = (1, random.uniform(0.7, 1.3), random.uniform(0.5, 0.8))
+    rock.rotation_euler = (random.uniform(0, 3.14), random.uniform(0, 3.14), random.uniform(0, 3.14))
+    rock.data.materials.append(mat_dirt)
+
+# --- Camera Setup ---
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam_obj = bpy.data.objects.new("Camera", cam_data)
+bpy.context.collection.objects.link(cam_obj)
+cam_obj.location = (15, 12, 3)
+cam_obj.rotation_euler = (math.radians(75), 0, math.radians(-45))
+
+bpy.context.scene.camera = cam_obj
+
+# --- Render Settings for Blazing Noon ---
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'
+
+print("Scene created: Steel water tank, windmill pump, rusty ladder, dusty Texas desert road at blazing noon.")
+```

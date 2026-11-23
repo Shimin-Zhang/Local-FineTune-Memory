@@ -1,0 +1,154 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Move camera closer and lower to see the animals better
+cam = bpy.data.objects.get('Camera')
+if cam:
+    cam.location = (0, -50, 15)
+    cam.rotation_euler = (math.radians(85), 0, 0)
+    cam.data.lens = 35
+
+# Add a sun glow / lens flare effect using an emission sphere at the sun position
+# Position the sun glow near the horizon
+sun_glow_mat = bpy.data.materials.new('SunGlow')
+sun_glow_mat.use_nodes = True
+nodes = sun_glow_mat.node_tree.nodes
+links = sun_glow_mat.node_tree.links
+for node in nodes:
+    nodes.remove(node)
+emission = nodes.new('ShaderNodeEmission')
+emission.inputs['Color'].default_value = (1.0, 0.5, 0.2, 1.0)
+emission.inputs['Strength'].default_value = 50
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(emission.outputs['Emission'], out.inputs['Surface'])
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=5, location=(-60, -80, 5))
+sun_glow = bpy.context.active_object
+sun_glow.name = 'SunGlow'
+sun_glow.data.materials.append(sun_glow_mat)
+
+# Add more detailed rock texture to the main rock
+# Add some darker rock patches on the rock
+dark_rock_mat = bpy.data.materials.new('DarkRock')
+dark_rock_mat.use_nodes = True
+bsdf = dark_rock_mat.node_tree.nodes['Principled BSDF']
+bsdf.inputs['Base Color'].default_value = (0.2, 0.15, 0.1, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.95
+
+# Add some small rocks on top of the main rock
+for i in range(10):
+    angle = random.uniform(0, 2 * math.pi)
+    radius = random.uniform(1, 4)
+    x = math.cos(angle) * radius
+    z = math.sin(angle) * radius
+    height = 24 - radius * 2  # approximate height on the rock
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=0.5, subdivisions=1, location=(x, z, height))
+    rock = bpy.context.active_object
+    rock.name = f'RockTop{i}'
+    rock.scale = (random.uniform(0.5, 1.5), random.uniform(0.5, 1.5), random.uniform(0.3, 1))
+    rock.data.materials.append(dark_rock_mat)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bpy.ops.object.shade_smooth()
+
+# Add some grass on top of the rock
+for i in range(5):
+    angle = random.uniform(0, 2 * math.pi)
+    radius = random.uniform(0.5, 2)
+    x = math.cos(angle) * radius
+    z = math.sin(angle) * radius
+    height = 26
+    bpy.ops.mesh.primitive_cone_add(radius1=0.1, depth=0.5, location=(x, z, height))
+    grass = bpy.context.active_object
+    grass.name = f'RockGrass{i}'
+    grass.data.materials.append(bpy.data.materials.get('Grass'))
+
+# Add some more detailed trees with multiple canopy layers
+for i in range(3):
+    angle = i * 2 * math.pi / 3 + 0.5
+    x = math.cos(angle) * 45
+    z = math.sin(angle) * 45
+    scale = random.uniform(1, 2)
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3*scale, depth=5*scale, location=(x, z, 2.5*scale))
+    trunk = bpy.context.active_object
+    trunk.name = f'DetailedTree{i}_trunk'
+    trunk.data.materials.append(bpy.data.materials.get('Trunk'))
+    # Canopy layers
+    for j in range(3):
+        bpy.ops.mesh.primitive_cylinder_add(radius=(3-j*0.5)*scale, depth=0.5*scale, location=(x, z, (4.5+j*0.5)*scale))
+        canopy = bpy.context.active_object
+        canopy.name = f'DetailedTree{i}_canopy{j}'
+        canopy.data.materials.append(bpy.data.materials.get('Tree'))
+
+# Add some more animals - impalas
+impala_mat = bpy.data.materials.new('Impala')
+impala_mat.use_nodes = True
+bsdf = impala_mat.node_tree.nodes['Principled BSDF']
+bsdf.inputs['Base Color'].default_value = (0.7, 0.5, 0.3, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.7
+
+for i in range(4):
+    x = -8 + i * 5
+    z = 12
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.6, location=(x, z, 1))
+    body = bpy.context.active_object
+    body.name = f'Impala{i}_body'
+    body.scale = (1.5, 1, 0.8)
+    body.data.materials.append(impala_mat)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2, location=(x + 0.8, z, 1.2))
+    head = bpy.context.active_object
+    head.name = f'Impala{i}_head'
+    head.data.materials.append(impala_mat)
+    # Horns
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.3, location=(x + 0.8, z + side*0.1, 1.4))
+        horn = bpy.context.active_object
+        horn.name = f'Impala{i}_horn{side}'
+        horn.rotation_euler = (0, math.radians(30*side), 0)
+        horn.data.materials.append(bpy.data.materials.get('Buffalo'))
+    # Legs
+    for j, (lx, lz) in enumerate([(-0.3, -0.2), (-0.3, 0.2), (0.3, -0.2), (0.3, 0.2)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.7, location=(x + lx, z + lz, 0.35))
+        leg = bpy.context.active_object
+        leg.name = f'Impala{i}_leg{j}'
+        leg.data.materials.append(impala_mat)
+
+# Add some more birds in a V formation
+for i in range(8):
+    x = -20 + i * 5
+    y = -10 + i * 2
+    z = 40 + i * 2
+    bpy.ops.mesh.primitive_cone_add(radius1=0.2, depth=0.4, location=(x, y, z))
+    bird = bpy.context.active_object
+    bird.name = f'VeeBird{i}'
+    bird.rotation_euler = (0, 0, math.radians(45))
+    bird.data.materials.append(bpy.data.materials.get('Bird'))
+    # Wings
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_plane_add(size=0.3, location=(x, y + side*0.2, z))
+        wing = bpy.context.active_object
+        wing.name = f'VeeBird{i}_wing{side}'
+        wing.rotation_euler = (0, math.radians(30*side), 0)
+        wing.data.materials.append(bpy.data.materials.get('Bird'))
+
+# Add some more ground detail - small stones
+for i in range(30):
+    x = random.uniform(-40, 40)
+    z = random.uniform(-40, 40)
+    if abs(x) > 22 or abs(z) > 22:
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.2, subdivisions=1, location=(x, z, 0.1))
+        stone = bpy.context.active_object
+        stone.name = f'Stone{i}'
+        stone.scale = (random.uniform(0.5, 1.5), random.uniform(0.5, 1.5), random.uniform(0.3, 0.8))
+        stone.data.materials.append(bpy.data.materials.get('Rock'))
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        bpy.ops.object.shade_smooth()
+
+print("Added more detail!")
+print(f"Total objects: {len(bpy.data.objects)}")
+```

@@ -1,0 +1,163 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# --- 1. Clean Scene ---
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+for block_list in (bpy.data.meshes, bpy.data.materials, bpy.data.curves, bpy.data.lights, bpy.data.cameras):
+    for block in block_list:
+        if block.users == 0:
+            block_list.remove(block)
+
+# --- 2. Material Helper ---
+def create_mat(name, color, rough=0.8, metal=0.0, alpha=1.0):
+    m = bpy.data.materials.new(name=name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    if alpha < 1.0:
+        m.blend_method = 'BLEND'
+        bsdf.inputs["Alpha"].default_value = alpha
+    return m
+
+# --- 3. Geometry Helper ---
+def add_obj(name, obj_type, loc, scale=(1,1,1), rot=(0,0,0), mat=None):
+    if obj_type == 'cube':
+        bpy.ops.mesh.primitive_cube_add(location=loc)
+    elif obj_type == 'cylinder':
+        bpy.ops.mesh.primitive_cylinder_add(location=loc, radius=1, depth=2)
+    elif obj_type == 'cone':
+        bpy.ops.mesh.primitive_cone_add(location=loc, radius1=1, radius2=0, depth=2)
+    elif obj_type == 'uv_sphere':
+        bpy.ops.mesh.primitive_uv_sphere_add(location=loc, radius=1, segments=16, ring_count=8)
+    elif obj_type == 'plane':
+        bpy.ops.mesh.primitive_plane_add(location=loc, size=1)
+    else:
+        return None
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = scale
+    obj.rotation_euler = rot
+    if mat:
+        obj.data.materials.append(mat)
+    return obj
+
+# --- 4. Environment: Turquoise Bay & Sandy Beach ---
+# Water (Turquoise Bay) - Large plane at z=0
+mat_water = create_mat("Turquoise Water", (0.0, 0.75, 0.75), rough=0.1, alpha=0.8)
+water = add_obj("Water", 'plane', (0, 50, 0), scale=(200, 200, 1), mat=mat_water)
+
+# Sandy Beach - Large plane at z=0.01 (slightly above water to avoid Z-fighting)
+mat_sand = create_mat("Sandy Beach", (0.95, 0.85, 0.65), rough=0.9)
+beach = add_obj("Beach", 'plane', (0, 0, 0.01), scale=(200, 200, 1), mat=mat_sand)
+
+# --- 5. Track (Sandy Road) ---
+# A slightly darker sand strip running along Y axis
+mat_track = create_mat("Sandy Track", (0.85, 0.75, 0.55), rough=0.95)
+track = add_obj("Track", 'plane', (0, 0, 0.02), scale=(3, 100, 1), mat=mat_track)
+
+# --- 6. Palms (Lined along the track) ---
+mat_trunk = create_mat("Palm Trunk", (0.5, 0.35, 0.2), rough=0.9)
+mat_leaves = create_mat("Palm Leaves", (0.1, 0.5, 0.15), rough=0.8)
+
+def add_palm(x, y):
+    # Trunk
+    trunk = add_obj(f"Palm_Trunk_{x}_{y}", 'cylinder', (x, y, 2), scale=(0.15, 0.15, 2), rot=(random.uniform(-0.1, 0.1), random.uniform(-0.1, 0.1), 0), mat=mat_trunk)
+    # Leaves (simplified as a cone/sphere cluster at top)
+    top_y = y
+    top_x = x + math.sin(trunk.rotation_euler.y) * 4
+    top_z = 4
+    for i in range(6):
+        angle = i * (2 * math.pi / 6)
+        lx = top_x + math.cos(angle) * 0.8
+        ly = top_y + math.sin(angle) * 0.8
+        leaf = add_obj(f"Palm_Leaf_{x}_{y}_{i}", 'cone', (lx, ly, top_z + 0.2), scale=(0.8, 0.8, 0.2), rot=(math.pi/2, 0, angle), mat=mat_leaves)
+
+# Place palms along the track (left and right sides)
+for i in range(10):
+    y_pos = -40 + i * 8
+    add_palm(-5, y_pos)
+    add_palm(5, y_pos + 4) # Offset for natural look
+
+# --- 7. Small Roadside Shop with Tin Roof ---
+mat_wall = create_mat("Shop Wall", (0.9, 0.85, 0.8), rough=0.9)
+mat_tin = create_mat("Tin Roof", (0.6, 0.6, 0.65), rough=0.4, metal=0.6)
+mat_door = create_mat("Shop Door", (0.2, 0.4, 0.6), rough=0.8)
+
+# Shop Base (Cube)
+shop_x, shop_y = -8, 10
+shop = add_obj("Shop_Base", 'cube', (shop_x, shop_y, 1.5), scale=(3, 2, 1.5), mat=mat_wall)
+# Tin Roof (Slightly larger, angled)
+roof = add_obj("Shop_Roof", 'cube', (shop_x, shop_y, 3.2), scale=(3.5, 2.5, 0.2), rot=(0, 0.2, 0), mat=mat_tin)
+# Door
+door = add_obj("Shop_Door", 'cube', (shop_x, shop_y - 2.01, 1.0), scale=(0.8, 0.05, 1.0), mat=mat_door)
+
+# --- 8. Tuk-Tuk (Without Driver) ---
+mat_tuktuk_body = create_mat("TukTuk Body", (0.8, 0.2, 0.1), rough=0.6)
+mat_tuktuk_roof = create_mat("TukTuk Roof", (0.1, 0.1, 0.1), rough=0.8)
+mat_wheel = create_mat("TukTuk Wheel", (0.05, 0.05, 0.05), rough=0.9)
+
+tuk_x, tuk_y = 2, -5
+# Body
+tuk_body = add_obj("TukTuk_Body", 'cube', (tuk_x, tuk_y, 0.8), scale=(1.2, 1.5, 0.8), mat=mat_tuktuk_body)
+# Roof
+tuk_roof = add_obj("TukTuk_Roof", 'cube', (tuk_x, tuk_y, 1.8), scale=(1.3, 1.6, 0.1), mat=mat_tuktuk_roof)
+# Wheels (3 wheels)
+w1 = add_obj("TukTuk_W1", 'cylinder', (tuk_x - 0.8, tuk_y + 1.0, 0.3), scale=(0.3, 0.3, 0.1), rot=(0, math.pi/2, 0), mat=mat_wheel)
+w2 = add_obj("TukTuk_W2", 'cylinder', (tuk_x + 0.8, tuk_y + 1.0, 0.3), scale=(0.3, 0.3, 0.1), rot=(0, math.pi/2, 0), mat=mat_wheel)
+w3 = add_obj("TukTuk_W3", 'cylinder', (tuk_x, tuk_y - 1.2, 0.3), scale=(0.3, 0.3, 0.1), rot=(math.pi/2, 0, 0), mat=mat_wheel)
+
+# --- 9. Hammock ---
+mat_hammock = create_mat("Hammock", (0.9, 0.9, 0.95), rough=0.9)
+# Two palm trees for the hammock
+ham_x, ham_y = 6, -15
+add_palm(ham_x - 2, ham_y)
+add_palm(ham_x + 2, ham_y)
+# Hammock mesh (simple curved plane)
+bpy.ops.mesh.primitive_plane_add(location=(ham_x, ham_y, 1.5), size=1)
+hammock = bpy.context.active_object
+hammock.name = "Hammock"
+hammock.scale = (1.5, 0.5, 1)
+hammock.rotation_euler = (0, 0, 0)
+# Subdivide and bend
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=10)
+bpy.ops.object.mode_set(mode='OBJECT')
+# Simple bend via shape keys or just leave as flat for simplicity, but let's add a slight curve via editing
+# For simplicity in this script, we'll just place it between the trunks
+hammock.data.materials.append(mat_hammock)
+
+# --- 10. Lighting & Camera ---
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), math.radians(20), 0)
+sun.data.energy = 3.0
+
+# Camera
+bpy.ops.object.camera_add(location=(0, -30, 5))
+cam = bpy.context.active_object
+cam.rotation_euler = (math.radians(85), 0, 0)
+bpy.context.scene.camera = cam
+
+# Render Settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+
+# World Background
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+bg.inputs[0].default_value = (0.5, 0.7, 0.9, 1.0) # Sky blue
+bg.inputs[1].default_value = 1.0
+```

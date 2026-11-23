@@ -1,0 +1,196 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clear default objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the barrel body using a cylinder with some profile
+# Barrel shape: wider in the middle, narrower at top and bottom
+bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.5, depth=1.0, location=(0, 0, 0.5))
+barrel = bpy.context.active_object
+barrel.name = "RustyBarrel"
+
+# Edit the barrel to give it a bulging shape
+bpy.ops.object.mode_set(mode='EDIT')
+mesh = barrel.data
+
+# Modify vertices to create barrel bulge
+for vertex in mesh.vertices:
+    z = vertex.co.z
+    # Normalize z from -0.5 to 0.5
+    t = (z + 0.5) / 1.0  # 0 to 1
+    # Barrel profile: wider in middle
+    bulge = 1.0 + 0.15 * math.sin(t * math.pi)
+    # Apply bulge to x and y
+    vertex.co.x *= bulge
+    vertex.co.y *= bulge
+
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Add bevel modifier for edge rounding
+bevel = barrel.modifiers.new(name="Bevel", type='BEVEL')
+bevel.width = 0.01
+bevel.segments = 2
+
+# Apply bevel
+bpy.ops.object.modifier_apply(modifier="Bevel")
+
+# Add some random deformation for a worn look
+bpy.ops.object.mode_set(mode='EDIT')
+for vertex in barrel.data.vertices:
+    # Add slight random displacement
+    random.seed(hash(vertex.index) % 10000)
+    offset = Vector((
+        random.uniform(-0.005, 0.005),
+        random.uniform(-0.005, 0.005),
+        random.uniform(-0.005, 0.005)
+    ))
+    vertex.co += offset
+
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Smooth shading
+bpy.ops.object.shade_smooth()
+
+# Create material
+material = bpy.data.materials.new(name="RustyMetal")
+material.use_nodes = True
+nodes = material.node_tree.nodes
+links = material.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+output_node = nodes.new(type='ShaderNodeOutputMaterial')
+output_node.location = (600, 0)
+
+bsdf_node = nodes.new(type='ShaderNodeBsdfPrincipled')
+bsdf_node.location = (300, 0)
+
+# Texture coordinates
+tex_coord = nodes.new(type='ShaderNodeTexCoord')
+tex_coord.location = (-800, 0)
+
+# Noise texture for rust patches
+noise1 = nodes.new(type='ShaderNodeTexNoise')
+noise1.location = (-500, 200)
+noise1.inputs['Scale'].default_value = 8.0
+noise1.inputs['Detail'].default_value = 8.0
+noise1.inputs['Roughness'].default_value = 0.7
+
+# Second noise for finer detail
+noise2 = nodes.new(type='ShaderNodeTexNoise')
+noise2.location = (-500, -100)
+noise2.inputs['Scale'].default_value = 20.0
+noise2.inputs['Detail'].default_value = 10.0
+noise2.inputs['Roughness'].default_value = 0.8
+
+# Color ramp for rust colors
+color_ramp = nodes.new(type='ShaderNodeValToRGB')
+color_ramp.location = (-200, 200)
+color_ramp.color_ramp.elements[0].position = 0.3
+color_ramp.color_ramp.elements[0].color = (0.05, 0.02, 0.01, 1.0)  # Dark rust
+color_ramp.color_ramp.elements[1].position = 0.7
+color_ramp.color_ramp.elements[1].color = (0.35, 0.12, 0.03, 1.0)  # Medium rust
+
+# Add a third element for lighter rust spots
+elem2 = color_ramp.color_ramp.elements.new(0.5)
+elem2.color = (0.25, 0.08, 0.02, 1.0)
+
+# Mix rust and metal colors
+mix_rgb = nodes.new(type='ShaderNodeMixRGB')
+mix_rgb.location = (0, 0)
+mix_rgb.blend_type = 'MIX'
+
+# Metal base color (dark grey)
+metal_color = nodes.new(type='ShaderNodeRGB')
+metal_color.location = (-200, -200)
+metal_color.outputs[0].default_value = (0.15, 0.15, 0.15, 1.0)
+
+# Links
+links.new(tex_coord.outputs['Object'], noise1.inputs['Vector'])
+links.new(tex_coord.outputs['Object'], noise2.inputs['Vector'])
+links.new(noise1.outputs['Fac'], color_ramp.inputs['Fac'])
+links.new(color_ramp.outputs['Color'], mix_rgb.inputs['Color2'])
+links.new(metal_color.outputs[0], mix_rgb.inputs['Color1'])
+
+# Use noise2 as factor to blend between metal and rust
+links.new(noise2.outputs['Fac'], mix_rgb.inputs['Fac'])
+
+# Connect to BSDF
+links.new(mix_rgb.outputs['Color'], bsdf_node.inputs['Base Color'])
+
+# Set roughness based on noise
+roughness_mix = nodes.new(type='ShaderNodeMixRGB')
+roughness_mix.location = (0, -300)
+roughness_mix.blend_type = 'MIX'
+links.new(noise1.outputs['Fac'], roughness_mix.inputs['Fac'])
+roughness_mix.inputs['Color1'].default_value = (0.6, 0.6, 0.6, 1.0)  # Metal roughness
+roughness_mix.inputs['Color2'].default_value = (0.9, 0.9, 0.9, 1.0)  # Rust roughness
+links.new(roughness_mix.outputs['Color'], bsdf_node.inputs['Roughness'])
+
+# Metallic - rust is less metallic
+metallic_mix = nodes.new(type='ShaderNodeMixRGB')
+metallic_mix.location = (0, -500)
+metallic_mix.blend_type = 'MIX'
+links.new(noise2.outputs['Fac'], metallic_mix.inputs['Fac'])
+metallic_mix.inputs['Color1'].default_value = (0.8, 0.8, 0.8, 1.0)  # Metal
+metallic_mix.inputs['Color2'].default_value = (0.2, 0.2, 0.2, 1.0)  # Rust
+links.new(metallic_mix.outputs['Color'], bsdf_node.inputs['Metallic'])
+
+# Bump for surface detail
+bump_node = nodes.new(type='ShaderNodeBump')
+bump_node.location = (100, -700)
+bump_node.inputs['Strength'].default_value = 0.3
+links.new(noise2.outputs['Fac'], bump_node.inputs['Height'])
+links.new(bump_node.outputs['Normal'], bsdf_node.inputs['Normal'])
+
+# Final connection
+links.new(bsdf_node.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign material
+barrel.data.materials.append(material)
+
+# Add a lid/top ring
+bpy.ops.mesh.primitive_torus_add(major_radius=0.52, minor_radius=0.02, location=(0, 0, 0.95), major_segments=32, minor_segments=8)
+lid = bpy.context.active_object
+lid.name = "BarrelLid"
+lid.data.materials.append(material)
+bpy.ops.object.shade_smooth()
+
+# Add bottom ring
+bpy.ops.mesh.primitive_torus_add(major_radius=0.52, minor_radius=0.02, location=(0, 0, 0.05), major_segments=32, minor_segments=8)
+bottom_ring = bpy.context.active_object
+bottom_ring.name = "BarrelBottomRing"
+bottom_ring.data.materials.append(material)
+bpy.ops.object.shade_smooth()
+
+# Add a middle band
+bpy.ops.mesh.primitive_torus_add(major_radius=0.58, minor_radius=0.02, location=(0, 0, 0.5), major_segments=32, minor_segments=8)
+middle_band = bpy.context.active_object
+middle_band.name = "BarrelMiddleBand"
+middle_band.data.materials.append(material)
+bpy.ops.object.shade_smooth()
+
+# Set up camera
+bpy.ops.object.camera_add(location=(2, 2, 1.5), rotation=(math.radians(60), 0, math.radians(45)))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera
+
+# Add lighting
+bpy.ops.object.light_add(type='SUN', location=(3, 3, 5), rotation=(math.radians(45), 0, 0))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+
+bpy.ops.object.light_add(type='POINT', location=(-2, -2, 2))
+point_light = bpy.context.active_object
+point_light.data.energy = 50
+
+print("Rusty metal barrel created successfully!")
+```

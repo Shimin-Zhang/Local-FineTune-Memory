@@ -1,0 +1,64 @@
+```python
+import bpy
+import math
+
+# Clear existing objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Function to create a UV sphere
+def create_sphere(name, radius, location, color):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location, segments=32, ring_count=16)
+    obj = bpy.context.active_object
+    obj.name = name
+    # Create material
+    mat = bpy.data.materials.new(name=name + "_Mat")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = 0.5
+    obj.data.materials.append(mat)
+    return obj
+
+# Sun
+sun = create_sphere("Sun", 5, (0, 0, 0), (1.0, 0.8, 0.0))
+
+# Planets: (name, radius, orbit_radius, color)
+planets = [
+    ("Mercury", 0.5, 10, (0.7, 0.7, 0.7)),
+    ("Venus", 0.9, 15, (0.9, 0.7, 0.3)),
+    ("Earth", 1.0, 20, (0.2, 0.5, 0.9)),
+    ("Mars", 0.7, 26, (0.9, 0.3, 0.1)),
+]
+
+angles = [0, math.pi / 2, math.pi, 3 * math.pi / 2]
+
+for i, (name, radius, orbit_r, color) in enumerate(planets):
+    x = orbit_r * math.cos(angles[i])
+    y = orbit_r * math.sin(angles[i])
+    create_sphere(name, radius, (x, y, 0), color)
+    # Create orbit line (a thin torus)
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=orbit_r,
+        minor_radius=0.02,
+        major_segments=64,
+        minor_segments=8,
+        location=(0, 0, 0)
+    )
+    orbit = bpy.context.active_object
+    orbit.name = name + "_Orbit"
+    orbit_mat = bpy.data.materials.new(name=name + "_Orbit_Mat")
+    orbit_mat.use_nodes = True
+    bsdf = orbit_mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (0.3, 0.3, 0.3)
+    orbit.data.materials.append(orbit_mat)
+
+# Add a point light at the sun
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 0))
+light = bpy.context.active_object
+light.name = "Sun_Light"
+light.data.energy = 5000
+light.data.color = (1.0, 0.9, 0.7)
+```

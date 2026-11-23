@@ -1,0 +1,89 @@
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(975)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def surf(c, e=0, r=.9):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+plank, plank2, plank3, iron, tar, dust, rope, crate, crate2, moss, lampm, crate3 = (surf((.3, .17, .08)), surf((.24, .13, .06)), surf((.36, .21, .1)), surf((.05, .05, .06), 0, .5), surf((.03, .025, .025)),
+    surf((.2, .17, .13)), surf((.5, .4, .2)), surf((.28, .16, .07)), surf((.2, .12, .06)), surf((.1, .2, .08)), surf((1, .6, .15), 10), surf((.32, .2, .09)))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slat(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = V((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, at, rot)
+def drum(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def beam(a, b, t, m):
+    a, b = V(a), V(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ V((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return add(bm, m)
+def spark(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("s", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (V(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# dock floor slab, planks with gaps, rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=2, use_grid_fill=True)
+for v in bm.verts:
+    if v.co.z < 0: v.co = V((v.co.x * 16 + random.uniform(-1, 1), v.co.y * 14 + random.uniform(-1, 1), -3.5 + random.uniform(-1, .5)))
+    else: v.co = V((v.co.x * 21, v.co.y * 18, 0))
+add(bm, dust)
+for i in range(14): slat((-9.45 + i * 1.45, 0, 0), (.06, 17.6, .06), tar)
+for i in range(10): slat((0, -8.5 + i * 1.85, 0), (20.4, .05, .06), tar)
+# the crate: nine vertical planks on each side, grain lines, battens, corner posts, iron bands
+for k, (w, d, h) in enumerate(((6.2, 5.2, 4.2), (5.0, 4.2, 3.2), (3.6, 3.0, 2.4))):
+    ox, oy, rz = 0, 0, 0
+    if k == 1: ox, oy, rz = 3.0, 1.0, .3
+    if k == 2: ox, oy, rz = -3.2, -1.4, -.4
+    def at(x, y, z): return (ox + x * math.cos(rz) - y * math.sin(rz), oy + x * math.sin(rz) + y * math.cos(rz), z)
+    for side in range(4):
+        L, off = (w, d) if side < 2 else (d, w)
+        for i in range(9):
+            p = -L / 2 + .3 + i * (L - .6) / 8
+            if side == 0: q = at(p, -d / 2, 0)
+            elif side == 1: q = at(p, d / 2, 0)
+            elif side == 2: q = at(-w / 2, p, 0)
+            else: q = at(w / 2, p, 0)
+            slat(q, (.28, .14, h), (plank, plank2, plank3)[(i + side) % 3], (0, 0, side * 1.5708))
+            for g in (-.08, .06):
+                slat(at(p + g, -d / 2 - .075, .3) if side == 0 else at(p + g, d / 2 + .075, .3) if side == 1 else at(-w / 2 - .075, p + g, .3) if side == 2 else at(w / 2 + .075, p + g, .3), (.03, .02, h - .6), tar, (0, 0, side * 1.5708))
+        for z in (.2, h - .3):
+            slat(at(0, -d / 2 - .08, z) if side == 0 else at(0, d / 2 + .08, z) if side == 1 else at(-w / 2 - .08, 0, z) if side == 2 else at(w / 2 + .08, 0, z), (L + .1, .16, .22), plank3, (0, 0, side * 1.5708))
+    for sx in (-1, 1):
+        for sy in (-1, 1): slat(at(sx * w / 2, sy * d / 2, 0), (.3, .3, h + .1), plank2, (0, 0, rz))
+    for z in (.9, h - .9):
+        for side in range(4):
+            L = w if side < 2 else d
+            slat(at(0, -d / 2 - .1, z) if side == 0 else at(0, d / 2 + .1, z) if side == 1 else at(-w / 2 - .1, 0, z) else at(w / 2 + .1, 0, z), (L + .1, .12, .12), iron, (0, 0, side * 1.5708))
+    slat(at(0, 0, h), (w - .2, d - .2, .2), plank3, (0, 0, rz))
+# lantern on the top crate, barrel, sacks, barrel hoops, rope, moss
+slat((-3.2, -1.4, 2.6), (.5, .5, .6), lampm); spark("POINT", (1, .6, .15), 900, (-3.2, -1.4, 3.2))
+drum((5.8, -2.2, 0), 1.0, 2.2, 8, crate2)
+for z in (.3, 1.8): drum((5.8, -2.2, z), 1.04, .12, 8, iron)
+for i in range(4):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.65)
+    for v in bm.verts: v.co.z *= 1.2
+    add(bm, rope, (-6.2 + i * 1.3, 3.4 + (i % 2) * .8, .5))
+beam((-9, -5, 0), (-9, -5, 3.2), .22, plank2); beam((-9, -5, 3.2), (-6.5, -3.5, 4.6), .14, plank2)
+for i in range(12):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.3, .7))
+    for v in bm.verts: v.co.z *= .6
+    add(bm, moss, (random.uniform(-9, 9), random.uniform(-8, 8), .1))
+spark("SUN", (.55, .7, 1), 4.5, (-24, -18, 10), (0, 0, 1)); spark("SUN", (1, .5, .25), 2.2, (22, 20, 9), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .02, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = V((0, 0, 1.5)); co.location = t + V((16, -47, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

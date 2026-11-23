@@ -1,0 +1,82 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1105)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def neon(c, e=0, a=1):
+    m = bpy.data.materials.new("n"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*c, 1); b.inputs["Roughness"].default_value = .5; b.inputs["Alpha"].default_value = a
+    if e: b.inputs["Emission Color"].default_value = (*c, 1); b.inputs["Emission Strength"].default_value = e
+    return m
+floor, floor2, line, core, cyan, magenta, amber, pad = (neon((.02, .02, .035)), neon((.03, .03, .05)), neon((.05, .2, .3)), neon((.9, .95, 1), 12),
+    neon((.1, .9, 1), 9), neon((1, .1, .6), 9), neon((1, .6, .1), 8), neon((.06, .06, .1)))
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); me.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return make(bm, m, at, rot)
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at, rot)
+def rod(a, b, t, m):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return make(bm, m)
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# base: a dark slab with a rough tapered underside, and a grid floor of thin glowing lines
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 22, v.co.y * 22, v.co.z * 3 - 1.5))
+    if v.co.z < 0: v.co = Vector((v.co.x * .6 + random.uniform(-.8, .8), v.co.y * .6 + random.uniform(-.8, .8), v.co.z - random.uniform(0, 1.5)))
+make(bm, floor2)
+for i in range(-5, 6):
+    slab((i * 2, 0, 0), (.08, 22, .05), line); slab((0, i * 2, 0), (22, .08, .05), line)
+slab((0, 0, 0), (22, 22, .1), floor2)
+# landing pad: octagon of dark plate, glowing rim segments, and three amber strips
+cyl((0, 0, 0), 5.6, .12, 8, pad)
+for k in range(8):
+    a = k * math.pi / 4 + math.pi / 8
+    slab((math.cos(a) * 5.2, math.sin(a) * 5.2, .12), (2.1, .35, .08), cyan, (0, 0, a + math.pi / 2))
+for i in range(3): slab((0, -2.2 + i * 2.2, .12), (.5, 1.4, .05), amber)
+# the ring: 14 segments of a tilted disc floating above the pad, each a glowing panel with a dark gap
+R, z0 = 3.4, 5.0
+for k in range(14):
+    a = k * math.tau / 14
+    slab((math.cos(a) * R, math.sin(a) * R, z0), (1.45, .5, .35), cyan if k % 2 else magenta, (0, 0, a + math.pi / 2))
+# a glowing core inside the ring, with a column of light down to the pad
+cyl((0, 0, z0 - .15), .55, .3, 8, core)
+cyl((0, 0, .12), .35, z0 - .3, 8, core, r2=.15)
+glow((0, 0, z0), (.7, .95, 1), 2500); glow((0, 0, 2.5), (.5, .8, 1), 400)
+# four pylons at the pad corners with amber lamps and a beam to the ring
+for k in range(4):
+    a = k * math.pi / 2 + math.pi / 4; x, y = math.cos(a) * 7.5, math.sin(a) * 7.5
+    cyl((x, y, 0), .5, 2.6, 6, pad, r2=.35); cyl((x, y, 2.6), .45, .3, 6, amber)
+    rod((x * .9, y * .9, 2.9), (0, 0, z0 - .5), .06, line)
+    glow((x, y, 3.2), (1, .6, .1), 150)
+# small crates and barrels on the floor, a broken wall piece, a few floating shards
+for i, (x, y, s) in enumerate(((-8.5, -6, 1.4), (-6.8, -7.4, 1.0), (8, 6.5, 1.3), (9.5, 4.5, .9))):
+    slab((x, y, 0), (s, s, s), pad, (0, 0, i * .5)); slab((x, y, s), (s * .9, s * .9, .1), cyan if i % 2 else magenta, (0, 0, i * .5))
+for i in range(7):
+    a = random.uniform(0, 6.28); r = random.uniform(6, 9.5)
+    slab((math.cos(a) * r, math.sin(a) * r, random.uniform(1.5, 5)), (.4, .4, .4), cyan, (random.random(), random.random(), 0))
+# light: cold teal key from the left, magenta rim from behind, near-black background
+for c, w, p in (((.4, .8, 1), 3.5, (-24, -14, 10)), ((1, .2, .7), 2.5, (18, 22, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .01, .03, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+tg = Vector((0, 0, 2.5)); co.location = tg + Vector((6, -40, 25))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

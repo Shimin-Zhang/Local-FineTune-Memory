@@ -1,0 +1,255 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.data.meshes.clear()
+bpy.data.materials.clear()
+bpy.data.lights.clear()
+bpy.data.cameras.clear()
+
+# --- Materials ---
+def make_mat(name, base_color, rough=0.8, metal=0.0, emit=0.0, emit_col=(0,0,0,1)):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = base_color
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    if emit > 0:
+        bsdf.inputs["Emission Color"].default_value = emit_col
+        bsdf.inputs["Emission Strength"].default_value = emit
+    return m
+
+mat_ground   = make_mat("Ground",   (0.35, 0.32, 0.28, 1), rough=0.95)
+mat_stone    = make_mat("Stone",    (0.45, 0.42, 0.38, 1), rough=0.9)
+mat_water    = make_mat("Water",    (0.05, 0.15, 0.18, 1), rough=0.1, metal=0.3)
+mat_hut_wall = make_mat("HutWall",  (0.55, 0.45, 0.30, 1), rough=0.85)
+mat_hut_roof = make_mat("HutRoof",  (0.25, 0.18, 0.12, 1), rough=0.9)
+mat_llama    = make_mat("Llama",    (0.85, 0.75, 0.60, 1), rough=0.95)
+mat_llama_ear= make_mat("LlamaEar", (0.75, 0.60, 0.45, 1), rough=0.95)
+mat_vent     = make_mat("Vent",     (0.30, 0.28, 0.25, 1), rough=0.9)
+mat_steam    = make_mat("Steam",    (0.9, 0.9, 0.9, 1), rough=1.0, emit=0.3, emit_col=(0.9,0.9,0.9,1))
+mat_rocks    = make_mat("Rocks",    (0.38, 0.35, 0.30, 1), rough=0.95)
+
+# --- World / Sky ---
+world = bpy.data.worlds.new("DesertWorld")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.55, 0.60, 0.70, 1)  # cold overcast
+bg.inputs["Strength"].default_value = 0.6
+
+# --- Sun (cold, low angle) ---
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 1.5
+sun_data.color = (0.85, 0.88, 0.95)
+sun_data.angle = math.radians(5)
+sun_obj = bpy.data.objects.new("Sun", sun_data)
+bpy.context.collection.objects.link(sun_obj)
+sun_obj.rotation_euler = Euler((math.radians(60), 0, math.radians(120)))
+
+# Fill light
+fill_data = bpy.data.lights.new("Fill", type='SUN')
+fill_data.energy = 0.3
+fill_data.color = (0.7, 0.75, 0.85)
+fill_obj = bpy.data.objects.new("Fill", fill_data)
+bpy.context.collection.objects.link(fill_obj)
+fill_obj.rotation_euler = Euler((math.radians(30), math.radians(20), 0))
+
+# --- Ground plane ---
+bpy.ops.mesh.primitive_plane_add(size=60, location=(0,0,0))
+ground = bpy.context.active_object
+ground.data.materials.append(mat_ground)
+# Displace ground slightly for terrain
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+# Add displacement via simple random z
+for v in ground.data.vertices:
+    v.co.z += random.uniform(-0.3, 0.3) * (1.0 - abs(v.co.x)/30.0) * (1.0 - abs(v.co.y)/30.0)
+
+# --- Hot pool (center) ---
+pool_r = 3.0
+bpy.ops.mesh.primitive_cylinder_add(radius=pool_r, depth=0.5, location=(0,0,0.1), vertices=48)
+pool = bpy.context.active_object
+pool.data.materials.append(mat_water)
+# Flatten top
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# --- Ring of stones around pool ---
+stone_count = 16
+for i in range(stone_count):
+    angle = i * (2 * math.pi / stone_count)
+    r = pool_r + 0.6 + random.uniform(-0.1, 0.1)
+    x = r * math.cos(angle)
+    y = r * math.sin(angle)
+    sx = random.uniform(0.4, 0.7)
+    sy = random.uniform(0.3, 0.5)
+    sz = random.uniform(0.3, 0.5)
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, sz/2))
+    stone = bpy.context.active_object
+    stone.scale = (sx, sy, sz)
+    stone.rotation_euler = Euler((random.uniform(-0.1,0.1), random.uniform(-0.1,0.1), angle + random.uniform(-0.2,0.2)))
+    stone.data.materials.append(mat_stone)
+
+# --- Scattered rocks in desert ---
+for _ in range(40):
+    x = random.uniform(-25, 25)
+    y = random.uniform(-25, 25)
+    if math.sqrt(x*x+y*y) < pool_r + 2:
+        continue
+    sx = random.uniform(0.2, 0.8)
+    sy = random.uniform(0.2, 0.6)
+    sz = random.uniform(0.15, 0.5)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1, location=(x, y, sz*0.3), subdivisions=1)
+    rock = bpy.context.active_object
+    rock.scale = (sx, sy, sz)
+    rock.rotation_euler = Euler((random.uniform(0,3.14), random.uniform(0,3.14), random.uniform(0,3.14)))
+    rock.data.materials.append(mat_rocks)
+
+# --- Steaming vents (3 locations) ---
+vent_positions = [
+    (8, 5, 0),
+    (-10, -7, 0),
+    (5, -12, 0),
+]
+for vx, vy, vz in vent_positions:
+    # Vent base (small mound)
+    bpy.ops.mesh.primitive_cone_add(radius1=1.0, radius2=0.3, depth=0.8, location=(vx, vy, vz+0.3), vertices=16)
+    vent = bpy.context.active_object
+    vent.data.materials.append(mat_vent)
+    # Steam particles (simple animated spheres rising)
+    for s in range(5):
+        h = 0.5 + s * 0.5
+        r = 0.3 + s * 0.08
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(vx + random.uniform(-0.1,0.1), vy + random.uniform(-0.1,0.1), vz + h), segments=12, ring_count=8)
+        steam = bpy.context.active_object
+        steam.data.materials.append(mat_steam)
+        # Animate steam rising
+        steam.animation_data_create()
+        for frame in range(1, 121):
+            t = frame / 120.0
+            z_off = t * 2.0
+            scale = 1.0 + t * 1.5
+            steam.keyframe_insert(data_path="location", index=2, frame=frame)
+            steam.location.z = vz + h + z_off
+            steam.scale = (scale, scale, scale)
+            steam.keyframe_insert(data_path="location", frame=frame)
+            steam.keyframe_insert(data_path="scale", frame=frame)
+        # Fade out
+        mat_steam_copy = mat_steam.copy()
+        steam.data.materials.clear()
+        steam.data.materials.append(mat_steam_copy)
+        # Animate emission
+        for frame in range(1, 121):
+            t = frame / 120.0
+            mat_steam_copy.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = max(0, 0.3 * (1 - t))
+            mat_steam_copy.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].keyframe_insert(data_path="default_value", frame=frame)
+
+# --- Tourist Hut ---
+hut_x, hut_y = 12, 10
+# Walls
+bpy.ops.mesh.primitive_cube_add(location=(hut_x, hut_y, 1.0), size=1)
+hut_wall = bpy.context.active_object
+hut_wall.scale = (3, 2.5, 1.0)
+hut_wall.data.materials.append(mat_hut_wall)
+# Roof
+bpy.ops.mesh.primitive_cone_add(radius1=3.2, radius2=0, depth=1.5, location=(hut_x, hut_y, 2.2), vertices=4)
+hut_roof = bpy.context.active_object
+hut_roof.rotation_euler = Euler((0, 0, math.radians(45)))
+hut_roof.data.materials.append(mat_hut_roof)
+# Door
+bpy.ops.mesh.primitive_cube_add(location=(hut_x, hut_y - 1.26, 0.6), size=1)
+door = bpy.context.active_object
+door.scale = (0.6, 0.1, 0.6)
+door.data.materials.append(mat_hut_roof)
+# Window
+bpy.ops.mesh.primitive_cube_add(location=(hut_x - 1.51, hut_y, 0.8), size=1)
+win = bpy.context.active_object
+win.scale = (0.1, 0.5, 0.4)
+win.data.materials.append(mat_water)  # glassy look
+
+# --- Shivering Llama ---
+llama_x, llama_y = -5, 8
+# Body
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(llama_x, llama_y, 1.0), segments=16, ring_count=12)
+llama_body = bpy.context.active_object
+llama_body.scale = (1.2, 0.7, 0.8)
+llama_body.data.materials.append(mat_llama)
+# Neck
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=1.2, location=(llama_x + 0.6, llama_y, 1.6), vertices=12)
+llama_neck = bpy.context.active_object
+llama_neck.rotation_euler = Euler((0, math.radians(-15), 0))
+llama_neck.data.materials.append(mat_llama)
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(llama_x + 0.9, llama_y, 2.1), segments=12, ring_count=8)
+llama_head = bpy.context.active_object
+llama_head.scale = (1.0, 0.8, 0.9)
+llama_head.data.materials.append(mat_llama)
+# Ears
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cone_add(radius1=0.12, radius2=0.02, depth=0.3, location=(llama_x + 0.9, llama_y + side*0.2, 2.35), vertices=8)
+    ear = bpy.context.active_object
+    ear.rotation_euler = Euler((math.radians(side * 15), 0, 0))
+    ear.data.materials.append(mat_llama_ear)
+# Legs
+for lx, ly in [(-0.4, -0.3), (-0.4, 0.3), (0.4, -0.3), (0.4, 0.3)]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.8, location=(llama_x + lx, llama_y + ly, 0.4), vertices=8)
+    leg = bpy.context.active_object
+    leg.data.materials.append(mat_llama)
+# Tail
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(llama_x - 0.9, llama_y, 1.1), segments=8, ring_count=6)
+tail = bpy.context.active_object
+tail.scale = (0.6, 0.4, 0.5)
+tail.data.materials.append(mat_llama)
+
+# Shiver animation (small rapid oscillation)
+llama_parts = [llama_body, llama_neck, llama_head, tail]
+for part in llama_parts:
+    part.animation_data_create()
+    for frame in range(1, 121):
+        t = frame / 120.0
+        shiver_x = math.sin(t * 40) * 0.02
+        shiver_z = math.sin(t * 35) * 0.01
+        part.location.x = part.location.x + shiver_x  # This won't work cumulatively
+        # Reset and set properly
+    # Better: store original positions
+    for part in llama_parts:
+        orig = part.location.copy()
+        for frame in range(1, 121):
+            t = frame / 120.0
+            shiver_x = math.sin(t * 40) * 0.02
+            shiver_z = math.sin(t * 35) * 0.01
+            part.location = (orig.x + shiver_x, orig.y, orig.z + shiver_z)
+            part.keyframe_insert(data_path="location", frame=frame)
+
+# --- Camera ---
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam_obj = bpy.data.objects.new("Camera", cam_data)
+bpy.context.collection.objects.link(cam_obj)
+cam_obj.location = (18, -15, 8)
+# Look at center
+target = Vector((0, 0, 1))
+direction = target - cam_obj.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+cam_obj.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = cam_obj
+
+# --- Render settings ---
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 64
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+scene.view_settings.look = 'Medium High Contrast'
+scene.view_settings.exposure = -0.2
+```

@@ -1,0 +1,201 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a new material for white marble with grey veins
+mat = bpy.data.materials.new(name="WhiteMarble")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+nodes.clear()
+
+# Create nodes
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (400, 0)
+
+bsdf_node = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_node.location = (100, 0)
+bsdf_node.inputs['Base Color'].default_value = (0.9, 0.9, 0.9, 1.0)
+bsdf_node.inputs['Roughness'].default_value = 0.15
+bsdf_node.inputs['Specular IOR Level'].default_value = 0.5
+
+# Texture coordinate
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-800, 0)
+
+# Mapping
+mapping = nodes.new('ShaderNodeMapping')
+mapping.location = (-600, 0)
+mapping.inputs['Scale'].default_value = (2.0, 2.0, 2.0)
+
+# Noise texture for veins
+noise = nodes.new('ShaderNodeTexNoise')
+noise.location = (-400, 0)
+noise.inputs['Scale'].default_value = 3.0
+noise.inputs['Detail'].default_value = 8.0
+noise.inputs['Roughness'].default_value = 0.6
+
+# ColorRamp to create vein pattern
+color_ramp = nodes.new('ShaderNodeValToRGB')
+color_ramp.location = (-200, 0)
+color_ramp.color_ramp.interpolation = 'EASE'
+# Set stops: white marble base with grey veins
+color_ramp.color_ramp.elements[0].position = 0.4
+color_ramp.color_ramp.elements[0].color = (0.85, 0.85, 0.85, 1.0)  # Grey veins
+color_ramp.color_ramp.elements[1].position = 0.6
+color_ramp.color_ramp.elements[1].color = (0.95, 0.95, 0.95, 1.0)  # White marble
+
+# Add another noise for more complexity
+noise2 = nodes.new('ShaderNodeTexNoise')
+noise2.location = (-400, -200)
+noise2.inputs['Scale'].default_value = 8.0
+noise2.inputs['Detail'].default_value = 12.0
+
+# Mix the two noises
+mix = nodes.new('ShaderNodeMix')
+mix.location = (-300, -100)
+mix.data_type = 'FLOAT'
+mix.inputs['Factor'].default_value = 0.3
+
+# Links
+links.new(tex_coord.outputs['Object'], mapping.inputs['Vector'])
+links.new(mapping.outputs['Vector'], noise.inputs['Vector'])
+links.new(mapping.outputs['Vector'], noise2.inputs['Vector'])
+links.new(noise.outputs['Fac'], mix.inputs['A'])
+links.new(noise2.outputs['Fac'], mix.inputs['B'])
+links.new(mix.outputs['Result'], color_ramp.inputs['Fac'])
+links.new(color_ramp.outputs['Color'], bsdf_node.inputs['Base Color'])
+links.new(bsdf_node.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Create the chess pawn using a lathe/revolution approach
+# Define the profile points for a chess pawn
+# (radius, height) pairs
+profile = [
+    (0.0, 0.0),      # bottom center
+    (0.3, 0.0),      # bottom edge
+    (0.35, 0.05),    # slight flare
+    (0.3, 0.1),      # base
+    (0.25, 0.2),     # stem bottom
+    (0.2, 0.4),      # stem
+    (0.25, 0.5),     # collar
+    (0.3, 0.55),     # collar top
+    (0.2, 0.6),      # neck
+    (0.15, 0.7),     # head bottom
+    (0.2, 0.8),      # head middle
+    (0.18, 0.9),     # head upper
+    (0.1, 1.0),      # head top
+    (0.0, 1.05),     # top center
+]
+
+# Create mesh from profile by revolving
+import bmesh
+
+mesh = bpy.data.meshes.new("PawnMesh")
+obj = bpy.data.objects.new("ChessPawn", mesh)
+bpy.context.collection.objects.link(obj)
+
+bm = bmesh.new()
+bm.from_mesh(mesh)
+
+# Create profile vertices
+profile_verts = []
+for r, h in profile:
+    v = bm.verts.new((r, 0, h))
+    profile_verts.append(v)
+
+# Create edges along the profile
+for i in range(len(profile_verts) - 1):
+    bm.edges.new((profile_verts[i], profile_verts[i + 1]))
+
+# Now revolve the profile around the Z axis
+# We'll create a series of rotated copies and connect them
+steps = 64
+angle_step = 2 * math.pi / steps
+
+# Store all vertices for each step
+all_verts = []
+for step in range(steps):
+    angle = step * angle_step
+    cos_a = math.cos(angle)
+    sin_a = math.sin(angle)
+    
+    step_verts = []
+    for r, h in profile:
+        x = r * cos_a
+        y = r * sin_a
+        v = bm.verts.new((x, y, h))
+        step_verts.append(v)
+    all_verts.append(step_verts)
+
+# Connect vertices between steps
+for step in range(steps):
+    next_step = (step + 1) % steps
+    for i in range(len(profile) - 1):
+        v1 = all_verts[step][i]
+        v2 = all_verts[step][i + 1]
+        v3 = all_verts[next_step][i + 1]
+        v4 = all_verts[next_step][i]
+        bm.faces.new((v1, v2, v3, v4))
+
+# Close top and bottom caps
+# Bottom cap
+bottom_center = bm.verts.new((0, 0, profile[0][1]))
+for step in range(steps):
+    next_step = (step + 1) % steps
+    bm.faces.new((bottom_center, all_verts[next_step][0], all_verts[step][0]))
+
+# Top cap
+top_center = bm.verts.new((0, 0, profile[-1][1]))
+for step in range(steps):
+    next_step = (step + 1) % steps
+    bm.faces.new((top_center, all_verts[step][-1], all_verts[next_step][-1]))
+
+bm.to_mesh(mesh)
+bm.free()
+
+# Smooth shading
+for poly in mesh.polygons:
+    poly.use_smooth = True
+
+# Assign material
+obj.data.materials.append(mat)
+
+# Set up lighting
+light_data = bpy.data.lights.new(name="KeyLight", type='POINT')
+light_data.energy = 1000
+light_data.color = (1.0, 1.0, 1.0)
+light_obj = bpy.data.objects.new("KeyLight", light_data)
+light_obj.location = (3, 3, 4)
+bpy.context.collection.objects.link(light_obj)
+
+light_data2 = bpy.data.lights.new(name="FillLight", type='POINT')
+light_data2.energy = 500
+light_data2.color = (0.9, 0.9, 1.0)
+light_obj2 = bpy.data.objects.new("FillLight", light_data2)
+light_obj2.location = (-3, -2, 3)
+bpy.context.collection.objects.link(light_obj2)
+
+# Set up camera
+camera_data = bpy.data.cameras.new(name="Camera")
+camera_obj = bpy.data.objects.new("Camera", camera_data)
+camera_obj.location = (3, -3, 2)
+bpy.context.collection.objects.link(camera_obj)
+
+# Point camera at the pawn
+direction = (0, 0, 0.5) - camera_obj.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera_obj.rotation_euler = rot_quat.to_euler()
+
+bpy.context.scene.camera = camera_obj
+
+# Set render settings
+bpy.context.scene.render.resolution_x = 800
+bpy.context.scene.render.resolution_y = 800
+bpy.context.scene.render.film_transparent = False
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'

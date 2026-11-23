@@ -1,0 +1,175 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Remove default objects
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Create materials
+def create_material(name, color, roughness=0.5, metallic=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+# Materials
+mat_desk = create_material("Desk Wood", (0.3, 0.15, 0.05, 1.0), roughness=0.7)
+mat_monitor_body = create_material("Monitor Black", (0.05, 0.05, 0.05, 1.0), roughness=0.3)
+mat_screen = create_material("Screen", (0.1, 0.2, 0.5, 1.0), roughness=0.1, metallic=0.1)
+mat_keyboard = create_material("Keyboard", (0.1, 0.1, 0.1, 1.0), roughness=0.6)
+mat_mug = create_material("Mug", (0.8, 0.2, 0.1, 1.0), roughness=0.4)
+mat_lamp_base = create_material("Lamp Base", (0.1, 0.1, 0.1, 1.0), roughness=0.3, metallic=0.8)
+mat_lamp_arm = create_material("Lamp Arm", (0.1, 0.1, 0.1, 1.0), roughness=0.3, metallic=0.8)
+mat_lamp_shade = create_material("Lamp Shade", (0.9, 0.8, 0.5, 1.0), roughness=0.5)
+
+# --- Desk ---
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.75))
+desk = bpy.context.active_object
+desk.name = "Desk"
+desk.scale = (1.2, 0.6, 0.025)
+desk.data.materials.append(mat_desk)
+bpy.ops.object.transform_apply(scale=True)
+
+# Desk legs
+for i, (x, y) in enumerate([(-1.1, -0.5), (1.1, -0.5), (-1.1, 0.5), (1.1, 0.5)]):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.75, location=(x, y, 0.375))
+    leg = bpy.context.active_object
+    leg.name = f"Desk Leg {i}"
+    leg.data.materials.append(mat_desk)
+
+# --- Monitor ---
+# Monitor stand base
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.02, location=(0, -0.2, 0.78))
+stand_base = bpy.context.active_object
+stand_base.name = "Monitor Stand Base"
+stand_base.data.materials.append(mat_monitor_body)
+
+# Monitor stand arm
+bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.25, location=(0, -0.2, 0.9))
+stand_arm = bpy.context.active_object
+stand_arm.name = "Monitor Stand Arm"
+stand_arm.data.materials.append(mat_monitor_body)
+
+# Monitor body
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -0.2, 1.1))
+monitor = bpy.context.active_object
+monitor.name = "Monitor"
+monitor.scale = (0.45, 0.03, 0.3)
+monitor.data.materials.append(mat_monitor_body)
+bpy.ops.object.transform_apply(scale=True)
+
+# Screen
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -0.17, 1.1))
+screen = bpy.context.active_object
+screen.name = "Screen"
+screen.rotation_euler = (math.radians(90), 0, 0)
+screen.scale = (0.85, 0.6, 1)
+screen.data.materials.append(mat_screen)
+bpy.ops.object.transform_apply(scale=True)
+
+# --- Keyboard ---
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0.15, 0.78))
+keyboard = bpy.context.active_object
+keyboard.name = "Keyboard"
+keyboard.scale = (0.35, 0.12, 0.015)
+keyboard.data.materials.append(mat_keyboard)
+bpy.ops.object.transform_apply(scale=True)
+
+# Add some key bumps
+import random
+random.seed(42)
+for _ in range(60):
+    x = random.uniform(-0.32, 0.32)
+    y = random.uniform(0.08, 0.22)
+    bpy.ops.mesh.primitive_cube_add(size=0.03, location=(x, y, 0.795))
+    key = bpy.context.active_object
+    key.name = "Key"
+    key.scale = (1, 1, 0.5)
+    key.data.materials.append(mat_keyboard)
+    bpy.ops.object.transform_apply(scale=True)
+
+# --- Mug ---
+bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.1, location=(0.6, 0.1, 0.83))
+mug = bpy.context.active_object
+mug.name = "Mug"
+mug.data.materials.append(mat_mug)
+
+# Mug handle
+bpy.ops.mesh.primitive_torus_add(major_radius=0.03, minor_radius=0.008, location=(0.65, 0.1, 0.83))
+handle = bpy.context.active_object
+handle.name = "Mug Handle"
+handle.rotation_euler = (0, math.radians(90), 0)
+handle.data.materials.append(mat_mug)
+
+# --- Desk Lamp ---
+# Lamp base
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.03, location=(-0.7, -0.2, 0.78))
+lamp_base = bpy.context.active_object
+lamp_base.name = "Lamp Base"
+lamp_base.data.materials.append(mat_lamp_base)
+
+# Lamp arm 1 (vertical)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.3, location=(-0.7, -0.2, 0.93))
+lamp_arm1 = bpy.context.active_object
+lamp_arm1.name = "Lamp Arm 1"
+lamp_arm1.data.materials.append(mat_lamp_arm)
+
+# Lamp arm 2 (angled)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.25, location=(-0.6, -0.15, 1.05))
+lamp_arm2 = bpy.context.active_object
+lamp_arm2.name = "Lamp Arm 2"
+lamp_arm2.rotation_euler = (0, math.radians(30), 0)
+lamp_arm2.data.materials.append(mat_lamp_arm)
+
+# Lamp shade
+bpy.ops.mesh.primitive_cone_add(radius1=0.08, radius2=0.04, depth=0.12, location=(-0.55, -0.1, 1.12))
+lamp_shade = bpy.context.active_object
+lamp_shade.name = "Lamp Shade"
+lamp_shade.rotation_euler = (0, math.radians(20), 0)
+lamp_shade.data.materials.append(mat_lamp_shade)
+
+# Add a point light inside the lamp shade
+bpy.ops.object.light_add(type='POINT', location=(-0.55, -0.1, 1.08))
+lamp_light = bpy.context.active_object
+lamp_light.name = "Lamp Light"
+lamp_light.data.energy = 50
+lamp_light.data.color = (1.0, 0.9, 0.7)
+
+# Set up camera
+bpy.ops.object.camera_add(location=(1.5, 1.5, 1.2))
+camera = bpy.context.active_object
+camera.name = "Camera"
+camera.rotation_euler = (math.radians(60), 0, math.radians(45))
+
+# Set camera as active
+bpy.context.scene.camera = camera
+
+# Add a sun light for ambient
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 5))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 2
+sun.rotation_euler = (math.radians(45), 0, math.radians(45))
+
+# Set world background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.05, 0.05, 0.1, 1.0)
+    bg_node.inputs[1].default_value = 1.0
+
+print("Desk setup created!")

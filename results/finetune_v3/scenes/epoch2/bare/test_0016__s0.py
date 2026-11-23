@@ -1,0 +1,96 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1686)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+L = {}
+def tone(k, c, e=0, r=.9):
+    m = bpy.data.materials.new(k); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*c, 1); b.inputs["Roughness"].default_value = r
+    if e: b.inputs["Emission Color"].default_value = (*c, 1); b.inputs["Emission Strength"].default_value = e
+    L[k] = m
+tone("paving", (.16, .15, .17)); tone("limestone", (.38, .33, .26)); tone("limestone2", (.3, .26, .21)); tone("tile", (.45, .17, .08))
+tone("slate", (.12, .13, .18)); tone("door", (.1, .06, .04)); tone("fountain", (.2, .22, .24)); tone("water", (.1, .3, .4), 1.2)
+tone("bulb1", (1, .8, .3), 16); tone("bulb2", (1, .25, .35), 16); tone("bulb3", (.3, .8, 1), 16); tone("clockface", (.9, .85, .6), 2)
+tone("hand", (.05, .05, .05)); tone("lamp", (1, .65, .25), 18); tone("cypress", (.04, .12, .07)); tone("statue", (.55, .5, .4))
+def mesh(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(L[k]); return o
+def box(at, s, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return mesh(bm, k, at, (0, 0, rz))
+def drum(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mesh(bm, k, at, rot)
+def dome(at, r, k, sq=.75):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r)
+    for v in bm.verts: v.co.z = max(v.co.z, 0) * sq
+    return mesh(bm, k, at)
+def beam_light(c, w, at):
+    d = bpy.data.lights.new("g", "POINT"); d.color = c; d.energy = w
+    o = bpy.data.objects.new("g", d); o.location = at; sc.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=14.5, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .2)))
+    v.co.z -= 1.5
+mesh(bm, "paving")
+# nave, apse, transepts
+box((0, 3, 0), (7.4, 14, 6.2), "limestone", top=.96); box((0, 10.6, 0), (6.4, 4.4, 6.4), "limestone2"); dome((0, 10.6, 6.2), 3.3, "tile", .9)
+box((0, 3, 6.2), (7.8, 14.4, .35), "slate"); box((-6.6, 5, 0), (5.6, 5.6, 5.0), "limestone2"); box((6.6, 5, 0), (5.6, 5.6, 5.0), "limestone2")
+for s in (-1, 1):
+    box((s * 6.6, 5, 5.0), (6.4, 6.4, .35), "slate"); drum((s * 6.6, 5, 5.3), 1.9, 1.8, 8, "limestone", 1.4); dome((s * 6.6, 5, 7.1), 1.5, "tile", .9)
+# drum and the great ribbed dome
+drum((0, 3, 6.5), 3.4, 2.2, 8, "limestone", 3.2); dome((0, 3, 8.7), 3.4, "tile", 1.0)
+for i in range(8):
+    a = i * math.pi / 4
+    rib = box((0, 3, 8.7), (.22, .22, 3.4), "limestone2"); rib.rotation_euler = (math.sin(a) * 1.2 * -1, -math.cos(a) * 1.2, 0)
+    rib.location = (math.cos(a) * 1.2, 3 + math.sin(a) * 1.2, 8.7)
+drum((0, 3, 12.0), .35, .8, 6, "limestone"); drum((0, 3, 12.8), .12, 1.4, 4, "lamp"); drum((0, 3, 12.8), .1, .5, 4, "hand")
+# facade and two clock towers
+box((0, -4.2, 0), (13.4, 2.4, 7.6), "limestone"); box((0, -5.5, 6.6), (4.4, .8, 1.8), "limestone2", top=.8)
+for s in (-1, 1):
+    x = s * 5.2
+    box((x, -4.2, 0), (3.4, 3.4, 10.6), "limestone", top=.95); box((x, -4.2, 10.6), (3.8, 3.8, .4), "limestone2")
+    drum((x, -4.2, 11.0), 1.7, 2.4, 8, "limestone", 1.2); dome((x, -4.2, 13.4), 1.3, "tile", .9); drum((x, -4.2, 14.5), .1, 1.0, 4, "lamp")
+    box((x, -6.0, 7.4), (1.7, .15, 1.7), "clockface"); drum((x, -6.15, 8.25), .08, .1, 4, "hand", rot=(math.pi / 2, 0, 0))
+    box((x, -6.15, 8.25), (.1, .1, .8), "hand", top=1).rotation_euler.y = s * .6
+    for z in (4.4, 6.0): box((x, -6.0, z), (.7, .12, 1.4), "door")
+box((0, -5.45, 0), (2.6, .3, 3.6), "door"); dome((0, -5.5, 3.6), 1.3, "door", .8)
+for s in (-1, 1): box((s * 2.2, -5.5, 4.2), (.9, .12, 1.6), "door")
+for s in (-1, 1): drum((s * 1.4, -6.4, 0), .22, 3.6, 6, "limestone2"); dome((s * 1.4, -6.4, 3.6), .25, "lamp", 1)
+for i in range(5): box((-2.4 + i * 1.2, -5.5, 5.6), (.8, .1, .6), "statue")
+# fountain
+drum((0, -9.5, 0), 2.0, .6, 8, "fountain", 1.8); drum((0, -9.5, .6), 1.6, .15, 8, "water"); drum((0, -9.5, .6), .3, 1.6, 6, "fountain", .2)
+drum((0, -9.5, 2.1), 1.0, .2, 8, "fountain", .8); drum((0, -9.5, 2.3), .1, .8, 5, "water")
+# festival strings across the square
+def string(a, b, n):
+    a, b = Vector(a), Vector(b)
+    for i in range(n + 1):
+        t = i / n; p = a.lerp(b, t); p.z -= math.sin(t * math.pi) * .9
+        if i: box((p - q).to_track_quat(Vector((0, 1, 0)), 'Z').to_euler(), (.04, .04, (p - q).length), "door").rotation_euler = (p - q).to_track_quat(Vector((0, 1, 0)), 'Z').to_euler()
+        q = p
+        if i: drum(p, .22, .4, 5, "bulb%d" % (i % 3 + 1), .12)
+    q = a
+string((-11, -3, 6.2), (11, -3, 6.2), 11); string((-9, -9, 5.0), (9, -9, 5.0), 11); string((-10, 1, 6.0), (-3, -8, 5.2), 7); string((10, 1, 6.0), (3, -8, 5.2), 7)
+for p in ((-11, -3, 6.2), (11, -3, 6.2), (-9, -9, 5.0), (9, -9, 5.0)): drum(p, .25, .5, 5, "lamp", .15)
+for x, y in ((-10, -10), (10, -10), (-11, 6), (11, 6), (8, 11), (-8, 11)):
+    drum((x, y, 0), .12, 3.0, 5, "door"); drum((x, y, 3.0), .3, .4, 6, "lamp", .2)
+for x, y in ((-12, 0), (12, 0), (-12, 10), (12, 10)): drum((x, y, 0), .5, 3.2, 6, "cypress", .1)
+beam_light((1, .7, .3), 500, (0, -9.5, 2.5)); beam_light((1, .65, .25), 400, (-5.2, -6.5, 8.5)); beam_light((1, .65, .25), 400, (5.2, -6.5, 8.5))
+beam_light((1, .8, .4), 300, (0, -4, 3)); beam_light((.4, .8, 1), 250, (-6, -8, 4)); beam_light((1, .3, .4), 250, (6, -8, 4))
+for c, e, p in (((.5, .55, 1), 3.5, (-24, -18, 10)), ((.9, .45, .7), 2, (22, 22, 14))):
+    s = bpy.data.lights.new("s", "SUN"); s.color = c; s.energy = e
+    o = bpy.data.objects.new("s", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("night"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .01, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 2, 5)); co.location = t + Vector((8, -58, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

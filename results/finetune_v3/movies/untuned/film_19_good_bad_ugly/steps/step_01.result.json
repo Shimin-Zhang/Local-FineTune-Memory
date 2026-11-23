@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.2,
+ "error": "TypeError: Converting py args to operator properties:: keyword \"radius\" unrecognized",
+ "error_line": "bpy.ops.mesh.primitive_cone_add(radius=0.05, depth=0.2, location=(x, y, 0.1))",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 245,
+ "n_lights": 0,
+ "n_materials": 14,
+ "own_camera": false,
+ "render_error": null
+}

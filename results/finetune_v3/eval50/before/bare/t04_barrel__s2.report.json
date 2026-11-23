@@ -1,0 +1,26 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: 'MeshVertex' object has no attribute 'z'",
+ "error_line": "t = abs(vertex.z) / 0.6  # 0 at middle, 1 at top/bottom",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  1.0,
+  1.0,
+  1.2
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.7,
+ "image": true
+}

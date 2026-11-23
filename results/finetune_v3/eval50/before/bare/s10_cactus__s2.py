@@ -1,0 +1,221 @@
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear existing mesh objects
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# ------------------ TERRACOTTA POT ------------------
+bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.4, depth=0.5, location=(0, 0, 0.25))
+pot = bpy.context.active_object
+pot.name = "Terracotta_Pot"
+
+# Taper the bottom (narrower at base)
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Use bmesh to taper the bottom ring
+import bmesh
+me = pot.data
+bm = bmesh.new()
+bm.from_mesh(me)
+for v in bm.verts:
+    if v.co.z < 0:  # bottom vertices
+        v.co.x *= 0.7
+        v.co.y *= 0.7
+bm.to_mesh(me)
+bm.free()
+
+# Add a rim at the top
+bpy.ops.mesh.primitive_torus_add(major_radius=0.42, minor_radius=0.04, location=(0, 0, 0.5))
+rim = bpy.context.active_object
+rim.name = "Pot_Rim"
+
+# Join rim with pot
+bpy.ops.object.select_all(action='DESELECT')
+pot.select_set(True)
+rim.select_set(True)
+bpy.context.view_layer.objects.active = pot
+bpy.ops.object.join()
+
+# Material: Terracotta
+mat_terracotta = bpy.data.materials.new("Terracotta")
+mat_terracotta.use_nodes = True
+bsdf = mat_terracotta.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.65, 0.28, 0.15, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.85
+pot.data.materials.append(mat_terracotta)
+
+# ------------------ SOIL ------------------
+bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.35, depth=0.08, location=(0, 0, 0.46))
+soil = bpy.context.active_object
+soil.name = "Soil"
+
+mat_soil = bpy.data.materials.new("Soil")
+mat_soil.use_nodes = True
+bsdf_s = mat_soil.node_tree.nodes["Principled BSDF"]
+bsdf_s.inputs["Base Color"].default_value = (0.15, 0.1, 0.07, 1.0)
+bsdf_s.inputs["Roughness"].default_value = 1.0
+soil.data.materials.append(mat_soil)
+
+# ------------------ CACTUS BODY ------------------
+# Main trunk (elongated UV sphere)
+bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=0.15, location=(0, 0, 0.75))
+trunk = bpy.context.active_object
+trunk.name = "Cactus_Trunk"
+trunk.scale = (1, 1, 2.2)
+bpy.ops.object.transform_apply(scale=True)
+
+# Left arm
+bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.09, location=(-0.2, 0, 0.85))
+arm_l = bpy.context.active_object
+arm_l.name = "Cactus_Arm_L"
+arm_l.scale = (1, 1, 1.8)
+bpy.ops.object.transform_apply(scale=True)
+
+# Right arm
+bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12, radius=0.09, location=(0.2, 0, 0.95))
+arm_r = bpy.context.active_object
+arm_r.name = "Cactus_Arm_R"
+arm_r.scale = (1, 1, 1.5)
+bpy.ops.object.transform_apply(scale=True)
+
+# Join all cactus parts
+bpy.ops.object.select_all(action='DESELECT')
+trunk.select_set(True)
+arm_l.select_set(True)
+arm_r.select_set(True)
+bpy.context.view_layer.objects.active = trunk
+bpy.ops.object.join()
+cactus = bpy.context.active_object
+cactus.name = "Cactus"
+
+# Add subtle bump/spike texture via displacement
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Material: Green Cactus
+mat_cactus = bpy.data.materials.new("Cactus_Green")
+mat_cactus.use_nodes = True
+nodes = mat_cactus.node_tree.nodes
+links = mat_cactus.node_tree.links
+
+bsdf_c = nodes["Principled BSDF"]
+bsdf_c.inputs["Base Color"].default_value = (0.15, 0.5, 0.15, 1.0)
+bsdf_c.inputs["Roughness"].default_value = 0.6
+
+# Add noise texture for subtle color variation
+noise = nodes.new("ShaderNodeTexNoise")
+noise.inputs["Scale"].default_value = 8.0
+noise.inputs["Detail"].default_value = 4.0
+
+ramp = nodes.new("ShaderNodeValToRGB")
+ramp.color_ramp.elements[0].position = 0.3
+ramp.color_ramp.elements[0].color = (0.12, 0.45, 0.12, 1.0)
+ramp.color_ramp.elements[1].position = 0.7
+ramp.color_ramp.elements[1].color = (0.2, 0.55, 0.18, 1.0)
+
+links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+links.new(ramp.outputs["Color"], bsdf_c.inputs["Base Color"])
+
+cactus.data.materials.append(mat_cactus)
+
+# ------------------ SPINES (small cones) ------------------
+import random
+random.seed(42)
+
+spine_positions = []
+# Generate positions on the cactus surface
+for _ in range(120):
+    # Random point on trunk (ellipsoid)
+    theta = random.uniform(0, 2 * math.pi)
+    phi = random.uniform(0, math.pi)
+    # Trunk center (0,0,0.75), radii approx (0.15, 0.15, 0.33)
+    x = 0.15 * math.sin(phi) * math.cos(theta)
+    y = 0.15 * math.sin(phi) * math.sin(theta)
+    z = 0.75 + 0.33 * math.cos(phi)
+    spine_positions.append((x, y, z))
+
+    # Arms
+    if random.random() > 0.5:
+        cx, cy, cz = -0.2, 0, 0.85
+        rx, ry, rz = 0.09, 0.09, 0.16
+    else:
+        cx, cy, cz = 0.2, 0, 0.95
+        rx, ry, rz = 0.09, 0.09, 0.135
+
+    x = cx + rx * math.sin(phi) * math.cos(theta)
+    y = cy + ry * math.sin(phi) * math.sin(theta)
+    z = cz + rz * math.cos(phi)
+    spine_positions.append((x, y, z))
+
+# Create a single spine and duplicate
+bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.005, radius2=0.0, depth=0.04, location=(0, 0, 0))
+spine_proto = bpy.context.active_object
+spine_proto.name = "Spine_Proto"
+
+mat_spine = bpy.data.materials.new("Spine")
+mat_spine.use_nodes = True
+bsdf_sp = mat_spine.node_tree.nodes["Principled BSDF"]
+bsdf_sp.inputs["Base Color"].default_value = (0.9, 0.88, 0.8, 1.0)
+bsdf_sp.inputs["Roughness"].default_value = 0.4
+spine_proto.data.materials.append(mat_spine)
+
+# Remove proto after creating copies
+spine_objects = []
+for i, pos in enumerate(spine_positions):
+    obj = spine_proto.copy()
+    obj.data = spine_proto.data
+    bpy.context.collection.objects.link(obj)
+    obj.location = pos
+    # Orient spine outward from center
+    center = Vector((0, 0, 0.75))
+    direction = Vector(pos) - center
+    if direction.length > 0:
+        direction.normalize()
+        obj.rotation_euler = direction.to_track_quat('Z', 'Y').to_euler()
+    spine_objects.append(obj)
+
+# Join all spines into one object
+bpy.ops.object.select_all(action='DESELECT')
+for s in spine_objects:
+    s.select_set(True)
+spine_proto.select_set(True)
+bpy.context.view_layer.objects.active = spine_proto
+bpy.ops.object.join()
+spines = bpy.context.active_object
+spines.name = "Cactus_Spines"
+
+# ------------------ LIGHTING & CAMERA ------------------
+# Add a sun light
+bpy.ops.object.light_add(type='SUN', location=(2, 2, 5))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(20), math.radians(45))
+
+# Add a camera
+bpy.ops.object.camera_add(location=(1.5, -1.5, 1.0))
+cam = bpy.context.active_object
+cam.name = "Camera"
+
+# Aim camera at the cactus
+target = Vector((0, 0, 0.7))
+direction = target - cam.location
+cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+bpy.context.scene.camera = cam
+
+# Set world background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs["Color"].default_value = (0.8, 0.85, 0.9, 1.0)
+bg.inputs["Strength"].default_value = 1.0

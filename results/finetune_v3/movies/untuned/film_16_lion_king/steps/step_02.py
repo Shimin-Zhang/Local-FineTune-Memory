@@ -1,0 +1,429 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Set up the scene
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 256
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.resolution_percentage = 100
+
+# Camera setup
+cam_data = bpy.data.cameras.new('Camera')
+cam = bpy.data.objects.new('Camera', cam_data)
+scene.collection.objects.link(cam)
+scene.camera = cam
+cam.location = (0, -80, 20)
+cam.rotation_euler = (math.radians(75), 0, 0)
+cam_data.lens = 35
+
+# Sun for sunrise
+sun_data = bpy.data.lights.new('Sun', type='SUN')
+sun_data.energy = 5
+sun_data.color = (1.0, 0.6, 0.3)
+sun_data.angle = math.radians(5)
+sun = bpy.data.objects.new('Sun', sun_data)
+scene.collection.objects.link(sun)
+sun.rotation_euler = (math.radians(75), 0, math.radians(-30))
+
+# World background - sunrise sky
+world = bpy.data.worlds.get('World') or bpy.data.worlds.new('World')
+scene.world = world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+
+# Clear existing nodes
+for node in world_nodes:
+    world_nodes.remove(node)
+
+bg_node = world_nodes.new('ShaderNodeBackground')
+out_node = world_nodes.new('ShaderNodeOutputWorld')
+sky_node = world_nodes.new('ShaderNodeTexSky')
+sky_node.sky_type = 'PREETHAM'
+sky_node.sun_elevation = math.radians(5)
+sky_node.sun_rotation = math.radians(-30)
+sky_node.sun_intensity = 1.0
+sky_node.altitude = 0
+sky_node.air_density = 2.0
+sky_node.dust_density = 4.0
+sky_node.ozone_density = 3.0
+
+world_links.new(sky_node.outputs['Color'], bg_node.inputs['Color'])
+world_links.new(bg_node.outputs['Background'], out_node.inputs['Surface'])
+bg_node.inputs['Strength'].default_value = 1.0
+
+# Materials
+def create_material(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes['Principled BSDF']
+    bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+    bsdf.inputs['Roughness'].default_value = roughness
+    bsdf.inputs['Metallic'].default_value = metallic
+    return mat
+
+rock_mat = create_material('Rock', (0.35, 0.25, 0.15), roughness=0.9)
+grass_mat = create_material('Grass', (0.2, 0.4, 0.1), roughness=0.9)
+dirt_mat = create_material('Dirt', (0.4, 0.25, 0.1), roughness=0.95)
+lion_mat = create_material('Lion', (0.8, 0.5, 0.2), roughness=0.7)
+lion_mane_mat = create_material('LionMane', (0.5, 0.25, 0.1), roughness=0.8)
+cub_mat = create_material('Cub', (0.9, 0.6, 0.3), roughness=0.6)
+elephant_mat = create_material('Elephant', (0.5, 0.45, 0.4), roughness=0.8)
+giraffe_mat = create_material('Giraffe', (0.8, 0.6, 0.3), roughness=0.7)
+giraffe_spot_mat = create_material('GiraffeSpot', (0.5, 0.3, 0.1), roughness=0.7)
+zebra_mat = create_material('Zebra', (0.9, 0.9, 0.9), roughness=0.7)
+zebra_stripe_mat = create_material('ZebraStripe', (0.1, 0.1, 0.1), roughness=0.7)
+buffalo_mat = create_material('Buffalo', (0.2, 0.15, 0.1), roughness=0.8)
+wildebeest_mat = create_material('Wildebeest', (0.3, 0.2, 0.1), roughness=0.8)
+monkey_mat = create_material('Monkey', (0.4, 0.3, 0.2), roughness=0.7)
+bird_mat = create_material('Bird', (0.1, 0.1, 0.1), roughness=0.6)
+tree_mat = create_material('Tree', (0.2, 0.3, 0.1), roughness=0.9)
+trunk_mat = create_material('Trunk', (0.3, 0.2, 0.1), roughness=0.9)
+
+# Build Pride Rock
+def create_rock(name, location, scale, mat, detail=3):
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1, subdivisions=detail, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = scale
+    obj.data.materials.append(mat)
+    # Displace for rocky look
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    mod = obj.modifiers.new('Displace', 'DISPLACE')
+    tex = bpy.data.textures.new(name + '_tex', type='CLOUDS')
+    tex.noise_scale = 0.5
+    mod.texture = tex
+    mod.strength = 0.3
+    bpy.ops.object.modifier_apply(modifier='Displace')
+    bpy.ops.object.shade_smooth()
+    return obj
+
+# Main rock formation
+rock_parts = []
+# Base platform
+base = create_rock('RockBase', (0, 0, 0), (15, 15, 8), rock_mat, detail=3)
+rock_parts.append(base)
+
+# Middle tier
+mid = create_rock('RockMid', (0, 0, 10), (10, 10, 7), rock_mat, detail=3)
+rock_parts.append(mid)
+
+# Upper tier
+upper = create_rock('RockUpper', (0, 0, 18), (6, 6, 5), rock_mat, detail=3)
+rock_parts.append(upper)
+
+# Tip
+tip = create_rock('RockTip', (0, 0, 24), (3, 3, 4), rock_mat, detail=3)
+rock_parts.append(tip)
+
+# Side rocks
+for i in range(8):
+    angle = i * math.pi / 4
+    x = math.cos(angle) * 18
+    z = math.sin(angle) * 18
+    side = create_rock(f'RockSide{i}', (x, 0, 3), (4, 4, 5), rock_mat, detail=2)
+    rock_parts.append(side)
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(size=200, location=(0, 0, -1))
+ground = bpy.context.active_object
+ground.name = 'Ground'
+ground.data.materials.append(grass_mat)
+bpy.ops.object.shade_smooth()
+
+# Add dirt patch around rock
+bpy.ops.mesh.primitive_cylinder_add(radius=20, depth=0.5, location=(0, 0, -0.75))
+dirt = bpy.context.active_object
+dirt.name = 'Dirt'
+dirt.data.materials.append(dirt_mat)
+bpy.ops.object.shade_smooth()
+
+# Acacia trees
+def create_acacia(name, location, scale=1.0):
+    parts = []
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3*scale, depth=4*scale, location=(location[0], location[1], 2*scale + location[2]))
+    trunk = bpy.context.active_object
+    trunk.name = name + '_trunk'
+    trunk.data.materials.append(trunk_mat)
+    parts.append(trunk)
+    # Canopy - flat disc
+    bpy.ops.mesh.primitive_cylinder_add(radius=3*scale, depth=0.5*scale, location=(location[0], location[1], 4.5*scale + location[2]))
+    canopy = bpy.context.active_object
+    canopy.name = name + '_canopy'
+    canopy.data.materials.append(tree_mat)
+    parts.append(canopy)
+    return parts
+
+for i in range(6):
+    angle = i * math.pi / 3 + 0.5
+    x = math.cos(angle) * 35
+    z = math.sin(angle) * 35
+    create_acacia(f'Acacia{i}', (x, 0, 0), scale=random.uniform(0.8, 1.5))
+
+# Animals - simplified low-poly representations
+
+def create_lion(name, location, scale=1.0, is_mane=False, is_cub=False):
+    parts = []
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=(location[0], location[1], location[2] + 1*scale))
+    body = bpy.context.active_object
+    body.name = name + '_body'
+    body.scale = (1.5*scale, 1*scale, 0.8*scale)
+    body.data.materials.append(cub_mat if is_cub else lion_mat)
+    parts.append(body)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.6*scale, location=(location[0] + 1.5*scale, location[1], location[2] + 1.5*scale))
+    head = bpy.context.active_object
+    head.name = name + '_head'
+    head.data.materials.append(cub_mat if is_cub else lion_mat)
+    parts.append(head)
+    # Mane if adult
+    if is_mane:
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8*scale, location=(location[0] + 1.5*scale, location[1], location[2] + 1.5*scale))
+        mane = bpy.context.active_object
+        mane.name = name + '_mane'
+        mane.scale = (1.2, 1.2, 1.2)
+        mane.data.materials.append(lion_mane_mat)
+        parts.append(mane)
+    # Legs
+    for i, (lx, lz) in enumerate([(-0.8, -0.5), (-0.8, 0.5), (0.8, -0.5), (0.8, 0.5)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.15*scale, depth=1*scale, location=(location[0] + lx, location[1] + lz, location[2] + 0.5*scale))
+        leg = bpy.context.active_object
+        leg.name = f'{name}_leg{i}'
+        leg.data.materials.append(cub_mat if is_cub else lion_mat)
+        parts.append(leg)
+    # Tail
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08*scale, depth=1.5*scale, location=(location[0] - 1.5*scale, location[1], location[2] + 1*scale))
+    tail = bpy.context.active_object
+    tail.name = name + '_tail'
+    tail.rotation_euler = (0, math.radians(45), 0)
+    tail.data.materials.append(cub_mat if is_cub else lion_mat)
+    parts.append(tail)
+    return parts
+
+# Mufasa (adult lion with mane) on the rock
+mufasa = create_lion('Mufasa', (0, 0, 27), scale=1.5, is_mane=True)
+
+# Simba (cub) held up at the tip
+simba = create_lion('Simba', (0, 0, 30), scale=0.8, is_cub=True)
+
+# Rafiki holding Simba up - simplified
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(0, 0, 28))
+rafiki_body = bpy.context.active_object
+rafiki_body.name = 'Rafiki_body'
+rafiki_body.scale = (1, 0.8, 1.5)
+rafiki_body.data.materials.append(monkey_mat)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.4, location=(0, 0, 29.5))
+rafiki_head = bpy.context.active_object
+rafiki_head.name = 'Rafiki_head'
+rafiki_head.data.materials.append(monkey_mat)
+
+# Arms reaching up
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=1.5, location=(side*0.5, 0, 29))
+    arm = bpy.context.active_object
+    arm.name = f'Rafiki_arm{side}'
+    arm.rotation_euler = (0, math.radians(30*side), 0)
+    arm.data.materials.append(monkey_mat)
+
+# Gathered animals below
+
+# Elephants
+for i in range(3):
+    x = -10 + i * 8
+    z = 15
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.5, location=(x, z, 2))
+    body = bpy.context.active_object
+    body.name = f'Elephant{i}_body'
+    body.scale = (1.5, 1, 1)
+    body.data.materials.append(elephant_mat)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(x + 2, z, 2.5))
+    head = bpy.context.active_object
+    head.name = f'Elephant{i}_head'
+    head.data.materials.append(elephant_mat)
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=1.5, location=(x + 2.5, z, 1.5))
+    trunk = bpy.context.active_object
+    trunk.name = f'Elephant{i}_trunk'
+    trunk.rotation_euler = (math.radians(30), 0, 0)
+    trunk.data.materials.append(elephant_mat)
+    # Ears
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_plane_add(size=1, location=(x + 1.5, z + side*0.8, 2.5))
+        ear = bpy.context.active_object
+        ear.name = f'Elephant{i}_ear{side}'
+        ear.scale = (0.5, 0.8, 1)
+        ear.rotation_euler = (0, math.radians(20*side), 0)
+        ear.data.materials.append(elephant_mat)
+    # Legs
+    for j, (lx, lz) in enumerate([(-1, -0.8), (-1, 0.8), (1, -0.8), (1, 0.8)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=1.5, location=(x + lx, z + lz, 0.75))
+        leg = bpy.context.active_object
+        leg.name = f'Elephant{i}_leg{j}'
+        leg.data.materials.append(elephant_mat)
+
+# Giraffes
+for i in range(2):
+    x = 10 + i * 6
+    z = 12
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=(x, z, 3))
+    body = bpy.context.active_object
+    body.name = f'Giraffe{i}_body'
+    body.scale = (1.5, 1, 1)
+    body.data.materials.append(giraffe_mat)
+    # Neck
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=3, location=(x + 1.5, z, 4.5))
+    neck = bpy.context.active_object
+    neck.name = f'Giraffe{i}_neck'
+    neck.rotation_euler = (0, math.radians(-20), 0)
+    neck.data.materials.append(giraffe_mat)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(x + 2, z, 6))
+    head = bpy.context.active_object
+    head.name = f'Giraffe{i}_head'
+    head.data.materials.append(giraffe_mat)
+    # Ossicones
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.3, location=(x + 2 + side*0.1, z, 6.3))
+        oss = bpy.context.active_object
+        oss.name = f'Giraffe{i}_oss{side}'
+        oss.data.materials.append(giraffe_spot_mat)
+    # Legs
+    for j, (lx, lz) in enumerate([(-1, -0.5), (-1, 0.5), (1, -0.5), (1, 0.5)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=2.5, location=(x + lx, z + lz, 1.25))
+        leg = bpy.context.active_object
+        leg.name = f'Giraffe{i}_leg{j}'
+        leg.data.materials.append(giraffe_mat)
+
+# Zebras
+for i in range(4):
+    x = -5 + i * 5
+    z = 20
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(x, z, 1.2))
+    body = bpy.context.active_object
+    body.name = f'Zebra{i}_body'
+    body.scale = (1.5, 1, 0.8)
+    body.data.materials.append(zebra_mat)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(x + 1.2, z, 1.5))
+    head = bpy.context.active_object
+    head.name = f'Zebra{i}_head'
+    head.data.materials.append(zebra_mat)
+    # Legs
+    for j, (lx, lz) in enumerate([(-0.5, -0.3), (-0.5, 0.3), (0.5, -0.3), (0.5, 0.3)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=1, location=(x + lx, z + lz, 0.5))
+        leg = bpy.context.active_object
+        leg.name = f'Zebra{i}_leg{j}'
+        leg.data.materials.append(zebra_mat)
+
+# Wildebeests
+for i in range(5):
+    x = -8 + i * 4
+    z = 25
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.7, location=(x, z, 1))
+    body = bpy.context.active_object
+    body.name = f'Wildebeest{i}_body'
+    body.scale = (1.5, 1, 0.8)
+    body.data.materials.append(wildebeest_mat)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(x + 1, z, 1.2))
+    head = bpy.context.active_object
+    head.name = f'Wildebeest{i}_head'
+    head.data.materials.append(wildebeest_mat)
+    # Horns
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.4, location=(x + 1, z + side*0.15, 1.4))
+        horn = bpy.context.active_object
+        horn.name = f'Wildebeest{i}_horn{side}'
+        horn.rotation_euler = (0, math.radians(45*side), 0)
+        horn.data.materials.append(buffalo_mat)
+    # Legs
+    for j, (lx, lz) in enumerate([(-0.4, -0.2), (-0.4, 0.2), (0.4, -0.2), (0.4, 0.2)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=0.8, location=(x + lx, z + lz, 0.4))
+        leg = bpy.context.active_object
+        leg.name = f'Wildebeest{i}_leg{j}'
+        leg.data.materials.append(wildebeest_mat)
+
+# Buffaloes
+for i in range(2):
+    x = 5 + i * 6
+    z = 22
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=(x, z, 1.2))
+    body = bpy.context.active_object
+    body.name = f'Buffalo{i}_body'
+    body.scale = (1.5, 1, 1)
+    body.data.materials.append(buffalo_mat)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=(x + 1.5, z, 1.5))
+    head = bpy.context.active_object
+    head.name = f'Buffalo{i}_head'
+    head.data.materials.append(buffalo_mat)
+    # Horns
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.5, location=(x + 1.5, z + side*0.3, 1.8))
+        horn = bpy.context.active_object
+        horn.name = f'Buffalo{i}_horn{side}'
+        horn.rotation_euler = (0, math.radians(60*side), 0)
+        horn.data.materials.append(buffalo_mat)
+    # Legs
+    for j, (lx, lz) in enumerate([(-0.8, -0.5), (-0.8, 0.5), (0.8, -0.5), (0.8, 0.5)]):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=1, location=(x + lx, z + lz, 0.5))
+        leg = bpy.context.active_object
+        leg.name = f'Buffalo{i}_leg{j}'
+        leg.data.materials.append(buffalo_mat)
+
+# Birds flying in the sky
+for i in range(15):
+    x = random.uniform(-50, 50)
+    y = random.uniform(-20, 20)
+    z = random.uniform(30, 60)
+    bpy.ops.mesh.primitive_cone_add(radius1=0.3, depth=0.5, location=(x, y, z))
+    bird = bpy.context.active_object
+    bird.name = f'Bird{i}'
+    bird.rotation_euler = (random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi))
+    bird.data.materials.append(bird_mat)
+    # Wings
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_plane_add(size=0.4, location=(x, y + side*0.3, z))
+        wing = bpy.context.active_object
+        wing.name = f'Bird{i}_wing{side}'
+        wing.rotation_euler = (0, math.radians(30*side), 0)
+        wing.data.materials.append(bird_mat)
+
+# More ground detail - rocks scattered
+for i in range(20):
+    x = random.uniform(-40, 40)
+    z = random.uniform(-40, 40)
+    if abs(x) > 20 or abs(z) > 20:
+        small_rock = create_rock(f'SmallRock{i}', (x, z, 0), (random.uniform(0.5, 2), random.uniform(0.5, 2), random.uniform(0.3, 1)), rock_mat, detail=1)
+
+# Grass tufts
+for i in range(50):
+    x = random.uniform(-40, 40)
+    z = random.uniform(-40, 40)
+    if abs(x) > 22 or abs(z) > 22:
+        bpy.ops.mesh.primitive_cone_add(radius1=0.1, depth=0.5, location=(x, z, 0.25))
+        grass = bpy.context.active_object
+        grass.name = f'Grass{i}'
+        grass.data.materials.append(grass_mat)
+
+print("Scene built successfully!")
+print(f"Total objects: {len(bpy.data.objects)}")

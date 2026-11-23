@@ -1,0 +1,96 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1575)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def gravel(rgb, em=0, rough=.95):
+    m = bpy.data.materials.new("g"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+soil, pitfloor, water, pitwall = gravel((.2, .14, .09)), gravel((.14, .1, .07)), gravel((.03, .12, .2), rough=.2), gravel((.26, .2, .15))
+gravelA, gravelB, gravelC, gravelD = gravel((.45, .42, .38)), gravel((.33, .3, .27)), gravel((.55, .45, .33)), gravel((.2, .2, .2))
+hull, deck, orange, belt = gravel((.1, .2, .3)), gravel((.3, .32, .34)), gravel((.8, .35, .05)), gravel((.05, .05, .06))
+steel, tyre, cabin, lamp = gravel((.35, .37, .4)), gravel((.03, .03, .03)), gravel((.6, .62, .65)), gravel((1, .75, .35), em=16)
+def form(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("f"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("f", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); me.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return form(bm, m, at, rot)
+def drum(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    return form(bm, m, at, rot)
+def heap(at, r, h, m, j=.15):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=r, radius2=r * .12, depth=h)
+    for v in bm.verts: v.co += Vector((random.uniform(-j, j) * r, random.uniform(-j, j) * r, random.uniform(-j, j) * h * .5))
+    return form(bm, m, at)
+def strut(a, b, t, m):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return form(bm, m)
+def beacon(at, rgb, w):
+    L = bpy.data.lights.new("b", "POINT"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("b", L); o.location = at; sc.collection.objects.link(o)
+# base: a long block of earth with a rough keel
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 22 + random.uniform(-1, 1), v.co.y * 14 + random.uniform(-1, 1), -3.2 + random.uniform(-.8, .3)))
+    else: v.co = Vector((v.co.x * 29, v.co.y * 19, 0))
+form(bm, soil)
+# flooded pit behind, with a sloping bank and a floating dredger
+slab((-2, 6.2, -.1), (11, 6, .1), water)
+for sx in (-1, 1): slab((-2 + sx * 5.8, 6.2, 0), (1.6, 6, .5), pitwall)
+slab((-2, 3.4, 0), (11, .9, .5), pitwall); slab((-2, 9.0, 0), (11, .9, .6), pitwall)
+slab((-2, 6.2, -.1), (10.4, 5.4, .1), pitfloor)
+dx, dy = -3.5, 6.0
+slab((dx, dy, .15), (5.2, 2.0, .5), hull); slab((dx - .4, dy, .65), (4.2, 1.5, .15), deck)
+slab((dx + 1.8, dy, .8), (1.2, 1.2, 1.1), cabin); slab((dx + 1.8, dy, 1.9), (1.3, 1.3, .15), steel)
+slab((dx + 1.8, dy - .62, 1.2), (.9, .05, .4), lamp)
+slab((dx - 1.4, dy, .8), (1.8, 1.2, .5), orange)
+for sx in (-.6, .6): slab((dx - 1.4 + sx, dy - .65, 1.0), (.1, .05, .3), tyre)
+drum((dx - 1.4, dy, 1.6), .15, .5, 6, steel)
+beacon((dx + 1.8, dy - 1.2, 1.3), (1, .75, .35), 350)
+# dredge arm reaching into the pit, with a bucket
+strut((dx - 1.4, dy + .3, 1.2), (dx - 3.4, dy + 1.6, .3), .18, steel); strut((dx - 3.4, dy + 1.6, .3), (dx - 3.4, dy + 2.2, .1), .12, steel)
+# conveyor from the dredger to the sorting plant
+for i in range(6):
+    px, py = dx - 1.0 + i * 1.2, dy - 1.8 - i * .5
+    strut((px, py, .2), (px, py, 1.6 - i * .2), .1, steel)
+strut((dx - 1.0, dy - 1.8, 1.6), (dx - 1.0 + 6.0, dy - 1.8 - 2.5, .4), .4, belt)
+for i in range(6): slab((dx - .6 + i * 1.2, dy - 2.0 - i * .5, 1.7 - i * .2), (.5, .4, .15), gravelA)
+# sorting plant: hopper, drum screen, discharge spouts, hopper legs
+pl = Vector((dx + 5.0, dy - 4.2, 0))
+slab(pl + Vector((0, 0, .8)), (2.4, 2.0, 1.4), steel); slab(pl + Vector((0, 0, 2.2)), (2.8, 2.4, .2), deck)
+drum(pl + Vector((0, 0, 3.4)), .9, 2.4, 8, orange, rot=(0, math.pi / 2, 0))
+for sx in (-1, 1): slab(pl + Vector((sx * 1.2, 0, .8)), (.2, 1.8, .8), steel)
+slab(pl + Vector((0, -1.1, .8)), (2.0, .1, .5), lamp); beacon(pl + Vector((0, -1.8, 1.0)), (1, .75, .35), 250)
+for k in range(3): slab(pl + Vector((.4, -1.6 - k * .3, .5 - k * .15)), (.5, .4, .2), gravelB)
+# graded heaps in four sizes, front left to right
+for i, (r, h, m) in enumerate(((3.0, 3.2, gravelD), (2.2, 2.2, gravelC), (1.5, 1.5, gravelB), (1.0, 1.0, gravelA))):
+    heap((-9 + i * 2.6, -2.5 - (i % 2) * 1.5, 0), r, h, m)
+for i in range(10): heap((random.uniform(-12, 12), random.uniform(-8, -4), 0), random.uniform(.5, .9), random.uniform(.5, 1), gravelA, .2)
+# a haul road and two wheelbarrows
+slab((-1, -6.5, 0), (24, 1.4, .08), gravelD)
+for x in (-4, 3):
+    slab((x, -6.5, .1), (.9, .7, .4), orange)
+    for sx in (-1, 1): drum((x + sx * .5, -6.5, .35), .3, .1, 7, tyre, rot=(math.pi / 2, 0, 0))
+    strut((x, -6.2, .5), (x, -5.2, .9), .08, steel)
+# floodlight mast and a fence at the back
+strut((11, 8, 0), (11, 8, 7), .2, steel); slab((11, 8, 7), (1.6, .5, .4), lamp); beacon((11, 7, 6.8), (1, .75, .35), 700)
+for i in range(9): slab((-11 + i * 2.7, 9.2, 0), (.15, .15, 1.4), steel)
+slab((0, 9.2, 1.2), (24, .1, .1), steel)
+for rgb, w, p in (((.5, .65, 1), 4.5, (-26, -16, 9)), ((1, .6, .3), 2.2, (24, 22, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .02, .035, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80; cm.clip_end = 500
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((14, -64, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

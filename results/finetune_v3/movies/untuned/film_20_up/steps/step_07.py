@@ -1,0 +1,271 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene looks good! Let's add final polish:
+# 1. Better camera angle to show the house more clearly
+# 2. Add a few more detail elements
+# 3. Add a subtle fog/atmosphere
+# 4. Add some birds in formation
+# 5. Add a path from the house
+
+# Adjust camera for better composition
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (18, 18, 8)
+    target = Vector((0, 0, 10))
+    direction = target - cam.location
+    rot_quat = direction.to_track_quat('-Z', 'Y')
+    cam.rotation_euler = rot_quat.to_euler()
+    cam.data.lens = 40
+
+# Add a path from house to town
+mat_path = bpy.data.materials.get("Path")
+if mat_path is None:
+    mat_path = bpy.data.materials.new("Path")
+    mat_path.use_nodes = True
+    bsdf = mat_path.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.6, 0.55, 0.5, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.9
+
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 8, -4.97))
+path = bpy.context.object
+path.name = "Path"
+path.scale = (1.5, 8, 1)
+bpy.ops.object.transform_apply(scale=True)
+path.data.materials.append(mat_path)
+
+# Add stepping stones
+for i in range(5):
+    y = 5 + i * 1.5
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.05, location=(0, y, -4.95))
+    stone = bpy.context.object
+    stone.name = f"Stone_{i}"
+    stone.data.materials.append(mat_path)
+
+# Add birds in V formation
+bird_col = bpy.data.collections.get("Birds")
+if bird_col is None:
+    bird_col = bpy.data.collections.new("Birds")
+    bpy.context.scene.collection.children.link(bird_col)
+
+mat_bird = bpy.data.materials.get("Bird")
+if mat_bird is None:
+    mat_bird = bpy.data.materials.new("Bird")
+    mat_bird.use_nodes = True
+    bsdf = mat_bird.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.1, 0.1, 0.1, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.8
+
+# V formation birds
+for i in range(7):
+    offset = i * 0.8
+    x = 10 + offset
+    y = 20 + offset * 0.5
+    z = 18 + offset * 0.3
+    for wing in [-1, 1]:
+        bpy.ops.mesh.primitive_plane_add(size=0.4, location=(x + wing*0.2, y, z))
+        wing_obj = bpy.context.object
+        wing_obj.name = f"BirdV_{i}_{wing}"
+        wing_obj.rotation_euler = (0, math.radians(25*wing), math.radians(30))
+        wing_obj.data.materials.append(mat_bird)
+        for col in wing_obj.users_collection:
+            col.objects.unlink(wing_obj)
+        bird_col.objects.link(wing_obj)
+
+# Add a small garden with flowers near the house
+garden_col = bpy.data.collections.get("Garden")
+if garden_col is None:
+    garden_col = bpy.data.collections.new("Garden")
+    bpy.context.scene.collection.children.link(garden_col)
+
+mat_flower1 = bpy.data.materials.get("Flower")
+if mat_flower1 is None:
+    mat_flower1 = bpy.data.materials.new("Flower")
+    mat_flower1.use_nodes = True
+    bsdf = mat_flower1.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.2, 0.3, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.5
+
+mat_flower2 = bpy.data.materials.get("Flower2")
+if mat_flower2 is None:
+    mat_flower2 = bpy.data.materials.new("Flower2")
+    mat_flower2.use_nodes = True
+    bsdf = mat_flower2.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.8, 0.2, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.5
+
+mat_stem = bpy.data.materials.get("Stem")
+if mat_stem is None:
+    mat_stem = bpy.data.materials.new("Stem")
+    mat_stem.use_nodes = True
+    bsdf = mat_stem.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.2, 0.5, 0.2, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.8
+
+# Flower bed
+for i in range(15):
+    x = random.uniform(-2.5, 2.5)
+    y = random.uniform(4.5, 6)
+    z = 3.2
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.25, location=(x, y, z + 0.12))
+    stem = bpy.context.object
+    stem.name = f"GardenStem_{i}"
+    stem.data.materials.append(mat_stem)
+    for col in stem.users_collection:
+        col.objects.unlink(stem)
+    garden_col.objects.link(stem)
+    
+    mat_f = mat_flower1 if i % 2 == 0 else mat_flower2
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.07, location=(x, y, z + 0.3))
+    flower = bpy.context.object
+    flower.name = f"GardenFlower_{i}"
+    flower.data.materials.append(mat_f)
+    for col in flower.users_collection:
+        col.objects.unlink(flower)
+    garden_col.objects.link(flower)
+
+# Add a bench on the porch
+mat_bench = bpy.data.materials.get("Bench")
+if mat_bench is None:
+    mat_bench = bpy.data.materials.new("Bench")
+    mat_bench.use_nodes = True
+    bsdf = mat_bench.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.5, 0.35, 0.2, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.7
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(1.2, 4.5, 3.5))
+bench_seat = bpy.context.object
+bench_seat.name = "BenchSeat"
+bench_seat.scale = (0.8, 0.4, 0.08)
+bpy.ops.object.transform_apply(scale=True)
+bench_seat.data.materials.append(mat_bench)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(1.2, 4.7, 3.7))
+bench_back = bpy.context.object
+bench_back.name = "BenchBack"
+bench_back.scale = (0.8, 0.08, 0.3)
+bpy.ops.object.transform_apply(scale=True)
+bench_back.data.materials.append(mat_bench)
+
+# Add a doormat
+mat_doormat = bpy.data.materials.get("Doormat")
+if mat_doormat is None:
+    mat_doormat = bpy.data.materials.new("Doormat")
+    mat_doormat.use_nodes = True
+    bsdf = mat_doormat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.4, 0.2, 0.1, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.9
+
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 4.5, 3.16))
+doormat = bpy.context.object
+doormat.name = "Doormat"
+doormat.scale = (0.8, 0.5, 1)
+bpy.ops.object.transform_apply(scale=True)
+doormat.data.materials.append(mat_doormat)
+
+# Add a house number plate
+mat_plate = bpy.data.materials.get("Plate")
+if mat_plate is None:
+    mat_plate = bpy.data.materials.new("Plate")
+    mat_plate.use_nodes = True
+    bsdf = mat_plate.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 0.85, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.4
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.8, 4.02, 5.5))
+plate = bpy.context.object
+plate.name = "HouseNumber"
+plate.scale = (0.15, 0.02, 0.2)
+bpy.ops.object.transform_apply(scale=True)
+plate.data.materials.append(mat_plate)
+
+# Add a small lamp post by the path
+mat_lamp = bpy.data.materials.get("Lamp")
+if mat_lamp is None:
+    mat_lamp = bpy.data.materials.new("Lamp")
+    mat_lamp.use_nodes = True
+    bsdf = mat_lamp.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.2, 0.2, 0.2, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.5
+
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=1.5, location=(1.5, 6, -4.2))
+lamp_post = bpy.context.object
+lamp_post.name = "LampPost"
+lamp_post.data.materials.append(mat_lamp)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, segments=8, ring_count=6, location=(1.5, 6, -3.4))
+lamp_globe = bpy.context.object
+lamp_globe.name = "LampGlobe"
+mat_lamp_globe = bpy.data.materials.get("LampGlobe")
+if mat_lamp_globe is None:
+    mat_lamp_globe = bpy.data.materials.new("LampGlobe")
+    mat_lamp_globe.use_nodes = True
+    bsdf = mat_lamp_globe.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (1.0, 0.9, 0.6, 1.0)
+    bsdf.inputs["Emission Color"].default_value = (1.0, 0.9, 0.6, 1.0)
+    bsdf.inputs["Emission Strength"].default_value = 3.0
+    bsdf.inputs["Roughness"].default_value = 0.3
+lamp_globe.data.materials.append(mat_lamp_globe)
+
+# Add a point light for the lamp
+if bpy.data.objects.get("LampLight") is None:
+    lamp_light_data = bpy.data.lights.new("LampLight", 'POINT')
+    lamp_light_data.energy = 20
+    lamp_light_data.color = (1.0, 0.9, 0.6)
+    lamp_light_obj = bpy.data.objects.new("LampLight", lamp_light_data)
+    bpy.context.scene.collection.objects.link(lamp_light_obj)
+    lamp_light_obj.location = (1.5, 6, -3.4)
+
+# Add some clouds closer to the house for depth
+cloud_col = bpy.data.collections.get("Clouds")
+if cloud_col:
+    mat_cloud = bpy.data.materials.get("Cloud")
+    if mat_cloud is None:
+        mat_cloud = bpy.data.materials.new("Cloud")
+        mat_cloud.use_nodes = True
+        bsdf = mat_cloud.node_tree.nodes["Principled BSDF"]
+        bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.9
+    
+    for i in range(5):
+        x = random.uniform(-15, 15)
+        y = random.uniform(-15, 15)
+        z = random.uniform(12, 20)
+        for j in range(4):
+            ox = random.uniform(-1.5, 1.5)
+            oy = random.uniform(-1.5, 1.5)
+            oz = random.uniform(-0.3, 0.3)
+            r = random.uniform(0.8, 1.8)
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=10, ring_count=8, location=(x+ox, y+oy, z+oz))
+            cloud = bpy.context.object
+            cloud.name = f"CloudNear_{i}_{j}"
+            cloud.data.materials.append(mat_cloud)
+            for col in cloud.users_collection:
+                col.objects.unlink(cloud)
+            cloud_col.objects.link(cloud)
+
+# Add a subtle fog effect via world nodes
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    # Add a volume scatter for fog
+    nodes = world.node_tree.nodes
+    links = world.node_tree.links
+    
+    # Remove existing volume if any
+    for node in nodes:
+        if node.type == 'VOLUME_SCATTER':
+            nodes.remove(node)
+    
+    # Add volume scatter
+    vol_scatter = nodes.new('ShaderNodeVolumeScatter')
+    vol_scatter.inputs['Color'].default_value = (0.8, 0.85, 0.9, 1.0)
+    vol_scatter.inputs['Density'].default_value = 0.005
+    
+    # Connect to world output
+    world_output = nodes.get('World Output')
+    if world_output:
+        links.new(vol_scatter.outputs['Volume'], world_output.inputs['Volume'])
+
+print(f"Final polish complete. Objects: {len(bpy.data.objects)}")

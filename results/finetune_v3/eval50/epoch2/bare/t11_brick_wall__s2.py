@@ -1,0 +1,74 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1150)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def brick(r, g, b, glow=0, rough=.9):
+    m = bpy.data.materials.new("b"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = p.inputs["Emission Color"].default_value = (r, g, b, 1)
+    p.inputs["Roughness"].default_value = rough; p.inputs["Emission Strength"].default_value = glow
+    return m
+red, red2, red3, lime, sill, ground, wood, pane, brickd, slate = (brick(*c) for c in (
+    (.36, .1, .07), (.3, .08, .06), (.42, .14, .09), (.45, .4, .3), (.5, .48, .45), (.1, .1, .1), (.2, .12, .07), (.02, .03, .05), (.2, .2, .22), (.12, .13, .16)))
+lamp = brick(1, .65, .25, 14); glass = brick(.2, .6, 1, .8, .1)
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("w"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("w", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def block(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return make(bm, m, at, rot)
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# base: a paved yard with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 17, v.co.y * 12, v.co.z * 2.2 - 1.1))
+    if v.co.z < 0: v.co = Vector((v.co.x * .6 + random.uniform(-.8, .8), v.co.y * .6 + random.uniform(-.8, .8), v.co.z - random.uniform(0, 1.8)))
+make(bm, ground)
+for i in range(5):
+    for j in range(3): block((-6.4 + i * 3.2, -4.5 + j * 3.2, 0), (3.0, 3.0, .06), lime if (i + j) % 2 else brickd)
+# the wall, course by course, leaving a window opening 4 wide by 4.6 high
+W, H, D = 14, 9, 1.0
+courses = [red, red2, red3]
+for k in range(18):
+    z = k * .5
+    for i in range(28):
+        x = -W / 2 + i * .5 + (.25 if k % 2 else 0)
+        if x > W / 2 - .25: continue
+        if -2.0 < x < 2.0 and 2.0 < z < 6.6: continue
+        block((x, 0, z), (.46, D, .46), courses[(i + k) % 3])
+# lintel, sill, jambs, window frame, glass, mullions, stone surround
+block((0, 0, 6.6), (4.4, D + .1, .5), lime); block((0, -.2, 1.8), (4.6, 1.6, .3), sill)
+block((-2.2, 0, 2.0), (.4, D + .1, 4.6), lime); block((2.2, 0, 2.0), (.4, D + .1, 4.6), lime)
+block((0, -.5, 2.1), (4.0, .2, 4.4), wood)
+block((0, -.55, 2.3), (3.6, .1, 4.0), glass)
+block((0, -.62, 2.3), (.2, .12, 4.0), wood); block((0, -.62, 4.3), (3.6, .12, .2), wood)
+glow((0, -2.0, 4.2), (.4, .7, 1), 900)
+# roof parapet with a coping stone, chimney stack and a hanging lantern
+block((0, 0, 9), (W + .6, D + .5, .4), lime)
+for i in range(7): block((-6.5 + i * 2.2, 0, 9.4), (1.2, D + .6, .3), lime)
+block((-5.5, 0, 9.4), (1.8, 1.8, 3.0), red2); block((-5.5, 0, 12.4), (2.2, 2.2, .4), lime)
+block((-5.5, 0, 12.8), (1.0, 1.0, .5), red)
+block((3.5, -1.0, 6.0), (.1, .1, 1.0), wood); block((3.5, -1.0, 5.4), (.6, .6, .7), lamp)
+glow((3.5, -1.6, 5.6), (1, .6, .25), 500)
+# a few stacked bricks and a mortar heap beside the wall, a plank ladder
+for i in range(6): block((-8.5 + (i % 3) * .55, -3.0, i // 3 * .45), (.5, .3, .4), red if i % 2 else red3, (0, 0, i))
+for i in range(3): block((8.0, -2.0, i * .4), (.5, .3, .4), red2, (0, 0, i * .5))
+for sx in (-.4, .4): block((-1.0 + sx, -1.2, 0), (.12, .12, 6.5), wood, (0, 0, 0)).rotation_euler = (0, .15, 0)
+for k in range(8): block((-1.0, -1.2 + .3, .6 + k * .7), (.9, .1, .1), wood)
+# dusk light: low rose key from the left, cold blue rim from behind right
+for c, w, at in (((1, .5, .35), 5, (-26, -16, 10)), ((.3, .5, 1), 2.2, (22, 20, 14))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("dusk"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .04, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+co.location = (9, -44, 26)
+co.rotation_euler = (Vector((0, 0, 5)) - co.location).to_track_quat('-Z', 'Y').to_euler()
+sc.camera = co

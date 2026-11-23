@@ -1,0 +1,158 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 36,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 2,
+  "MESH": 36
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "RockMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 4,
+   "principled_base_color": [
+    0.25,
+    0.22,
+    0.18
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "MossMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 4,
+   "principled_base_color": [
+    0.15,
+    0.4,
+    0.1
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "MIX_RGB",
+    "OUTPUT_MATERIAL",
+    "TEX_NOISE"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "GroundMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.2,
+    0.18,
+    0.15
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    5.0,
+    5.0,
+    10.0
+   ],
+   "direction": [
+    -0.3536,
+    0.7071,
+    -0.6124
+   ],
+   "spot_size": null
+  },
+  {
+   "type": "SUN",
+   "energy": 1.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    -5.0,
+    -3.0,
+    8.0
+   ],
+   "direction": [
+    0.2962,
+    0.5,
+    -0.8138
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   4.0,
+   -4.0,
+   3.0
+  ],
+  "direction": [
+   -0.6247,
+   0.6247,
+   -0.4685
+  ],
+  "up": [
+   -0.3313,
+   0.3313,
+   0.8835
+  ],
+  "angle": 0.6911
+ },
+ "left_out_of_framing": "Ground",
+ "bbox_size": [
+  4.0,
+  3.601,
+  2.32
+ ],
+ "scene_center": [
+  0.0261,
+  0.162,
+  0.1241
+ ],
+ "scene_radius": 2.9304,
+ "process": "exit 0",
+ "seconds": 0.6,
+ "image": false
+}

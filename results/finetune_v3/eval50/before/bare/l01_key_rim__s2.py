@@ -1,0 +1,121 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Remove default objects if any remain
+for obj in bpy.data.objects:
+    bpy.data.objects.remove(obj, do_unlink=True)
+
+# Create the floor
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+floor = bpy.context.active_object
+floor.name = "Floor"
+
+# Dark material for the floor
+floor_mat = bpy.data.materials.new(name="DarkFloor")
+floor_mat.use_nodes = True
+nodes = floor_mat.node_tree.nodes
+links = floor_mat.node_tree.links
+nodes.clear()
+
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.05, 0.05, 0.05, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.8
+output = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+floor.data.materials.append(floor_mat)
+
+# Create the sphere
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=(-2, 0, 1))
+sphere = bpy.context.active_object
+sphere.name = "Sphere"
+bpy.ops.object.shade_smooth()
+
+# Create the cube
+bpy.ops.mesh.primitive_cube_add(size=1.5, location=(0, 0, 0.75))
+cube = bpy.context.active_object
+cube.name = "Cube"
+
+# Create the cone
+bpy.ops.mesh.primitive_cone_add(radius1=1, radius2=0, depth=2, location=(2, 0, 1))
+cone = bpy.context.active_object
+cone.name = "Cone"
+bpy.ops.object.shade_smooth()
+
+# Materials for the objects (neutral gray)
+def create_neutral_material(name):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf.inputs['Base Color'].default_value = (0.6, 0.6, 0.6, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.4
+    output = nodes.new('ShaderNodeOutputMaterial')
+    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+    return mat
+
+sphere_mat = create_neutral_material("SphereMat")
+cube_mat = create_neutral_material("CubeMat")
+cone_mat = create_neutral_material("ConeMat")
+
+sphere.data.materials.append(sphere_mat)
+cube.data.materials.append(cube_mat)
+cone.data.materials.append(cone_mat)
+
+# Key light: warm, from the left
+key_light_data = bpy.data.lights.new(name="KeyLight", type='AREA')
+key_light_data.energy = 500
+key_light_data.color = (1.0, 0.8, 0.5)  # Warm color
+key_light_data.size = 5
+key_light = bpy.data.objects.new(name="KeyLight", object_data=key_light_data)
+key_light.location = (-6, 0, 5)
+key_light.rotation_euler = (math.radians(45), 0, math.radians(-45))
+bpy.context.collection.objects.link(key_light)
+
+# Rim light: cool blue, from behind
+rim_light_data = bpy.data.lights.new(name="RimLight", type='AREA')
+rim_light_data.energy = 300
+rim_light_data.color = (0.3, 0.5, 1.0)  # Cool blue
+rim_light_data.size = 4
+rim_light = bpy.data.objects.new(name="RimLight", object_data=rim_light_data)
+rim_light.location = (0, -6, 4)
+rim_light.rotation_euler = (math.radians(-45), 0, math.radians(180))
+bpy.context.collection.objects.link(rim_light)
+
+# Dark background (world)
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new(name="World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+world_nodes.clear()
+
+bg_node = world_nodes.new('ShaderNodeBackground')
+bg_node.inputs['Color'].default_value = (0.02, 0.02, 0.02, 1.0)  # Very dark
+bg_node.inputs['Strength'].default_value = 1.0
+world_output = world_nodes.new('ShaderNodeOutputWorld')
+world_links.new(bg_node.outputs['Background'], world_output.inputs['Surface'])
+
+# Set up the camera
+bpy.ops.object.camera_add(location=(0, 8, 3))
+camera = bpy.context.active_object
+camera.name = "Camera"
+bpy.context.scene.camera = camera
+
+# Point the camera at the objects
+direction = (0, 0, 0.5) - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080

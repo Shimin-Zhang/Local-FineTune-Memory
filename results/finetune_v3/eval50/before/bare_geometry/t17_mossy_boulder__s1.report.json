@@ -1,0 +1,110 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: 'ViewLayer' object has no attribute 'shading'",
+ "error_line": "bpy.context.view_layer.shading.type = 'MATERIAL'",
+ "n_renderable_objects": 22,
+ "object_types": {
+  "LIGHT": 1,
+  "MESH": 22
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "MossBoulderMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 16,
+   "principled_base_color": [
+    0.25,
+    0.22,
+    0.2
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "BUMP",
+    "MATH",
+    "MATH",
+    "MATH",
+    "MIX_SHADER",
+    "NEW_GEOMETRY",
+    "OUTPUT_MATERIAL",
+    "SEPXYZ",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "VALTORGB",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "GroundMat",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.2,
+    0.18,
+    0.15
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 3.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    5.0,
+    5.0,
+    10.0
+   ],
+   "direction": [
+    -0.3536,
+    0.7071,
+    -0.6124
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "left_out_of_framing": "Ground",
+ "bbox_size": [
+  2.078,
+  2.043,
+  1.747
+ ],
+ "scene_center": [
+  -0.0113,
+  -0.0346,
+  0.0647
+ ],
+ "scene_radius": 1.6988,
+ "process": "exit 0",
+ "seconds": 1.8,
+ "image": false
+}

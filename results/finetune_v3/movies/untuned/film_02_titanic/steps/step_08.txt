@@ -1,0 +1,76 @@
+```python
+import bpy, math
+from mathutils import Vector
+
+# The rigging cylinders are huge and blocking the view. Delete them.
+for o in list(bpy.data.objects):
+    if o.name.startswith("Rigging_") or o.name.startswith("RopeCoil"):
+        bpy.data.objects.remove(o, do_unlink=True)
+
+# Also remove the giant ForwardMast if too tall
+m = bpy.data.objects.get("ForwardMast")
+if m:
+    m.scale.z = 0.6
+
+# Re-aim camera properly at the two figures at the bow
+jack = [o for o in bpy.data.objects if o.name.startswith("Jack_")]
+rose = [o for o in bpy.data.objects if o.name.startswith("Rose_")]
+allfig = jack + rose
+if allfig:
+    cx = sum(o.location.x for o in allfig) / len(allfig)
+    cy = sum(o.location.y for o in allfig) / len(allfig)
+    cz = sum(o.location.z for o in allfig) / len(allfig)
+else:
+    cx, cy, cz = 0, 28, 10
+
+cam = bpy.context.scene.camera
+if cam:
+    cam.location = (cx - 8, cy - 12, cz + 3)
+    direction = Vector((cx, cy, cz)) - cam.location
+    cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+    cam.data.lens = 55
+    cam.data.dof.use_dof = True
+    cam.data.dof.focus_distance = direction.length
+    cam.data.dof.aperture_fstop = 5.6
+
+# Remove the compositor attempt (scene has no node_tree by default in this setup)
+scene = bpy.context.scene
+scene.use_nodes = False
+
+# Tone down the over-bright sky
+world = bpy.context.scene.world
+if world and world.use_nodes:
+    for n in world.node_tree.nodes:
+        if n.type == 'BACKGROUND':
+            n.inputs['Strength'].default_value = 0.9
+
+# Reduce light energies for a more natural sunset
+for name, e in [("SunsetSun", 3.0), ("SunKey", 2.5), ("WarmFill", 50), ("AmbientFill", 40), ("BowRim", 120), ("DeckBounce", 20)]:
+    o = bpy.data.objects.get(name)
+    if o: o.data.energy = e
+
+scene.view_settings.exposure = 0.6
+
+# Make the deck and hull darker/richer
+for objname in ["Deck", "Hull"]:
+    o = bpy.data.objects.get(objname)
+    if o:
+        for m in o.data.materials:
+            for n in m.node_tree.nodes:
+                if n.type == 'BSDF_PRINCIPLED':
+                    if objname == "Deck":
+                        n.inputs['Base Color'].default_value = (0.25, 0.12, 0.05, 1)
+                    else:
+                        n.inputs['Base Color'].default_value = (0.08, 0.06, 0.05, 1)
+
+# Add a subtle vignette via a large dark plane in front of camera (simple)
+# Instead, just ensure figures are lit: add a small spot on them
+bpy.ops.object.light_add(type='SPOT', location=(cx, cy - 5, cz + 8))
+spot = bpy.context.active_object; spot.name = "FigureSpot"
+spot.data.energy = 300; spot.data.color = (1, 0.8, 0.6)
+spot.data.spot_size = math.radians(60)
+direction = Vector((cx, cy, cz)) - spot.location
+spot.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+print("Cleaned rigging, re-aimed camera, balanced lights")
+```

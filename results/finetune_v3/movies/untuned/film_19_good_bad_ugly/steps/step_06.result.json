@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 68.4,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene finalized with mood and detail\nTotal objects: 1962\n",
+ "state_saved": true,
+ "n_objects": 1960,
+ "n_lights": 1,
+ "n_materials": 18,
+ "own_camera": true,
+ "render_error": null
+}

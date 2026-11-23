@@ -1,0 +1,228 @@
+```python
+import bpy
+import math
+import mathutils
+
+# Clear existing mesh objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the candy cane shape using a curve
+# A candy cane is a J-shaped tube
+
+# Define the profile of the candy cane (J shape)
+# Using a bezier curve
+cane_curve = bpy.data.curves.new(name="CandyCaneCurve", type='CURVE')
+cane_curve.dimensions = '3D'
+
+spline = cane_curve.splines.new('BEZIER')
+spline.bezier_points.add(2)  # 3 points total
+
+# Point 0: bottom of the curve (hook part)
+p0 = spline.bezier_points[0]
+p0.co = mathutils.Vector((0.5, 0, 0))
+p0.handle_left = mathutils.Vector((0.5, 0, -0.3))
+p0.handle_right = mathutils.Vector((0.5, 0, 0.3))
+
+# Point 1: middle of the curve
+p1 = spline.bezier_points[1]
+p1.co = mathutils.Vector((0, 0, 0.5))
+p1.handle_left = mathutils.Vector((-0.3, 0, 0.5))
+p1.handle_right = mathutils.Vector((0.3, 0, 0.5))
+
+# Point 2: top of the cane (straight part)
+p2 = spline.bezier_points[2]
+p2.co = mathutils.Vector((0, 0, 2.0))
+p2.handle_left = mathutils.Vector((0, 0, 1.5))
+p2.handle_right = mathutils.Vector((0, 0, 2.5))
+
+# Set curve properties for a tube
+cane_curve.extrude = 0.15  # radius of the tube
+cane_curve.bevel_depth = 0.0  # no bevel, extrude handles the tube
+cane_curve.bevel_resolution = 8
+cane_curve.resolution_u = 32
+cane_curve.use_fill_caps = True
+
+# Actually, for a tube we should use bevel_depth, not extrude
+cane_curve.extrude = 0.0
+cane_curve.bevel_depth = 0.15
+cane_curve.bevel_resolution = 12
+cane_curve.resolution_u = 64
+
+# Create the object
+cane_obj = bpy.data.objects.new("CandyCane", cane_curve)
+bpy.context.collection.objects.link(cane_obj)
+
+# Convert to mesh for UV mapping and texturing
+bpy.context.view_layer.objects.active = cane_obj
+cane_obj.select_set(True)
+bpy.ops.object.convert(target='MESH')
+
+# Recalculate normals
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.normals_make_consistent(inside=False)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# UV unwrap
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.uv.unwrap(method='ANGLE_BASED', margin=0.02)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Now create a procedural texture for the spiral stripes
+# We'll use a node-based material with a spiral pattern
+
+# Create material
+mat = bpy.data.materials.new(name="CandyCaneMaterial")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+nodes.clear()
+
+# Create nodes
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (600, 0)
+
+mix_shader = nodes.new('ShaderNodeMixShader')
+mix_shader.location = (400, 0)
+
+# Red shader
+red_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+red_bsdf.location = (200, 100)
+red_bsdf.inputs['Base Color'].default_value = (1.0, 0.0, 0.0, 1.0)
+red_bsdf.inputs['Roughness'].default_value = 0.3
+
+# White shader
+white_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+white_bsdf.location = (200, -100)
+white_bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+white_bsdf.inputs['Roughness'].default_value = 0.3
+
+# Texture coordinate
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-600, 0)
+
+# Mapping node
+mapping = nodes.new('ShaderNodeMapping')
+mapping.location = (-400, 0)
+
+# Separate XYZ
+sep_xyz = nodes.new('ShaderNodeSeparateXYZ')
+sep_xyz.location = (-200, 0)
+
+# We need to create a spiral pattern based on the object's coordinates
+# Use the Y coordinate (along the length) and the angle around the tube
+# Get the angle using atan2 of X and Y positions relative to the tube axis
+
+# For a spiral, we use: stripe = sin(k * length + angle)
+# We need to get the length along the cane and the angle around the tube
+
+# Use Geometry node for position
+geometry = nodes.new('ShaderNodeNewGeometry')
+geometry.location = (-600, -200)
+
+# Get position
+pos = nodes.new('ShaderNodeVectorMath')
+pos.location = (-400, -200)
+pos.operation = 'MULTIPLY'
+
+# Actually, let's use a simpler approach: use UV coordinates
+# The UV unwrap should give us coordinates where U wraps around the tube and V goes along the length
+
+# UV Map node
+uv_map = nodes.new('ShaderNodeUVMap')
+uv_map.location = (-600, 200)
+
+# Separate UV
+sep_uv = nodes.new('ShaderNodeSeparateUV')
+sep_uv.location = (-400, 200)
+
+# Create spiral: stripe = sin(U * spiral_count * 2*pi + V * length_factor)
+# U is around the tube (0 to 1), V is along the length
+
+# Multiply U by number of spirals
+mul_u = nodes.new('ShaderNodeMath')
+mul_u.location = (-200, 300)
+mul_u.operation = 'MULTIPLY'
+mul_u.inputs[1].default_value = 8.0  # number of spiral turns
+
+# Multiply V by a factor to control stripe width
+mul_v = nodes.new('ShaderNodeMath')
+mul_v.location = (-200, 100)
+mul_v.operation = 'MULTIPLY'
+mul_v.inputs[1].default_value = 20.0  # controls stripe frequency along length
+
+# Add them together
+add_node = nodes.new('ShaderNodeMath')
+add_node.location = (0, 200)
+add_node.operation = 'ADD'
+
+# Multiply by 2*pi
+mul_pi = nodes.new('ShaderNodeMath')
+mul_pi.location = (100, 200)
+mul_pi.operation = 'MULTIPLY'
+mul_pi.inputs[1].default_value = 2 * math.pi
+
+# Sine
+sine = nodes.new('ShaderNodeMath')
+sine.location = (200, 200)
+sine.operation = 'SINE'
+
+# Map to 0-1 range (sine gives -1 to 1)
+map_range = nodes.new('ShaderNodeMapRange')
+map_range.location = (300, 200)
+map_range.inputs['From Min'].default_value = -1.0
+map_range.inputs['From Max'].default_value = 1.0
+map_range.inputs['To Min'].default_value = 0.0
+map_range.inputs['To Max'].default_value = 1.0
+
+# Threshold: make it a hard switch between red and white
+# Use a greater than node
+greater = nodes.new('ShaderNodeMath')
+greater.location = (350, 300)
+greater.operation = 'GREATER_THAN'
+greater.inputs[1].default_value = 0.0  # threshold at 0
+
+# Connect nodes
+links.new(tex_coord.outputs['UV'], uv_map.inputs['Vector'])
+links.new(uv_map.outputs['UV'], sep_uv.inputs['Vector'])
+links.new(sep_uv.outputs['U'], mul_u.inputs[0])
+links.new(sep_uv.outputs['V'], mul_v.inputs[0])
+links.new(mul_u.outputs['Value'], add_node.inputs[0])
+links.new(mul_v.outputs['Value'], add_node.inputs[1])
+links.new(add_node.outputs['Value'], mul_pi.inputs[0])
+links.new(mul_pi.outputs['Value'], sine.inputs[0])
+links.new(sine.outputs['Value'], map_range.inputs['Value'])
+links.new(map_range.outputs['Result'], greater.inputs[0])
+links.new(greater.outputs['Value'], mix_shader.inputs['Fac'])
+links.new(white_bsdf.outputs['BSDF'], mix_shader.inputs[1])
+links.new(red_bsdf.outputs['BSDF'], mix_shader.inputs[2])
+links.new(mix_shader.outputs['Shader'], output_node.inputs['Surface'])
+
+# Assign material to the candy cane object
+cane_obj.data.materials.append(mat)
+
+# Add a light for better visualization
+light_data = bpy.data.lights.new(name="CandyLight", type='SUN')
+light_data.energy = 5.0
+light_obj = bpy.data.objects.new(name="CandyLight", object_data=light_data)
+bpy.context.collection.objects.link(light_obj)
+light_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Set up camera
+cam_data = bpy.data.cameras.new(name="CandyCam")
+cam_obj = bpy.data.objects.new(name="CandyCam", object_data=cam_data)
+bpy.context.collection.objects.link(cam_obj)
+cam_obj.location = (2, 2, 1.5)
+cam_obj.rotation_euler = (math.radians(60), 0, math.radians(-45))
+
+# Set the scene camera
+bpy.context.scene.camera = cam_obj
+
+# Set render engine
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+```

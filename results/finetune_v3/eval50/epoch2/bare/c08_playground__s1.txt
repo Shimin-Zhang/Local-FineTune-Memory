@@ -1,0 +1,96 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(431)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def toy(rgb, em=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .85
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+grass, path, sand, wood, red, blue, yellow, green, steel, bark, leaf, dark = (toy(c) for c in (
+    (.1, .26, .1), (.32, .26, .2), (.55, .42, .24), (.3, .18, .1), (.7, .1, .08), (.1, .25, .6), (.8, .6, .05), (.12, .4, .15), (.35, .36, .4), (.2, .13, .08), (.1, .3, .12), (.05, .05, .06)))
+lamp = toy((1, .75, .3), 12); bulb = toy((1, .8, .4), 30)
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, rot)
+def tube(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at, rot)
+def strut(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def ball(at, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return mk(bm, m, at)
+def glim(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# base: grass slab, rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 20 + random.uniform(-1.5, 1.5), v.co.y * 15 + random.uniform(-1.5, 1.5), -3.2 + random.uniform(-.8, .4)))
+    else: v.co = Vector((v.co.x * 24, v.co.y * 19, 0))
+mk(bm, grass)
+slab((0, -1, 0), (24, 17, .12), grass)
+for i in range(7): slab((-10 + i * 3.3, -1, .12), (3.4, 3.4, .05), path, (0, 0, .05 * i))
+# slide: ladder, platform, roof, chute, rail
+slab((-6, 5, 0), (3.4, 3.4, .3), wood)
+for sx in (-1, 1):
+    strut((-6 + sx * 1.4, 6.4, .3), (-6 + sx * 1.4, 6.4, 3.6), .16, red)
+for k in range(1, 6): strut((-7.4, 6.4, .3 + k * .55), (-4.6, 6.4, .3 + k * .55), .1, yellow)
+slab((-6, 4.6, 3.6), (3.4, 2.2, .2), wood)
+for sx in (-1, 1):
+    strut((-6 + sx * 1.5, 5.6, 3.8), (-6 + sx * 1.5, 5.6, 5.0), .14, red)
+slab((-6, 5.6, 5.0), (3.8, 2.8, .2), blue)
+strut((-6, 3.6, 3.8), (-6, 0.6, 1.5), 1.7, yellow)
+for sx in (-.9, .9): strut((-6 + sx, 3.7, 4.1), (-6 + sx, .5, 1.8), .1, red)
+# swing set: A-frames, bar, two swings
+for sy in (-1, 1):
+    for sx in (-1, 1): strut((1.5 + sx * 1.8, 2.6 + sy * 1.4, 0), (1.5 + sx * .5, 2.6, 4.4), .16, red)
+strut((1.5, 1.2, 4.4), (1.5, 4.0, 4.4), .2, red)
+for x in (.6, 2.4):
+    for s in (-.2, .2): strut((x + s, 2.6, 4.4), (x + s, 2.6, 1.2), .06, steel)
+    slab((x, 2.6, 1.0), (.9, .5, .12), blue if x < 1.5 else yellow)
+# sandbox: rim, sand, bucket and shovel
+slab((6.6, -3.5, 0), (5.6, 4.4, .5), wood)
+slab((6.6, -3.5, .45), (4.9, 3.7, .12), sand)
+tube((5.8, -3.2, .5), .45, .5, 7, red, .55); tube((7.6, -4.0, .5), .1, .8, 5, yellow)
+slab((7.6, -4.0, 1.2), (.4, .2, .1), yellow)
+# seesaw: pivot, plank, seats
+tube((-1.5, -4.5, 0), .25, 1.0, 6, wood, .18)
+slab((-1.5, -4.5, 1.0), (5.4, .7, .2), yellow, (0, .12, 0))
+slab((-3.9, -4.5, 1.2), (.7, .7, .25), red); slab((.9, -4.5, .7), (.7, .7, .25), blue)
+# lamp post and bench
+strut((-9.5, -4, 0), (-9.5, -4, 5.4), .16, steel); slab((-9.5, -4, 5.4), (.9, .9, .5), bulb)
+glim((-9.5, -4, 5.6), (1, .75, .3), 900)
+slab((9, 4.6, .8), (3.4, .8, .16), wood)
+for sx in (-1.3, 1.3): slab((9 + sx, 4.6, 0), (.2, .7, .8), wood)
+# trees
+for x, y, h in ((-10.5, 6, 1), (10.5, 6.5, 1.2), (10.5, -6.5, .9), (-10.5, -7, 1.1)):
+    tube((x, y, 0), .3 * h, 2.2 * h, 6, bark, .22 * h)
+    for k in range(2): ball((x, y, 2.2 * h + k * .9 * h), (1.5 - k * .4) * h, leaf, 1.1)
+# night lights: cool moon key, magenta rim
+for c, w, p in (((.55, .65, 1), 5, (-24, -14, 9)), ((1, .35, .7), 2.4, (22, 18, 8))):
+    S = bpy.data.lights.new("s", "SUN"); S.color = c; S.energy = w
+    o = bpy.data.objects.new("s", S); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("night"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .015, .045, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+co.location = (20, -40, 27)
+co.rotation_euler = (Vector((0, 0, 1.5)) - co.location).to_track_quat('-Z', 'Y').to_euler()
+sc.camera = co
+```

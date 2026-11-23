@@ -1,0 +1,216 @@
+import bpy
+import math
+import random
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Create the Stand ---
+# Base
+bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.05, location=(0, 0, 0.025))
+base = bpy.context.active_object
+base.name = "Stand_Base"
+
+# Stem
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.15, location=(0, 0, 0.125))
+stem = bpy.context.active_object
+stem.name = "Stand_Stem"
+
+# Cup/Holder
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.08, location=(0, 0, 0.24))
+cup = bpy.context.active_object
+cup.name = "Stand_Cup"
+
+# Apply smooth shading to stand parts
+for obj in [base, stem, cup]:
+    bpy.ops.object.shade_smooth()
+
+# --- Create the Crystal Ball ---
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(0, 0, 0.45), segments=64, ring_count=32)
+ball = bpy.context.active_object
+ball.name = "Crystal_Ball"
+bpy.ops.object.shade_smooth()
+
+# --- Materials ---
+
+# 1. Stand Material (Dark Wood/Metal)
+stand_mat = bpy.data.materials.new(name="Stand_Material")
+stand_mat.use_nodes = True
+nodes = stand_mat.node_tree.nodes
+links = stand_mat.node_tree.links
+
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.1, 0.05, 0.02, 1.0)  # Dark brown
+bsdf.inputs["Metallic"].default_value = 0.7
+bsdf.inputs["Roughness"].default_value = 0.4
+bsdf.inputs["Specular IOR Level"].default_value = 0.5
+
+for obj in [base, stem, cup]:
+    obj.data.materials.append(stand_mat)
+
+# 2. Crystal Ball Material (Glass)
+glass_mat = bpy.data.materials.new(name="Crystal_Glass")
+glass_mat.use_nodes = True
+nodes = glass_mat.node_tree.nodes
+links = glass_mat.node_tree.links
+
+# Remove default BSDF
+for node in nodes:
+    if node.type == 'BSDF_PRINCIPLED':
+        nodes.remove(node)
+
+# Create Glass BSDF
+glass_bsdf = nodes.new('ShaderNodeBsdfGlass')
+glass_bsdf.location = (0, 0, 0)
+glass_bsdf.inputs["Color"].default_value = (0.9, 0.95, 1.0, 1.0)
+glass_bsdf.inputs["Roughness"].default_value = 0.0
+glass_bsdf.inputs["IOR"].default_value = 1.45
+
+# Output
+output = nodes["Material Output"]
+links.new(glass_bsdf.outputs["BSDF"], output.inputs["Surface"])
+
+ball.data.materials.append(glass_mat)
+
+# 3. Swirling Mist Inside (Using a particle system or a separate mesh with volume)
+# Approach: Create a slightly smaller sphere inside the ball and use a volume shader with noise texture to simulate mist.
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.23, location=(0, 0, 0.45), segments=32, ring_count=16)
+mist_sphere = bpy.context.active_object
+mist_sphere.name = "Mist_Volume"
+bpy.ops.object.shade_smooth()
+
+mist_mat = bpy.data.materials.new(name="Swirling_Mist")
+mist_mat.use_nodes = True
+nodes = mist_mat.node_tree.nodes
+links = mist_mat.node_tree.links
+
+# Remove default BSDF
+for node in nodes:
+    if node.type == 'BSDF_PRINCIPLED':
+        nodes.remove(node)
+
+# Texture Coordinate
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-600, 0)
+
+# Mapping (for animation/swirl)
+mapping = nodes.new('ShaderNodeMapping')
+mapping.location = (-400, 0)
+links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+
+# Noise Texture (for mist)
+noise = nodes.new('ShaderNodeTexNoise')
+noise.location = (-200, 0)
+noise.inputs["Scale"].default_value = 8.0
+noise.inputs["Detail"].default_value = 10.0
+noise.inputs["Roughness"].default_value = 0.6
+links.new(mapping.outputs["Vector"], noise.inputs["Vector"])
+
+# ColorRamp (to shape the mist)
+ramp = nodes.new('ShaderNodeValToRGB')
+ramp.location = (0, 0)
+ramp.color_ramp.elements[0].position = 0.4
+ramp.color_ramp.elements[1].position = 0.6
+links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+
+# Volume Scatter
+scatter = nodes.new('ShaderNodeVolumeScatter')
+scatter.location = (200, 0)
+scatter.inputs["Color"].default_value = (0.7, 0.8, 1.0, 1.0)  # Light blue/white mist
+scatter.inputs["Density"].default_value = 15.0
+scatter.inputs["Anisotropy"].default_value = 0.3
+links.new(ramp.outputs["Color"], scatter.inputs["Density"])
+
+# Volume Absorption (optional, for depth)
+absorption = nodes.new('ShaderNodeVolumeAbsorption')
+absorption.location = (200, -200)
+absorption.inputs["Color"].default_value = (0.8, 0.9, 1.0, 1.0)
+absorption.inputs["Density"].default_value = 0.5
+
+# Mix Volume (Scatter + Absorption)
+mix_vol = nodes.new('ShaderNodeMixVolume')
+mix_vol.location = (400, 0)
+links.new(scatter.outputs["Volume"], mix_vol.inputs[0])
+links.new(absorption.outputs["Volume"], mix_vol.inputs[1])
+
+# Output
+output = nodes["Material Output"]
+links.new(mix_vol.outputs["Volume"], output.inputs["Volume"])
+
+mist_sphere.data.materials.append(mist_mat)
+
+# --- Animation for Swirl ---
+# Animate the Mapping node's rotation to create swirl effect
+anim_frame_start = 1
+anim_frame_end = 250
+bpy.context.scene.frame_start = anim_frame_start
+bpy.context.scene.frame_end = anim_frame_end
+
+# Add keyframes to Mapping node rotation Z
+mapping.inputs["Rotation"].default_value = (0, 0, 0)
+mapping.inputs["Rotation"].keyframe_insert(data_path="default_value", frame=anim_frame_start)
+mapping.inputs["Rotation"].default_value = (0, 0, math.radians(360))
+mapping.inputs["Rotation"].keyframe_insert(data_path="default_value", frame=anim_frame_end)
+
+# Also animate noise scale slightly for pulsing effect
+noise.inputs["Scale"].default_value = 8.0
+noise.inputs["Scale"].keyframe_insert(data_path="default_value", frame=anim_frame_start)
+noise.inputs["Scale"].default_value = 10.0
+noise.inputs["Scale"].keyframe_insert(data_path="default_value", frame=anim_frame_end)
+
+# --- Lighting ---
+# Key Light
+bpy.ops.object.light_add(type='POINT', location=(1, 1, 1.5))
+key_light = bpy.context.active_object
+key_light.data.energy = 500
+key_light.data.color = (1.0, 0.95, 0.9)
+
+# Fill Light
+bpy.ops.object.light_add(type='POINT', location=(-1, -1, 1))
+fill_light = bpy.context.active_object
+fill_light.data.energy = 200
+fill_light.data.color = (0.8, 0.9, 1.0)
+
+# Rim Light
+bpy.ops.object.light_add(type='POINT', location=(0, -1.5, 0.5))
+rim_light = bpy.context.active_object
+rim_light.data.energy = 300
+rim_light.data.color = (0.9, 0.8, 1.0)
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(0, -2, 0.6))
+camera = bpy.context.active_object
+camera.data.lens = 50
+
+# Point camera at the crystal ball
+direction = (0, 0, 0.45) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set as active camera
+bpy.context.scene.camera = camera
+
+# --- World Settings ---
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+
+# Background
+bg = world_nodes["Background"]
+bg.inputs["Color"].default_value = (0.02, 0.02, 0.05, 1.0)  # Dark background
+bg.inputs["Strength"].default_value = 0.5
+
+# --- Render Settings ---
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1024
+bpy.context.scene.render.resolution_y = 1024
+bpy.context.scene.render.film_transparent = False
+
+print("Crystal ball with swirling mist created successfully!")

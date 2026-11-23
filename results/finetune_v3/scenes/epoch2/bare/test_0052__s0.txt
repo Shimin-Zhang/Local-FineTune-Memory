@@ -1,0 +1,96 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(902)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def hue(c, e=0):
+    m = bpy.data.materials.new("h"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = .8
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+board, under, line = hue((.12, .1, .2)), hue((.05, .04, .1)), hue((.9, .85, .7), .3)
+reds = [hue(c) for c in ((.5, .12, .1), (.55, .3, .1), (.15, .3, .45), (.5, .4, .15), (.35, .15, .4), (.15, .4, .25))]
+roofc = [hue(c) for c in ((.15, .1, .25), (.4, .12, .12), (.1, .25, .2))]
+glass, lamp, grass, tree = hue((1, .7, .25), 7), hue((1, .85, .5), 14), hue((.1, .2, .1)), hue((.08, .22, .12))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("j"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("j", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(x, y, z, w, d, h, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return add(bm, m, (x, y, z), (0, 0, rz))
+def gable(x, y, z, w, d, h, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    for v in bm.verts:
+        if v.co.z > 0: v.co.y = 0
+    return add(bm, m, (x, y, z), (0, 0, rz))
+def cone(x, y, z, r, h, n, m, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, (x, y, z))
+def tab(x, y, z, r, m, axis):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x, v.co.y, v.co.z)) * (1.25, 1.25, 1)
+    return add(bm, m, (x, y, z))
+def lit(x, y, z, w, c=(1, .7, .3)):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# the puzzle board: a square of dark board with a ragged underside, and a lighter rim
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=7, radius2=14, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.2, .3)))
+    v.co.z -= 1.5
+add(bm, under)
+slab(0, 0, 0, 19, 19, .5, board)
+for i in range(5): slab(-9.5 + i * 4.75, 0, .5, .12, 19, .03, line); slab(0, -9.5 + i * 4.75, .5, 19, .12, .03, line)
+# street pieces: long strips along the middle with tabs and blanks at the seams
+for i, (x, y) in enumerate(((-7, 0), (-2.4, 0), (2.4, 0), (7, 0))):
+    slab(x, 0, .5, 4.6, 4.6, .06, reds[4 + i % 2])
+    tab(x + 2.3, 0, .5, .55, reds[4 + i % 2], 0)
+    if i: tab(x - 2.3, 0, .5, .55, reds[3 + i % 2], 0)
+# two pieces still out of place: one lying on the grass, one tilted, both with tabs
+slab(-9, 6.5, .5, 4.4, 4.4, .3, reds[0], .3)
+slab(-9, 6.5, .8, 4.4, .12, .03, line, .3)
+tab(-6.7, 6.5, .8, .5, reds[0], 0).rotation_euler.z = .3
+slab(9.5, -7.5, .5, 4.4, 4.4, .3, reds[2], -.2)
+tab(11.7, -7.5, .8, .5, reds[2], 0).rotation_euler.z = -.2
+# the church: nave, gable roof, tower with spire, glowing windows and a door
+slab(-6, 6, .5, 5.5, 3.2, 2.6, reds[5]); gable(-6, 6, 3.1, 5.8, 3.8, 1.6, roofc[0])
+slab(-6, 4.3, .5, .9, .12, 1.5, hue((.2, .1, .08)))
+for k in range(3): slab(-7.4 + k * 1.4, 4.35, 1.5, .6, .08, .9, glass)
+slab(-3.2, 6, .5, 2.2, 2.2, 4.2, reds[5]); cone(-3.2, 6, 4.7, 1.8, 3.4, 4, roofc[1], .1)
+slab(-3.2, 4.85, 2.6, .6, .08, 1.0, glass); slab(-3.2, 4.85, 1.0, .6, .08, .8, glass)
+lit(-3.2, 3.5, 3, 450); lit(-6, 3.5, 2, 250)
+# street of coloured houses, each with roof, door, windows and a little chimney
+for i, x in enumerate((-7.5, -3.2, 1.2, 5.6, 9.0)):
+    h = 2.2 + (i % 3) * .4
+    slab(x, -5.5, .5, 3.2, 3.4, h, reds[i % 6]); gable(x, -5.5, .5 + h, 3.6, 4.0, 1.5, roofc[i % 3])
+    slab(x, -7.25, .5, .7, .1, 1.3, hue((.2, .1, .08)))
+    for k in (-1, 1): slab(x + k * 1.0, -7.25, 1.4, .6, .08, .7, glass)
+    slab(x + .9, -5.5, h + .3, .35, .35, 1.0, reds[(i + 2) % 6])
+    lit(x, -8.2, 1.8, 90)
+# a few grass pieces, trees and lamp posts on the lawn
+for x, y in ((-9, -6), (9, 7), (0, 8)):
+    slab(x, y, .5, 4.4, 4.4, .06, grass)
+    tab(x + 2.2, y, .5, .5, grass, 0)
+for x, y in ((-9, -6), (6, 8.5), (10, -2)):
+    cone(x, y, .5, .15, 1.4, 5, hue((.2, .12, .08))); cone(x, y, 1.5, 1.1, 1.8, 6, tree, .1)
+for x in (-5, 0, 5):
+    cone(x, -3.0, .5, .08, 2.2, 5, hue((.1, .1, .12))); cone(x, -3.0, 2.7, .3, .4, 6, lamp, .25)
+    lit(x, -3.0, 3.0, 120, (1, .85, .5))
+# moonlit: cold blue key from the left, magenta rim from behind right
+for c, e, p in (((.55, .65, 1), 4.5, (-30, -14, 14)), ((.9, .4, .8), 2.2, (26, 24, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = e
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .012, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((6, -62, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

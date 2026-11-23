@@ -1,0 +1,92 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1911)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+S = {}
+def glaze(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .8
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    S[name] = m
+for k, v in dict(flag=(.2, .15, .1), flag2=(.15, .11, .08), wall=(.28, .2, .14), beam=(.2, .12, .07), iron=(.05, .05, .06),
+                 coal=(.02, .02, .02), clay=(.35, .17, .09), tray=(.12, .1, .09), cloth=(.3, .08, .07), skin=(.4, .24, .15),
+                 robe=(.6, .55, .45), hair=(.03, .02, .02), ember=(.9, .25, .05), brass=(.55, .35, .1)).items(): glaze(k, v)
+glaze("copper", (.8, .32, .12), .3); glaze("flame", (1, .45, .08), 25); glaze("lamp", (1, .65, .25), 12)
+def mold(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new(k); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(k, me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(S[k]); return o
+def slab(at, s, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return mold(bm, k, at, (0, 0, rz))
+def cone(at, r, h, n, k, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mold(bm, k, at, rot)
+def pot(at, r, h, k):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= h / r
+    return mold(bm, k, at)
+def beam(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mold(bm, k)
+def lampglow(at, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = (1, .6, .25), w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=10.5, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.5, .3)))
+mold(bm, "flag", (0, 0, 0))
+for i in range(9):
+    for j in range(7): slab((-8 + i * 2, -6.5 + j * 2, 0), (1.9, 1.9, .12), "flag" if (i + j) % 2 else "flag2", random.uniform(-.03, .03))
+# two walls with a low arched opening and a timber frame
+slab((0, 8, 0), (20, .8, 6.5), "wall"); slab((-9.5, 0, 0), (.8, 16.8, 6.5), "wall")
+for i in range(5): slab((-8 + i * 4, 7.5, 0), (.6, .4, 6.2), "beam")
+slab((0, 7.5, 6.2), (20, .5, .5), "beam"); slab((-9, 0, 6.2), (.5, 17, .5), "beam")
+slab((-8, 7.5, 4.5), (1.6, .3, 1.7), "flag2"); slab((-9, 4, 0), (.4, 2.4, 3.4), "flag2"); slab((-9, 1, 0), (.4, 2.4, 3.4), "flag2")
+# the low anvil on a stump
+cone((-3, 1.5, 0), 1.0, 1.2, 7, "beam"); slab((-3, 1.5, 1.2), (2.4, .9, .3), "iron"); slab((-3.9, 1.5, 1.5), (.9, .6, .35), "iron", 0, .7)
+slab((-1.9, 1.5, 1.5), (.3, .9, .3), "iron")
+# charcoal pot with glowing coals and a flame
+cone((3.5, 3, 0), 1.3, 1.2, 8, "iron", 1.0); cone((3.5, 3, 1.1), 1.0, .15, 8, "ember")
+cone((3.5, 3, 1.2), .45, 1.6, 5, "flame", .05); cone((3.9, 3.2, 1.2), .3, 1.1, 5, "flame", .05)
+lampglow((3.5, 3, 2.2), 700)
+# hammered trays on a low table, stacked bowls, a pile of copper sheets
+slab((-5.5, -2.5, 0), (3.6, 2.0, .9), "beam"); slab((-5.5, -2.5, .9), (3.8, 2.2, .12), "tray")
+for i in range(3):
+    cone((-6.6 + i * 1.1, -2.5, 1.02), .55, .12, 9, "copper", .45)
+    cone((-6.6 + i * 1.1, -2.5, 1.14), .3, .05, 9, "brass", .25)
+for i in range(3):
+    for j in range(2 - i): cone((-1.5 + i * .6, -4.5, .3 + j * .45), .75 - j * .12, .4, 9, "copper", .55 - j * .1)
+for i in range(6): cone((6, -3.5, .05 * i), 1.0 - .05 * i, .08, 9, "copper", .95 - .05 * i)
+# hanging lamp and its chain
+beam((0, 0, 6.2), (0, 0, 4.6), .06, "iron"); cone((0, 0, 3.6), .9, 1.0, 8, "brass", .45); cone((0, 0, 3.5), .3, .5, 6, "lamp", .25)
+lampglow((0, 0, 3.6), 1000)
+# the coppersmith, bent over his work
+pot((.5, 1.5, 2.0), .55, .8, "robe"); pot((.5, 1.5, 3.0), .32, .35, "skin"); cone((.5, 1.5, 3.2), .36, .2, 6, "hair", .3)
+beam((.2, 1.5, 2.3), (-.9, 1.7, 1.5), .22, "robe"); beam((.8, 1.5, 2.3), (-.6, 1.4, 1.5), .22, "robe")
+for s in (-1, 1): slab((.5 + s * .25, 1.5, .0), (.3, .5, .9), "robe")
+# a stack of bowls and a crate of tools by the wall
+for i in range(3):
+    for j in range(3 - i): cone((-7.5 + i * .8, 5.5, .35 + j * .4), .7 - j * .1, .35, 9, "copper", .5 - j * .08)
+slab((-6.5, -5.5, 0), (1.8, 1.0, .9), "beam")
+for i in range(3): beam((-7 + i * .5, -5.5, .9), (-6.5 + i * .5, -5.5, 1.8), .08, "iron")
+for i in range(4): cone((7, 5, .3 * i), .5, .3, 7, "clay", .35)
+for k, w, p, c in (("a", 4.5, (-24, -16, 9), (1, .5, .2)), ("b", 2, (20, 20, 12), (.4, .5, 1))):
+    L = bpy.data.lights.new(k, "SUN"); L.energy = w; L.color = c
+    o = bpy.data.objects.new(k, L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .012, .01, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80; cm.clip_end = 500
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.2)); co.location = t + Vector((16, -46, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

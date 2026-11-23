@@ -1,0 +1,133 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 10,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 3,
+  "MESH": 10
+ },
+ "default_cube_still_there": true,
+ "materials": [
+  {
+   "name": "Dark Stone",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.1,
+    0.1,
+    0.1
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "White Marble",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.95,
+    0.95,
+    0.95
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Ground",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "AREA",
+   "energy": 500.0,
+   "color": [
+    1.0,
+    1.0,
+    0.95
+   ],
+   "location": [
+    -3.0,
+    -3.0,
+    3.0
+   ]
+  },
+  {
+   "type": "AREA",
+   "energy": 200.0,
+   "color": [
+    0.9,
+    0.95,
+    1.0
+   ],
+   "location": [
+    3.0,
+    -3.0,
+    2.5
+   ]
+  },
+  {
+   "type": "SPOT",
+   "energy": 800.0,
+   "color": [
+    1.0,
+    0.95,
+    0.9
+   ],
+   "location": [
+    0.0,
+    4.0,
+    3.5
+   ]
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "left_out_of_framing": "Plane",
+ "bbox_size": [
+  1.5,
+  1.5,
+  3.35
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 8.9,
+ "image": true
+}

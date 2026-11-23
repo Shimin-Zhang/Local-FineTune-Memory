@@ -1,0 +1,55 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "ReferenceError: BMesh data of type BMesh has been removed",
+ "error_line": "bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r, matrix=__import__(\"mathutils\").Matrix.Translation((x, y, z)) @ __import__(\"mathutils\").Matrix.Diagonal((1, 1, sq, 1)))",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "snow",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.55,
+    0.62,
+    0.78
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  30.396,
+  24.923,
+  22.723
+ ],
+ "scene_center": [
+  0.1982,
+  0.2755,
+  -4.9864
+ ],
+ "scene_radius": 22.7014,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.2,
+ "image": true
+}

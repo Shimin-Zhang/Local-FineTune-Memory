@@ -1,0 +1,177 @@
+```python
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a new collection for the lighthouse
+lighthouse_collection = bpy.data.collections.new("Lighthouse")
+bpy.context.scene.collection.children.link(lighthouse_collection)
+
+def create_cylinder(name, radius, depth, location, collection, color):
+    """Create a cylinder mesh with specified parameters."""
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=radius, depth=depth, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    # Move to lighthouse collection
+    for col in obj.users_collection:
+        col.objects.unlink(obj)
+    collection.objects.link(obj)
+    
+    # Create material
+    mat = bpy.data.materials.new(name=f"Mat_{name}")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = 0.5
+    
+    obj.data.materials.append(mat)
+    return obj
+
+# Lighthouse parameters
+base_radius = 3.0
+top_radius = 2.0
+total_height = 20.0
+num_bands = 8
+band_height = total_height / num_bands
+
+# Create the lighthouse tower with alternating red and white bands
+y = 0
+for i in range(num_bands):
+    # Interpolate radius from base to top
+    t = i / num_bands
+    radius = base_radius + (top_radius - base_radius) * t
+    
+    # Alternate colors: white, red, white, red...
+    if i % 2 == 0:
+        color = (1.0, 1.0, 1.0, 1.0)  # White
+    else:
+        color = (0.8, 0.0, 0.0, 1.0)  # Red
+    
+    center_y = y + band_height / 2
+    band = create_cylinder(
+        name=f"Band_{i}",
+        radius=radius,
+        depth=band_height,
+        location=(0, 0, center_y),
+        collection=lighthouse_collection,
+        color=color
+    )
+    y += band_height
+
+# Add the lantern room (top section)
+lantern_height = 3.0
+lantern_radius = 1.8
+lantern = create_cylinder(
+    name="Lantern_Room",
+    radius=lantern_radius,
+    depth=lantern_height,
+    location=(0, 0, total_height + lantern_height / 2),
+    collection=lighthouse_collection,
+    color=(0.1, 0.1, 0.1, 1.0)  # Dark gray
+)
+
+# Add the dome/cap on top
+dome_y = total_height + lantern_height
+bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=lantern_radius * 1.1, location=(0, 0, dome_y))
+dome = bpy.context.active_object
+dome.name = "Dome"
+dome.scale = (1, 1, 0.6)  # Flatten into a dome shape
+# Move to lighthouse collection
+for col in dome.users_collection:
+    col.objects.unlink(dome)
+lighthouse_collection.objects.link(dome)
+
+# Dome material
+dome_mat = bpy.data.materials.new(name="Mat_Dome")
+dome_mat.use_nodes = True
+bsdf = dome_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)  # Black
+bsdf.inputs["Roughness"].default_value = 0.3
+dome.data.materials.append(dome_mat)
+
+# Add a small spire/finial on top of the dome
+spire_y = dome_y + lantern_radius * 1.1 * 0.6
+bpy.ops.mesh.primitive_cone_add(vertices=16, radius1=0.3, radius2=0.0, depth=1.5, location=(0, 0, spire_y + 0.75))
+spire = bpy.context.active_object
+spire.name = "Spire"
+# Move to lighthouse collection
+for col in spire.users_collection:
+    col.objects.unlink(spire)
+lighthouse_collection.objects.link(spire)
+
+# Spire material
+spire_mat = bpy.data.materials.new(name="Mat_Spire")
+spire_mat.use_nodes = True
+bsdf = spire_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+spire.data.materials.append(spire_mat)
+
+# Add a base/foundation
+base_height = 2.0
+base_radius_f = base_radius * 1.3
+bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=base_radius_f, depth=base_height, location=(0, 0, -base_height / 2))
+foundation = bpy.context.active_object
+foundation.name = "Foundation"
+# Move to lighthouse collection
+for col in foundation.users_collection:
+    col.objects.unlink(foundation)
+lighthouse_collection.objects.link(foundation)
+
+# Foundation material
+found_mat = bpy.data.materials.new(name="Mat_Foundation")
+found_mat.use_nodes = True
+bsdf = found_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.4, 0.4, 0.4, 1.0)  # Gray
+bsdf.inputs["Roughness"].default_value = 0.8
+foundation.data.materials.append(found_mat)
+
+# Add a ground plane
+bpy.ops.mesh.primitive_plane_add(size=50, location=(0, 0, -base_height))
+ground = bpy.context.active_object
+ground.name = "Ground"
+# Move to lighthouse collection
+for col in ground.users_collection:
+    col.objects.unlink(ground)
+lighthouse_collection.objects.link(ground)
+
+# Ground material
+ground_mat = bpy.data.materials.new(name="Mat_Ground")
+ground_mat.use_nodes = True
+bsdf = ground_mat.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.3, 0.5, 0.3, 1.0)  # Green
+bsdf.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(ground_mat)
+
+# Add a light source for better visualization
+bpy.ops.object.light_add(type='SUN', location=(10, -10, 20))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+# Move to lighthouse collection
+for col in sun.users_collection:
+    col.objects.unlink(sun)
+lighthouse_collection.objects.link(sun)
+
+# Set up camera
+bpy.ops.object.camera_add(location=(15, -15, 10))
+camera = bpy.context.active_object
+camera.name = "Camera"
+# Aim camera at the lighthouse
+direction = Vector((0, 0, 10)) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+# Move to lighthouse collection
+for col in camera.users_collection:
+    col.objects.unlink(camera)
+lighthouse_collection.objects.link(camera)
+
+# Set camera as active
+bpy.context.scene.camera = camera
+
+print("Lighthouse with red and white bands created successfully!")
+```

@@ -1,0 +1,34 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "KeyError: 'road'",
+ "error_line": "sc.collection.objects.link(o); o.data.materials.append(col[name]); return o",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  25.0,
+  24.0,
+  3.893
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  -3.5467
+ ],
+ "scene_radius": 17.4367,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.1,
+ "image": true
+}

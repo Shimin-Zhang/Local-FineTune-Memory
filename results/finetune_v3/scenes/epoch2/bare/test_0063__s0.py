@@ -1,0 +1,99 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1181)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+P = {}
+def paint(name, rgb, glow=0, rough=.9):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if glow:
+        p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    P[name] = m
+def part(bm, name, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(name, me); o.location = at; o.rotation_euler = rot
+    o.data.materials.append(P[name]); sc.collection.objects.link(o); return o
+def blk(bm, x, y, z, w, d, h, rz=0):
+    bmesh.ops.create_cube(bm, size=1, matrix=__import__("mathutils").Matrix.Translation((x, y, z + h / 2)) @ __import__("mathutils").Matrix.Rotation(rz, 4, 'Z') @ __import__("mathutils").Matrix.Diagonal((w, d, h, 1)))
+def rod(bm, a, b, r, n=5):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r, depth=d.length, matrix=__import__("mathutils").Matrix.Translation((a + b) / 2) @ q.to_matrix().to_4x4())
+def cone(bm, x, y, z, r, h, n=6):
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=0, depth=h, matrix=__import__("mathutils").Matrix.Translation((x, y, z + h / 2)))
+def lamp(at, col, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+paint("snow", (.55, .62, .72)); paint("drift", (.65, .72, .82)); paint("wall", (.12, .3, .22)); paint("roof", (.12, .13, .17))
+paint("trim", (.45, .4, .35)); paint("red", (.9, .06, .05)); paint("white", (.85, .85, .85)); paint("steel", (.35, .38, .42), 0, .5)
+paint("wood", (.3, .18, .1)); paint("window", (1, .65, .25), 9); paint("rock", (.18, .2, .25)); paint("pine", (.04, .17, .12)); paint("rope", (.5, .35, .15))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=7, radius2=12, depth=2.6, matrix=__import__("mathutils").Matrix.Translation((0, 0, -1.3)))
+for v in bm.verts:
+    if v.co.z < -1: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.4, .3)))
+part(bm, "snow")
+# the hut: walls, trim, gable roof with snow cap, door, glowing windows
+bm = bmesh.new(); blk(bm, 0, 0, 0, 7, 5, 3.2); part(bm, "wall")
+bm = bmesh.new(); blk(bm, 0, -2.52, 0, 7.1, .12, .3); blk(bm, 0, 0, 3.2, 7.2, .15, .12); part(bm, "trim")
+bm = bmesh.new()
+for s in (-1, 1): blk(bm, 0, s * 1.5, 3.3, 7.8, 3.4, .25, 0).faces
+# roof as two slabs via extruded profile
+bmesh.ops.delete(bm, geom=bm.faces[:], context='FACES')
+prof = [(-4.1, -2.9, 3.2), (4.1, -2.9, 3.2), (4.1, 2.9, 3.2), (-4.1, 2.9, 3.2), (0, -2.9, 5.1), (0, 2.9, 5.1)]
+vs = [bm.verts.new(p) for p in prof]
+for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 3, 2, 1)): bm.faces.new([vs[i] for i in f])
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces); part(bm, "roof")
+bm = bmesh.new(); blk(bm, 0, -2.5, 4.0, 6.2, .12, .12); part(bm, "trim")
+bm = bmesh.new(); blk(bm, -1.2, -2.52, 0, 1.1, .1, 2.2); part(bm, "wood")
+for x in (1.8, 3.0): blk(bm, x, -2.52, 1.0, .9, .1, 1.0)
+part(bm, "window")
+bm = bmesh.new(); blk(bm, -1.2, -2.6, 0, 1.3, .12, .15); part(bm, "trim")
+# red cross sign on the roof slope, larger than life
+bm = bmesh.new(); blk(bm, 0, -2.55, 3.9, .45, .1, 1.4); blk(bm, 0, -2.55, 4.35, 1.4, .1, .45); part(bm, "red")
+# stove chimney with cap and a little smoke
+bm = bmesh.new(); rod(bm, (2.8, 1.5, 4.2), (2.8, 1.5, 7.2), .3, 6); blk(bm, 2.8, 1.5, 7.2, .9, .9, .15); part(bm, "steel")
+bm = bmesh.new()
+for i in range(3): bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.5 + i * .2, matrix=__import__("mathutils").Matrix.Translation((2.8 + i * .4, 1.5, 7.8 + i * .9)))
+part(bm, "drift")
+lamp((-1.2, -3.4, 1.2), (1, .6, .2), 450); lamp((2.4, -3.2, 1.5), (1, .6, .2), 300)
+# stretcher sled with poles, blanket and a red-cross bag
+bm = bmesh.new(); blk(bm, 4.5, -4.2, .15, 3.6, 1.0, .2); part(bm, "wood")
+bm = bmesh.new()
+for x in (3.0, 6.0): rod(bm, (x, -4.2, .2), (x, -4.2, 1.5), .06)
+for x in (3.4, 5.6): rod(bm, (x, -4.2, .3), (x, -4.2, .9), .06)
+part(bm, "steel")
+bm = bmesh.new(); blk(bm, 4.5, -4.2, .35, 3.0, .9, .25); part(bm, "red")
+bm = bmesh.new(); blk(bm, 4.5, -4.2, .6, .9, .5, .3); part(bm, "white")
+# rope bags: sacks with rope coils and a coiled rope
+bm = bmesh.new()
+for i, (x, y) in enumerate(((7.5, -2.5), (8.4, -3.6), (6.8, -4.2))):
+    bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.7, matrix=__import__("mathutils").Matrix.Translation((x, y, .5)) @ __import__("mathutils").Matrix.Diagonal((1, 1, .8, 1)))
+part(bm, "rope")
+bm = bmesh.new(); rod(bm, (8.0, -2.0, .1), (8.0, -2.0, .5), .5, 7); part(bm, "red")
+# thermometer on a pole: bulb, tube, ticks, oversized
+bm = bmesh.new(); rod(bm, (-7.5, -3.5, 0), (-7.5, -3.5, 4.0), .08); part(bm, "steel")
+bm = bmesh.new(); rod(bm, (-7.5, -3.6, 1.6), (-7.5, -3.6, 3.6), .16, 6); part(bm, "white")
+bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.3, matrix=__import__("mathutils").Matrix.Translation((-7.5, -3.6, 1.5))); part(bm, "red")
+# powder: drifting flakes, and pines plus rocks
+bm = bmesh.new()
+for i in range(70): bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.12, .25), matrix=__import__("mathutils").Matrix.Translation((random.uniform(-11, 11), random.uniform(-9, 9), random.uniform(1, 12))))
+part(bm, "white")
+bm = bmesh.new(); bm2 = bmesh.new()
+for x, y, h in ((-9, 4, 4), (-6, 7, 5), (9, 6, 4.5), (10, -3, 3.5), (-10, -4, 3.8)):
+    rod(bm2, (x, y, 0), (x, y, 1.2), .25, 5)
+    for k in range(3): cone(bm, x, y, .8 + k * h * .26, 1.7 - k * .45, h * .5, 6)
+part(bm, "pine"); part(bm2, "wood")
+bm = bmesh.new()
+for i in range(6): bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.6, 1.1), matrix=__import__("mathutils").Matrix.Translation((random.uniform(-10, 10), random.uniform(-9, 2), .1)) @ __import__("mathutils").Matrix.Diagonal((1, 1, .6, 1)))
+part(bm, "rock")
+# storm light: cold blue key low from the right, violet rim from behind
+for col, w, at in (((.55, .7, 1), 5, (26, -14, 10)), ((.6, .4, .9), 2, (-22, 22, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("storm"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .02, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+tg = Vector((0, 0, 3.5)); co.location = tg + Vector((-14, -56, 34))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

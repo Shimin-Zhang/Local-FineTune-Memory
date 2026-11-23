@@ -1,0 +1,84 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1744)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+P = {}
+def paint(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .8
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    P[name] = m
+for k, c in dict(pale=(.45, .4, .3), cream=(.4, .35, .28), blue=(.1, .2, .4), red=(.4, .12, .1), green=(.1, .3, .2),
+                 yellow=(.5, .35, .08), slate=(.1, .1, .15), road=(.08, .08, .1), trunk=(.2, .12, .08), leaf=(.1, .28, .12),
+                 roof=(.2, .08, .08), door=(.05, .05, .07), white=(.6, .6, .55), wood=(.25, .15, .08)).items(): paint(k, c)
+paint("window", (1, .75, .3), 8); paint("lamp", (1, .6, .2), 14)
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(P[m]); return o
+def slab(x, y, z, w, d, h, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return put(bm, m, (x, y, z), (0, 0, rz))
+def cyl(x, y, z, r, h, m, n=7, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, (x, y, z))
+def tab(x, y, z, m, s=1.0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=.6 * s, radius2=.6 * s, depth=.5)
+    for v in bm.verts: v.co.z += .25
+    return put(bm, m, (x, y, z))
+def lamp(x, y, z, c, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# floating base with a ragged underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=11, depth=3)
+for v in bm.verts:
+    v.co.x *= 1.1
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.5, .3)))
+    v.co.z -= 1.5
+put(bm, "slate")
+# the town is a jigsaw of big pieces: a slab with a tab on its right edge and a blank on its top edge, plus neighbours
+def piece(x, y, m, tabbed=True):
+    slab(x, y, 0, 5.6, 5.6, .4, m)
+    if tabbed: tab(x + 2.8, y, .4, m)
+    tab(x, y + 2.8, .4, m, .8)
+for (x, y, m) in ((-5.5, 3.5, "cream"), (-.5, 3.5, "pale"), (4.5, 3.5, "blue"), (-5.5, -2, "green"), (4.5, -2, "yellow")): piece(x, y, m)
+slab(-.5, -2, 0, 5.6, 5.6, .4, "road"); slab(-.5, -2, .4, 5.0, .3, .05, "white"); slab(-.5, -2, .4, 5.0, .3, .05, "white", 0)
+# church on its own piece: nave, tower, spire, door, glowing windows, cross
+slab(-.5, 6.5, .4, 4.0, 2.4, 2.2, "white"); slab(-.5, 6.5, 2.6, 4.4, 2.8, .5, "roof", 0, .6)
+slab(-.5, 8.2, .4, 1.8, 1.8, 3.4, "white"); slab(-.5, 8.2, 3.8, 2.4, 2.4, .4, "roof", 0, .7); cyl(-.5, 8.2, 4.2, 1.0, 2.4, "roof", 4, .05)
+slab(-.5, 8.2, 6.4, .1, .1, .8, "white"); slab(-.5, 8.2, 6.7, .5, .1, .1, "white")
+slab(-.5, 7.28, .4, .9, .1, 1.5, "door"); slab(-.5, 7.28, 2.2, .5, .08, .8, "window")
+for sx in (-1.8, 1.8): slab(-.5 + sx, 7.28, 1.0, .6, .08, 1.0, "window")
+lamp(-.5, 6.8, 1.5, (1, .7, .3), 450)
+# street of coloured houses along the road, each with a door and lit windows, a chimney
+for i, (x, m) in enumerate(((-4.8, "red"), (-2.4, "yellow"), (0.0, "blue"), (2.4, "green"), (4.8, "red"))):
+    slab(x, -4.2, .4, 2.0, 2.0, 2.0, m, 0, .95)
+    slab(x, -4.2, 2.4, 2.3, 2.3, .8, "roof", 0, .7); slab(x + .6, -4.2, 2.6, .3, .3, .9, "white")
+    slab(x - .5, -5.22, .4, .6, .08, 1.2, "door"); slab(x + .4, -5.22, 1.1, .7, .08, .7, "window")
+    lamp(x, -5.8, 1.5, (1, .7, .3), 90)
+# lamp posts at the corners of the street
+for x in (-3.5, 3.5):
+    cyl(x, -2.8, .4, .07, 2.2, "slate"); cyl(x, -2.8, 2.6, .25, .35, "lamp", 6); lamp(x, -2.8, 2.8, (1, .6, .2), 120)
+# trees on the green piece
+for x, y in ((-7.5, 0), (-3.5, 1.5)):
+    cyl(x, y, .4, .2, 1.4, "trunk", 5); cyl(x, y, 1.6, 1.0, 1.8, "leaf", 6, .1)
+# two pieces still out of place, tilted and floating
+for x, y, z, rz, m in ((-8.0, -4.5, 1.2, .3, "red"), (8.5, -4.0, 1.6, -.5, "blue")):
+    slab(x, y, z, 5.0, 5.0, .4, m, rz); tab(x + 2.5 * math.cos(rz), y + 2.5 * math.sin(rz), z + .4, m)
+    tab(x - 2.5 * math.sin(rz), y + 2.5 * math.cos(rz), z + .4, m, .8)
+for c, w, p in (((.55, .65, 1), 5, (-24, -14, 10)), ((1, .5, .35), 2.4, (22, 18, 9))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.015, .02, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((10, -46, 28))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

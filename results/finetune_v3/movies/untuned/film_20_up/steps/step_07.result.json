@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 24.8,
+ "error": null,
+ "error_line": null,
+ "printed": "Final polish complete. Objects: 2329\n",
+ "state_saved": true,
+ "n_objects": 2325,
+ "n_lights": 3,
+ "n_materials": 1150,
+ "own_camera": true,
+ "render_error": null
+}

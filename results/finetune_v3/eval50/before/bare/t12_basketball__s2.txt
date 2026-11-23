@@ -1,0 +1,151 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clear existing mesh objects
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Create a new UV Sphere for the basketball
+bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=1.0, location=(0, 0, 0))
+basketball = bpy.context.active_object
+basketball.name = "Basketball"
+
+# Subdivide for more detail
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=2)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Create a material for the basketball
+mat = bpy.data.materials.new(name="BasketballMaterial")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (600, 0)
+
+bsdf_node = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_node.location = (300, 0)
+bsdf_node.inputs['Base Color'].default_value = (0.8, 0.3, 0.1, 1.0)  # Orange
+bsdf_node.inputs['Roughness'].default_value = 0.6
+bsdf_node.inputs['Metallic'].default_value = 0.0
+
+# Create a texture coordinate node
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-600, 0)
+
+# Create a mapping node
+mapping = nodes.new('ShaderNodeMapping')
+mapping.location = (-400, 0)
+
+# Create a noise texture for pebbled surface
+noise = nodes.new('ShaderNodeTexNoise')
+noise.location = (-200, 200)
+noise.inputs['Scale'].default_value = 50.0
+noise.inputs['Detail'].default_value = 10.0
+noise.inputs['Roughness'].default_value = 0.5
+
+# Create a color ramp to make the noise more pronounced
+color_ramp = nodes.new('ShaderNodeValToRGB')
+color_ramp.location = (0, 200)
+color_ramp.color_ramp.elements[0].position = 0.4
+color_ramp.color_ramp.elements[1].position = 0.6
+
+# Create a bump node for the pebbled surface
+bump = nodes.new('ShaderNodeBump')
+bump.location = (100, 200)
+bump.inputs['Strength'].default_value = 0.1
+
+# Create a wave texture for the black lines
+wave = nodes.new('ShaderNodeTexWave')
+wave.location = (-200, -200)
+wave.wave_type = 'BANDS'
+wave.bands_direction = 'X'
+wave.inputs['Scale'].default_value = 8.0
+wave.inputs['Distortion'].default_value = 0.0
+wave.inputs['Detail'].default_value = 0.0
+
+# Create a color ramp for the wave to create sharp lines
+wave_color_ramp = nodes.new('ShaderNodeValToRGB')
+wave_color_ramp.location = (0, -200)
+wave_color_ramp.color_ramp.interpolation = 'CONSTANT'
+wave_color_ramp.color_ramp.elements[0].position = 0.0
+wave_color_ramp.color_ramp.elements[0].color = (0.0, 0.0, 0.0, 1.0)  # Black
+wave_color_ramp.color_ramp.elements[1].position = 0.1
+wave_color_ramp.color_ramp.elements[1].color = (0.8, 0.3, 0.1, 1.0)  # Orange
+
+# Create a second wave for vertical lines
+wave2 = nodes.new('ShaderNodeTexWave')
+wave2.location = (-200, -400)
+wave2.wave_type = 'BANDS'
+wave2.bands_direction = 'Y'
+wave2.inputs['Scale'].default_value = 8.0
+wave2.inputs['Distortion'].default_value = 0.0
+wave2.inputs['Detail'].default_value = 0.0
+
+wave2_color_ramp = nodes.new('ShaderNodeValToRGB')
+wave2_color_ramp.location = (0, -400)
+wave2_color_ramp.color_ramp.interpolation = 'CONSTANT'
+wave2_color_ramp.color_ramp.elements[0].position = 0.0
+wave2_color_ramp.color_ramp.elements[0].color = (0.0, 0.0, 0.0, 1.0)  # Black
+wave2_color_ramp.color_ramp.elements[1].position = 0.1
+wave2_color_ramp.color_ramp.elements[1].color = (0.8, 0.3, 0.1, 1.0)  # Orange
+
+# Mix the two wave textures to create a grid pattern
+mix = nodes.new('ShaderNodeMix')
+mix.location = (200, -300)
+mix.data_type = 'RGBA'
+mix.inputs['Factor'].default_value = 0.5
+
+# Combine the line pattern with the base color
+# Use a mix to blend the orange and black based on the line pattern
+mix2 = nodes.new('ShaderNodeMix')
+mix2.location = (400, -100)
+mix2.data_type = 'RGBA'
+mix2.inputs['A'].default_value = (0.8, 0.3, 0.1, 1.0)  # Orange
+mix2.inputs['B'].default_value = (0.0, 0.0, 0.0, 1.0)  # Black
+
+# Link nodes
+links.new(tex_coord.outputs['UV'], mapping.inputs['Vector'])
+links.new(mapping.outputs['Vector'], noise.inputs['Vector'])
+links.new(mapping.outputs['Vector'], wave.inputs['Vector'])
+links.new(mapping.outputs['Vector'], wave2.inputs['Vector'])
+links.new(noise.outputs['Fac'], color_ramp.inputs['Fac'])
+links.new(color_ramp.outputs['Color'], bump.inputs['Height'])
+links.new(wave.outputs['Fac'], wave_color_ramp.inputs['Fac'])
+links.new(wave2.outputs['Fac'], wave2_color_ramp.inputs['Fac'])
+links.new(wave_color_ramp.outputs['Color'], mix.inputs['A'])
+links.new(wave2_color_ramp.outputs['Color'], mix.inputs['B'])
+links.new(mix.outputs['Result'], mix2.inputs['Factor'])
+links.new(mix2.outputs['Result'], bsdf_node.inputs['Base Color'])
+links.new(bump.outputs['Normal'], bsdf_node.inputs['Normal'])
+links.new(bsdf_node.outputs['BSDF'], output_node.inputs['Surface'])
+
+# Assign material to basketball
+basketball.data.materials.append(mat)
+
+# Smooth shading
+bpy.ops.object.shade_smooth()
+
+# Add a light for better visualization
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 5))
+sun = bpy.context.active_object
+sun.rotation_euler = (math.radians(45), math.radians(45), 0)
+sun.data.energy = 3.0
+
+# Set up a camera
+bpy.ops.object.camera_add(location=(0, -4, 0))
+camera = bpy.context.active_object
+camera.rotation_euler = (math.radians(90), 0, 0)
+bpy.context.scene.camera = camera
+```

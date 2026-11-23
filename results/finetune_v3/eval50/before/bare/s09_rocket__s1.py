@@ -1,0 +1,97 @@
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# --- Rocket Body (Cylinder) ---
+bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=0.5, depth=3.0, location=(0, 0, 1.5))
+body = bpy.context.active_object
+body.name = "Rocket_Body"
+
+# --- Nose Cone ---
+bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=0.5, radius2=0.0, depth=1.0, location=(0, 0, 3.5))
+nose = bpy.context.active_object
+nose.name = "Rocket_Nose"
+
+# --- Three Fins ---
+fin_data = []
+for i in range(3):
+    angle = i * (2 * math.pi / 3)
+    x = 0.5 * math.cos(angle)
+    y = 0.5 * math.sin(angle)
+    
+    # Create a fin using a scaled and rotated cube
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.5))
+    fin = bpy.context.active_object
+    fin.name = f"Rocket_Fin_{i+1}"
+    
+    # Scale the fin to make it elongated and thin
+    fin.scale = (0.3, 0.05, 0.8)
+    
+    # Rotate the fin to align with the body
+    fin.rotation_euler = (0, 0, angle)
+    
+    fin_data.append(fin)
+
+# --- Round Window ---
+# Create a torus for the window frame
+bpy.ops.mesh.primitive_torus_add(
+    major_radius=0.15,
+    minor_radius=0.03,
+    major_segments=32,
+    minor_segments=16,
+    location=(0.5, 0, 1.5)  # On the side of the body
+)
+window_frame = bpy.context.active_object
+window_frame.name = "Rocket_Window_Frame"
+
+# Rotate the torus so it faces outward from the body
+window_frame.rotation_euler = (0, math.radians(90), 0)
+
+# Create a circular mesh for the window glass
+bpy.ops.mesh.primitive_circle_add(vertices=32, radius=0.12, fill_type='NGON', location=(0.5, 0, 1.5))
+window_glass = bpy.context.active_object
+window_glass.name = "Rocket_Window_Glass"
+
+# Rotate the circle to face outward
+window_glass.rotation_euler = (0, math.radians(90), 0)
+
+# --- Materials ---
+# Body material
+body_mat = bpy.data.materials.new(name="Rocket_Body_Mat")
+body_mat.use_nodes = True
+body_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.8, 0.8, 0.8, 1.0)
+body.data.materials.append(body_mat)
+
+# Nose material
+nose_mat = bpy.data.materials.new(name="Rocket_Nose_Mat")
+nose_mat.use_nodes = True
+nose_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.8, 0.2, 0.2, 1.0)
+nose.data.materials.append(nose_mat)
+
+# Fin material
+fin_mat = bpy.data.materials.new(name="Rocket_Fin_Mat")
+fin_mat.use_nodes = True
+fin_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.8, 0.2, 0.2, 1.0)
+for fin in fin_data:
+    fin.data.materials.append(fin_mat)
+
+# Window frame material
+frame_mat = bpy.data.materials.new(name="Window_Frame_Mat")
+frame_mat.use_nodes = True
+frame_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.2, 0.2, 0.2, 1.0)
+window_frame.data.materials.append(frame_mat)
+
+# Window glass material
+glass_mat = bpy.data.materials.new(name="Window_Glass_Mat")
+glass_mat.use_nodes = True
+glass_mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.2, 0.4, 0.8, 1.0)
+glass_mat.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.0
+glass_mat.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.1
+glass_mat.node_tree.nodes["Principled BSDF"].inputs["Transmission Weight"].default_value = 0.8
+window_glass.data.materials.append(glass_mat)
+
+print("Rocket created successfully!")

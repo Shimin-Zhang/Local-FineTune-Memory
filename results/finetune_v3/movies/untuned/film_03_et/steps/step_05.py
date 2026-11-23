@@ -1,0 +1,190 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The moon is rendering black because the emission isn't working well with the crater geometry.
+# Let's fix the moon, improve the bike visibility, and add more detail.
+
+# First, let's fix the moon - remove craters that are inside the moon and make it glow properly
+# Delete existing craters
+for obj in bpy.data.objects:
+    if obj.name.startswith("Crater_"):
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Get the moon and fix its material
+moon = bpy.data.objects.get("Moon")
+if moon:
+    # Create a better moon material with strong emission
+    mat_moon = bpy.data.materials.get("MoonMat")
+    if mat_moon:
+        mat_moon.use_nodes = True
+        nodes = mat_moon.node_tree.nodes
+        links = mat_moon.node_tree.links
+        nodes.clear()
+        
+        # Use emission shader for the moon
+        emission = nodes.new('ShaderNodeEmission')
+        emission.location = (0, 0)
+        emission.inputs[0].default_value = (0.95, 0.95, 0.9, 1.0)
+        emission.inputs[1].default_value = 5.0  # Strong emission
+        
+        output = nodes.new('ShaderNodeOutputMaterial')
+        output.location = (300, 0)
+        links.new(emission.outputs[0], output.inputs[0])
+    
+    # Add new craters on the surface
+    random.seed(42)
+    for i in range(20):
+        angle = random.uniform(0, 2*math.pi)
+        elev = random.uniform(-0.25, 0.25)
+        r = 0.15 + random.uniform(0, 0.3)
+        # Position on the surface of the moon (radius 6, center at 0,18,5)
+        x = 6 * math.cos(angle) * math.cos(elev)
+        y = 18 + 6 * math.sin(angle) * math.cos(elev)
+        z = 5 + 6 * math.sin(elev)
+        
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(x, y, z), segments=16, ring_count=8)
+        crater = bpy.context.active_object
+        crater.name = f"Crater_{i}"
+        
+        # Dark crater material
+        mat_crater = bpy.data.materials.get("CraterMat")
+        if not mat_crater:
+            mat_crater = bpy.data.materials.new("CraterMat")
+            mat_crater.use_nodes = True
+            cnodes = mat_crater.node_tree.nodes
+            clinks = mat_crater.node_tree.links
+            cnodes.clear()
+            cbsdf = cnodes.new('ShaderNodeBsdfPrincipled')
+            cbsdf.location = (0, 0)
+            cbsdf.inputs['Base Color'].default_value = (0.6, 0.6, 0.55, 1.0)
+            cbsdf.inputs['Roughness'].default_value = 0.9
+            cout = cnodes.new('ShaderNodeOutputMaterial')
+            cout.location = (300, 0)
+            clinks.new(cbsdf.outputs[0], cout.inputs[0])
+        
+        crater.data.materials.append(mat_crater)
+        crater.scale = (1, 1, 0.1)
+
+# Now let's improve the bicycle - make it more visible and detailed
+# The bike is too small and dark. Let's scale it up and improve materials.
+
+# Get all bike objects and scale them up
+bike_prefixes = ("Rear", "Front", "Seat", "Down", "Top", "Chain", "Fork", "Stem", "Handlebar", "SeatPost", "Crank", "Pedal", "Chainring", "Basket", "ET_", "BW")
+bike_objs = [obj for obj in bpy.data.objects if any(obj.name.startswith(p) for p in bike_prefixes)]
+
+# Find the center of the bike
+if bike_objs:
+    center = sum([obj.location for obj in bike_objs], Vector()) / len(bike_objs)
+    
+    # Scale bike objects up by 1.5x from their center
+    for obj in bike_objs:
+        # Store original position relative to center
+        rel_pos = obj.location - center
+        # Scale position
+        obj.location = center + rel_pos * 1.5
+        # Scale the object itself
+        obj.scale *= 1.5
+
+# Improve the bike frame material to be more visible
+mat_bike_frame = bpy.data.materials.get("BikeFrame")
+if mat_bike_frame:
+    mat_bike_frame.use_nodes = True
+    nodes = mat_bike_frame.node_tree.nodes
+    for node in nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (1.0, 0.2, 0.2, 1.0)
+            node.inputs['Roughness'].default_value = 0.15
+            node.inputs['Metallic'].default_value = 0.9
+
+# Improve E.T. materials to be more visible
+mat_et_body = bpy.data.materials.get("ETBody")
+if mat_et_body:
+    mat_et_body.use_nodes = True
+    for node in mat_et_body.node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (0.35, 0.55, 0.65, 1.0)
+            node.inputs['Roughness'].default_value = 0.4
+
+mat_et_head = bpy.data.materials.get("ETHead")
+if mat_et_head:
+    mat_et_head.use_nodes = True
+    for node in mat_et_head.node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs['Base Color'].default_value = (0.4, 0.6, 0.7, 1.0)
+            node.inputs['Roughness'].default_value = 0.35
+
+# Add a subtle blue glow around E.T.
+# Remove old glow if exists
+old_glow = bpy.data.objects.get("ETGlow")
+if old_glow:
+    bpy.data.objects.remove(old_glow, do_unlink=True)
+
+# Find E.T. head position
+et_head = bpy.data.objects.get("ET_Head")
+if et_head:
+    glow_data = bpy.data.lights.new("ETGlow", type='POINT')
+    glow_data.energy = 20
+    glow_data.color = (0.3, 0.55, 1.0)
+    glow_data.shadow_soft_size = 0.8
+    glow = bpy.data.objects.new("ETGlow", glow_data)
+    bpy.context.scene.collection.objects.link(glow)
+    glow.location = et_head.location + Vector((0, 0, 0.1))
+
+# Add more stars for a denser sky
+for i in range(200):
+    x = random.uniform(-60, 60)
+    y = random.uniform(15, 70)
+    z = random.uniform(-25, 40)
+    size = random.uniform(0.005, 0.03)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z), segments=8, ring_count=4)
+    star = bpy.context.active_object
+    star.name = f"StarExtra_{i}"
+    mat_star = bpy.data.materials.get("Star")
+    if mat_star:
+        star.data.materials.append(mat_star)
+
+# Add some distant mountains/hills for depth
+mat_hill = bpy.data.materials.get("HillMat")
+if not mat_hill:
+    mat_hill = bpy.data.materials.new("HillMat")
+    mat_hill.use_nodes = True
+    nodes = mat_hill.node_tree.nodes
+    links = mat_hill.node_tree.links
+    nodes.clear()
+    bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf.location = (0, 0)
+    bsdf.inputs['Base Color'].default_value = (0.02, 0.05, 0.02, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.9
+    output = nodes.new('ShaderNodeOutputMaterial')
+    output.location = (300, 0)
+    links.new(bsdf.outputs[0], output.inputs[0])
+
+for i in range(10):
+    x = random.uniform(-40, 40)
+    z = random.uniform(-25, -15)
+    r = random.uniform(3, 8)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=(x, 0, z), segments=16, ring_count=8)
+    hill = bpy.context.active_object
+    hill.name = f"Hill_{i}"
+    hill.scale = (1, 0.5, 0.3)
+    hill.data.materials.append(mat_hill)
+
+# Adjust camera to better frame the scene
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (0, -12, 2.5)
+    cam.rotation_euler = (math.radians(80), 0, 0)
+    cam.data.lens = 35
+
+# Update render settings
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.cycles.max_bounces = 8
+scene.view_settings.exposure = 1.0
+scene.view_settings.look = 'AgX - Medium High Contrast'
+
+print("Scene refined: fixed moon, improved bike visibility, added details!")

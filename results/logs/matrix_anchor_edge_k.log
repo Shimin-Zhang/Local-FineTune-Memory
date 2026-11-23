@@ -1,0 +1,7 @@
+matrix anchor_edge: 6 probes, 0 already done
+[1/6] Qwen3.8-27B qlora ckpt=1 1x2048 loss=chunked  -> ok  peak 19.35 GiB 24.2s 
+[2/6] Qwen3.8-27B qlora ckpt=1 1x2048 loss=chunked  -> ok  peak 19.02 GiB 24.1s 
+[3/6] Qwen3.8-27B qlora ckpt=1 1x2048 loss=chunked  -> ok  peak 19.15 GiB 24.5s 
+[4/6] Qwen3.8-27B qlora ckpt=1 1x2048 loss=chunked  -> ok  peak 19.37 GiB 24.6s 
+[5/6] Qwen3.8-27B qlora ckpt=1 1x2048 loss=chunked  -> ok  peak 20.03 GiB 24.6s 
+[6/6] Qwen3.8-27B qlora ckpt=1 1x2048 loss=chunked  -> ok  peak 18.80 GiB 24.2s 

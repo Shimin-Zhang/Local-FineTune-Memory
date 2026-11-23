@@ -1,0 +1,295 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+bpy.ops.object.select_all(action='DESELECT')
+
+# ==================== MATERIALS ====================
+
+def make_mat(name, color, metallic=0.0, rough=0.5, emission=0.0, em_color=(1,1,1,1)):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Metallic"].default_value = metallic
+    bsdf.inputs["Roughness"].default_value = rough
+    if emission > 0:
+        bsdf.inputs["Emission Color"].default_value = em_color
+        bsdf.inputs["Emission Strength"].default_value = emission
+    return mat
+
+salt_mat    = make_mat("SaltCave",   (0.92, 0.90, 0.85, 1), rough=0.7)
+altar_mat   = make_mat("PaleAltar",  (0.97, 0.96, 0.92, 1), rough=0.2)
+crystal_mat = make_mat("Crystal",    (0.85, 0.90, 1.00, 1), metallic=0.0, rough=0.05, emission=0.3, em_color=(0.7,0.8,1.0,1))
+wood_mat    = make_mat("Wood",       (0.45, 0.28, 0.15, 1), rough=0.6)
+lantern_mat = make_mat("Lantern",    (1.0, 0.75, 0.30, 1), rough=0.1, emission=2.0, em_color=(1.0,0.7,0.2,1))
+relief_mat  = make_mat("Relief",     (0.88, 0.86, 0.80, 1), rough=0.5)
+
+# ==================== SALT CAVE (inverted sphere) ====================
+bpy.ops.mesh.primitive_uv_sphere_add(radius=14, segments=48, ring_count=24, location=(0,0,0))
+cave = bpy.context.active_object
+cave.name = "SaltCave"
+cave.scale = (1.0, 1.0, 0.85)
+bpy.ops.object.transform_apply(scale=True)
+# Flip normals inward
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.flip_normals()
+bpy.ops.object.mode_set(mode='OBJECT')
+cave.data.materials.append(salt_mat)
+
+# ==================== FLOOR ====================
+bpy.ops.mesh.primitive_plane_add(size=22, location=(0, 0, -0.05))
+floor = bpy.context.active_object
+floor.name = "Floor"
+floor.data.materials.append(salt_mat)
+
+# ==================== PALE ALTAR ====================
+# Main altar table
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -8, 1.0))
+altar = bpy.context.active_object
+altar.name = "Altar"
+altar.scale = (2.5, 0.8, 1.0)
+bpy.ops.object.transform_apply(scale=True)
+altar.data.materials.append(altar_mat)
+
+# Altar top slab
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -8, 2.05))
+alt_top = bpy.context.active_object
+alt_top.name = "AltarTop"
+alt_top.scale = (2.8, 1.0, 0.1)
+bpy.ops.object.transform_apply(scale=True)
+alt_top.data.materials.append(altar_mat)
+
+# Altar front panel with slight bevel
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -7.1, 1.0))
+alt_front = bpy.context.active_object
+alt_front.name = "AltarFront"
+alt_front.scale = (2.5, 0.15, 1.0)
+bpy.ops.object.transform_apply(scale=True)
+alt_front.data.materials.append(altar_mat)
+
+# Cross on altar
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -8, 3.0))
+cross_v = bpy.context.active_object
+cross_v.scale = (0.15, 0.15, 0.8)
+bpy.ops.object.transform_apply(scale=True)
+cross_v.data.materials.append(altar_mat)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -8, 3.3))
+cross_h = bpy.context.active_object
+cross_h.scale = (0.6, 0.15, 0.15)
+bpy.ops.object.transform_apply(scale=True)
+cross_h.data.materials.append(altar_mat)
+
+# ==================== CRYSTAL CHANDELIERS ====================
+def make_chandelier(loc):
+    # Central stem
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=1.5, location=(loc[0], loc[1], loc[2]))
+    stem = bpy.context.active_object
+    stem.data.materials.append(crystal_mat)
+
+    # Arms (5 radial)
+    for i in range(5):
+        ang = i * (2 * math.pi / 5)
+        ax = loc[0] + 0.8 * math.cos(ang)
+        ay = loc[1] + 0.8 * math.sin(ang)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.8, location=(ax, ay, loc[2] + 0.2))
+        arm = bpy.context.active_object
+        arm.rotation_euler = (0, math.pi/2, ang)
+        arm.data.materials.append(crystal_mat)
+
+        # Crystal drop
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.15, location=(ax + 0.4*math.cos(ang), ay + 0.4*math.sin(ang), loc[2] + 0.1))
+        drop = bpy.context.active_object
+        drop.data.materials.append(crystal_mat)
+
+    # Central crystal cluster
+    for j in range(3):
+        ang = j * (2*math.pi/3)
+        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.12, location=(loc[0] + 0.3*math.cos(ang), loc[1] + 0.3*math.sin(ang), loc[2] + 0.5))
+        c = bpy.context.active_object
+        c.data.materials.append(crystal_mat)
+
+    # Point light for glow
+    light_data = bpy.data.lights.new(f"ChandLight_{loc[0]:.0f}_{loc[1]:.0f}", 'POINT')
+    light_data.energy = 80
+    light_data.color = (0.8, 0.85, 1.0)
+    light_data.shadow_soft_size = 0.5
+    light_obj = bpy.data.objects.new(f"ChandLight_{loc[0]:.0f}_{loc[1]:.0f}", light_data)
+    light_obj.location = (loc[0], loc[1], loc[2] + 0.3)
+    bpy.context.collection.objects.link(light_obj)
+
+make_chandelier((0, -4, 5.5))
+make_chandelier((-5, 0, 5.0))
+make_chandelier((5, 0, 5.0))
+make_chandelier((0, 4, 5.0))
+
+# ==================== CARVED RELIEFS (wall panels) ====================
+def make_relief(loc, rot_z=0, scale=1.0):
+    # Base panel
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    panel = bpy.context.active_object
+    panel.scale = (1.2 * scale, 0.1 * scale, 1.8 * scale)
+    panel.rotation_euler = (0, 0, rot_z)
+    bpy.ops.object.transform_apply(scale=True, rotation=True)
+    panel.data.materials.append(relief_mat)
+
+    # Relief figure (abstract humanoid shape)
+    # Torso
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.25*scale, depth=0.7*scale, location=(loc[0], loc[1]+0.06*scale, loc[2]+0.2*scale))
+    torso = bpy.context.active_object
+    torso.rotation_euler = (0, 0, rot_z)
+    torso.data.materials.append(relief_mat)
+
+    # Head
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=0.15*scale, location=(loc[0], loc[1]+0.06*scale, loc[2]+0.85*scale))
+    head = bpy.context.active_object
+    head.data.materials.append(relief_mat)
+
+    # Arms (two small cylinders)
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08*scale, depth=0.5*scale, location=(loc[0]+side*0.35*scale, loc[1]+0.06*scale, loc[2]+0.4*scale))
+        arm = bpy.context.active_object
+        arm.rotation_euler = (math.pi/2, 0, rot_z)
+        arm.data.materials.append(relief_mat)
+
+# Place reliefs on the curved walls (approximate positions on the sphere)
+relief_positions = [
+    ((-10,  5,  1.5), math.radians(135)),
+    ((-10, -5,  1.5), math.radians(225)),
+    (( 10,  5,  1.5), math.radians(45)),
+    (( 10, -5,  1.5), math.radians(-45)),
+    (( 0,  10,  1.5), math.radians(0)),
+    ((-6,   9,  1.5), math.radians(30)),
+    (( 6,   9,  1.5), math.radians(-30)),
+]
+for pos, rot in relief_positions:
+    make_relief(pos, rot, scale=1.0)
+
+# ==================== WOODEN PEWS ====================
+def make_pew(x, y, length=3.0, width=0.5, height=1.1):
+    # Seat
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, height*0.6))
+    seat = bpy.context.active_object
+    seat.scale = (length/2, width/2, 0.08)
+    bpy.ops.object.transform_apply(scale=True)
+    seat.data.materials.append(wood_mat)
+
+    # Backrest
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y - width/2 - 0.05, height*0.85))
+    back = bpy.context.active_object
+    back.scale = (length/2, 0.05, height*0.35)
+    bpy.ops.object.transform_apply(scale=True)
+    back.data.materials.append(wood_mat)
+
+    # Two legs
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x + side*(length/2 - 0.1), y, height*0.3))
+        leg = bpy.context.active_object
+        leg.scale = (0.08, width/2, height*0.3)
+        bpy.ops.object.transform_apply(scale=True)
+        leg.data.materials.append(wood_mat)
+
+# Two rows of pews facing the altar (altar at y=-8)
+pew_rows = [
+    (0, -2), (0, 0), (0, 2), (0, 4)
+]
+for px, py in pew_rows:
+    make_pew(px, py, length=3.5, width=0.55, height=1.1)
+
+# ==================== LANTERN-LIT STAIR DOWN ====================
+# Stair going down to a lower level (e.g., crypt or lower chapel)
+stair_start_x = 0
+stair_start_y = 10
+stair_start_z = 0
+num_steps = 12
+step_depth = 0.4
+step_height = -0.25  # going down
+step_width = 2.0
+
+for i in range(num_steps):
+    sx = stair_start_x
+    sy = stair_start_y - i * step_depth
+    sz = stair_start_z + i * step_height
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(sx, sy, sz))
+    step = bpy.context.active_object
+    step.scale = (step_width/2, step_depth/2, 0.12)
+    bpy.ops.object.transform_apply(scale=True)
+    step.data.materials.append(salt_mat)
+
+    # Lantern on every 3rd step
+    if i % 3 == 0 and i > 0:
+        lx = sx + step_width/2 + 0.3
+        ly = sy
+        lz = sz + 0.5
+        # Lantern post
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.8, location=(lx, ly, lz))
+        post = bpy.context.active_object
+        post.data.materials.append(wood_mat)
+
+        # Lantern body (glowing box)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(lx, ly, lz + 0.5))
+        lantern = bpy.context.active_object
+        lantern.scale = (0.12, 0.12, 0.18)
+        bpy.ops.object.transform_apply(scale=True)
+        lantern.data.materials.append(lantern_mat)
+
+        # Point light
+        ld = bpy.data.lights.new(f"Lantern_{i}", 'POINT')
+        ld.energy = 30
+        ld.color = (1.0, 0.7, 0.3)
+        ld.shadow_soft_size = 0.3
+        lo = bpy.data.objects.new(f"Lantern_{i}", ld)
+        lo.location = (lx, ly, lz + 0.5)
+        bpy.context.collection.objects.link(lo)
+
+# ==================== AMBIENT LIGHTING ====================
+# Soft overhead fill
+fill_data = bpy.data.lights.new("FillLight", 'AREA')
+fill_data.energy = 200
+fill_data.size = 10
+fill_data.color = (0.9, 0.92, 1.0)
+fill_obj = bpy.data.objects.new("FillLight", fill_data)
+fill_obj.location = (0, 0, 10)
+fill_obj.rotation_euler = (0, 0, 0)
+bpy.context.collection.objects.link(fill_obj)
+
+# Warm accent from altar area
+altar_light_data = bpy.data.lights.new("AltarGlow", 'POINT')
+altar_light_data.energy = 100
+altar_light_data.color = (1.0, 0.9, 0.7)
+altar_light_data.shadow_soft_size = 1.0
+altar_light_obj = bpy.data.objects.new("AltarGlow", altar_light_data)
+altar_light_obj.location = (0, -8, 3.5)
+bpy.context.collection.objects.link(altar_light_obj)
+
+# World background - dim salt cave ambiance
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs["Color"].default_value = (0.15, 0.14, 0.12, 1)
+    bg_node.inputs["Strength"].default_value = 0.3
+
+# Camera setup
+bpy.ops.object.camera_add(location=(0, 8, 4))
+cam = bpy.context.active_object
+cam.name = "ChapelCamera"
+cam.rotation_euler = (math.radians(80), 0, 0)
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080

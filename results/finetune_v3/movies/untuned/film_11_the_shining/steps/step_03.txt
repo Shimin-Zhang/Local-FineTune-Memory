@@ -1,0 +1,256 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# --- MATERIALS ---
+def make_mat(name, color, rough=0.8, metal=0.0, emit=None, emit_strength=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (color[0], color[1], color[2], 1.0)
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    if emit:
+        bsdf.inputs["Emission Color"].default_value = (emit[0], emit[1], emit[2], 1.0)
+        bsdf.inputs["Emission Strength"].default_value = emit_strength
+    return mat
+
+mat_snow = make_mat("snow", (0.95, 0.95, 0.98), rough=0.95)
+mat_hedge = make_mat("hedge", (0.05, 0.12, 0.04), rough=0.9)
+mat_hedge_snow = make_mat("hedge_snow", (0.85, 0.88, 0.92), rough=0.9)
+mat_hotel_wall = make_mat("hotel_wall", (0.25, 0.22, 0.18), rough=0.85)
+mat_hotel_roof = make_mat("hotel_roof", (0.12, 0.10, 0.08), rough=0.9)
+mat_window_lit = make_mat("window_lit", (1.0, 0.85, 0.5), emit=(1.0, 0.8, 0.4), emit_strength=3.0)
+mat_window_dark = make_mat("window_dark", (0.05, 0.05, 0.08), rough=0.3)
+mat_door = make_mat("door", (0.15, 0.08, 0.05), rough=0.7)
+
+# --- SNOW GROUND ---
+ground = bpy.data.meshes.new("Ground")
+verts = []
+faces = []
+n = 50
+size = 120
+for i in range(n):
+    for j in range(n):
+        x = -size/2 + i * (size/n)
+        z = -size/2 + j * (size/n)
+        y = random.uniform(-0.05, 0.15)
+        verts.append((x, y, z))
+for i in range(n-1):
+    for j in range(n-1):
+        v0 = i*n + j
+        v1 = v0 + 1
+        v2 = v0 + n
+        v3 = v2 + 1
+        faces.append((v0, v1, v3, v2))
+ground.from_pydata(verts, [], faces)
+ground_obj = bpy.data.objects.new("Ground", ground)
+bpy.context.collection.objects.link(ground_obj)
+ground_obj.data.materials.append(mat_snow)
+
+# --- HEDGE MAZE ---
+maze_rows = 20
+maze_cols = 30
+cell_size = 2.0
+hedge_height = 3.0
+hedge_thickness = 0.6
+
+maze = []
+for r in range(maze_rows):
+    row = []
+    for c in range(maze_cols):
+        if r == 0 or r == maze_rows-1 or c == 0 or c == maze_cols-1:
+            row.append(1)
+        else:
+            if (r % 4 == 1 and c % 4 == 1) or \
+               (r % 4 == 3 and c % 4 == 3) or \
+               (r % 2 == 0 and c % 6 == 2) or \
+               (r % 6 == 2 and c % 2 == 0) or \
+               (r == 5 and c % 3 == 0) or \
+               (r == 10 and c % 3 == 1) or \
+               (r == 15 and c % 3 == 2):
+                row.append(1)
+            else:
+                row.append(0)
+    maze.append(row)
+
+for c in range(1, maze_cols-1):
+    maze[10][c] = 0
+for r in range(1, maze_rows-1):
+    maze[r][5] = 0
+    maze[r][15] = 0
+    maze[r][25] = 0
+
+maze_offset_x = -maze_cols * cell_size / 2
+maze_offset_z = -maze_rows * cell_size / 2
+
+for r in range(maze_rows):
+    for c in range(maze_cols):
+        if maze[r][c] == 1:
+            x = maze_offset_x + c * cell_size + cell_size/2
+            z = maze_offset_z + r * cell_size + cell_size/2
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(x, hedge_height/2, z))
+            hedge = bpy.context.active_object
+            hedge.scale = (hedge_thickness, hedge_height, hedge_thickness)
+            hedge.data.materials.append(mat_hedge)
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(x, hedge_height + 0.1, z))
+            snow_top = bpy.context.active_object
+            snow_top.scale = (hedge_thickness + 0.1, 0.2, hedge_thickness + 0.1)
+            snow_top.data.materials.append(mat_hedge_snow)
+
+# --- OVERLOOK HOTEL ---
+hotel_x = 0
+hotel_z = -55
+hotel_width = 40
+hotel_depth = 20
+hotel_height = 25
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(hotel_x, hotel_height/2, hotel_z))
+hotel_body = bpy.context.active_object
+hotel_body.scale = (hotel_width, hotel_height, hotel_depth)
+hotel_body.data.materials.append(mat_hotel_wall)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(hotel_x, hotel_height + 1, hotel_z))
+roof = bpy.context.active_object
+roof.scale = (hotel_width + 2, 2, hotel_depth + 2)
+roof.data.materials.append(mat_hotel_roof)
+
+tower_width = 12
+tower_height = 15
+tower_depth = 10
+bpy.ops.mesh.primitive_cube_add(size=1, location=(hotel_x, hotel_height + tower_height/2, hotel_z))
+tower = bpy.context.active_object
+tower.scale = (tower_width, tower_height, tower_depth)
+tower.data.materials.append(mat_hotel_wall)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(hotel_x, hotel_height + tower_height + 1, hotel_z))
+tower_roof = bpy.context.active_object
+tower_roof.scale = (tower_width + 2, 2, tower_depth + 2)
+tower_roof.data.materials.append(mat_hotel_roof)
+
+# Windows
+window_size = 1.5
+window_spacing = 4
+lit_probability = 0.6
+
+front_z = hotel_z + hotel_depth/2 + 0.1
+for floor in range(5):
+    y = 3 + floor * 5
+    for x_off in range(-3, 4):
+        x = hotel_x + x_off * window_spacing
+        bpy.ops.mesh.primitive_plane_add(size=1, location=(x, y, front_z))
+        win = bpy.context.active_object
+        win.scale = (window_size, window_size * 1.5, 1)
+        win.rotation_euler = (math.radians(90), 0, 0)
+        if random.random() < lit_probability:
+            win.data.materials.append(mat_window_lit)
+        else:
+            win.data.materials.append(mat_window_dark)
+
+tower_front_z = hotel_z + tower_depth/2 + 0.1
+for floor in range(3):
+    y = hotel_height + 3 + floor * 5
+    for x_off in range(-2, 3):
+        x = hotel_x + x_off * window_spacing
+        bpy.ops.mesh.primitive_plane_add(size=1, location=(x, y, tower_front_z))
+        win = bpy.context.active_object
+        win.scale = (window_size, window_size * 1.5, 1)
+        win.rotation_euler = (math.radians(90), 0, 0)
+        if random.random() < lit_probability:
+            win.data.materials.append(mat_window_lit)
+        else:
+            win.data.materials.append(mat_window_dark)
+
+for side in [-1, 1]:
+    side_x = hotel_x + side * (hotel_width/2 + 0.1)
+    for floor in range(5):
+        y = 3 + floor * 5
+        for z_off in range(-2, 3):
+            z = hotel_z + z_off * window_spacing
+            bpy.ops.mesh.primitive_plane_add(size=1, location=(side_x, y, z))
+            win = bpy.context.active_object
+            win.scale = (window_size, window_size * 1.5, 1)
+            win.rotation_euler = (0, math.radians(90), 0)
+            if random.random() < lit_probability:
+                win.data.materials.append(mat_window_lit)
+            else:
+                win.data.materials.append(mat_window_dark)
+
+# Entrance door
+bpy.ops.mesh.primitive_plane_add(size=1, location=(hotel_x, 2, front_z))
+door = bpy.context.active_object
+door.scale = (2, 3, 1)
+door.rotation_euler = (math.radians(90), 0, 0)
+door.data.materials.append(mat_door)
+
+# --- LIGHTING ---
+bpy.ops.object.light_add(type='SUN', location=(30, 60, -30))
+sun = bpy.context.active_object
+sun.data.energy = 0.3
+sun.data.color = (0.6, 0.7, 1.0)
+sun.rotation_euler = (math.radians(60), 0, math.radians(30))
+
+bpy.ops.object.light_add(type='SUN', location=(-20, 40, 20))
+fill = bpy.context.active_object
+fill.data.energy = 0.1
+fill.data.color = (0.3, 0.4, 0.6)
+fill.rotation_euler = (math.radians(45), 0, math.radians(-20))
+
+bpy.ops.object.light_add(type='POINT', location=(hotel_x, 3, front_z + 5))
+warm_light = bpy.context.active_object
+warm_light.data.energy = 50
+warm_light.data.color = (1.0, 0.7, 0.3)
+warm_light.data.shadow_soft_size = 2
+
+# --- CAMERA ---
+bpy.ops.object.camera_add(location=(0, 15, 30))
+cam = bpy.context.active_object
+cam.rotation_euler = (math.radians(75), 0, 0)
+bpy.context.scene.camera = cam
+
+# --- WORLD ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs[0].default_value = (0.01, 0.02, 0.05, 1.0)
+bg.inputs[1].default_value = 1.0
+
+# --- SNOWFALL ---
+bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 30, 0))
+snow_plane = bpy.context.active_object
+snow_plane.rotation_euler = (math.radians(90), 0, 0)
+ps = snow_plane.modifiers.new("Snowfall", 'PARTICLE_SYSTEM')
+ps.particle_system.settings.count = 2000
+ps.particle_system.settings.frame_start = 1
+ps.particle_system.settings.frame_end = 250
+ps.particle_system.settings.lifetime = 200
+ps.particle_system.settings.emit_from = 'FACE'
+ps.particle_system.settings.normal_factor = 0
+ps.particle_system.settings.factor_random = 0.5
+ps.particle_system.settings.effector_weights.gravity = 0.02
+ps.particle_system.settings.render_type = 'HALO'
+ps.particle_system.settings.halo_size = 0.05
+ps.particle_system.settings.halo_intensity = 0.3
+snow_plane.hide_render = True
+
+# --- RENDER SETTINGS ---
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.view_settings.look = 'Medium High Contrast'
+scene.view_settings.exposure = -0.5
+
+print("Scene built!")
+```

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 4.2,
+ "error": null,
+ "error_line": null,
+ "printed": "Added more street level detail!\n",
+ "state_saved": true,
+ "n_objects": 337,
+ "n_lights": 37,
+ "n_materials": 41,
+ "own_camera": true,
+ "render_error": null
+}

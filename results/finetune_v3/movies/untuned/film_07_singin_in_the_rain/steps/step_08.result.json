@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.1,
+ "error": null,
+ "error_line": null,
+ "printed": "Fixed: camera in street elevated, lights massively boosted, buildings lighter, road lighter, emission boosted, exposure increased\n",
+ "state_saved": true,
+ "n_objects": 453,
+ "n_lights": 32,
+ "n_materials": 41,
+ "own_camera": true,
+ "render_error": null
+}

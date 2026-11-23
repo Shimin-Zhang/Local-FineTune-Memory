@@ -1,0 +1,25 @@
+matrix ladder: 24 probes, 0 already done
+[1/24] Qwen3.8-27B full_fp32 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[2/24] Qwen3.8-27B full_fp32 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.3s
+[3/24] Qwen3.8-27B full_fp32 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[4/24] Qwen3.8-27B full_fp32 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[5/24] Qwen3.8-27B full_fp32_amp ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[6/24] Qwen3.8-27B full_fp32_amp ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[7/24] Qwen3.8-27B full_fp32_amp ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[8/24] Qwen3.8-27B full_fp32_amp ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.5s
+[9/24] Qwen3.8-27B full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[10/24] Qwen3.8-27B full_bf16 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[11/24] Qwen3.8-27B full_bf16 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[12/24] Qwen3.8-27B full_bf16 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.5s
+[13/24] Qwen3.8-27B lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[14/24] Qwen3.8-27B lora_bf16 ckpt=0 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[15/24] Qwen3.8-27B lora_bf16 ckpt=1 2x2048 loss=vanilla  -> oom (phase load)  3.4s
+[16/24] Qwen3.8-27B lora_bf16 ckpt=1 2x2048 loss=chunked  -> oom (phase load)  3.4s
+[17/24] Qwen3.8-27B qlora ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.76 GB 72.4s
+[18/24] Qwen3.8-27B qlora ckpt=0 2x2048 loss=chunked  -> oom (phase step0_forward) peak 22.76 GB 12.2s
+[19/24] Qwen3.8-27B qlora ckpt=1 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.11 GB 14.3s
+[20/24] Qwen3.8-27B qlora ckpt=1 2x2048 loss=chunked  -> oom (phase step0_forward) peak 22.11 GB 14.2s
+[21/24] Qwen3.8-27B qlora_kbitprep ckpt=0 2x2048 loss=vanilla  -> oom (phase prepare) peak 17.81 GB 10.8s
+[22/24] Qwen3.8-27B qlora_kbitprep ckpt=0 2x2048 loss=chunked  -> oom (phase prepare) peak 17.81 GB 10.8s
+[23/24] Qwen3.8-27B qlora_kbitprep ckpt=1 2x2048 loss=vanilla  -> oom (phase prepare) peak 17.81 GB 10.9s
+[24/24] Qwen3.8-27B qlora_kbitprep ckpt=1 2x2048 loss=chunked  -> oom (phase prepare) peak 17.81 GB 10.9s

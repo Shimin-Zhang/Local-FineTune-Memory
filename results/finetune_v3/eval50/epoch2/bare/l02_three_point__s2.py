@@ -1,0 +1,75 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(892)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tone(rgb, glow=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .85
+    if glow: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    return m
+marble, marble2, plinth, step, moss, iron, ember, dark = (tone((.62, .63, .66)), tone((.45, .46, .5)), tone((.2, .2, .24)), tone((.12, .12, .15)),
+    tone((.07, .15, .08)), tone((.04, .04, .05)), tone((1, .35, .08), 14), tone((.03, .03, .04)))
+def shape(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return shape(bm, m, at, rot)
+def bar(a, b, r, m, n=6, r2=None):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=d.length)
+    for v in bm.verts: v.co = q @ Vector((v.co.x, v.co.y, v.co.z + d.length / 2)) + a
+    return shape(bm, m)
+def orb(at, r, m, sq=1.0):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return shape(bm, m, at)
+def lamp(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=6, radius2=11.5, depth=3.4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.3, 1.3), random.uniform(-1.3, 1.3), random.uniform(-1.3, .2)))
+    else: v.co.z += random.uniform(-.08, .08)
+    v.co.z -= 1.7
+shape(bm, moss)
+for i in range(5): slab((0, 0, i * .35), (10.5 - i * 1.1, 10.5 - i * 1.1, .35), step if i % 2 else plinth)
+slab((0, 0, 1.75), (6.2, 6.2, .6), plinth); slab((0, 0, 2.35), (5.2, 5.2, .5), marble2)
+for sx in (-1, 1): slab((sx * 2.4, 0, 2.85), (.5, .5, .9), marble2)
+slab((0, 0, 3.75), (5.4, 5.4, .4), marble)
+# the statue: legs, tunic, torso, arms, head, flame
+bar((-.6, 0, 4.15), (-.6, 0, 6.4), .42, marble, 6); bar((.6, 0, 4.15), (.6, 0, 6.4), .42, marble, 6)
+bar((0, 0, 4.15), (0, 0, 8.2), .95, marble, 7, .7)
+bar((0, 0, 7.8), (0, 0, 9.6), .62, marble, 7, .45)
+bar((-1.0, 0, 9.0), (-2.0, -.2, 7.2), .24, marble, 5); bar((1.0, 0, 9.0), (1.9, -.3, 7.6), .24, marble, 5)
+bar((1.9, -.3, 7.6), (1.9, -.3, 8.8), .2, marble, 5)
+orb((0, 0, 10.1), .5, marble, 1.15); slab((0, -.5, 9.95), (.3, .3, .15), marble2)
+bar((-1.2, 0, 9.3), (-1.6, 0, 10.0), .1, marble, 4); bar((1.2, 0, 9.3), (1.6, 0, 10.0), .1, marble, 4)
+bar((-.2, -.2, 9.5), (-.5, -.2, 9.9), .1, marble, 4); bar((.2, -.2, 9.5), (.5, -.2, 9.9), .1, marble, 4)
+bar((-2.0, -.2, 7.2), (-2.0, -.2, 8.2), .22, marble, 5)
+bar((1.9, -.3, 8.8), (1.9, -.3, 9.3), .5, iron, 6, .4)
+bar((1.9, -.3, 9.3), (1.9, -.3, 10.4), .45, ember, 5, .02)
+lamp("POINT", (1, .4, .1), 900, (1.9, -.3, 10.0))
+# braziers flanking the steps
+for sx in (-1, 1):
+    for k in range(3): bar((sx * 5.6 + (k - 1) * .5, -5.4, 0), (sx * 5.6, -5.4, 1.8), .08, iron, 4)
+    bar((sx * 5.6, -5.4, 1.8), (sx * 5.6, -5.4, 2.4), .5, iron, 6, .8); bar((sx * 5.6, -5.4, 2.4), (sx * 5.6, -5.4, 3.4), .6, ember, 5, .05)
+    lamp("POINT", (1, .4, .1), 500, (sx * 5.6, -5.4, 3.2))
+# broken shards on the steps, a toppled column drum, moss and rocks
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(7.5, 10)
+    orb((r * math.cos(a), r * math.sin(a), .1), random.uniform(.3, .8), moss if i % 2 else marble2, .6)
+for i, (x, y) in enumerate(((-2, -3.2), (1.5, -2.4), (-3.5, 2), (3, 3.5))): slab((x, y, i * .3), (random.uniform(.5, 1), .6, .3), marble, (0, 0, random.uniform(0, 3)))
+bar((-7, 3, 0), (-5.5, 3, 0), .8, marble2, 8); bar((-5.2, 3, 0), (-3.6, 3, 0), .8, marble2, 8)
+lamp("SUN", (.6, .75, 1), 5.5, (-22, -14, 14), (0, 0, 5)); lamp("SUN", (1, .5, .3), 2.5, (18, 20, 10), (0, 0, 5)); lamp("SUN", (.5, .3, 1), 1.6, (0, -24, 12), (0, 0, 5))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .012, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 5.5)); co.location = t + Vector((10, -56, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

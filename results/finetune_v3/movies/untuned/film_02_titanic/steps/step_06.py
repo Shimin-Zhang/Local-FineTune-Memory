@@ -1,0 +1,124 @@
+import bpy, math
+from mathutils import Vector
+
+# Fix: remove the bright sun_path plane and wake that are blowing out the image
+for name in ["SunPath", "Wake"]:
+    o = bpy.data.objects.get(name)
+    if o: bpy.data.objects.remove(o, do_unlink=True)
+
+# Remove the giant sun glow sphere (too bright / in view)
+o = bpy.data.objects.get("SunGlow")
+if o: bpy.data.objects.remove(o, do_unlink=True)
+
+# Tone down lights
+for name, e in [("SunsetSun", 4.0), ("SunKey", 3.0), ("WarmFill", 80), ("AmbientFill", 60)]:
+    o = bpy.data.objects.get(name)
+    if o: o.data.energy = e
+
+# Lower exposure
+bpy.context.scene.view_settings.exposure = 0.8
+
+# Make deck a warmer wood, less blown out
+deck = bpy.data.objects.get("Deck")
+if deck:
+    for m in deck.data.materials:
+        for n in m.node_tree.nodes:
+            if n.type == 'BSDF_PRINCIPLED':
+                n.inputs['Base Color'].default_value = (0.3, 0.15, 0.06, 1)
+                n.inputs['Roughness'].default_value = 0.9
+
+# Darken hull steel
+hull = bpy.data.objects.get("Hull")
+if hull:
+    for m in hull.data.materials:
+        for n in m.node_tree.nodes:
+            if n.type == 'BSDF_PRINCIPLED':
+                n.inputs['Base Color'].default_value = (0.1, 0.08, 0.07, 1)
+                n.inputs['Metallic'].default_value = 0.6
+
+# Reposition camera to a better 3/4 view of the bow with figures
+cam = bpy.context.scene.camera
+if cam:
+    cam.location = (-12, -14, 11)
+    cam.rotation_euler = (math.radians(80), 0, math.radians(35))
+    cam.data.lens = 45
+
+# Make figures a bit bigger / clearer - scale Jack and Rose up slightly
+for prefix in ["Jack", "Rose"]:
+    for o in bpy.data.objects:
+        if o.name.startswith(prefix + "_"):
+            o.scale = o.scale * 1.15
+
+# Add a subtle warm rim light from behind the bow (sunset side)
+bpy.ops.object.light_add(type='AREA', location=(0, 40, 12))
+rim = bpy.context.active_object; rim.name = "BowRim"
+rim.data.energy = 200; rim.data.size = 15
+rim.data.color = (1.0, 0.5, 0.25)
+rim.rotation_euler = (math.radians(-60), 0, 0)
+
+# Add a few porthole lights glowing warm
+for i in range(8):
+    y = 8 + i * 3
+    for side in [-1, 1]:
+        o = bpy.data.objects.get(f"Porthole_{i}_{side}")
+        if o:
+            for m in o.data.materials:
+                for n in m.node_tree.nodes:
+                    if n.type == 'BSDF_PRINCIPLED':
+                        n.inputs['Base Color'].default_value = (1.0, 0.7, 0.3, 1)
+                        n.inputs['Emission Color'].default_value = (1.0, 0.6, 0.2, 1)
+                        n.inputs['Emission Strength'].default_value = 2.0
+
+# Add a faint moon in the upper sky for contrast
+bpy.ops.mesh.primitive_uv_sphere_add(radius=4, location=(40, -180, 60))
+moon = bpy.context.active_object; moon.name = "Moon"
+mm = bpy.data.materials.new("MoonMat"); mm.use_nodes = True
+mn, ml = mm.node_tree.nodes, mm.node_tree.links
+for n in mn: mn.remove(n)
+mp = mn.new('ShaderNodeEmission')
+mp.inputs['Color'].default_value = (0.9, 0.9, 0.95, 1)
+mp.inputs['Strength'].default_value = 1.5
+mo = mn.new('ShaderNodeOutputMaterial')
+ml.new(mp.outputs['Emission'], mo.inputs['Surface'])
+moon.data.materials.append(mm)
+
+# Add a few stars (tiny emissive dots) high in the sky
+import random
+random.seed(42)
+for i in range(30):
+    x = random.uniform(-150, 150)
+    y = random.uniform(-200, -100)
+    z = random.uniform(80, 150)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(x, y, z))
+    star = bpy.context.active_object; star.name = f"Star_{i}"
+    sm = bpy.data.materials.get("StarMat") or bpy.data.materials.new("StarMat")
+    if len(sm.node_tree.nodes) == 0 or sm.node_tree.nodes[0].type != 'EMISSION':
+        sm.use_nodes = True
+        sn, sl = sm.node_tree.nodes, sm.node_tree.links
+        for n in sn: sn.remove(n)
+        sp = sn.new('ShaderNodeEmission')
+        sp.inputs['Color'].default_value = (1, 1, 1, 1)
+        sp.inputs['Strength'].default_value = 3.0
+        so = sn.new('ShaderNodeOutputMaterial')
+        sl.new(sp.outputs['Emission'], so.inputs['Surface'])
+    star.data.materials.append(sm)
+
+# Add a gentle camera DOF for cinematic depth
+if cam:
+    cam.data.dof.use_dof = True
+    cam.data.dof.focus_distance = 25
+    cam.data.dof.aperture_fstop = 4.0
+
+# Add a subtle color grade via compositor
+scene = bpy.context.scene
+scene.use_nodes = True
+ct = scene.node_tree
+for n in ct.nodes: ct.nodes.remove(n)
+rl = ct.nodes.new('CompositorNodeRLayers')
+grade = ct.nodes.new('CompositorNodeColorBalance')
+grade.midtones = (1.05, 0.95, 0.85)
+comp = ct.nodes.new('CompositorNodeComposite')
+ct.links.new(rl.outputs['Image'], grade.inputs['Image'])
+ct.links.new(grade.outputs['Image'], comp.inputs['Image'])
+
+print("Rebalanced lighting, fixed framing, added mood details")

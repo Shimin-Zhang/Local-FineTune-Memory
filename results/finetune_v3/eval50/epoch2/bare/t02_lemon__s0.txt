@@ -1,0 +1,78 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(542)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def shade(rgb, em=0, rough=.7):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+lemon, peel, dimple, stem, stem2 = shade((.9, .72, .05)), shade((.8, .6, .03)), shade((.5, .38, .02)), shade((.12, .17, .05)), shade((.2, .15, .06))
+slab, slab2, leaf, lamp, juice = shade((.22, .14, .09)), shade((.15, .1, .07)), shade((.1, .3, .08)), shade((.45, .5, 1), 5), shade((1, .85, .2), 1.5)
+def mk(bm, m, loc=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location, o.rotation_euler = loc, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(m, x, y, z, w, d, h, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return mk(bm, m, (x, y, z), rot)
+def cone(m, x, y, z, r1, r2, h, n=6, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, (x, y, z), rot)
+def blob(m, x, y, z, r, sub=1, jit=.12, sq=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) * random.uniform(1 - jit, 1 + jit)
+    return mk(bm, m, (x, y, z))
+def glow(c, e, p):
+    L = bpy.data.lights.new("g", "POINT"); L.color, L.energy = c, e
+    o = bpy.data.objects.new("g", L); o.location = p; sc.collection.objects.link(o)
+# floating wooden slab
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 13, v.co.y * 10, v.co.z * 1.4 - .7))
+    if v.co.z < 0: v.co = Vector((v.co.x * .7 + random.uniform(-.5, .5), v.co.y * .7 + random.uniform(-.5, .5), v.co.z - random.uniform(0, 1.6)))
+mk(bm, slab2)
+for i in range(11): box(slab if i % 2 else slab2, -5.4 + i * 1.08, 0, 0, 1.04, 9.4, .2, (0, 0, 0))
+# the lemon: stretched icosphere with bumpy peel, nubs at both ends
+bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=3, radius=2.4)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 1.4, v.co.y * 1.05, v.co.z * 1.0)) * random.uniform(.95, 1.05)
+    v.co.z += .12 * math.sin(v.co.x * 3.1) * math.cos(v.co.y * 3.1)
+mk(bm, lemon, (0, 0, 2.2))
+for i in range(46):
+    a, b = random.uniform(0, 6.28), random.uniform(-1.2, 1.2)
+    r = 2.4 * math.sqrt(1 - (math.sin(b) / 1.05) ** 2) * 1.4
+    x, y, z = r * math.cos(a) * .99, 2.4 * math.sin(b) * 1.05 * math.sin(a) * .99, 2.2 + 2.4 * math.sin(b)
+    blob(dimple, x * .99, y * .99, z - .05, random.uniform(.1, .2), 1, .25)
+for sx in (-1, 1):
+    cone(peel, sx * 3.35, 0, 2.2, .45, .12, .75, 6, (0, sx * math.pi / 2, 0))
+cone(stem, 0, 0, 4.5, .22, .15, .55, 5); cone(stem2, 0, 0, 4.95, .15, .05, .3, 5)
+for i in range(3): cone(leaf, .25 * i - .2, .1, 5.1 + i * .05, .08, .02, .5, 4, (0, .5 + i * .3, 0))
+# cut half with segments and seeds, standing on its flat side
+cone(lemon, 4.2, -1.6, .2, 1.7, 1.7, .35, 10); cone(peel, 4.2, -1.6, .5, 1.5, 1.5, .06, 10)
+for k in range(8):
+    a = k * math.pi / 4
+    box(juice, 4.2 + .75 * math.cos(a), -1.6 + .75 * math.sin(a), .56, .95, .55, .08, (0, 0, a + math.pi / 2))
+for k in range(5):
+    a = k * 1.3 + .5
+    blob(slab2, 4.2 + .5 * math.cos(a), -1.6 + .5 * math.sin(a), .65, .12, 1, .1, (1, 1, .6))
+# a glass of juice and a small lamp on the slab
+cone(juice, -4.2, -1.2, .2, .6, .7, 1.6, 8); cone(slab2, -4.2, -1.2, 1.8, .72, .72, .1, 8)
+cone(lamp, -4.2, 2.2, .2, .12, .12, 1.0, 5); cone(lamp, -4.2, 2.2, 1.2, .5, .25, .6, 7)
+glow((.5, .55, 1), 300, (-4.2, 2.2, 1.9)); glow((1, .8, .3), 250, (4.2, -1.6, 1.4))
+for col, e, p in (((1, .85, .5), 5, (-24, -14, 12)), ((.4, .5, 1), 2.2, (22, 20, 14))):
+    L = bpy.data.lights.new("sun", "SUN"); L.color, L.energy = col, e
+    o = bpy.data.objects.new("sun", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("night"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .015, .035, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.5)); co.location = t + Vector((4, -38, 23))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

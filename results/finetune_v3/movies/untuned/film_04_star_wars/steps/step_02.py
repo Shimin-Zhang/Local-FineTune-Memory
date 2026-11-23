@@ -1,0 +1,699 @@
+import bpy
+import math
+import mathutils
+import random
+from mathutils import Vector
+
+# Fix: The error was in the dune creation where we removed verts then modified them.
+# Let's clean up and rebuild the scene properly with more detail.
+
+# First, let's see what we have and clean up any broken objects
+# Remove all existing objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+bpy.ops.object.select_all(action='DESELECT')
+
+# Set up scene
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 256
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.resolution_percentage = 100
+
+# Camera setup - positioned to see Luke looking at the sunset
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam_data.dof.use_dof = True
+cam_data.dof.focus_distance = 15.0
+cam_data.dof.aperture_fstop = 2.8
+cam = bpy.data.objects.new("Camera", cam_data)
+scene.collection.objects.link(cam)
+scene.camera = cam
+# Position camera behind and to the side of Luke, looking toward the sunset
+cam.location = (3, 8, 1.8)
+cam.rotation_euler = (math.radians(82), 0, math.radians(200))
+
+# Lighting - dual sunset
+# Sun 1 (larger, lower - the main sun)
+sun1_data = bpy.data.lights.new("Sun1", type='SUN')
+sun1_data.energy = 8.0
+sun1_data.color = (1.0, 0.35, 0.05)
+sun1_data.angle = math.radians(3)
+sun1 = bpy.data.objects.new("Sun1", sun1_data)
+scene.collection.objects.link(sun1)
+sun1.rotation_euler = (math.radians(75), 0, math.radians(180))
+
+# Sun 2 (smaller, higher - the second sun)
+sun2_data = bpy.data.lights.new("Sun2", type='SUN')
+sun2_data.energy = 5.0
+sun2_data.color = (1.0, 0.45, 0.15)
+sun2_data.angle = math.radians(3)
+sun2 = bpy.data.objects.new("Sun2", sun2_data)
+scene.collection.objects.link(sun2)
+sun2.rotation_euler = (math.radians(65), 0, math.radians(170))
+
+# World - sunset sky
+world = bpy.data.worlds.new("SunsetWorld")
+scene.world = world
+world.use_nodes = True
+world_nodes = world.node_tree.nodes
+world_links = world.node_tree.links
+
+# Clear existing nodes
+for node in world_nodes:
+    world_nodes.remove(node)
+
+# Create sunset sky with gradient
+bg_node = world_nodes.new('ShaderNodeBackground')
+bg_node.inputs[1].default_value = 1.0
+
+# Color ramp for dramatic sunset
+color_ramp = world_nodes.new('ShaderNodeValToRGB')
+cr = color_ramp.color_ramp
+cr.elements[0].position = 0.0
+cr.elements[0].color = (0.02, 0.01, 0.03, 1)  # Very dark purple at horizon
+cr.elements[1].position = 0.15
+cr.elements[1].color = (0.6, 0.15, 0.02, 1)  # Deep red-orange
+new_elem = cr.elements.new(0.3)
+new_elem.color = (1.0, 0.4, 0.05, 1)  # Bright orange
+new_elem2 = cr.elements.new(0.5)
+new_elem2.color = (0.8, 0.25, 0.08, 1)  # Orange-red
+new_elem3 = cr.elements.new(0.7)
+new_elem3.color = (0.25, 0.08, 0.2, 1)  # Purple
+new_elem4 = cr.elements.new(0.9)
+new_elem4.color = (0.05, 0.02, 0.1, 1)  # Dark blue-purple
+new_elem5 = cr.elements.new(1.0)
+new_elem5.color = (0.02, 0.01, 0.05, 1)  # Near black
+
+# Texture coordinate for sky
+tex_coord = world_nodes.new('ShaderNodeTexCoord')
+sep_xyz = world_nodes.new('ShaderNodeSeparateXYZ')
+
+world_links.new(tex_coord.outputs['Generated'], sep_xyz.inputs['Vector'])
+world_links.new(sep_xyz.outputs['Z'], color_ramp.inputs['Fac'])
+world_links.new(color_ramp.outputs['Color'], bg_node.inputs['Color'])
+world_links.new(bg_node.outputs['Background'], world_nodes.new('ShaderNodeOutputWorld').inputs['Surface'])
+
+# Ground - desert sand with detailed material
+ground_data = bpy.data.meshes.new("Ground")
+ground_obj = bpy.data.objects.new("Ground", ground_data)
+scene.collection.objects.link(ground_obj)
+
+import bmesh
+bm = bmesh.new()
+bmesh.ops.create_grid(bm, x_segments=150, y_segments=150, size=60)
+bm.to_mesh(ground_data)
+bm.free()
+
+# Sand material with detailed nodes
+sand_mat = bpy.data.materials.new("DesertSand")
+sand_mat.use_nodes = True
+sand_nodes = sand_mat.node_tree.nodes
+sand_links = sand_mat.node_tree.links
+
+for node in sand_nodes:
+    sand_nodes.remove(node)
+
+bsdf = sand_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Roughness'].default_value = 0.95
+bsdf.inputs['Specular IOR Level'].default_value = 0.05
+
+# Multiple noise layers for sand detail
+noise1 = sand_nodes.new('ShaderNodeTexNoise')
+noise1.inputs['Scale'].default_value = 80
+noise1.inputs['Detail'].default_value = 10
+noise1.inputs['Roughness'].default_value = 0.7
+
+noise2 = sand_nodes.new('ShaderNodeTexNoise')
+noise2.inputs['Scale'].default_value = 20
+noise2.inputs['Detail'].default_value = 6
+noise2.inputs['Roughness'].default_value = 0.6
+
+# Mix noises
+mix_noise = sand_nodes.new('ShaderNodeMix')
+mix_noise.data_type = 'FLOAT'
+mix_noise.inputs['Factor'].default_value = 0.5
+
+sand_ramp = sand_nodes.new('ShaderNodeValToRGB')
+sand_ramp.color_ramp.elements[0].color = (0.55, 0.35, 0.18, 1)  # Dark sand
+sand_ramp.color_ramp.elements[1].color = (0.75, 0.55, 0.35, 1)  # Light sand
+
+bump = sand_nodes.new('ShaderNodeBump')
+bump.inputs['Strength'].default_value = 0.4
+bump.inputs['Distance'].default_value = 0.1
+
+tex_coord2 = sand_nodes.new('ShaderNodeTexCoord')
+mapping2 = sand_nodes.new('ShaderNodeMapping')
+
+sand_links.new(tex_coord2.outputs['Object'], mapping2.inputs['Vector'])
+sand_links.new(mapping2.outputs['Vector'], noise1.inputs['Vector'])
+sand_links.new(mapping2.outputs['Vector'], noise2.inputs['Vector'])
+sand_links.new(noise1.outputs['Fac'], mix_noise.inputs['A'])
+sand_links.new(noise2.outputs['Fac'], mix_noise.inputs['B'])
+sand_links.new(mix_noise.outputs['Result'], sand_ramp.inputs['Fac'])
+sand_links.new(sand_ramp.outputs['Color'], bsdf.inputs['Base Color'])
+sand_links.new(mix_noise.outputs['Result'], bump.inputs['Height'])
+sand_links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+sand_links.new(bsdf.outputs['BSDF'], sand_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+
+ground_obj.data.materials.append(sand_mat)
+
+# Add displacement for dunes
+displace = ground_obj.modifiers.new("Displace", 'DISPLACE')
+displace.strength = 3.0
+displace.mid_level = 0.5
+displace.texture = bpy.data.textures.new("DuneTexture", type='CLOUDS')
+displace.texture.noise_scale = 5.0
+displace.texture.noise_depth = 3
+
+# Main dome structure
+dome_data = bpy.data.meshes.new("Dome")
+dome_obj = bpy.data.objects.new("Dome", dome_data)
+scene.collection.objects.link(dome_obj)
+
+# Create dome - UV sphere, keep only top half
+bm_dome = bmesh.new()
+bmesh.ops.create_uvsphere(bm_dome, u_segments=48, v_segments=24, radius=5)
+# Collect vertices to remove (bottom half)
+verts_to_remove = [v for v in bm_dome.verts if v.co.z < -0.1]
+for v in verts_to_remove:
+    bm_dome.verts.remove(v)
+bm_dome.to_mesh(dome_data)
+bm_dome.free()
+
+dome_obj.location = (0, -8, 0)
+
+# Dome material - weathered, rusty metal
+dome_mat = bpy.data.materials.new("DomeMaterial")
+dome_mat.use_nodes = True
+dome_nodes = dome_mat.node_tree.nodes
+dome_links = dome_mat.node_tree.links
+
+for node in dome_nodes:
+    dome_nodes.remove(node)
+
+bsdf_dome = dome_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_dome.inputs['Roughness'].default_value = 0.6
+bsdf_dome.inputs['Metallic'].default_value = 0.4
+
+# Weathering noise
+noise_dome = dome_nodes.new('ShaderNodeTexNoise')
+noise_dome.inputs['Scale'].default_value = 15
+noise_dome.inputs['Detail'].default_value = 8
+noise_dome.inputs['Roughness'].default_value = 0.8
+
+# Rust patches
+noise_rust = dome_nodes.new('ShaderNodeTexNoise')
+noise_rust.inputs['Scale'].default_value = 8
+noise_rust.inputs['Detail'].default_value = 4
+
+dome_ramp = dome_nodes.new('ShaderNodeValToRGB')
+dome_ramp.color_ramp.elements[0].color = (0.35, 0.3, 0.25, 1)  # Base metal
+dome_ramp.color_ramp.elements[1].color = (0.5, 0.45, 0.4, 1)  # Lighter metal
+
+rust_ramp = dome_nodes.new('ShaderNodeValToRGB')
+rust_ramp.color_ramp.elements[0].color = (0.4, 0.35, 0.3, 1)
+rust_ramp.color_ramp.elements[1].color = (0.6, 0.2, 0.05, 1)  # Rust orange
+
+# Mix base and rust
+mix_rust = dome_nodes.new('ShaderNodeMix')
+mix_rust.data_type = 'RGBA'
+mix_rust.inputs['Factor'].default_value = 0.3
+
+bump_dome = dome_nodes.new('ShaderNodeBump')
+bump_dome.inputs['Strength'].default_value = 0.3
+
+tex_coord3 = dome_nodes.new('ShaderNodeTexCoord')
+mapping3 = dome_nodes.new('ShaderNodeMapping')
+
+dome_links.new(tex_coord3.outputs['Object'], mapping3.inputs['Vector'])
+dome_links.new(mapping3.outputs['Vector'], noise_dome.inputs['Vector'])
+dome_links.new(mapping3.outputs['Vector'], noise_rust.inputs['Vector'])
+dome_links.new(noise_dome.outputs['Fac'], dome_ramp.inputs['Fac'])
+dome_links.new(noise_rust.outputs['Fac'], rust_ramp.inputs['Fac'])
+dome_links.new(dome_ramp.outputs['Color'], mix_rust.inputs['A'])
+dome_links.new(rust_ramp.outputs['Color'], mix_rust.inputs['B'])
+dome_links.new(mix_rust.outputs['Result'], bsdf_dome.inputs['Base Color'])
+dome_links.new(noise_dome.outputs['Fac'], bump_dome.inputs['Height'])
+dome_links.new(bump_dome.outputs['Normal'], bsdf_dome.inputs['Normal'])
+dome_links.new(bsdf_dome.outputs['BSDF'], dome_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+
+dome_obj.data.materials.append(dome_mat)
+
+# Dome structural ribs
+for i in range(12):
+    angle = i * math.pi / 6
+    rib_data = bpy.data.curves.new(f"Rib_{i}", type='CURVE')
+    rib_data.dimensions = '3D'
+    rib_data.bevel_depth = 0.12
+    rib_data.bevel_resolution = 4
+    
+    spline = rib_data.splines.new('BEZIER')
+    spline.bezier_points.add(3)
+    
+    for j, bp in enumerate(spline.bezier_points):
+        t = j / 3
+        r = 5.15
+        z = math.sin(t * math.pi / 2) * 4.8
+        x = math.cos(angle) * r * math.cos(t * math.pi / 2)
+        y = math.sin(angle) * r * math.cos(t * math.pi / 2)
+        bp.co = (x, y, z)
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+    
+    rib_obj = bpy.data.objects.new(f"Rib_{i}", rib_data)
+    scene.collection.objects.link(rib_obj)
+    rib_obj.location = (0, -8, 0)
+    rib_obj.data.materials.append(dome_mat)
+
+# Horizontal ring bands on dome
+for ring_z in [1.5, 3.0, 4.0]:
+    ring_data = bpy.data.curves.new(f"Ring_{ring_z}", type='CURVE')
+    ring_data.dimensions = '3D'
+    ring_data.bevel_depth = 0.08
+    ring_data.bevel_resolution = 3
+    
+    spline_ring = ring_data.splines.new('POLY')
+    spline_ring.points.add(47)  # 48 points
+    r = math.sqrt(25 - ring_z**2) if ring_z < 5 else 0.5
+    for i in range(48):
+        angle = i * 2 * math.pi / 48
+        spline_ring.points[i].co = (math.cos(angle) * r, math.sin(angle) * r, ring_z, 1)
+    
+    ring_obj = bpy.data.objects.new(f"Ring_{ring_z}", ring_data)
+    scene.collection.objects.link(ring_obj)
+    ring_obj.location = (0, -8, 0)
+    ring_obj.data.materials.append(dome_mat)
+
+# Door in dome
+door_data = bpy.data.meshes.new("Door")
+door_obj = bpy.data.objects.new("Door", door_data)
+scene.collection.objects.link(door_obj)
+
+bm_door = bmesh.new()
+bmesh.ops.create_cube(bm_door, size=1)
+for v in bm_door.verts:
+    v.co.x *= 1.8
+    v.co.y *= 0.4
+    v.co.z *= 2.8
+bm_door.to_mesh(door_data)
+bm_door.free()
+
+door_obj.location = (0, -3.2, 1.4)
+
+# Door frame
+door_frame_mat = bpy.data.materials.new("DoorFrame")
+door_frame_mat.use_nodes = True
+df_nodes = door_frame_mat.node_tree.nodes
+df_links = door_frame_mat.node_tree.links
+
+for node in df_nodes:
+    df_nodes.remove(node)
+
+bsdf_df = df_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_df.inputs['Base Color'].default_value = (0.25, 0.2, 0.15, 1)
+bsdf_df.inputs['Roughness'].default_value = 0.4
+bsdf_df.inputs['Metallic'].default_value = 0.6
+
+df_links.new(bsdf_df.outputs['BSDF'], df_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+door_obj.data.materials.append(door_frame_mat)
+
+# Door step
+step_data = bpy.data.meshes.new("DoorStep")
+step_obj = bpy.data.objects.new("DoorStep", step_data)
+scene.collection.objects.link(step_obj)
+
+bm_step = bmesh.new()
+bmesh.ops.create_cube(bm_step, size=1)
+for v in bm_step.verts:
+    v.co.x *= 2.5
+    v.co.y *= 0.8
+    v.co.z *= 0.3
+bm_step.to_mesh(step_data)
+bm_step.free()
+
+step_obj.location = (0, -2.8, 0.15)
+step_obj.data.materials.append(dome_mat)
+
+# Side annexes
+for side in [-1, 1]:
+    annex_data = bpy.data.meshes.new(f"Annex_{side}")
+    annex_obj = bpy.data.objects.new(f"Annex_{side}", annex_data)
+    scene.collection.objects.link(annex_obj)
+    
+    bm_annex = bmesh.new()
+    bmesh.ops.create_cube(bm_annex, size=1)
+    for v in bm_annex.verts:
+        v.co.x *= 3.5
+        v.co.y *= 2.5
+        v.co.z *= 2.2
+    bm_annex.to_mesh(annex_data)
+    bm_annex.free()
+    
+    annex_obj.location = (side * 7, -5, 1.1)
+    annex_obj.data.materials.append(dome_mat)
+    
+    # Small dome on top of annex
+    small_dome_data = bpy.data.meshes.new(f"SmallDome_{side}")
+    small_dome_obj = bpy.data.objects.new(f"SmallDome_{side}", small_dome_data)
+    scene.collection.objects.link(small_dome_obj)
+    
+    bm_sd = bmesh.new()
+    bmesh.ops.create_uvsphere(bm_sd, u_segments=24, v_segments=12, radius=2)
+    verts_to_remove = [v for v in bm_sd.verts if v.co.z < -0.1]
+    for v in verts_to_remove:
+        bm_sd.verts.remove(v)
+    bm_sd.to_mesh(small_dome_data)
+    bm_sd.free()
+    
+    small_dome_obj.location = (side * 7, -5, 2.2)
+    small_dome_obj.data.materials.append(dome_mat)
+    
+    # Window on annex
+    window_data = bpy.data.meshes.new(f"Window_{side}")
+    window_obj = bpy.data.objects.new(f"Window_{side}", window_data)
+    scene.collection.objects.link(window_obj)
+    
+    bm_win = bmesh.new()
+    bmesh.ops.create_cube(bm_win, size=1)
+    for v in bm_win.verts:
+        v.co.x *= 0.8
+        v.co.y *= 0.1
+        v.co.z *= 0.6
+    bm_win.to_mesh(window_data)
+    bm_win.free()
+    
+    window_obj.location = (side * 7, -2.5, 1.5)
+    
+    # Emissive window material
+    win_mat = bpy.data.materials.new(f"WindowMat_{side}")
+    win_mat.use_nodes = True
+    win_nodes = win_mat.node_tree.nodes
+    win_links = win_mat.node_tree.links
+    
+    for node in win_nodes:
+        win_nodes.remove(node)
+    
+    bsdf_win = win_nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf_win.inputs['Base Color'].default_value = (1.0, 0.8, 0.4, 1)
+    bsdf_win.inputs['Emission Color'].default_value = (1.0, 0.7, 0.3, 1)
+    bsdf_win.inputs['Emission Strength'].default_value = 2.0
+    
+    win_links.new(bsdf_win.outputs['BSDF'], win_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+    window_obj.data.materials.append(win_mat)
+
+# Antenna on main dome
+antenna_data = bpy.data.curves.new("Antenna", type='CURVE')
+antenna_data.dimensions = '3D'
+antenna_data.bevel_depth = 0.06
+antenna_data.bevel_resolution = 3
+
+spline_ant = antenna_data.splines.new('BEZIER')
+spline_ant.bezier_points.add(1)
+spline_ant.bezier_points[0].co = (0, 0, 0)
+spline_ant.bezier_points[1].co = (0, 0, 4)
+spline_ant.bezier_points[0].handle_left_type = 'AUTO'
+spline_ant.bezier_points[1].handle_left_type = 'AUTO'
+spline_ant.bezier_points[0].handle_right_type = 'AUTO'
+spline_ant.bezier_points[1].handle_right_type = 'AUTO'
+
+antenna_obj = bpy.data.objects.new("Antenna", antenna_data)
+scene.collection.objects.link(antenna_obj)
+antenna_obj.location = (0, -8, 5)
+antenna_obj.data.materials.append(dome_mat)
+
+# Dish on antenna
+dish_data = bpy.data.meshes.new("Dish")
+dish_obj = bpy.data.objects.new("Dish", dish_data)
+scene.collection.objects.link(dish_obj)
+
+bm_dish = bmesh.new()
+bmesh.ops.create_uvsphere(bm_dish, u_segments=16, v_segments=8, radius=0.6)
+verts_to_remove = [v for v in bm_dish.verts if v.co.z > 0.1]
+for v in verts_to_remove:
+    bm_dish.verts.remove(v)
+bm_dish.to_mesh(dish_data)
+bm_dish.free()
+
+dish_obj.location = (0, -8, 9)
+dish_obj.rotation_euler = (math.radians(30), 0, 0)
+dish_obj.data.materials.append(dome_mat)
+
+# Piping along dome
+for i in range(6):
+    pipe_data = bpy.data.curves.new(f"Pipe_{i}", type='CURVE')
+    pipe_data.dimensions = '3D'
+    pipe_data.bevel_depth = 0.06
+    pipe_data.bevel_resolution = 3
+    
+    spline_pipe = pipe_data.splines.new('BEZIER')
+    spline_pipe.bezier_points.add(3)
+    
+    angle = i * math.pi / 3 + math.pi / 6
+    for j, bp in enumerate(spline_pipe.bezier_points):
+        t = j / 3
+        r = 5.2
+        z = math.sin(t * math.pi / 2) * 4.5
+        x = math.cos(angle) * r * math.cos(t * math.pi / 2)
+        y = math.sin(angle) * r * math.cos(t * math.pi / 2)
+        bp.co = (x, y, z)
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+    
+    pipe_obj = bpy.data.objects.new(f"Pipe_{i}", pipe_data)
+    scene.collection.objects.link(pipe_obj)
+    pipe_obj.location = (0, -8, 0)
+    pipe_obj.data.materials.append(dome_mat)
+
+# Luke's figure - more detailed
+# Torso
+luke_torso_data = bpy.data.meshes.new("LukeTorso")
+luke_torso = bpy.data.objects.new("LukeTorso", luke_torso_data)
+scene.collection.objects.link(luke_torso)
+
+bm_luke = bmesh.new()
+# Create a tapered cylinder for torso
+bmesh.ops.create_cone(bm_luke, cap_ends=True, cap_tris=False, segments=12,
+                       radius1=0.35, radius2=0.3, depth=0.9)
+bm_luke.to_mesh(luke_torso_data)
+bm_luke.free()
+
+luke_torso.location = (0, 5, 1.0)
+
+# Luke's outfit material
+luke_mat = bpy.data.materials.new("LukeOutfit")
+luke_mat.use_nodes = True
+luke_nodes = luke_mat.node_tree.nodes
+luke_links = luke_mat.node_tree.links
+
+for node in luke_nodes:
+    luke_nodes.remove(node)
+
+bsdf_luke = luke_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_luke.inputs['Base Color'].default_value = (0.85, 0.8, 0.7, 1)
+bsdf_luke.inputs['Roughness'].default_value = 0.85
+bsdf_luke.inputs['Specular IOR Level'].default_value = 0.1
+
+luke_links.new(bsdf_luke.outputs['BSDF'], luke_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+luke_torso.data.materials.append(luke_mat)
+
+# Head
+head_data = bpy.data.meshes.new("LukeHead")
+head_obj = bpy.data.objects.new("LukeHead", head_data)
+scene.collection.objects.link(head_obj)
+
+bm_head = bmesh.new()
+bmesh.ops.create_uvsphere(bm_head, u_segments=20, v_segments=14, radius=0.22)
+bm_head.to_mesh(head_data)
+bm_head.free()
+
+head_obj.location = (0, 5, 1.75)
+head_obj.data.materials.append(luke_mat)
+
+# Hair
+hair_data = bpy.data.meshes.new("LukeHair")
+hair_obj = bpy.data.objects.new("LukeHair", hair_data)
+scene.collection.objects.link(hair_obj)
+
+bm_hair = bmesh.new()
+bmesh.ops.create_uvsphere(bm_hair, u_segments=16, v_segments=10, radius=0.24)
+# Keep only top portion
+verts_to_remove = [v for v in bm_hair.verts if v.co.z < -0.05]
+for v in verts_to_remove:
+    bm_hair.verts.remove(v)
+bm_hair.to_mesh(hair_data)
+bm_hair.free()
+
+hair_obj.location = (0, 5, 1.8)
+hair_obj.scale = (1, 1, 0.8)
+
+hair_mat = bpy.data.materials.new("LukeHair")
+hair_mat.use_nodes = True
+hair_nodes = hair_mat.node_tree.nodes
+hair_links = hair_mat.node_tree.links
+
+for node in hair_nodes:
+    hair_nodes.remove(node)
+
+bsdf_hair = hair_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_hair.inputs['Base Color'].default_value = (0.25, 0.12, 0.04, 1)
+bsdf_hair.inputs['Roughness'].default_value = 0.95
+
+hair_links.new(bsdf_hair.outputs['BSDF'], hair_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+hair_obj.data.materials.append(hair_mat)
+
+# Legs
+for leg_side in [-1, 1]:
+    leg_data = bpy.data.meshes.new(f"LukeLeg_{leg_side}")
+    leg_obj = bpy.data.objects.new(f"LukeLeg_{leg_side}", leg_data)
+    scene.collection.objects.link(leg_obj)
+    
+    bm_leg = bmesh.new()
+    bmesh.ops.create_cone(bm_leg, cap_ends=True, cap_tris=False, segments=8,
+                           radius1=0.12, radius2=0.1, depth=0.85)
+    bm_leg.to_mesh(leg_data)
+    bm_leg.free()
+    
+    leg_obj.location = (leg_side * 0.15, 5, 0.42)
+    leg_obj.data.materials.append(luke_mat)
+
+# Arms - Luke is looking up, arms slightly out
+for arm_side in [-1, 1]:
+    arm_data = bpy.data.meshes.new(f"LukeArm_{arm_side}")
+    arm_obj = bpy.data.objects.new(f"LukeArm_{arm_side}", arm_data)
+    scene.collection.objects.link(arm_obj)
+    
+    bm_arm = bmesh.new()
+    bmesh.ops.create_cone(bm_arm, cap_ends=True, cap_tris=False, segments=8,
+                           radius1=0.1, radius2=0.08, depth=0.7)
+    bm_arm.to_mesh(arm_data)
+    bm_arm.free()
+    
+    arm_obj.location = (arm_side * 0.4, 5, 1.2)
+    arm_obj.rotation_euler = (0, math.radians(15 * arm_side), 0)
+    arm_obj.data.materials.append(luke_mat)
+
+# Belt
+belt_data = bpy.data.meshes.new("LukeBelt")
+belt_obj = bpy.data.objects.new("LukeBelt", belt_data)
+scene.collection.objects.link(belt_obj)
+
+bm_belt = bmesh.new()
+bmesh.ops.create_cone(bm_belt, cap_ends=False, cap_tris=False, segments=12,
+                       radius1=0.36, radius2=0.36, depth=0.08)
+bm_belt.to_mesh(belt_data)
+bm_belt.free()
+
+belt_obj.location = (0, 5, 0.65)
+
+belt_mat = bpy.data.materials.new("LukeBelt")
+belt_mat.use_nodes = True
+belt_nodes = belt_mat.node_tree.nodes
+belt_links = belt_mat.node_tree.links
+
+for node in belt_nodes:
+    belt_nodes.remove(node)
+
+bsdf_belt = belt_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_belt.inputs['Base Color'].default_value = (0.15, 0.1, 0.05, 1)
+bsdf_belt.inputs['Roughness'].default_value = 0.5
+bsdf_belt.inputs['Metallic'].default_value = 0.3
+
+belt_links.new(bsdf_belt.outputs['BSDF'], belt_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+belt_obj.data.materials.append(belt_mat)
+
+# Distant sand dunes - fixed version
+for i in range(8):
+    dune_data = bpy.data.meshes.new(f"Dune_{i}")
+    dune_obj = bpy.data.objects.new(f"Dune_{i}", dune_data)
+    scene.collection.objects.link(dune_obj)
+    
+    bm_dune = bmesh.new()
+    bmesh.ops.create_uvsphere(bm_dune, u_segments=20, v_segments=10, radius=12)
+    # Flatten and keep top
+    for v in bm_dune.verts:
+        v.co.z *= 0.25
+    # Remove bottom
+    verts_to_remove = [v for v in bm_dune.verts if v.co.z < -0.5]
+    for v in verts_to_remove:
+        bm_dune.verts.remove(v)
+    bm_dune.to_mesh(dune_data)
+    bm_dune.free()
+    
+    dune_obj.location = (random.uniform(-40, 40), random.uniform(-50, -25), 0)
+    dune_obj.scale = (random.uniform(0.5, 1.5), random.uniform(0.5, 1.5), 1)
+    dune_obj.data.materials.append(sand_mat)
+
+# Rocks scattered around
+rock_mat = bpy.data.materials.new("RockMat")
+rock_mat.use_nodes = True
+rock_nodes = rock_mat.node_tree.nodes
+rock_links = rock_mat.node_tree.links
+
+for node in rock_nodes:
+    rock_nodes.remove(node)
+
+bsdf_rock = rock_nodes.new('ShaderNodeBsdfPrincipled')
+bsdf_rock.inputs['Base Color'].default_value = (0.35, 0.3, 0.25, 1)
+bsdf_rock.inputs['Roughness'].default_value = 0.95
+
+rock_links.new(bsdf_rock.outputs['BSDF'], rock_nodes.new('ShaderNodeOutputMaterial').inputs['Surface'])
+
+for i in range(20):
+    rock_data = bpy.data.meshes.new(f"Rock_{i}")
+    rock_obj = bpy.data.objects.new(f"Rock_{i}", rock_data)
+    scene.collection.objects.link(rock_obj)
+    
+    bm_rock = bmesh.new()
+    bmesh.ops.create_icosphere(bm_rock, subdivisions=2, radius=0.3)
+    for v in bm_rock.verts:
+        v.co += Vector((random.uniform(-0.08, 0.08), random.uniform(-0.08, 0.08), random.uniform(-0.08, 0.08)))
+    bm_rock.to_mesh(rock_data)
+    bm_rock.free()
+    
+    rock_obj.location = (random.uniform(-12, 12), random.uniform(-12, 5), 0.05)
+    rock_obj.scale = (random.uniform(0.5, 2.5), random.uniform(0.5, 2.5), random.uniform(0.3, 1.2))
+    rock_obj.rotation_euler = (random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi))
+    rock_obj.data.materials.append(rock_mat)
+
+# Atmospheric haze
+atmo_data = bpy.data.meshes.new("Atmosphere")
+atmo_obj = bpy.data.objects.new("Atmosphere", atmo_data)
+scene.collection.objects.link(atmo_obj)
+
+bm_atmo = bmesh.new()
+bmesh.ops.create_cube(bm_atmo, size=1)
+for v in bm_atmo.verts:
+    v.co *= 120
+bm_atmo.to_mesh(atmo_data)
+bm_atmo.free()
+
+atmo_mat = bpy.data.materials.new("AtmosphereMat")
+atmo_mat.use_nodes = True
+atmo_nodes = atmo_mat.node_tree.nodes
+atmo_links = atmo_mat.node_tree.links
+
+for node in atmo_nodes:
+    atmo_nodes.remove(node)
+
+vol_principled = atmo_nodes.new('ShaderNodeVolumePrincipled')
+vol_principled.inputs['Color'].default_value = (1.0, 0.5, 0.2, 1)
+vol_principled.inputs['Density'].default_value = 0.003
+vol_principled.inputs['Anisotropy'].default_value = 0.6
+
+out_atmo = atmo_nodes.new('ShaderNodeOutputMaterial')
+atmo_links.new(vol_principled.outputs['Volume'], out_atmo.inputs['Volume'])
+
+atmo_obj.data.materials.append(atmo_mat)
+atmo_obj.display_type = 'WIRE'
+atmo_obj.visible_camera = False
+
+# Render settings
+scene.render.film_transparent = False
+scene.view_settings.view_transform = 'Filmic'
+scene.view_settings.look = 'Medium High Contrast'
+scene.view_settings.exposure = 0.5
+
+print("Binary Sunset scene rebuilt with fixes and more detail!")

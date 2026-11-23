@@ -1,0 +1,103 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1748)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def pigment(rgb, glow=0, rough=.9, metal=0):
+    m = bpy.data.materials.new("m"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough; b.inputs["Metallic"].default_value = metal
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+cliff, cliff2, cliff3, sea, shore = pigment((.16, .14, .13)), pigment((.12, .11, .11)), pigment((.09, .09, .1)), pigment((.04, .12, .2), .3, .2), pigment((.5, .45, .35))
+marble, marble2, bronze, fire, thyme = pigment((.62, .6, .55)), pigment((.5, .48, .45)), pigment((.45, .25, .08), rough=.4, metal=.8), pigment((1, .5, .1), 14), pigment((.15, .22, .1))
+path, goat, goat2, rock, scrub = pigment((.35, .3, .25)), pigment((.7, .68, .65)), pigment((.2, .18, .17)), pigment((.2, .19, .2)), pigment((.2, .15, .1))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(w, d, h, m, at, rot=(0, 0, 0), top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return add(bm, m, at, rot)
+def col(r, h, m, at, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def rod(a, b, t, m):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * (b - a).length)) + a
+    return add(bm, m)
+def lump(r, m, at, sq=.7, j=.3):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * random.uniform(1 - j, 1 + j), v.co.y * random.uniform(1 - j, 1 + j), v.co.z * sq * random.uniform(1 - j, 1 + j)))
+    return add(bm, m, at)
+def beam(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# cape: stepped cliff top, a jagged cliff face to the sea on the left, a beach at the foot
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 16 + random.uniform(-1, 1), v.co.y * 16 + random.uniform(-1, 1), -4.5 + random.uniform(-.8, .5)))
+    else: v.co = Vector((v.co.x * 24, v.co.y * 20, 0))
+add(bm, cliff3)
+for i in range(3): blk(24 - i * 2, 20 - i * 1.2, .9, (cliff, cliff2, cliff3)[i], (0, 0, 1.5 + i * .9), top=.96)
+blk(24, 20, 1.4, cliff, (0, 0, 4.2), top=.97)
+blk(5.5, 20, 1.4, sea, (-9.2, 0, 0), top=1.0)
+for i in range(8): blk(.6, 1.2, .35, shore, (-6.6 + random.uniform(-.2, .3), -8 + i * 2.3, 1.4), (0, 0, random.uniform(-.3, .3)), top=.7)
+for i in range(9): lump(random.uniform(.8, 1.4), rock, (-7.5 + random.uniform(-.5, .5), -9 + i * 2.2, 1.5), .8, .4)
+# the temple: three steps, cella walls, fluted colonnade, entablature and pediments
+for i, (w, d) in enumerate(((12.4, 8.2), (11.6, 7.4), (10.8, 6.6))): blk(w, d, .45, marble2, (0, 0, 5.6 + i * .45))
+blk(6.4, 4.4, 3.4, marble, (0, 0, 6.95))
+for sx in (-1, 1):
+    blk(.4, 4.4, 3.4, marble2, (sx * 3.2, 0, 6.95)); blk(6.4, .4, 3.4, marble2, (0, sx * 2.2, 6.95))
+    blk(6.4, .4, .4, marble2, (0, sx * 2.2, 10.35))
+blk(6.4, 4.4, .4, marble2, (0, 0, 10.35))
+for i in range(6):
+    x = -4.2 + i * 1.68
+    for y in (-2.8, 2.8):
+        col(.62, .35, marble, (x, y, 7.4))
+        for k in range(6):
+            a = k * math.pi / 3
+            col(.07, 3.4, marble2, (x + .5 * math.cos(a), y + .5 * math.sin(a), 7.75), 4)
+        col(.42, 3.4, marble, (x, y, 7.75), 8)
+        col(.62, .35, marble, (x, y, 11.15))
+for i in range(3):
+    for y in (-2.8, 2.8): col(.62, .35, marble, (3.6 + i * 1.2, y, 7.4)); col(.42, 3.4, marble, (3.6 + i * 1.2, y, 7.75), 8); col(.62, .35, marble, (3.6 + i * 1.2, y, 11.15))
+for i in range(3):
+    for x in (-4.2, 4.2): col(.62, .35, marble, (x, -1.6 + i * 1.6, 7.4)); col(.42, 3.4, marble, (x, -1.6 + i * 1.6, 7.75), 8); col(.62, .35, marble, (x, -1.6 + i * 1.6, 11.15))
+blk(10.8, 7.2, .8, marble, (0, 0, 11.5))
+for s in (-1, 1):
+    blk(10.8, .5, 2.0, marble2, (0, s * 3.6, 12.3), top=.1)
+    for k in range(4): blk(.2, .6, 1.7 - k * .3, marble, (-4 + k * 2.7, s * 3.6, 12.3), top=.8)
+blk(1.0, 1.0, 1.0, marble, (0, 0, 12.3))
+# bronze brazier with flame
+col(.5, .3, bronze, (-4.2, -5.6, 5.6), 6); col(.12, 1.2, bronze, (-4.2, -5.6, 5.9), 5); col(.9, .5, bronze, (-4.2, -5.6, 7.1), 6, .6); col(.8, .1, fire, (-4.2, -5.6, 7.55), 6)
+beam("POINT", (1, .5, .1), 700, (-4.2, -5.6, 8.2))
+# goat path winding from the beach to the temple steps
+pts = [Vector((-4.5, -9.5, 1.4)), Vector((-3.5, -7.5, 2.0)), Vector((-4.5, -5.5, 2.8)), Vector((-3.0, -3.8, 3.6)), Vector((-1.5, -2.4, 4.2)), Vector((-1.0, -1.6, 5.0))]
+for a, b in zip(pts, pts[1:]): rod(a, b, .9, path)
+for i, p in enumerate(pts): lump(.5, path, p, .5, .4)
+# goats on the path and the cape, with horns
+for p, a in ((Vector((-3.2, -6.2, 2.1)), 1.0), (Vector((-2.0, -3.0, 3.8)), 2.0), (Vector((5.5, 6.5, 5.65)), 4.0)):
+    m = (goat, goat2, goat)[i]
+    blk(.9, .4, .4, m, p, (0, 0, a)); blk(.3, .3, .35, m, p + Vector((.45 * math.cos(a), .45 * math.sin(a), .35)), (0, 0, a))
+    for s in (-1, 1): rod(p + Vector((.5 * math.cos(a), .5 * math.sin(a), .55)), p + Vector((.6 * math.cos(a), .6 * math.sin(a), .85)) + Vector((s * .12 * math.cos(a), s * .12 * math.sin(a), 0)), .05, goat)
+    for lx in (-.3, .3): rod(p + Vector((lx * math.cos(a), lx * math.sin(a), -.1)), p + Vector((lx * math.cos(a), lx * math.sin(a), -.45)), .06, m)
+# thyme, scrub and rocks
+for i in range(30):
+    x, y = random.uniform(-10, 10), random.uniform(-9, 9)
+    if abs(x) < 6 and abs(y) < 4.5 or (x < -6.5 and abs(y) < 10): continue
+    lump(random.uniform(.3, .6), random.choice((thyme, scrub, rock)), (x, y, 5.65), .5, .5)
+beam("SUN", (1, .65, .5), 5.5, (-30, -14, 8), (0, 0, 6))
+beam("SUN", (.35, .55, 1), 2.0, (26, 20, 14), (0, 0, 6))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .025, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 6)); co.location = t + Vector((14, -70, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

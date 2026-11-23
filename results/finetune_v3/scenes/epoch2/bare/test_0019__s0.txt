@@ -1,0 +1,92 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(380)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def mk(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("k"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+sand, crust, stone, wood, roof, llama, wool, wool2, steam, sign, rockm = (mk((.3, .24, .18)), mk((.18, .15, .13)), mk((.25, .25, .27)), mk((.3, .17, .08)),
+    mk((.4, .1, .07)), mk((.35, .22, .12)), mk((.62, .58, .5)), mk((.45, .4, .33)), mk((.8, .85, .9), .3), mk((.9, .8, .2)), mk((.12, .1, .1)))
+hot = mk((.1, .9, .8), 6); ember = mk((1, .35, .05), 14)
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def cone(at, r, h, n, m, r2=0, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at, rot)
+def ball(at, r, m, sq=(1, 1, 1)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2])) * random.uniform(.9, 1.1)
+    return put(bm, m, at)
+def beam(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("b", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("b", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# high desert base: cracked sand with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13, depth=3.2)
+for v in bm.verts:
+    v.co.z -= 1.6
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+put(bm, sand)
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(3, 11)
+    slab((math.cos(a) * r, math.sin(a) * r, .02), (random.uniform(1, 2.2), .06, .04), crust, (0, 0, random.uniform(0, 3)))
+# the hot pool, ring of stones, steam, and glowing cracks
+cone((0, 0, 0), 3.2, .12, 10, crust, 3.2); cone((0, 0, .1), 2.6, .08, 10, hot, 2.6)
+for i in range(16):
+    a = i * math.tau / 16; ball((math.cos(a) * 3.5, math.sin(a) * 3.5, .25), random.uniform(.45, .65), stone)
+for i in range(5):
+    a = random.uniform(0, 6.28); d = random.uniform(4.5, 7.5)
+    slab((math.cos(a) * d, math.sin(a) * d, .03), (random.uniform(1, 2), .08, .05), ember, (0, 0, a + 1.57))
+    cone((math.cos(a) * d, math.sin(a) * d, .05), .5, .25, 6, crust, .3)
+for i in range(9):
+    a = random.uniform(0, 6.28); r = random.uniform(.5, 2.2)
+    ball((math.cos(a) * r, math.sin(a) * r, 1.0 + i * .75), random.uniform(.4, .8), steam, (1, 1, .7))
+beam("POINT", (.1, .9, .8), 700, (0, 0, 1.2))
+# tourist hut with a sign, bench and a string of lights
+slab((-8.5, 4.5, 0), (4.4, 3.6, 2.4), wood)
+bm = bmesh.new(); a = [bm.verts.new(p) for p in ((-2.6, -2.1, 0), (2.6, -2.1, 0), (2.6, 2.1, 0), (-2.6, 2.1, 0), (-2.6, 0, 1.4), (2.6, 0, 1.4))]
+for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 3, 2, 1)): bm.faces.new([a[i] for i in f])
+put(bm, roof, (-8.5, 4.5, 2.4))
+slab((-8.5, 2.65, .0), (1.0, .1, 1.8), ember); slab((-6.9, 2.65, 1.0), (.9, .1, .9), ember)
+slab((-8.5, 2.6, 2.1), (3.0, .12, .6), sign); slab((-8.5, 2.55, 2.1), (2.4, .1, .12), roof)
+for sx in (-1, 1): cone((-8.5 + sx * 3.3, 1.0, 0), .1, 3.0, 5, wood, .08)
+slab((-8.5, 1.0, 2.9), (6.8, .06, .06), wood)
+for i in range(7): ball((-11.5 + i * 1.0, 1.0, 2.75), .15, sign)
+slab((-8.5, .2, 0), (2.2, .6, .5), wood); slab((-8.5, -.1, .5), (2.2, .1, .5), wood)
+beam("POINT", (1, .6, .2), 350, (-8.5, 2.0, 1.2))
+# the shivering llama: legs, body, neck, head, ears, hump, tail
+lx, ly = 5.5, -4.0
+for dx, dy in ((-.7, -.3), (-.7, .3), (.7, -.3), (.7, .3)): cone((lx + dx, ly + dy, 0), .16, 1.5, 5, llama, .1)
+ball((lx, ly, 2.0), .95, wool, (1.35, .85, .85)); ball((lx - .2, ly, 2.4), .5, wool2, (1.1, .8, .8))
+cone((lx + 1.0, ly, 2.2), .3, 1.8, 5, wool, .2, (0, -.25, 0))
+ball((lx + 1.2, ly, 4.0), .42, wool, (1.3, .8, .8)); cone((lx + 1.6, ly, 4.0), .22, .5, 5, wool2, .05, (0, 1.57, 0))
+for dy in (-.15, .15): cone((lx + 1.1, ly + dy, 4.35), .08, .4, 4, llama, .02)
+cone((lx - 1.2, ly, 2.2), .12, .6, 4, wool2, .03, (0, -.5, 0))
+# boulders and dry shrubs
+for i in range(10):
+    a = random.uniform(0, 6.28); r = random.uniform(8.5, 11.5)
+    ball((math.cos(a) * r, math.sin(a) * r, .2), random.uniform(.6, 1.4), stone, (1, 1, .7))
+for i in range(6):
+    a = random.uniform(0, 6.28); r = random.uniform(6, 10)
+    for k in range(3): cone((math.cos(a) * r, math.sin(a) * r, 0), .06, .8, 4, wood, .02, (random.uniform(-.4, .4), random.uniform(-.4, .4), 0))
+beam("SUN", (.65, .75, 1), 4.5, (-22, -14, 10), (0, 0, 0)); beam("SUN", (1, .55, .4), 2.2, (20, 18, 8), (0, 0, 0))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .025, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((10, -46, 30))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

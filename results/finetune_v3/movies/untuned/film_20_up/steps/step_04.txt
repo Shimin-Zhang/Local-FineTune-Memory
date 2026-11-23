@@ -1,0 +1,346 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is built but the camera is looking at the ground, not the house.
+# The house is at z=5-10, balloons at z=11-22. Camera needs to be repositioned.
+# Also, let's add more detail: house trim, balloon knot details, more town buildings,
+# a road, fence, and better camera framing.
+
+# --- Reposition camera to see the house and balloons ---
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (20, 20, 10)
+    # Look at the house center (0, 0, 7)
+    target = Vector((0, 0, 7))
+    direction = target - cam.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam.rotation_euler = rot_quat.to_euler()
+
+# --- Add house details ---
+# Window frames
+mat_frame = bpy.data.materials.get("WindowFrame")
+if mat_frame is None:
+    mat_frame = bpy.data.materials.new("WindowFrame")
+    mat_frame.use_nodes = True
+    bsdf = mat_frame.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 0.85, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.5
+
+window_positions = [
+    (-1.5, 4.01, 5.5), (1.5, 4.01, 5.5),
+    (-3.01, 0, 5.5), (3.01, 0, 5.5),
+    (0, -4.01, 5.5),
+]
+for i, pos in enumerate(window_positions):
+    # Window frame (slightly larger box behind window)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=pos)
+    frame = bpy.context.object
+    frame.name = f"WindowFrame_{i}"
+    frame.scale = (0.7, 0.12, 0.9)
+    bpy.ops.object.transform_apply(scale=True)
+    frame.data.materials.append(mat_frame)
+
+# Door frame
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 4.01, 4.5))
+door_frame = bpy.context.object
+door_frame.name = "DoorFrame"
+door_frame.scale = (0.9, 0.12, 1.3)
+bpy.ops.object.transform_apply(scale=True)
+door_frame.data.materials.append(mat_frame)
+
+# Door knob
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, segments=8, ring_count=6, location=(0.5, 4.12, 4.5))
+knob = bpy.context.object
+knob.name = "DoorKnob"
+mat_knob = bpy.data.materials.get("Knob")
+if mat_knob is None:
+    mat_knob = bpy.data.materials.new("Knob")
+    mat_knob.use_nodes = True
+    bsdf = mat_knob.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.8, 0.7, 0.2, 1.0)
+    bsdf.inputs["Metallic"].default_value = 0.8
+    bsdf.inputs["Roughness"].default_value = 0.3
+knob.data.materials.append(mat_knob)
+
+# Porch roof
+mat_porch_roof = bpy.data.materials.get("PorchRoof")
+if mat_porch_roof is None:
+    mat_porch_roof = bpy.data.materials.new("PorchRoof")
+    mat_porch_roof.use_nodes = True
+    bsdf = mat_porch_roof.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.4, 0.2, 0.15, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.7
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 4.8, 6.0))
+porch_roof = bpy.context.object
+porch_roof.name = "PorchRoof"
+porch_roof.scale = (2.2, 1.2, 0.1)
+bpy.ops.object.transform_apply(scale=True)
+porch_roof.data.materials.append(mat_porch_roof)
+
+# Porch steps
+mat_steps = bpy.data.materials.get("Steps")
+if mat_steps is None:
+    mat_steps = bpy.data.materials.new("Steps")
+    mat_steps.use_nodes = True
+    bsdf = mat_steps.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.7, 0.65, 0.6, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.8
+
+for step in range(3):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 5.3 + step*0.4, 3.0 - step*0.3))
+    st = bpy.context.object
+    st.name = f"Step_{step}"
+    st.scale = (1.5 - step*0.2, 0.4, 0.15)
+    bpy.ops.object.transform_apply(scale=True)
+    st.data.materials.append(mat_steps)
+
+# --- Add balloon knots (small cones at bottom of each balloon) ---
+# Only for first 200 balloons for performance
+balloon_col = bpy.data.collections.get("Balloons")
+if balloon_col:
+    mat_knot = bpy.data.materials.get("BalloonKnot")
+    if mat_knot is None:
+        mat_knot = bpy.data.materials.new("BalloonKnot")
+        mat_knot.use_nodes = True
+        bsdf = mat_knot.node_tree.nodes["Principled BSDF"]
+        bsdf.inputs["Base Color"].default_value = (0.3, 0.2, 0.1, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.8
+    
+    for i, obj in enumerate(balloon_col.objects[:200]):
+        if obj.name.startswith("Balloon_"):
+            # Add small cone at bottom
+            bpy.ops.mesh.primitive_cone_add(vertices=6, radius1=0.08, radius2=0, depth=0.15, location=(obj.location.x, obj.location.y, obj.location.z - obj.dimensions.z/2 - 0.05))
+            knot = bpy.context.object
+            knot.name = f"Knot_{i}"
+            knot.data.materials.append(mat_knot)
+            for col in knot.users_collection:
+                col.objects.unlink(knot)
+            balloon_col.objects.link(knot)
+
+# --- Add more town detail ---
+town_col = bpy.data.collections.get("Town")
+if town_col:
+    # Add a road
+    mat_road = bpy.data.materials.get("Road")
+    if mat_road is None:
+        mat_road = bpy.data.materials.new("Road")
+        mat_road.use_nodes = True
+        bsdf = mat_road.node_tree.nodes["Principled BSDF"]
+        bsdf.inputs["Base Color"].default_value = (0.3, 0.3, 0.3, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.9
+    
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, -4.99))
+    road = bpy.context.object
+    road.name = "Road"
+    road.scale = (40, 2, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    road.data.materials.append(mat_road)
+    for col in road.users_collection:
+        col.objects.unlink(road)
+    town_col.objects.link(road)
+    
+    # Cross road
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, -4.98))
+    road2 = bpy.context.object
+    road2.name = "Road2"
+    road2.scale = (2, 40, 1)
+    bpy.ops.object.transform_apply(scale=True)
+    road2.data.materials.append(mat_road)
+    for col in road2.users_collection:
+        col.objects.unlink(road2)
+    town_col.objects.link(road2)
+    
+    # Add fence posts along road
+    mat_fence = bpy.data.materials.get("Fence")
+    if mat_fence is None:
+        mat_fence = bpy.data.materials.new("Fence")
+        mat_fence.use_nodes = True
+        bsdf = mat_fence.node_tree.nodes["Principled BSDF"]
+        bsdf.inputs["Base Color"].default_value = (0.8, 0.75, 0.7, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.7
+    
+    for i in range(20):
+        x = -20 + i * 2
+        for y_off in [2.5, -2.5]:
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y_off, -4.5))
+            post = bpy.context.object
+            post.name = f"FencePost_{i}_{y_off}"
+            post.scale = (0.1, 0.1, 0.5)
+            bpy.ops.object.transform_apply(scale=True)
+            post.data.materials.append(mat_fence)
+            for col in post.users_collection:
+                col.objects.unlink(post)
+            town_col.objects.link(post)
+
+# --- Add more trees with varied shapes ---
+tree_col = bpy.data.collections.get("Trees")
+if tree_col:
+    for i in range(15):
+        x = random.uniform(-45, 45)
+        y = random.uniform(-45, 45)
+        if abs(x) < 8 and abs(y) < 8:
+            continue
+        trunk_h = random.uniform(2, 4)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=trunk_h, location=(x, y, -5 + trunk_h/2))
+        trunk = bpy.context.object
+        trunk.name = f"TreeTrunk2_{i}"
+        mat_trunk = bpy.data.materials.get("TreeTrunk")
+        trunk.data.materials.append(mat_trunk)
+        for col in trunk.users_collection:
+            col.objects.unlink(trunk)
+        tree_col.objects.link(trunk)
+        
+        # Multiple leaf spheres for fuller trees
+        for j in range(3):
+            ox = random.uniform(-0.5, 0.5)
+            oy = random.uniform(-0.5, 0.5)
+            oz = random.uniform(0.5, 1.5)
+            r = random.uniform(0.8, 1.5)
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=r, location=(x+ox, y+oy, -5 + trunk_h + oz))
+            leaves = bpy.context.object
+            leaves.name = f"TreeLeaves2_{i}_{j}"
+            mat_leaves = bpy.data.materials.get("TreeLeaves")
+            leaves.data.materials.append(mat_leaves)
+            for col in leaves.users_collection:
+                col.objects.unlink(leaves)
+            tree_col.objects.link(leaves)
+
+# --- Add some birds (simple V shapes) ---
+bird_col = bpy.data.collections.get("Birds")
+if bird_col is None:
+    bird_col = bpy.data.collections.new("Birds")
+    bpy.context.scene.collection.children.link(bird_col)
+
+mat_bird = bpy.data.materials.get("Bird")
+if mat_bird is None:
+    mat_bird = bpy.data.materials.new("Bird")
+    mat_bird.use_nodes = True
+    bsdf = mat_bird.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.1, 0.1, 0.1, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.8
+
+for i in range(8):
+    x = random.uniform(-30, 30)
+    y = random.uniform(-30, 30)
+    z = random.uniform(15, 25)
+    # Simple bird: two small triangles
+    for wing in [-1, 1]:
+        bpy.ops.mesh.primitive_plane_add(size=0.3, location=(x + wing*0.15, y, z))
+        wing_obj = bpy.context.object
+        wing_obj.name = f"BirdWing_{i}_{wing}"
+        wing_obj.rotation_euler = (0, math.radians(30*wing), 0)
+        wing_obj.data.materials.append(mat_bird)
+        for col in wing_obj.users_collection:
+            col.objects.unlink(wing_obj)
+        bird_col.objects.link(wing_obj)
+
+# --- Add smoke from chimney ---
+smoke_col = bpy.data.collections.get("Smoke")
+if smoke_col is None:
+    smoke_col = bpy.data.collections.new("Smoke")
+    bpy.context.scene.collection.children.link(smoke_col)
+
+mat_smoke = bpy.data.materials.get("Smoke")
+if mat_smoke is None:
+    mat_smoke = bpy.data.materials.new("Smoke")
+    mat_smoke.use_nodes = True
+    bsdf = mat_smoke.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.8, 0.8, 0.8, 1.0)
+    bsdf.inputs["Roughness"].default_value = 1.0
+    bsdf.inputs["Alpha"].default_value = 0.5
+
+for i in range(10):
+    z = 10.5 + i * 0.8
+    x = 1.5 + random.uniform(-0.3, 0.3)
+    y = -1.5 + random.uniform(-0.3, 0.3)
+    r = 0.2 + i * 0.1
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=8, ring_count=6, location=(x, y, z))
+    smoke = bpy.context.object
+    smoke.name = f"Smoke_{i}"
+    smoke.data.materials.append(mat_smoke)
+    for col in smoke.users_collection:
+        col.objects.unlink(smoke)
+    smoke_col.objects.link(smoke)
+
+# --- Add a small garden near the house ---
+garden_col = bpy.data.collections.get("Garden")
+if garden_col is None:
+    garden_col = bpy.data.collections.new("Garden")
+    bpy.context.scene.collection.children.link(garden_col)
+
+mat_flower = bpy.data.materials.get("Flower")
+if mat_flower is None:
+    mat_flower = bpy.data.materials.new("Flower")
+    mat_flower.use_nodes = True
+    bsdf = mat_flower.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.2, 0.3, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.5
+
+mat_stem = bpy.data.materials.get("Stem")
+if mat_stem is None:
+    mat_stem = bpy.data.materials.new("Stem")
+    mat_stem.use_nodes = True
+    bsdf = mat_stem.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.2, 0.5, 0.2, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.8
+
+# Flowers on the porch area
+for i in range(12):
+    x = random.uniform(-2, 2)
+    y = random.uniform(4.5, 5.5)
+    z = 3.2
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.3, location=(x, y, z + 0.15))
+    stem = bpy.context.object
+    stem.name = f"FlowerStem_{i}"
+    stem.data.materials.append(mat_stem)
+    for col in stem.users_collection:
+        col.objects.unlink(stem)
+    garden_col.objects.link(stem)
+    
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.08, location=(x, y, z + 0.35))
+    flower = bpy.context.object
+    flower.name = f"Flower_{i}"
+    flower.data.materials.append(mat_flower)
+    for col in flower.users_collection:
+        col.objects.unlink(flower)
+    garden_col.objects.link(flower)
+
+# --- Add a mailbox ---
+mat_mailbox = bpy.data.materials.get("Mailbox")
+if mat_mailbox is None:
+    mat_mailbox = bpy.data.materials.new("Mailbox")
+    mat_mailbox.use_nodes = True
+    bsdf = mat_mailbox.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.2, 0.3, 0.6, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.5
+
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=1, location=(2.5, 5.5, 3.7))
+mailbox_post = bpy.context.object
+mailbox_post.name = "MailboxPost"
+mat_post = bpy.data.materials.get("MailboxPost")
+if mat_post is None:
+    mat_post = bpy.data.materials.new("MailboxPost")
+    mat_post.use_nodes = True
+    bsdf = mat_post.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (0.4, 0.3, 0.2, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.8
+mailbox_post.data.materials.append(mat_post)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(2.5, 5.5, 4.3))
+mailbox_box = bpy.context.object
+mailbox_box.name = "MailboxBox"
+mailbox_box.scale = (0.3, 0.5, 0.2)
+bpy.ops.object.transform_apply(scale=True)
+mailbox_box.data.materials.append(mat_mailbox)
+
+# --- Update render settings ---
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.image_settings.file_format = 'PNG'
+
+print(f"Scene refined. Objects: {len(bpy.data.objects)}")
+```

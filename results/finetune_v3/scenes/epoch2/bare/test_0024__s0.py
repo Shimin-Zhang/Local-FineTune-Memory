@@ -1,0 +1,115 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(382)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def hue(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("h"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+sand, wet, sea, log, log2 = hue((.38, .3, .2)), hue((.22, .17, .12)), hue((.04, .14, .17), 0, .25), hue((.3, .2, .12)), hue((.22, .15, .1))
+thatch, flag, skull, rope, iron = hue((.4, .3, .14)), hue((.9, .88, .8)), hue((.75, .75, .7)), hue((.5, .4, .25)), hue((.08, .08, .09))
+red, fire, lantern, sail = hue((.5, .06, .05)), hue((1, .45, .08), 14), hue((1, .65, .25), 10), hue((.7, .66, .58))
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(at, s, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return put(bm, m, at, (0, 0, rz))
+def log_(a, b, r, m, n=6):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r, depth=d.length)
+    for v in bm.verts: v.co.z += d.length / 2
+    return put(bm, m, a, d.to_track_quat('Z', 'Y').to_euler())
+def pole(at, h, r, m, n=5, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at)
+def flame(at, c, w):
+    L = bpy.data.lights.new("f", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("f", L); o.location = at; sc.collection.objects.link(o)
+# base: beach and a strip of sea at the front
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=15, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.2, .3)))
+    v.co.z -= 1.5
+put(bm, sand)
+box((0, -11.5, 0), (24, 7, .12), sea); box((0, -7.6, 0), (24, 1.6, .1), wet)
+# the stockade: sharpened logs round a rough octagon, open at the beach gate
+def stake(a, b, m):
+    a, b = Vector(a), Vector(b); log_(a, b, .3, m); log_(b + (0, 0, .5), b + (0, 0, 1.1), .3, m, 3)
+    log_(a + (0, 0, 1.8), a + (0, 0, 2.4), .26, m, 3)
+for i in range(14):
+    a = Vector((math.cos(i * .5 + .25) * 8.5, math.sin(i * .5 + .25) * 7.5, 0))
+    b = Vector((math.cos(i * .5 + .75) * 8.5, math.sin(i * .5 + .75) * 7.5, 0))
+    if i in (0, 1, 13): continue
+    stake(a, b, log if i % 2 else log2)
+for i in range(14):
+    a = Vector((math.cos(i * .5 + .25) * 8.5, math.sin(i * .5 + .25) * 7.5, 0))
+    if i in (0, 1, 13, 14): continue
+    log_(a + (0, 0, 1.0), a + (0, 0, 1.9), .12, log2)
+# lookout post with platform, ladder, lantern
+for sx in (-1, 1):
+    for sy in (-1, 1): log_((-4 + sx * 1.2, 2 + sy * 1.2, 0), (-4 + sx * .8, 2 + sy * .8, 6.5), .28, log)
+box((-4, 2, 6.5), (3.4, 3.4, .3), log2)
+for k in range(5):
+    box((-4, 2 - 1.6, 6.8 + k * .35), (3.4, .12, .1), log)
+for sx in (-1, 1):
+    for sy in (-1, 1): log_((-4 + sx * 1.5, 2 + sy * 1.5, 6.8), (-4 + sx * 1.5, 2 + sy * 1.5, 9.2), .15, log)
+box((-4, 2, 9.2), (3.6, 3.6, .3), thatch, 0, .5)
+for k in range(7): log_((-5.2, .2, .3 + k * .8), (-4.6, 1.0, .3 + k * .8), .06, rope)
+pole((-4, 2, 6.8), .8, .3, lantern, 6); flame((-4, 2, 7.8), (1, .65, .25), 500)
+# cannon on a log carriage, pointed at the sea, with shot
+box((1.5, -3.5, .8), (2.6, 1.2, .3), log2, .4)
+for s in (-.4, .4): log_((1.5 - s * .5, -3.5 + s, .55), (1.5 - s * .5 + 0, -3.5 + s, .55), .3, log, 8).rotation_euler.z = .4
+c = Vector((1.5, -3.5, 1.4)); d = Vector((math.sin(.4), -math.cos(.4), 0))
+log_(c - d * 1.0, c + d * 2.4, .42, iron, 8)
+for k in range(4): pole((3.4 + k * .4, -5.2 + (k % 2) * .3, 0), .35, .2, iron, 6)
+# rum store hut with barrels and a lit window
+box((4.5, 3, 0), (5, 3.8, 2.6), log2)
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 6, v.co.y * 4.6, (v.co.z + .5) * 1.8))
+    if v.co.z > 1: v.co.x = 0
+put(bm, thatch, (4.5, 3, 2.6))
+box((2.9, 3, .9), (.12, 1.0, 1.0), lantern); box((4.5, 1.05, 0), (1.0, .12, 1.8), log)
+flame((2.4, 3, 1.2), (1, .65, .25), 300)
+for k, (x, y) in enumerate(((6.8, 1.0), (7.6, 1.6), (7.2, .2))):
+    pole((x, y, 0), .9, .45, log if k % 2 else log2, 8); pole((x, y, .2), .1, .46, iron, 8); pole((x, y, .6), .1, .46, iron, 8)
+# jolly flag: tall pole, black flag, skull and crossbones
+log_((-1, 0, 0), (-1, 0, 11), .18, log)
+box((-1.9, 0, 9.6), (1.8, .08, 1.3), iron)
+box((-1.9, -.06, 9.8), (.7, .05, .7), skull)
+for k in range(2): box((-1.9, -.06, 10.0), (1.4, .05, .22), skull, k * .9 - .45)
+# sloop at the beach: hull, mast, yards, sail furled, bowsprit
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 2.4, v.co.y * 7, (v.co.z + .5) * 1.4))
+    if v.co.y > 0: v.co.x *= .3
+    if v.co.y < 0: v.co.z += .2
+    if v.co.z > .7: v.co.x *= .85
+put(bm, log2, (-9, -9, .1), (0, 0, .3))
+log_((-9, -9, 1.2), (-9, -9, 8), .15, log)
+for z, w in ((6.5, 3.2), (4.5, 2.6)): log_((-9 - w / 2, -9, z), (-9 + w / 2, -9, z), .08, log)
+log_((-9, -9, 7.8), (-9, -9, 8.4), .5, sail, 8)
+log_((-9.4, -9, 1.6), (-9.4, -12.5, 2.6), .12, log)
+box((-9, -9, 1.3), (1.2, 2.4, .1), log)
+# firewood and a campfire inside the stockade
+for k in range(5): log_((.3, .3, .2 + k * .22), (1.3, .3, .2 + k * .22), .1, log, 5)
+pole((.8, .3, 0), .5, .22, fire, 5, .02); flame((.8, .3, .8), (1, .45, .1), 350)
+for col, w, p in (((1, .62, .32), 5.5, (-26, -12, 8)), ((.45, .5, 1), 2.2, (24, 20, 10))):
+    s = bpy.data.lights.new("s", "SUN"); s.color, s.energy = col, w
+    o = bpy.data.objects.new("s", s); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("w"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .025, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((-1, -1, 3)); co.location = t + Vector((10, -62, 40))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

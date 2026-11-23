@@ -1,0 +1,24 @@
+{
+ "famous film scenes": [
+  {"id": "film_01_jurassic_park", "film": "Jurassic Park (1993)", "prompt": "Build the scene from Jurassic Park where the T. rex breaks through the paddock fence at night in the rain, beside the two tour cars stopped on the road."},
+  {"id": "film_02_titanic", "film": "Titanic (1997)", "prompt": "Make the scene from Titanic with the two of them standing at the very front of the ship's bow at sunset, arms spread, the sea far below."},
+  {"id": "film_03_et", "film": "E.T. the Extra-Terrestrial (1982)", "prompt": "Could you build the scene from E.T. where the boy's bicycle, with E.T. in the basket, flies across the full moon above the forest?"},
+  {"id": "film_04_star_wars", "film": "Star Wars (1977)", "prompt": "Build the binary sunset from Star Wars: Luke standing outside the domed desert homestead on Tatooine, looking at the two suns going down."},
+  {"id": "film_05_wizard_of_oz", "film": "The Wizard of Oz (1939)", "prompt": "Make the scene from The Wizard of Oz where Dorothy, the Scarecrow, the Tin Man and the Lion walk the yellow brick road through the poppy field towards the Emerald City."},
+  {"id": "film_06_king_kong", "film": "King Kong (1933)", "prompt": "I'd like the ending of King Kong: Kong on top of the Empire State Building, biplanes circling, the city far below."},
+  {"id": "film_07_singin_in_the_rain", "film": "Singin' in the Rain (1952)", "prompt": "Build the scene from Singin' in the Rain where he swings from a lamp post on a wet city street at night, umbrella in hand, shop windows lit behind him."},
+  {"id": "film_08_jaws", "film": "Jaws (1975)", "prompt": "Make the scene from Jaws where the great white shark rises out of the water at the stern of the small fishing boat, the Orca, out at sea."},
+  {"id": "film_09_fellowship", "film": "The Lord of the Rings: The Fellowship of the Ring (2001)", "prompt": "Could you do the bridge of Khazad-dum from The Fellowship of the Ring: Gandalf with staff and sword facing the Balrog on the narrow stone bridge over the chasm?"},
+  {"id": "film_10_2001", "film": "2001: A Space Odyssey (1968)", "prompt": "Build the dawn-of-man scene from 2001: A Space Odyssey: the black monolith standing among the rocks at sunrise with the apes gathered around it."},
+  {"id": "film_11_the_shining", "film": "The Shining (1980)", "prompt": "Make the hedge maze from The Shining at night in the snow, with the Overlook Hotel behind it and its windows lit."},
+  {"id": "film_12_back_to_the_future", "film": "Back to the Future (1985)", "prompt": "Build the clock tower scene from Back to the Future: lightning striking the tower, the cable strung across the street, and the DeLorean racing towards it leaving trails of fire."},
+  {"id": "film_13_raiders", "film": "Raiders of the Lost Ark (1981)", "prompt": "I'd like the opening of Raiders of the Lost Ark: Indiana Jones running down the temple passage with the giant stone boulder rolling after him."},
+  {"id": "film_14_blade_runner", "film": "Blade Runner (1982)", "prompt": "Make a street from Blade Runner: rain, neon signs, a noodle bar, crowds with umbrellas, huge advertising screens on the towers and a flying police car overhead."},
+  {"id": "film_15_spirited_away", "film": "Spirited Away (2001)", "prompt": "Build the bathhouse from Spirited Away at night, with the red bridge leading to it, lanterns lit and steam rising."},
+  {"id": "film_16_lion_king", "film": "The Lion King (1994)", "prompt": "Could you build the opening of The Lion King: Pride Rock at sunrise, the cub held up at its tip, and the animals of the savanna gathered below?"},
+  {"id": "film_17_casablanca", "film": "Casablanca (1942)", "prompt": "Make the farewell at the airfield from Casablanca: night, fog, the propeller plane waiting, the two of them in hats and coats, a car and the hangar behind."},
+  {"id": "film_18_ghostbusters", "film": "Ghostbusters (1984)", "prompt": "Build the scene from Ghostbusters where the giant Stay Puft Marshmallow Man walks down a New York street at night between the buildings, cars and crowds at his feet."},
+  {"id": "film_19_good_bad_ugly", "film": "The Good, the Bad and the Ugly (1966)", "prompt": "I'd like the final standoff from The Good, the Bad and the Ugly: three gunmen facing each other in the stone circle at the middle of the huge cemetery."},
+  {"id": "film_20_up", "film": "Up (2009)", "prompt": "Make the house from Up lifting off above the town, carried by thousands of coloured balloons tied to its chimney."}
+ ]
+}

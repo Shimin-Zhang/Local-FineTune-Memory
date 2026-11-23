@@ -1,0 +1,13 @@
+matrix loss_check: 12 probes, 0 already done
+[1/12] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x256 loss=vanilla  -> ok  peak 4.45 GiB 6.7s 
+[2/12] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x256 loss=chunked  -> ok  peak 3.17 GiB 6.6s 
+[3/12] Qwen3.5-0.8B-Base lora_bf16 ckpt=1 2x256 loss=vanilla  -> ok  peak 3.23 GiB 6.9s 
+[4/12] Qwen3.5-0.8B-Base lora_bf16 ckpt=1 2x256 loss=chunked  -> ok  peak 1.98 GiB 6.9s 
+[5/12] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x256 loss=vanilla  -> ok  peak 7.20 GiB 6.5s 
+[6/12] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x256 loss=chunked  -> ok  peak 7.10 GiB 6.5s 
+[7/12] Qwen3.5-0.8B-Base full_bf16 ckpt=1 2x256 loss=vanilla  -> ok  peak 7.06 GiB 6.5s 
+[8/12] Qwen3.5-0.8B-Base full_bf16 ckpt=1 2x256 loss=chunked  -> ok  peak 7.06 GiB 6.6s 
+[9/12] Qwen3.5-0.8B-Base qlora ckpt=0 2x256 loss=vanilla  -> ok  peak 3.68 GiB 6.9s 
+[10/12] Qwen3.5-0.8B-Base qlora ckpt=0 2x256 loss=chunked  -> ok  peak 2.40 GiB 7.2s 
+[11/12] Qwen3.5-0.8B-Base qlora ckpt=1 2x256 loss=vanilla  -> ok  peak 2.54 GiB 7.2s 
+[12/12] Qwen3.5-0.8B-Base qlora ckpt=1 2x256 loss=chunked  -> ok  peak 1.30 GiB 7.3s 

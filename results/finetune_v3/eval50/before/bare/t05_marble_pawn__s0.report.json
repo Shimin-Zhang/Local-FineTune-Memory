@@ -1,0 +1,104 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 2,
+ "object_types": {
+  "LIGHT": 2,
+  "MESH": 2
+ },
+ "default_cube_still_there": false,
+ "materials": [
+  {
+   "name": "GroundMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.3,
+    0.3,
+    0.3
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "WhiteMarble",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 9,
+   "principled_base_color": [
+    0.95,
+    0.95,
+    0.95
+   ],
+   "base_color_linked": true,
+   "node_types": [
+    "BACKGROUND",
+    "BSDF_PRINCIPLED",
+    "MAPPING",
+    "MIX",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "TEX_NOISE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "POINT",
+   "energy": 500.0,
+   "color": [
+    1.0,
+    0.95,
+    0.9
+   ],
+   "location": [
+    3.0,
+    3.0,
+    4.0
+   ]
+  },
+  {
+   "type": "POINT",
+   "energy": 200.0,
+   "color": [
+    0.9,
+    0.95,
+    1.0
+   ],
+   "location": [
+    -2.0,
+    2.0,
+    2.0
+   ]
+  }
+ ],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  10.0,
+  10.0,
+  1.46
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 4.3,
+ "image": true
+}

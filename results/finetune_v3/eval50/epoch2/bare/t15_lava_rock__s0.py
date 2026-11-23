@@ -1,0 +1,69 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(916)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def stone(r, g, b, e=0):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (r, g, b, 1); n.inputs["Roughness"].default_value = .95
+    if e: n.inputs["Emission Color"].default_value = (r, g, b, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+cinder, basalt, basalt2, crust, molten, ember = stone(.05, .045, .045), stone(.1, .08, .07), stone(.14, .1, .08), stone(.03, .025, .025), stone(1, .25, .03, 14), stone(1, .5, .08, 8)
+def rock(kind, m, p, s, r=(0, 0, 0), n=0):
+    if kind == "box": bpy.ops.mesh.primitive_cube_add(size=1)
+    elif kind == "ball": bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=.5)
+    else: bpy.ops.mesh.primitive_cone_add(vertices=n, radius1=.5, radius2=.5, depth=1)
+    o = bpy.context.object; o.location = p; o.scale = s; o.rotation_euler = r
+    o.data.materials.append(m); return o
+def glow(p, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = p; sc.collection.objects.link(o)
+# base: a floating chunk of dark rock, rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=4, radius2=8, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.5
+me = bpy.data.meshes.new("b"); bm.to_mesh(me); bm.free()
+b = bpy.data.objects.new("b", me); sc.collection.objects.link(b); me.materials.append(cinder)
+# the mountain: stacked lumps of basalt, faceted and irregular
+for i, (x, y, z, r, h) in enumerate([(0, 0, 1.0, 6.0, 3.2), (-2.2, 1.5, 3.2, 4.2, 2.8), (2.4, -1.2, 3.4, 4.0, 2.6), (0, 0, 5.6, 2.8, 2.4), (-1.2, -.5, 7.6, 1.6, 1.6)]):
+    rock("cyl", basalt if i % 2 else basalt2, (x, y, z), (r, r * .9, h), (0, 0, i * .6), 7)
+for i in range(11):
+    a = random.uniform(0, 6.28); d = random.uniform(4.5, 7.5)
+    rock("ball", basalt2 if i % 2 else basalt, (math.cos(a) * d, math.sin(a) * d, random.uniform(0, 1.2)), (random.uniform(1.4, 2.6),) * 3, (0, 0, i))
+# glowing cracks: ribbons of molten lava laid across the slopes and spilling at the foot
+def crack(pts, w=.3):
+    for a, b in zip(pts, pts[1:]):
+        d = Vector(b) - Vector(a); mid = (Vector(a) + Vector(b)) / 2
+        rock("box", molten, (mid.x, mid.y, mid.z + .06), (w, d.length * 1.05 + .1, .12), (0, 0, math.atan2(d.y, d.x)))
+crack([(-1, 3.2, 2.6), (-.2, 2.0, 2.2), (1.0, 1.4, 1.8), (1.8, -.2, 1.4), (2.2, -2.0, 1.0), (3.6, -3.4, .5)])
+crack([(2.8, 1.6, 2.2), (1.8, 1.0, 2.0), (.8, 1.6, 2.4), (-.2, 2.2, 2.7), (-1.4, 2.6, 3.0)])
+crack([(-3.4, -.8, 1.4), (-2.6, -1.8, 1.1), (-1.4, -2.4, .9), (0, -3.2, .7), (1.4, -3.8, .5)])
+crack([(0, 0, 6.9), (.6, -.4, 6.4), (1.0, -.2, 5.8), (1.4, -.6, 5.2)])
+crack([(-1.5, 1.5, 4.2), (-.6, 1.0, 3.8), (.4, 1.2, 3.4), (1.0, .4, 3.0)])
+for p in [(-1, 3.2, 2.7), (1.0, 1.4, 1.9), (2.8, 1.6, 2.3), (-3.4, -.8, 1.5), (0, 0, 7.0), (-.6, 1.0, 3.9), (1.0, -.2, 5.9), (0, -3.2, .8)]: rock("ball", ember, p, (.5, .5, .3))
+# lava pools on the ground around the foot
+for x, y, r in [(-5, -3, 1.6), (5, 3.5, 1.4), (4.5, -4.5, 1.2), (-5.5, 4, 1.0)]:
+    rock("cyl", molten, (x, y, .08), (r, r, .2), n=7)
+    for k in range(5): rock("ball", basalt, (x + math.cos(k * 1.26) * r * .65, y + math.sin(k * 1.26) * r * .65, .25), (.8, .8, .5), (0, 0, k))
+# scattered cinders and a few jagged shards
+for i in range(26):
+    a = random.uniform(0, 6.28); d = random.uniform(3, 7.6)
+    rock("ball", random.choice((crust, basalt, ember)), (math.cos(a) * d, math.sin(a) * d, .15), (.25, .25, .2))
+for i in range(6):
+    a = random.uniform(0, 6.28); d = random.uniform(6, 7.4)
+    rock("cyl", basalt, (math.cos(a) * d, math.sin(a) * d, .6), (.5, .5, 1.4), (random.uniform(-.2, .2), random.uniform(-.2, .2), 0), 5)
+# light: deep red-orange key from the left, dim violet rim, and strong lava glow from the cracks
+for c, e, p in (((1, .35, .1), 4.5, (-26, -14, 12)), ((.5, .3, .9), 2.2, (22, 22, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = e
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+for p, w in [((0, 0, 7.2), 2200), ((0, -2, 1.5), 1800), ((2.5, 0, 2.5), 1200), ((-4, -3, 1.5), 900), ((-5, -3, 1), 500), ((5, 3.5, 1), 500)]: glow(p, (1, .3, .05), w)
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .008, .008, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3.2)); co.location = t + Vector((10, -37, 24))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

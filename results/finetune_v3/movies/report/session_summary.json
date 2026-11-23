@@ -1,0 +1,32 @@
+{
+ "Qwen3.8-27B, untuned": {
+  "sessions": 20,
+  "with_a_final_picture": 20,
+  "median_runs": 7.0,
+  "runs": 139,
+  "runs_with_error": 53,
+  "median_final_objects": 565.5,
+  "with_own_camera": 20,
+  "median_tokens_written": 28066.5,
+  "total_minutes": 286.9,
+  "stops": {
+   "out of context": 14,
+   "out of context (the last reply was cut off and not run)": 6
+  }
+ },
+ "Qwen3.8-27B, fine-tuned (2 epochs)": {
+  "sessions": 20,
+  "with_a_final_picture": 20,
+  "median_runs": 8.0,
+  "runs": 162,
+  "runs_with_error": 27,
+  "median_final_objects": 747.0,
+  "with_own_camera": 19,
+  "median_tokens_written": 27164.0,
+  "total_minutes": 304.2,
+  "stops": {
+   "out of context": 6,
+   "out of context (the last reply was cut off and not run)": 14
+  }
+ }
+}

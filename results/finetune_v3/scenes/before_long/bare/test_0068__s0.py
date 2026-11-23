@@ -1,0 +1,214 @@
+import bpy
+import math
+import random
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Collections
+def get_or_create_collection(name):
+    if name in bpy.data.collections:
+        return bpy.data.collections[name]
+    col = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(col)
+    return col
+
+col_ground = get_or_create_collection("Ground")
+col_garage = get_or_create_collection("Garage")
+col_buses = get_or_create_collection("Buses")
+col_pit = get_or_create_collection("Pit")
+col_fuel = get_or_create_collection("Fuel")
+col_board = get_or_create_collection("Timetable")
+
+# Materials
+def make_mat(name, color, rough=0.8, metal=0.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    return m
+
+mat_ground = make_mat("Ground", (0.45, 0.4, 0.35), 0.9)
+mat_brick = make_mat("Brick", (0.55, 0.25, 0.15), 0.9)
+mat_roof = make_mat("Roof", (0.3, 0.3, 0.32), 0.8)
+mat_floor = make_mat("Floor", (0.5, 0.5, 0.48), 0.85)
+mat_pit = make_mat("Pit", (0.15, 0.15, 0.15), 0.9)
+mat_bus1 = make_mat("Bus1", (0.2, 0.5, 0.2), 0.6)
+mat_bus2 = make_mat("Bus2", (0.6, 0.4, 0.1), 0.6)
+mat_wheel = make_mat("Wheel", (0.1, 0.1, 0.1), 0.9)
+mat_window = make_mat("Window", (0.7, 0.8, 0.9), 0.1, 0.3)
+mat_fuel = make_mat("FuelPump", (0.7, 0.1, 0.1), 0.5)
+mat_wood = make_mat("Wood", (0.45, 0.3, 0.15), 0.8)
+mat_metal = make_mat("Metal", (0.6, 0.6, 0.6), 0.3, 0.8)
+mat_paper = make_mat("Paper", (0.9, 0.88, 0.8), 0.9)
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(mat_ground)
+for c in ground.users_collection:
+    c.objects.unlink(ground)
+col_ground.objects.link(ground)
+
+# Garage
+def add_box(name, size, loc, mat, col):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(mat)
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    col.objects.link(obj)
+    return obj
+
+# Garage shell
+gx, gy, gz = 0, 5, 0
+gw, gd, gh = 10, 6, 5
+# Floor
+add_box("GarageFloor", (gw+2, gd+2, 0.2), (gx, gy, 0.1), mat_floor, col_garage)
+# Back wall
+add_box("GarageBackWall", (gw, 0.4, gh), (gx, gy+gd/2, gh/2), mat_brick, col_garage)
+# Left wall
+add_box("GarageLeftWall", (0.4, gd, gh), (gx-gw/2, gy, gh/2), mat_brick, col_garage)
+# Right wall
+add_box("GarageRightWall", (0.4, gd, gh), (gx+gw/2, gy, gh/2), mat_brick, col_garage)
+# Front wall - two pillars and header (open front)
+pillar_w = 0.4
+add_box("GaragePillarL", (pillar_w, 0.4, gh), (gx-gw/2+pillar_w/2, gy-gd/2, gh/2), mat_brick, col_garage)
+add_box("GaragePillarR", (pillar_w, 0.4, gh), (gx+gw/2-pillar_w/2, gy-gd/2, gh/2), mat_brick, col_garage)
+add_box("GarageHeader", (gw, 0.4, 1), (gx, gy-gd/2, gh-0.5), mat_brick, col_garage)
+# Roof
+add_box("GarageRoof", (gw+1, gd+1, 0.3), (gx, gy, gh+0.15), mat_roof, col_garage)
+
+# Buses - two old buses nose to nose
+def make_bus(name, loc, rot_z, mat_body, col):
+    bus_parts = []
+    # Body
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    body = bpy.context.active_object
+    body.name = name + "_Body"
+    body.scale = (2.2, 1.2, 1.8)
+    bpy.ops.object.transform_apply(scale=True)
+    body.data.materials.append(mat_body)
+    bus_parts.append(body)
+    # Roof
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(loc[0], loc[1], loc[2]+1.0))
+    roof = bpy.context.active_object
+    roof.name = name + "_Roof"
+    roof.scale = (2.2, 1.2, 0.2)
+    bpy.ops.object.transform_apply(scale=True)
+    roof.data.materials.append(mat_body)
+    bus_parts.append(roof)
+    # Windows (front and back)
+    for dz in [-0.8, 0.8]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(loc[0], loc[1]+dz, loc[2]+0.6))
+        win = bpy.context.active_object
+        win.name = name + f"_Win_{dz}"
+        win.scale = (0.8, 0.1, 0.5)
+        bpy.ops.object.transform_apply(scale=True)
+        win.data.materials.append(mat_window)
+        bus_parts.append(win)
+    # Wheels
+    for wx in [-1.2, 1.2]:
+        for wy in [-0.7, 0.7]:
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=0.2, location=(loc[0]+wx, loc[1]+wy, loc[2]-0.35))
+            wheel = bpy.context.active_object
+            wheel.name = name + f"_Wheel_{wx}_{wy}"
+            wheel.rotation_euler = (0, math.radians(90), 0)
+            wheel.data.materials.append(mat_wheel)
+            bus_parts.append(wheel)
+    # Group and rotate
+    bpy.ops.object.select_all(action='DESELECT')
+    for p in bus_parts:
+        p.select_set(True)
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.join()
+    bus = bpy.context.active_object
+    bus.name = name
+    bus.rotation_euler = (0, 0, rot_z)
+    for c in bus.users_collection:
+        c.objects.unlink(bus)
+    col.objects.link(bus)
+    return bus
+
+# Bus 1 facing +X (nose at +X), Bus 2 facing -X (nose at -X)
+# Nose to nose: bus1 nose at x=+1.5, bus2 nose at x=-1.5, gap in middle
+bus1 = make_bus("Bus1", (-3, 5, 1.0), 0, mat_bus1, col_buses)
+bus2 = make_bus("Bus2", (3, 5, 1.0), math.radians(180), mat_bus2, col_buses)
+
+# Pit
+# A rectangular pit in the floor between the buses
+pit_x, pit_y, pit_z = 0, 5, 0
+pit_w, pit_d, pit_h = 2, 3, 1.5
+# Pit floor
+add_box("PitFloor", (pit_w, pit_d, 0.1), (pit_x, pit_y, pit_z - pit_h), mat_pit, col_pit)
+# Pit walls
+add_box("PitWallN", (pit_w, 0.2, pit_h), (pit_x, pit_y+pit_d/2, pit_z - pit_h/2), mat_pit, col_pit)
+add_box("PitWallS", (pit_w, 0.2, pit_h), (pit_x, pit_y-pit_d/2, pit_z - pit_h/2), mat_pit, col_pit)
+add_box("PitWallE", (0.2, pit_d, pit_h), (pit_x+pit_w/2, pit_y, pit_z - pit_h/2), mat_pit, col_pit)
+add_box("PitWallW", (0.2, pit_d, pit_h), (pit_x-pit_w/2, pit_y, pit_z - pit_h/2), mat_pit, col_pit)
+# Pit rim
+add_box("PitRimN", (pit_w+0.4, 0.3, 0.1), (pit_x, pit_y+pit_d/2+0.1, 0.05), mat_floor, col_pit)
+add_box("PitRimS", (pit_w+0.4, 0.3, 0.1), (pit_x, pit_y-pit_d/2-0.1, 0.05), mat_floor, col_pit)
+add_box("PitRimE", (0.3, pit_d+0.4, 0.1), (pit_x+pit_w/2+0.1, pit_y, 0.05), mat_floor, col_pit)
+add_box("PitRimW", (0.3, pit_d+0.4, 0.1), (pit_x-pit_w/2-0.1, pit_y, 0.05), mat_floor, col_pit)
+
+# Fuel pump
+fx, fy, fz = 8, 3, 0
+# Base
+add_box("FuelBase", (0.8, 0.8, 0.2), (fx, fy, 0.1), mat_metal, col_fuel)
+# Pump body
+add_box("FuelBody", (0.6, 0.5, 1.5), (fx, fy, 0.95), mat_fuel, col_fuel)
+# Pump top
+add_box("FuelTop", (0.7, 0.6, 0.1), (fx, fy, 1.75), mat_metal, col_fuel)
+# Display
+add_box("FuelDisplay", (0.4, 0.1, 0.3), (fx, fy-0.25, 1.2), mat_paper, col_fuel)
+# Hose
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=1.2, location=(fx+0.4, fy, 0.8))
+hose = bpy.context.active_object
+hose.name = "FuelHose"
+hose.rotation_euler = (0, math.radians(45), 0)
+hose.data.materials.append(mat_wheel)
+for c in hose.users_collection:
+    c.objects.unlink(hose)
+col_fuel.objects.link(hose)
+
+# Wooden timetable board
+bx, by, bz = -8, 3, 0
+# Posts
+add_box("BoardPostL", (0.15, 0.15, 2), (bx-1.5, by, 1), mat_wood, col_board)
+add_box("BoardPostR", (0.15, 0.15, 2), (bx+1.5, by, 1), mat_wood, col_board)
+# Board frame
+add_box("BoardFrame", (3.5, 0.15, 1.5), (bx, by, 1.8), mat_wood, col_board)
+# Board face
+add_box("BoardFace", (3.2, 0.1, 1.2), (bx, by-0.08, 1.8), mat_paper, col_board)
+# Small lines on the board (text-like marks)
+for i in range(5):
+    add_box(f"BoardLine_{i}", (2.5, 0.05, 0.08), (bx, by-0.15, 1.4 + i*0.25), mat_wood, col_board)
+
+# Lighting
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(20), 0)
+
+# Camera
+bpy.ops.object.camera_add(location=(12, -8, 6))
+cam = bpy.context.active_object
+cam.name = "Camera"
+# Point camera at garage center
+direction = bpy.data.objects["GarageBackWall"].location - cam.location
+cam.rotation_euler = direction.to_track_quat('Z', 'Y').to_euler()
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1280
+bpy.context.scene.render.resolution_y = 720
+bpy.context.scene.render.film_transparent = False

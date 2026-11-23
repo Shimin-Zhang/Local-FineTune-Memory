@@ -1,0 +1,318 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up collections
+def get_collection(name):
+    if name in bpy.data.collections:
+        return bpy.data.collections[name]
+    col = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(col)
+    return col
+
+canyon_col = get_collection("Canyon")
+tunnel_col = get_collection("Tunnels")
+props_col = get_collection("Props")
+
+# Helper functions
+def add_to_collection(obj, col):
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    col.objects.link(obj)
+
+def set_material(obj, color, metallic=0.0, roughness=0.5):
+    mat = bpy.data.materials.new(name=f"Mat_{obj.name}")
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Metallic"].default_value = metallic
+    bsdf.inputs["Roughness"].default_value = roughness
+    obj.data.materials.append(mat)
+
+# Canyon Wall
+# Create a large curved wall
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, 0))
+wall = bpy.context.active_object
+wall.name = "CanyonWall"
+# Subdivide and shape
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Shape the wall with displacement
+import bmesh
+bm = bmesh.new()
+bm.from_mesh(wall.data)
+for v in bm.verts:
+    # Create a curved canyon wall shape
+    x = v.co.x
+    y = v.co.y
+    z = v.co.z
+    # Wall curves inward
+    v.co.x = x * 0.5 + 2.0
+    v.co.y = y * 0.8
+    v.co.z = z * 3.0 + 5.0
+    # Add some noise
+    noise = math.sin(x * 3) * math.cos(y * 2) * 0.3
+    v.co.x += noise
+bm.to_mesh(wall.data)
+bm.free()
+
+# Solidify the wall
+mod = wall.modifiers.new("Solidify", 'SOLIDIFY')
+mod.thickness = 0.5
+bpy.ops.object.modifier_apply(modifier="Solidify")
+
+# Add subsurf for smoothness
+mod = wall.modifiers.new("Subsurf", 'SUBSURF')
+mod.levels = 2
+mod.render_levels = 2
+bpy.ops.object.modifier_apply(modifier="Subsurf")
+
+set_material(wall, (0.45, 0.35, 0.25), 0.0, 0.9)
+add_to_collection(wall, canyon_col)
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, -0.1))
+ground = bpy.context.active_object
+ground.name = "Ground"
+set_material(ground, (0.35, 0.3, 0.2), 0.0, 0.95)
+add_to_collection(ground, canyon_col)
+
+# Canyon floor rocks
+for i in range(15):
+    x = random.uniform(-5, 5)
+    y = random.uniform(-3, 3)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=random.uniform(0.2, 0.6), location=(x, y, 0))
+    rock = bpy.context.active_object
+    rock.name = f"CanyonRock_{i}"
+    rock.scale = (random.uniform(0.8, 1.5), random.uniform(0.8, 1.5), random.uniform(0.5, 1.0))
+    rock.rotation_euler = (random.uniform(0, 3.14), random.uniform(0, 3.14), random.uniform(0, 3.14))
+    set_material(rock, (0.4, 0.35, 0.28), 0.0, 0.9)
+    add_to_collection(rock, canyon_col)
+
+# Tunnel mouths - small round openings in the wall
+tunnel_positions = [
+    (2.0, -1.5, 1.5),   # Main entry
+    (2.2, 0.5, 2.5),    # Upper tunnel
+    (2.1, -2.5, 3.0),   # Side tunnel
+    (2.3, 1.5, 4.0),    # High tunnel
+    (2.0, -0.5, 5.0),   # Top tunnel
+]
+
+for idx, pos in enumerate(tunnel_positions):
+    # Create tunnel mouth (torus for rim)
+    bpy.ops.mesh.primitive_torus_add(
+        major_radius=0.4, minor_radius=0.08,
+        major_segments=24, minor_segments=12,
+        location=pos
+    )
+    rim = bpy.context.active_object
+    rim.name = f"TunnelRim_{idx}"
+    # Orient to face outward from wall
+    rim.rotation_euler = (0, math.radians(90), 0)
+    set_material(rim, (0.35, 0.28, 0.2), 0.0, 0.85)
+    add_to_collection(rim, tunnel_col)
+
+    # Dark interior
+    bpy.ops.mesh.primitive_cylinder_add(
+        radius=0.38, depth=0.3,
+        location=(pos[0] + 0.15, pos[1], pos[2])
+    )
+    interior = bpy.context.active_object
+    interior.name = f"TunnelInterior_{idx}"
+    interior.rotation_euler = (0, math.radians(90), 0)
+    set_material(interior, (0.05, 0.05, 0.05), 0.0, 1.0)
+    add_to_collection(interior, tunnel_col)
+
+# Ladders
+def create_ladder(location, height=2.0, width=0.3):
+    """Create a simple wooden ladder"""
+    ladder_parts = []
+    # Two side rails
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cylinder_add(
+            radius=0.03, depth=height,
+            location=(location[0] + side * width/2, location[1], location[2] + height/2)
+        )
+        rail = bpy.context.active_object
+        rail.name = f"LadderRail_{side}"
+        set_material(rail, (0.3, 0.2, 0.1), 0.0, 0.8)
+        ladder_parts.append(rail)
+
+    # Rungs
+    num_rungs = int(height / 0.25)
+    for i in range(num_rungs + 1):
+        z = location[2] + i * 0.25
+        bpy.ops.mesh.primitive_cylinder_add(
+            radius=0.025, depth=width,
+            location=(location[0], location[1], z)
+        )
+        rung = bpy.context.active_object
+        rung.name = f"LadderRung_{i}"
+        rung.rotation_euler = (0, math.radians(90), 0)
+        set_material(rung, (0.3, 0.2, 0.1), 0.0, 0.8)
+        ladder_parts.append(rung)
+
+    # Join all parts
+    bpy.ops.object.select_all(action='DESELECT')
+    for p in ladder_parts:
+        p.select_set(True)
+    bpy.context.view_layer.objects.active = ladder_parts[0]
+    bpy.ops.object.join()
+    ladder = bpy.context.active_object
+    ladder.name = "Ladder"
+    add_to_collection(ladder, props_col)
+    return ladder
+
+# Ladder to main entry
+create_ladder((1.5, -1.5, 0), height=1.8)
+
+# Ladder to upper tunnel
+create_ladder((1.8, 0.5, 1.0), height=2.0)
+
+# Ladder to side tunnel
+create_ladder((1.6, -2.5, 1.5), height=2.5)
+
+# Trap-laden entry
+# Spikes on the ground near main entry
+for i in range(8):
+    angle = i * (2 * math.pi / 8)
+    x = 1.0 + 0.5 * math.cos(angle)
+    y = -1.5 + 0.5 * math.sin(angle)
+    bpy.ops.mesh.primitive_cone_add(
+        radius1=0.05, radius2=0.0, depth=0.15,
+        location=(x, y, 0.075)
+    )
+    spike = bpy.context.active_object
+    spike.name = f"TrapSpike_{i}"
+    set_material(spike, (0.15, 0.15, 0.15), 0.8, 0.3)
+    add_to_collection(spike, props_col)
+
+# Tripwire mechanism
+bpy.ops.mesh.primitive_cylinder_add(
+    radius=0.01, depth=1.0,
+    location=(1.2, -1.0, 0.5)
+)
+wire = bpy.context.active_object
+wire.name = "TripWire"
+wire.rotation_euler = (0, math.radians(90), math.radians(30))
+set_material(wire, (0.6, 0.6, 0.6), 0.9, 0.2)
+add_to_collection(wire, props_col)
+
+# Trigger box
+bpy.ops.mesh.primitive_cube_add(size=0.2, location=(1.2, -1.0, 0.1))
+trigger = bpy.context.active_object
+trigger.name = "TriggerBox"
+set_material(trigger, (0.2, 0.15, 0.1), 0.0, 0.7)
+add_to_collection(trigger, props_col)
+
+# Pile of shiny stones
+stone_colors = [
+    (0.8, 0.8, 0.9),   # Silver
+    (0.9, 0.7, 0.3),   # Gold
+    (0.3, 0.7, 0.8),   # Teal
+    (0.7, 0.3, 0.8),   # Purple
+    (0.8, 0.4, 0.3),   # Red
+]
+
+for i in range(20):
+    x = 0.5 + random.uniform(-0.5, 0.5)
+    y = -1.0 + random.uniform(-0.5, 0.5)
+    z = random.uniform(0.05, 0.3)
+    scale = random.uniform(0.05, 0.12)
+    bpy.ops.mesh.primitive_ico_sphere_add(
+        radius=scale, subdivisions=2,
+        location=(x, y, z)
+    )
+    stone = bpy.context.active_object
+    stone.name = f"ShinyStone_{i}"
+    stone.scale = (1, random.uniform(0.7, 1.3), random.uniform(0.6, 1.0))
+    stone.rotation_euler = (random.uniform(0, 3.14), random.uniform(0, 3.14), random.uniform(0, 3.14))
+    color = random.choice(stone_colors)
+    set_material(stone, color, 0.9, 0.1)
+    add_to_collection(stone, props_col)
+
+# Tiny banner
+# Pole
+bpy.ops.mesh.primitive_cylinder_add(
+    radius=0.02, depth=1.5,
+    location=(0.8, -2.0, 0.75)
+)
+pole = bpy.context.active_object
+pole.name = "BannerPole"
+set_material(pole, (0.2, 0.15, 0.1), 0.0, 0.7)
+add_to_collection(pole, props_col)
+
+# Banner cloth
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0.95, -2.0, 1.2))
+banner = bpy.context.active_object
+banner.name = "Banner"
+banner.scale = (0.3, 0.01, 0.4)
+banner.rotation_euler = (0, math.radians(90), 0)
+# Add some wave
+bm = bmesh.new()
+bm.from_mesh(banner.data)
+for v in bm.verts:
+    v.co.y += math.sin(v.co.x * 5) * 0.02
+bm.to_mesh(banner.data)
+bm.free()
+set_material(banner, (0.6, 0.1, 0.1), 0.0, 0.8)
+add_to_collection(banner, props_col)
+
+# Kobold figure (simple)
+# Body
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(1.5, -1.8, 0.3))
+body = bpy.context.active_object
+body.name = "KoboldBody"
+body.scale = (1, 0.8, 1.2)
+set_material(body, (0.4, 0.5, 0.3), 0.0, 0.7)
+add_to_collection(body, props_col)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=(1.5, -1.8, 0.55))
+head = bpy.context.active_object
+head.name = "KoboldHead"
+set_material(head, (0.4, 0.5, 0.3), 0.0, 0.7)
+add_to_collection(head, props_col)
+
+# Eyes
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.02, location=(1.5 + side * 0.04, -1.85, 0.57))
+    eye = bpy.context.active_object
+    eye.name = f"KoboldEye_{side}"
+    set_material(eye, (0.9, 0.9, 0.3), 0.0, 0.3)
+    add_to_collection(eye, props_col)
+
+# Add a simple light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.name = "Sunlight"
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Camera
+bpy.ops.object.camera_add(location=(6, -5, 3))
+cam = bpy.context.active_object
+cam.name = "Camera"
+# Look at the warren
+target = Vector((1.5, -1.5, 2.0))
+direction = target - cam.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+bpy.context.scene.view_settings.look = "Medium High Contrast"
+
+print("Kobold warren scene created successfully!")
+```

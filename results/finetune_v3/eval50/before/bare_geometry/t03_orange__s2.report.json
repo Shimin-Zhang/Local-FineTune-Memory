@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 2 items, not 3",
+ "error_line": "bsdf.location = (0, 0, 0)",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  1.998,
+  2.007,
+  2.004
+ ],
+ "scene_center": [
+  -0.002,
+  0.0013,
+  0.0009
+ ],
+ "scene_radius": 1.7349,
+ "process": "exit 0",
+ "seconds": 2.8,
+ "image": false
+}

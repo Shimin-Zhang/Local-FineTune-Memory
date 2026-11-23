@@ -1,0 +1,294 @@
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear existing mesh objects
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Clear existing materials
+for mat in bpy.data.materials:
+    bpy.data.materials.remove(mat)
+
+# Clear existing collections
+for coll in bpy.data.collections:
+    bpy.data.collections.remove(coll)
+
+# Create a new collection
+trophy_coll = bpy.data.collections.new("Brushed Gold Trophy")
+bpy.context.scene.collection.children.link(trophy_coll)
+
+# Create Brushed Gold Material
+gold_mat = bpy.data.materials.new("Brushed Gold")
+gold_mat.use_nodes = True
+nodes = gold_mat.node_tree.nodes
+links = gold_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Principled BSDF
+bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+bsdf.location = (0, 0, 0)
+
+# Gold color
+bsdf.inputs["Base Color"].default_value = (0.85, 0.65, 0.13, 1.0)
+bsdf.inputs["Metallic"].default_value = 1.0
+bsdf.inputs["Roughness"].default_value = 0.35
+bsdf.inputs["Anisotropic"].default_value = 0.7
+bsdf.inputs["Anisotropic Rotation"].default_value = 0.0
+
+# Output
+output = nodes.new("ShaderNodeOutputMaterial")
+output.location = (300, 0, 0)
+links.new(bsdf.outputs["BSDF"], output.inputs["Surface"])
+
+# Add a subtle noise texture for brushed effect
+noise = nodes.new("ShaderNodeTexNoise")
+noise.location = (-400, -200, 0)
+noise.inputs["Scale"].default_value = 100.0
+noise.inputs["Detail"].default_value = 8.0
+noise.inputs["Roughness"].default_value = 0.7
+
+# Mapping node for stretched noise (brushed look)
+mapping = nodes.new("ShaderNodeMapping")
+mapping.location = (-600, -200, 0)
+mapping.inputs["Scale"].default_value = (1.0, 50.0, 1.0)  # Stretch along Y for brushed effect
+
+# Texture coordinate
+tex_coord = nodes.new("ShaderNodeTexCoord")
+tex_coord.location = (-800, -200, 0)
+
+# Link: TexCoord -> Mapping -> Noise -> Roughness
+links.new(tex_coord.outputs["Object"], mapping.inputs["Vector"])
+links.new(mapping.outputs["Vector"], noise.inputs["Vector"])
+
+# Mix roughness with noise
+mix_rough = nodes.new("ShaderNodeMix")
+mix_rough.location = (-200, -100, 0)
+mix_rough.data_type = 'FLOAT'
+mix_rough.inputs["Factor"].default_value = 0.15
+mix_rough.inputs["A"].default_value = 0.35
+mix_rough.inputs["B"].default_value = 0.55
+links.new(noise.outputs["Fac"], mix_rough.inputs["Factor"])
+links.new(mix_rough.outputs["Result"], bsdf.inputs["Roughness"])
+
+# --- Create Trophy Geometry ---
+
+def create_trophy_part(name, vertices, edges, faces, location=(0,0,0), scale=(1,1,1)):
+    """Helper to create a mesh from explicit data."""
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, edges, faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = location
+    obj.scale = scale
+    trophy_coll.objects.link(obj)
+    obj.data.materials.append(gold_mat)
+    return obj
+
+# We'll use a simpler approach: create each part using Blender's built-in primitives and modify them
+
+# 1. Trophy Base (cylindrical pedestal)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=0.3, location=(0, 0, 0.15))
+base = bpy.context.active_object
+base.name = "Trophy_Base"
+base.data.materials.append(gold_mat)
+bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
+# Add a wider bottom ring
+bpy.ops.mesh.primitive_cylinder_add(radius=0.9, depth=0.1, location=(0, 0, 0.05))
+base_ring = bpy.context.active_object
+base_ring.name = "Trophy_Base_Ring"
+base_ring.data.materials.append(gold_mat)
+
+# 2. Stem (tapered cylinder)
+bpy.ops.mesh.primitive_cone_add(radius1=0.25, radius2=0.15, depth=1.2, location=(0, 0, 0.9))
+stem = bpy.context.active_object
+stem.name = "Trophy_Stem"
+stem.data.materials.append(gold_mat)
+
+# 3. Cup Body (lathe profile for a nice cup shape)
+# Create a profile for the cup and use spin/lathe
+import bmesh
+
+# Define cup profile points (radius, height)
+cup_profile = [
+    (0.0, 0.0),      # bottom center
+    (0.15, 0.0),     # bottom edge
+    (0.2, 0.05),     # slight curve up
+    (0.25, 0.15),
+    (0.3, 0.3),
+    (0.35, 0.5),
+    (0.4, 0.7),
+    (0.45, 0.9),
+    (0.5, 1.1),
+    (0.55, 1.3),
+    (0.6, 1.5),
+    (0.65, 1.7),
+    (0.7, 1.9),
+    (0.72, 2.0),     # rim
+    (0.7, 2.05),     # rim inner
+    (0.68, 2.0),     # inner rim
+    (0.65, 1.8),
+    (0.6, 1.6),
+    (0.55, 1.4),
+    (0.5, 1.2),
+    (0.45, 1.0),
+    (0.4, 0.8),
+    (0.35, 0.6),
+    (0.3, 0.4),
+    (0.25, 0.2),
+    (0.2, 0.1),
+    (0.15, 0.05),
+    (0.0, 0.0),      # back to center
+]
+
+# Create mesh from profile using bmesh spin
+mesh = bpy.data.meshes.new("Trophy_Cup")
+bm = bmesh.new()
+
+# Create profile vertices
+profile_verts = []
+for r, h in cup_profile:
+    v = bm.verts.new((r, 0, h))
+    profile_verts.append(v)
+
+# Create edges along profile
+for i in range(len(profile_verts) - 1):
+    bm.edges.new((profile_verts[i], profile_verts[i+1]))
+
+# Spin the profile around Z axis
+geom = bm.verts[:] + bm.edges[:]
+bmesh.ops.spin(bm, geom=geom, cent=(0,0,0), axis=(0,0,1),
+               angle=2*math.pi, steps=64, use_merge=True)
+
+# Remove duplicates
+bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.001)
+
+# Recalculate normals
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+
+bm.to_mesh(mesh)
+bm.free()
+
+cup = bpy.data.objects.new("Trophy_Cup", mesh)
+cup.location = (0, 0, 1.5)  # Position above stem
+trophy_coll.objects.link(cup)
+cup.data.materials.append(gold_mat)
+
+# 4. Handles (torus-based)
+# Left handle
+bpy.ops.mesh.primitive_torus_add(major_radius=0.4, minor_radius=0.06,
+                                  major_segments=32, minor_segments=16,
+                                  location=(-0.75, 0, 2.2))
+left_handle = bpy.context.active_object
+left_handle.name = "Trophy_Handle_Left"
+left_handle.rotation_euler = (0, math.radians(90), 0)
+left_handle.data.materials.append(gold_mat)
+
+# Right handle
+bpy.ops.mesh.primitive_torus_add(major_radius=0.4, minor_radius=0.06,
+                                  major_segments=32, minor_segments=16,
+                                  location=(0.75, 0, 2.2))
+right_handle = bpy.context.active_object
+right_handle.name = "Trophy_Handle_Right"
+right_handle.rotation_euler = (0, math.radians(90), 0)
+right_handle.data.materials.append(gold_mat)
+
+# 5. Decorative band on stem
+bpy.ops.mesh.primitive_torus_add(major_radius=0.2, minor_radius=0.03,
+                                  major_segments=32, minor_segments=16,
+                                  location=(0, 0, 1.5))
+band = bpy.context.active_object
+band.name = "Trophy_Band"
+band.data.materials.append(gold_mat)
+
+# 6. Top decorative element (small sphere on top of cup)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(0, 0, 3.55))
+top_sphere = bpy.context.active_object
+top_sphere.name = "Trophy_Top_Ornament"
+top_sphere.data.materials.append(gold_mat)
+
+# 7. Engraved-style ring on cup body
+bpy.ops.mesh.primitive_torus_add(major_radius=0.55, minor_radius=0.02,
+                                  major_segments=48, minor_segments=12,
+                                  location=(0, 0, 2.5))
+cup_ring = bpy.context.active_object
+cup_ring.name = "Trophy_Cup_Ring"
+cup_ring.data.materials.append(gold_mat)
+
+# Apply smooth shading to all trophy parts
+for obj in trophy_coll.objects:
+    if obj.type == 'MESH':
+        for poly in obj.data.polygons:
+            poly.use_smooth = True
+
+# Set up lighting
+# Remove default light if exists
+for obj in bpy.data.objects:
+    if obj.type == 'LIGHT':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Key light
+bpy.ops.object.light_add(type='AREA', location=(3, 3, 5))
+key_light = bpy.context.active_object
+key_light.data.energy = 500
+key_light.data.size = 3
+key_light.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Fill light
+bpy.ops.object.light_add(type='AREA', location=(-3, 2, 3))
+fill_light = bpy.context.active_object
+fill_light.data.energy = 200
+fill_light.data.size = 4
+fill_light.rotation_euler = (math.radians(60), math.radians(-20), 0)
+
+# Rim light
+bpy.ops.object.light_add(type='AREA', location=(0, -4, 4))
+rim_light = bpy.context.active_object
+rim_light.data.energy = 300
+rim_light.data.size = 2
+rim_light.rotation_euler = (math.radians(30), 0, 0)
+
+# Set up camera
+for obj in bpy.data.objects:
+    if obj.type == 'CAMERA':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+bpy.ops.object.camera_add(location=(4, 4, 3))
+camera = bpy.context.active_object
+camera.name = "Trophy_Camera"
+
+# Point camera at trophy center
+target = Vector((0, 0, 1.8))
+direction = target - camera.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+# Set as active camera
+bpy.context.scene.camera = camera
+
+# Set render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 256
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+
+# World settings
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.02, 0.02, 0.03, 1.0)
+    bg.inputs[1].default_value = 1.0
+
+print("Brushed gold trophy cup created successfully!")

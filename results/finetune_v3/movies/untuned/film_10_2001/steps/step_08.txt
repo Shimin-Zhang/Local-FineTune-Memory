@@ -1,0 +1,72 @@
+```python
+import bpy
+import math
+from mathutils import Vector
+
+scene = bpy.context.scene
+
+# Remove the dust emitter that caused issues
+dust_emitter = bpy.data.objects.get("DustEmitter")
+if dust_emitter:
+    bpy.data.objects.remove(dust_emitter, do_unlink=True)
+
+# The sky gradient is inverted - the dark part is at top. Let's fix the world
+# by using a proper sky texture instead of the gradient
+world = scene.world
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+
+# Clear all world nodes
+for node in list(nodes):
+    nodes.remove(node)
+
+# Create a proper sunrise sky using Sky Texture with PREETHAM
+sky_tex = nodes.new('ShaderNodeTexSky')
+sky_tex.sky_type = 'PREETHAM'
+sky_tex.sun_elevation = math.radians(8)
+sky_tex.sun_rotation = math.radians(180)
+sky_tex.sun_intensity = 1.0
+sky_tex.altitude = 100
+sky_tex.air_density = 1.5
+sky_tex.ozone_density = 2.0
+
+bg_node = nodes.new('ShaderNodeBackground')
+bg_node.inputs['Strength'].default_value = 1.0
+
+out_node = nodes.new('ShaderNodeOutputWorld')
+
+links.new(sky_tex.outputs['Color'], bg_node.inputs['Color'])
+links.new(bg_node.outputs['Background'], out_node.inputs['Surface'])
+
+# Adjust lighting for the new sky
+sun = bpy.data.objects.get("Sun")
+if sun:
+    sun.data.energy = 3.0
+    sun.data.color = (1.0, 0.7, 0.4)
+
+rim = bpy.data.objects.get("RimSun")
+if rim:
+    rim.data.energy = 1.5
+
+bounce = bpy.data.objects.get("Bounce")
+if bounce:
+    bounce.data.energy = 15
+
+# Reset view settings
+scene.view_settings.look = 'AgX - Base Contrast'
+scene.view_settings.exposure = 0.0
+
+# Camera
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    scene.camera = camera
+    camera.location = (7, 10, 1.2)
+    target = Vector((0, 0, 3.5))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('-Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 50
+
+print("Fixed sky with proper Preetham sunrise")
+print(f"Objects: {len(bpy.data.objects)}")
+```

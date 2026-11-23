@@ -1,0 +1,312 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.outliner.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
+
+# --- MATERIALS ---
+def make_material(name, base_color, roughness=0.8, metallic=0.0, emission=None, emission_strength=0.0, alpha=1.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    bsdf = nodes['Principled BSDF']
+    bsdf.inputs['Base Color'].default_value = base_color
+    bsdf.inputs['Roughness'].default_value = roughness
+    bsdf.inputs['Metallic'].default_value = metallic
+    if emission is not None:
+        bsdf.inputs['Emission Color'].default_value = emission
+        bsdf.inputs['Emission Strength'].default_value = emission_strength
+    if alpha < 1.0:
+        bsdf.inputs['Alpha'].default_value = alpha
+        mat.blend_method = 'BLEND'
+        mat.show_transparent_back = False
+    return mat
+
+stone_mat = make_material("AncientStone", (0.45, 0.40, 0.35, 1.0), roughness=0.9)
+dark_stone_mat = make_material("DarkStone", (0.30, 0.28, 0.25, 1.0), roughness=0.95)
+sand_mat = make_material("Sand", (0.65, 0.55, 0.40, 1.0), roughness=1.0)
+wood_mat = make_material("OldWood", (0.35, 0.22, 0.12, 1.0), roughness=0.85)
+leather_mat = make_material("Leather", (0.25, 0.15, 0.08, 1.0), roughness=0.7)
+skin_mat = make_material("Skin", (0.75, 0.55, 0.40, 1.0), roughness=0.6)
+cloth_mat = make_material("Cloth", (0.50, 0.40, 0.25, 1.0), roughness=0.9)
+hat_mat = make_material("Hat", (0.20, 0.12, 0.06, 1.0), roughness=0.8)
+torch_mat = make_material("TorchFlame", (1.0, 0.4, 0.05, 1.0), roughness=0.3, emission=(1.0, 0.4, 0.05, 1.0), emission_strength=8.0)
+metal_mat = make_material("Bronze", (0.6, 0.4, 0.1, 1.0), roughness=0.4, metallic=0.8)
+rope_mat = make_material("Rope", (0.5, 0.4, 0.25, 1.0), roughness=0.95)
+dust_mat = make_material("Dust", (0.7, 0.65, 0.55, 1.0), roughness=1.0, alpha=0.15)
+
+# --- TEMPLE PASSAGE ---
+passage_length = 60
+passage_width = 6
+passage_height = 5
+wall_thickness = 1.0
+
+# Floor
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, 0))
+bpy.context.active_object.scale = (passage_length, passage_width, 1)
+bpy.context.active_object.data.materials.append(sand_mat)
+bpy.context.active_object.name = "TempleFloor"
+
+# Subdivide floor for detail
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=20)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Left wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(-passage_width/2 - wall_thickness/2, 0, passage_height/2))
+bpy.context.active_object.scale = (wall_thickness, passage_length, passage_height)
+bpy.context.active_object.data.materials.append(stone_mat)
+bpy.context.active_object.name = "LeftWall"
+
+# Right wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(passage_width/2 + wall_thickness/2, 0, passage_height/2))
+bpy.context.active_object.scale = (wall_thickness, passage_length, passage_height)
+bpy.context.active_object.data.materials.append(stone_mat)
+bpy.context.active_object.name = "RightWall"
+
+# Ceiling
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, passage_height + wall_thickness/2))
+bpy.context.active_object.scale = (passage_width + 2*wall_thickness, passage_length, wall_thickness)
+bpy.context.active_object.data.materials.append(dark_stone_mat)
+bpy.context.active_object.name = "Ceiling"
+
+# --- WALL DETAILS: Stone blocks ---
+def add_stone_blocks_on_wall(wall_offset, wall_length, wall_height, block_size=0.8):
+    ny = int(wall_length / block_size)
+    nz = int(wall_height / block_size)
+    for iy in range(ny):
+        for iz in range(nz):
+            y = -wall_length/2 + block_size/2 + iy * block_size + random.uniform(-0.05, 0.05)
+            z = block_size/2 + iz * block_size + random.uniform(-0.05, 0.05)
+            sx = 0.15
+            sy = block_size * random.uniform(0.95, 1.05)
+            sz = block_size * random.uniform(0.95, 1.05)
+            bpy.ops.mesh.primitive_cube_add(size=1, location=(wall_offset, y, z))
+            bpy.context.active_object.scale = (sx, sy, sz)
+            bpy.context.active_object.data.materials.append(stone_mat)
+
+# Add blocks to left wall (inner face)
+add_stone_blocks_on_wall(wall_offset=wall_thickness/2 + 0.08, wall_length=passage_length, wall_height=passage_height, block_size=0.8)
+# Add blocks to right wall (inner face)
+add_stone_blocks_on_wall(wall_offset=-(wall_thickness/2 + 0.08), wall_length=passage_length, wall_height=passage_height, block_size=0.8)
+
+# --- CEILING BEAMS ---
+for i in range(12):
+    y_pos = -passage_length/2 + 2 + i * 5
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, y_pos, passage_height - 0.3))
+    bpy.context.active_object.scale = (passage_width, 0.4, 0.6)
+    bpy.context.active_object.data.materials.append(wood_mat)
+    bpy.context.active_object.name = f"CeilingBeam_{i}"
+
+# --- TORCHES on walls ---
+for i in range(8):
+    y_pos = -passage_length/2 + 4 + i * 7
+    # Left torch bracket
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.8, location=(-passage_width/2 + 0.1, y_pos, 2.5))
+    bpy.context.active_object.rotation_euler = (0, math.radians(90), 0)
+    bpy.context.active_object.data.materials.append(wood_mat)
+    # Flame
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(-passage_width/2 + 0.1, y_pos, 3.0))
+    bpy.context.active_object.scale = (1, 1, 1.5)
+    bpy.context.active_object.data.materials.append(torch_mat)
+    # Right torch bracket
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.8, location=(passage_width/2 - 0.1, y_pos, 2.5))
+    bpy.context.active_object.rotation_euler = (0, math.radians(90), 0)
+    bpy.context.active_object.data.materials.append(wood_mat)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(passage_width/2 - 0.1, y_pos, 3.0))
+    bpy.context.active_object.scale = (1, 1, 1.5)
+    bpy.context.active_object.data.materials.append(torch_mat)
+
+# --- GIANT STONE BOULDER ---
+bpy.ops.mesh.primitive_uv_sphere_add(radius=2.5, location=(0, -10, 2.5))
+boulder = bpy.context.active_object
+boulder.data.materials.append(stone_mat)
+boulder.name = "GiantStoneBoulder"
+
+# Make boulder irregular
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=3)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Add more subdivisions for rocky detail
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.subdivide(number_cuts=2)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# --- INDIANA JONES CHARACTER (running pose) ---
+# Torso
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.5, 5, 1.2))
+torso = bpy.context.active_object
+torso.scale = (0.35, 0.5, 0.7)
+torso.data.materials.append(cloth_mat)
+torso.name = "Indy_Torso"
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2, location=(0.5, 5.3, 1.9))
+head = bpy.context.active_object
+head.scale = (1, 1, 1.1)
+head.data.materials.append(skin_mat)
+head.name = "Indy_Head"
+
+# Hat (fedora)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.28, depth=0.08, location=(0.5, 5.3, 2.1))
+hat_brim = bpy.context.active_object
+hat_brim.data.materials.append(hat_mat)
+bpy.ops.mesh.primitive_cone_add(radius1=0.2, radius2=0.12, depth=0.25, location=(0.5, 5.3, 2.25))
+hat_top = bpy.context.active_object
+hat_top.data.materials.append(hat_mat)
+
+# Arms - running pose
+# Left arm (forward, pumping)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.6, location=(0.3, 5.0, 1.4))
+left_arm = bpy.context.active_object
+left_arm.rotation_euler = (math.radians(-30), math.radians(20), 0)
+left_arm.data.materials.append(cloth_mat)
+left_arm.name = "Indy_LeftArm"
+
+# Right arm (back, holding whip)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.6, location=(0.7, 5.5, 1.3))
+right_arm = bpy.context.active_object
+right_arm.rotation_euler = (math.radians(30), math.radians(-20), 0)
+right_arm.data.materials.append(cloth_mat)
+right_arm.name = "Indy_RightArm"
+
+# Hands
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(0.15, 4.7, 1.2))
+left_hand = bpy.context.active_object
+left_hand.data.materials.append(skin_mat)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(0.85, 5.8, 1.1))
+right_hand = bpy.context.active_object
+right_hand.data.materials.append(skin_mat)
+
+# Legs - running pose
+# Left leg (forward, knee up)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.8, location=(0.4, 4.8, 0.5))
+left_leg = bpy.context.active_object
+left_leg.rotation_euler = (math.radians(-20), 0, 0)
+left_leg.data.materials.append(leather_mat)
+left_leg.name = "Indy_LeftLeg"
+
+# Right leg (back, extended)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.8, location=(0.6, 5.5, 0.4))
+right_leg = bpy.context.active_object
+right_leg.rotation_euler = (math.radians(25), 0, 0)
+right_leg.data.materials.append(leather_mat)
+right_leg.name = "Indy_RightLeg"
+
+# Boots
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.35, 4.5, 0.1))
+left_boot = bpy.context.active_object
+left_boot.scale = (0.12, 0.2, 0.1)
+left_boot.data.materials.append(leather_mat)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.65, 5.8, 0.1))
+right_boot = bpy.context.active_object
+right_boot.scale = (0.12, 0.2, 0.1)
+right_boot.data.materials.append(leather_mat)
+
+# Belt
+bpy.ops.mesh.primitive_torus_add(major_radius=0.38, minor_radius=0.04, location=(0.5, 5.0, 0.85))
+belt = bpy.context.active_object
+belt.rotation_euler = (math.radians(90), 0, 0)
+belt.data.materials.append(leather_mat)
+
+# Whip in right hand
+bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=1.5, location=(0.9, 6.0, 1.0))
+whip = bpy.context.active_object
+whip.rotation_euler = (math.radians(45), math.radians(30), 0)
+whip.data.materials.append(leather_mat)
+whip.name = "Indy_Whip"
+
+# --- SCATTERED RUBBLE AND DEBRIS ---
+for i in range(40):
+    x = random.uniform(-passage_width/2 + 0.3, passage_width/2 - 0.3)
+    y = random.uniform(-passage_length/2 + 1, passage_length/2 - 1)
+    size = random.uniform(0.1, 0.4)
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=size, subdivisions=1, location=(x, y, size*0.5))
+    rubble = bpy.context.active_object
+    rubble.scale = (random.uniform(0.8, 1.2), random.uniform(0.8, 1.2), random.uniform(0.5, 0.8))
+    rubble.data.materials.append(stone_mat)
+
+# --- DUST PARTICLES ---
+for i in range(60):
+    x = random.uniform(-passage_width/2, passage_width/2)
+    y = random.uniform(-15, 10)
+    z = random.uniform(0.2, 3.0)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=random.uniform(0.02, 0.06), location=(x, y, z))
+    dust = bpy.context.active_object
+    dust.data.materials.append(dust_mat)
+
+# --- LIGHTING ---
+for obj in bpy.data.objects:
+    if obj.type == 'LIGHT':
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Key light - warm torch-like from front
+bpy.ops.object.light_add(type='POINT', location=(0, 15, 3))
+key_light = bpy.context.active_object
+key_light.data.energy = 500
+key_light.data.color = (1.0, 0.6, 0.3)
+key_light.data.shadow_soft_size = 0.5
+
+# Fill light - cooler from above
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 4.5))
+fill_light = bpy.context.active_object
+fill_light.data.energy = 200
+fill_light.data.color = (0.8, 0.8, 1.0)
+fill_light.data.shadow_soft_size = 1.0
+
+# Rim light from behind (toward boulder)
+bpy.ops.object.light_add(type='POINT', location=(0, -12, 3))
+rim_light = bpy.context.active_object
+rim_light.data.energy = 300
+rim_light.data.color = (1.0, 0.5, 0.2)
+rim_light.data.shadow_soft_size = 0.8
+
+# Ambient
+bpy.ops.object.light_add(type='AREA', location=(0, 0, 4.8))
+ambient = bpy.context.active_object
+ambient.data.energy = 50
+ambient.data.color = (0.5, 0.4, 0.3)
+ambient.data.size = 10
+ambient.rotation_euler = (0, 0, 0)
+
+# --- CAMERA ---
+bpy.ops.object.camera_add(location=(2, 8, 2.5))
+camera = bpy.context.active_object
+camera.rotation_euler = (math.radians(80), 0, math.radians(15))
+camera.data.lens = 35
+bpy.context.scene.camera = camera
+
+# --- WORLD BACKGROUND ---
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.05, 0.03, 0.02, 1.0)
+    bg_node.inputs[1].default_value = 1.0
+
+# --- RENDER SETTINGS ---
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+
+# Motion blur
+bpy.context.scene.render.use_motion_blur = True
+bpy.context.scene.render.motion_blur_shutter = 0.5
+
+print("Scene built successfully!")
+print(f"Objects in scene: {len(bpy.data.objects)}")

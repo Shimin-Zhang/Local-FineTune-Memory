@@ -1,0 +1,79 @@
+```python
+import bpy
+import math
+
+# Clear existing objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the car body (blue)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.5))
+car_body = bpy.context.active_object
+car_body.name = "Car_Body"
+car_body.scale = (2, 1, 0.5)  # Length, width, height
+bpy.ops.object.transform_apply(scale=True)
+
+# Create a cabin on top (also blue)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.2, 0, 1.0))
+cabin = bpy.context.active_object
+cabin.name = "Car_Cabin"
+cabin.scale = (1.2, 0.9, 0.5)
+bpy.ops.object.transform_apply(scale=True)
+
+# Create material for the car body (blue)
+blue_material = bpy.data.materials.new(name="Blue_Car")
+blue_material.use_nodes = True
+nodes = blue_material.node_tree.nodes
+links = blue_material.node_tree.links
+
+# Set base color to blue
+bsdf = nodes.get("Principled BSDF")
+if bsdf:
+    bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.8, 1.0)
+    bsdf.inputs["Metallic"].default_value = 0.3
+    bsdf.inputs["Roughness"].default_value = 0.4
+
+# Assign blue material to car body and cabin
+car_body.data.materials.append(blue_material)
+cabin.data.materials.append(blue_material)
+
+# Create material for wheels (black)
+black_material = bpy.data.materials.new(name="Black_Wheel")
+black_material.use_nodes = True
+nodes = black_material.node_tree.nodes
+links = black_material.node_tree.links
+
+bsdf = nodes.get("Principled BSDF")
+if bsdf:
+    bsdf.inputs["Base Color"].default_value = (0.0, 0.0, 0.0, 1.0)
+    bsdf.inputs["Metallic"].default_value = 0.1
+    bsdf.inputs["Roughness"].default_value = 0.6
+
+# Create four wheels (black)
+wheel_positions = [
+    (-1.2, 0.6, 0.3),   # Front left
+    (-1.2, -0.6, 0.3),  # Front right
+    (1.2, 0.6, 0.3),    # Rear left
+    (1.2, -0.6, 0.3),   # Rear right
+]
+
+for i, pos in enumerate(wheel_positions):
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.2, location=pos, rotation=(math.radians(90), 0, 0))
+    wheel = bpy.context.active_object
+    wheel.name = f"Wheel_{i+1}"
+    wheel.data.materials.append(black_material)
+
+# Set up a basic camera and light for visualization
+bpy.ops.object.camera_add(location=(5, -5, 3))
+camera = bpy.context.active_object
+bpy.context.scene.camera = camera
+
+# Aim camera at the car
+direction = (0, 0, 0.5) - camera.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+camera.rotation_euler = rot_quat.to_euler()
+
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun_light = bpy.context.active_object
+sun_light.data.energy = 3.0
+```

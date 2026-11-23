@@ -1,0 +1,309 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Fix the view settings look - use the correct enum value
+scene = bpy.context.scene
+scene.view_settings.look = 'AgX - Medium High Contrast'
+scene.view_settings.exposure = 0.5
+
+# The camera is too far away and looking at the wrong angle. 
+# Let's reposition it to properly frame the standoff.
+# First, find the camera
+cam = scene.camera
+if cam is None:
+    cams = [obj for obj in bpy.data.objects if obj.type == 'CAMERA']
+    if cams:
+        cam = cams[0]
+        scene.camera = cam
+    else:
+        bpy.ops.object.camera_add(location=(0, -12, 2.5))
+        cam = bpy.context.active_object
+        scene.camera = cam
+
+# Position camera to look at the three gunmen in the stone circle
+# The stone circle is at center (0,0), radius ~8
+# Gunmen are at distance ~3.5 from center in a triangle
+# Camera should be slightly elevated, looking down at the scene
+cam.location = (0, -14, 3.5)
+cam.data.lens = 50
+
+# Point camera at the center of the stone circle
+target = Vector((0, 0, 1.0))
+direction = target - cam.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+
+# Now let's add more detail to make the scene richer
+
+# Get materials
+def get_or_create_material(name, color, roughness=0.8, metallic=0.0):
+    mat = bpy.data.materials.get(name)
+    if mat is None:
+        mat = bpy.data.materials.new(name=name)
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            bsdf.inputs["Base Color"].default_value = color
+            bsdf.inputs["Roughness"].default_value = roughness
+            bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+stone_mat = get_or_create_material("Stone", (0.5, 0.48, 0.45, 1.0), roughness=0.9)
+cemetery_stone_mat = get_or_create_material("CemeteryStone", (0.6, 0.58, 0.55, 1.0), roughness=0.85)
+ground_mat = get_or_create_material("Ground", (0.4, 0.35, 0.25, 1.0), roughness=0.95)
+dirt_mat = get_or_create_material("Dirt", (0.35, 0.3, 0.2, 1.0), roughness=0.95)
+wood_mat = get_or_create_material("Wood", (0.3, 0.2, 0.1, 1.0), roughness=0.8)
+metal_mat = get_or_create_material("Metal", (0.4, 0.4, 0.42, 1.0), roughness=0.3, metallic=0.8)
+hat_mat = get_or_create_material("Hat", (0.2, 0.15, 0.1, 1.0), roughness=0.7)
+coat_mat = get_or_create_material("Coat", (0.3, 0.25, 0.2, 1.0), roughness=0.7)
+skin_mat = get_or_create_material("Skin", (0.8, 0.6, 0.5, 1.0), roughness=0.6)
+pants_mat = get_or_create_material("Pants", (0.25, 0.2, 0.15, 1.0), roughness=0.7)
+boot_mat = get_or_create_material("Boot", (0.15, 0.1, 0.08, 1.0), roughness=0.6)
+hair_mat = get_or_create_material("Hair", (0.1, 0.08, 0.05, 1.0), roughness=0.8)
+scarf_mat = get_or_create_material("Scarf", (0.5, 0.4, 0.3, 1.0), roughness=0.8)
+grass_mat = get_or_create_material("Grass", (0.3, 0.4, 0.2, 1.0), roughness=0.9)
+cross_mat = get_or_create_material("Cross", (0.5, 0.48, 0.45, 1.0), roughness=0.85)
+horse_mat = get_or_create_material("Horse", (0.4, 0.3, 0.2, 1.0), roughness=0.7)
+
+# Add more detailed headstones closer to the action
+for i in range(40):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(10, 25)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    if dist < 10:
+        continue
+    
+    shape_type = random.choice(['rect', 'rounded', 'cross', 'obelisk'])
+    
+    if shape_type == 'rect':
+        height = random.uniform(0.5, 1.0)
+        width = random.uniform(0.25, 0.45)
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height/2))
+        hs = bpy.context.active_object
+        hs.scale = (width/2, 0.08, height/2)
+        hs.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+        hs.data.materials.append(cemetery_stone_mat)
+        
+    elif shape_type == 'rounded':
+        height = random.uniform(0.5, 0.9)
+        width = random.uniform(0.25, 0.4)
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height/2 - 0.08))
+        base = bpy.context.active_object
+        base.scale = (width/2, 0.08, (height - 0.16)/2)
+        base.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+        base.data.materials.append(cemetery_stone_mat)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=width/2, location=(x, y, height - 0.08))
+        top = bpy.context.active_object
+        top.scale = (1, 0.35, 0.45)
+        top.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+        top.data.materials.append(cemetery_stone_mat)
+        
+    elif shape_type == 'cross':
+        height = random.uniform(0.7, 1.3)
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height/2))
+        vbar = bpy.context.active_object
+        vbar.scale = (0.035, 0.035, height/2)
+        vbar.data.materials.append(cross_mat)
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height * 0.6))
+        hbar = bpy.context.active_object
+        hbar.scale = (0.12, 0.035, 0.035)
+        hbar.data.materials.append(cross_mat)
+        
+    elif shape_type == 'obelisk':
+        height = random.uniform(0.8, 1.5)
+        width = random.uniform(0.2, 0.35)
+        bpy.ops.mesh.primitive_cone_add(radius1=width/2, radius2=width/4, depth=height, 
+            location=(x, y, height/2))
+        obelisk = bpy.context.active_object
+        obelisk.scale = (1, 0.3, 1)
+        obelisk.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+        obelisk.data.materials.append(cemetery_stone_mat)
+
+# Add more rocks and debris in the foreground
+for i in range(60):
+    x = random.uniform(-15, 15)
+    y = random.uniform(-15, 15)
+    if math.sqrt(x*x + y*y) < 9:
+        continue
+    
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=random.uniform(0.06, 0.25), 
+        location=(x, y, 0.06))
+    rock = bpy.context.active_object
+    rock.scale = (random.uniform(0.7, 1.4), random.uniform(0.7, 1.4), random.uniform(0.4, 0.8))
+    rock.data.materials.append(stone_mat)
+
+# Add more grass
+for i in range(250):
+    x = random.uniform(-25, 25)
+    y = random.uniform(-25, 25)
+    if math.sqrt(x*x + y*y) < 9:
+        continue
+    
+    bpy.ops.mesh.primitive_cone_add(radius1=0.03, radius2=0.003, depth=0.12, 
+        location=(x, y, 0.06))
+    grass = bpy.context.active_object
+    grass.scale = (1, 1, random.uniform(0.5, 1.6))
+    grass.data.materials.append(grass_mat)
+
+# Add a dirt path from the camera toward the stone circle
+for i in range(25):
+    y = -12 + i * 0.8
+    x = random.uniform(-0.3, 0.3)
+    if y < -8:
+        bpy.ops.mesh.primitive_plane_add(size=1.2, location=(x, y, 0.01))
+        path_piece = bpy.context.active_object
+        path_piece.scale = (1, 1, 1)
+        path_piece.data.materials.append(dirt_mat)
+
+# Add more distant trees
+for i in range(25):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(40, 65)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    trunk_height = random.uniform(2.5, 5)
+    bpy.ops.mesh.primitive_cylinder_add(radius=random.uniform(0.1, 0.18), 
+        depth=trunk_height, location=(x, y, trunk_height/2))
+    trunk = bpy.context.active_object
+    trunk.data.materials.append(wood_mat)
+    
+    num_branches = random.randint(2, 6)
+    for j in range(num_branches):
+        branch_height = trunk_height * random.uniform(0.4, 0.9)
+        branch_angle = random.uniform(0, 2 * math.pi)
+        branch_len = random.uniform(0.5, 1.8)
+        bx = x + branch_len * 0.5 * math.cos(branch_angle)
+        by = y + branch_len * 0.5 * math.sin(branch_angle)
+        bz = branch_height
+        
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.035, depth=branch_len, 
+            location=(bx, by, bz))
+        branch = bpy.context.active_object
+        branch.rotation_euler = (
+            random.uniform(-0.7, 0.7), 
+            random.uniform(-0.7, 0.7), 
+            0
+        )
+        branch.data.materials.append(wood_mat)
+
+# Add more horses scattered around
+for hx, hy in [(12, 8), (-10, 15), (18, -12), (-20, -10), (8, -18)]:
+    # Body
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.32, depth=0.9, location=(hx, hy, 0.65))
+    hbody = bpy.context.active_object
+    hbody.rotation_euler = (0, math.radians(90), 0)
+    hbody.data.materials.append(horse_mat)
+    
+    # Head
+    bpy.ops.mesh.primitive_cube_add(location=(hx + 0.55, hy, 0.95))
+    hhead = bpy.context.active_object
+    hhead.scale = (0.16, 0.11, 0.16)
+    hhead.data.materials.append(horse_mat)
+    
+    # Neck
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.07, depth=0.35, location=(hx + 0.35, hy, 0.85))
+    hneck = bpy.context.active_object
+    hneck.rotation_euler = (0, math.radians(35), 0)
+    hneck.data.materials.append(horse_mat)
+    
+    # Legs
+    for lx, ly in [(hx - 0.22, hy - 0.13), (hx - 0.22, hy + 0.13),
+                   (hx + 0.22, hy - 0.13), (hx + 0.22, hy + 0.13)]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.035, depth=0.45, location=(lx, ly, 0.22))
+        hleg = bpy.context.active_object
+        hleg.data.materials.append(horse_mat)
+    
+    # Tail
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.025, depth=0.45, location=(hx - 0.45, hy, 0.75))
+    htail = bpy.context.active_object
+    htail.rotation_euler = (0, math.radians(25), 0)
+    htail.data.materials.append(horse_mat)
+
+# Add a broken fence in the mid-ground
+for i in range(8):
+    fx = 15 + i * 1.8
+    fy = 20 + random.uniform(-0.3, 0.3)
+    fheight = random.uniform(0.7, 1.1)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=fheight, 
+        location=(fx, fy, fheight/2))
+    post = bpy.context.active_object
+    post.rotation_euler = (random.uniform(-0.15, 0.15), random.uniform(-0.15, 0.15), 0)
+    post.data.materials.append(wood_mat)
+    
+    if i < 7:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.018, depth=1.8, 
+            location=(fx + 0.9, fy, 0.75))
+        rail = bpy.context.active_object
+        rail.rotation_euler = (0, math.radians(90), 0)
+        rail.data.materials.append(wood_mat)
+
+# Add some fallen/tilted headstones
+for i in range(15):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(10, 28)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    if dist < 10:
+        continue
+    
+    height = random.uniform(0.35, 0.65)
+    width = random.uniform(0.22, 0.38)
+    
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, 0.04))
+    fallen = bpy.context.active_object
+    fallen.scale = (width/2, 0.07, height/2)
+    fallen.rotation_euler = (math.radians(80 + random.uniform(-10, 10)), 0, random.uniform(0, 2*math.pi))
+    fallen.data.materials.append(cemetery_stone_mat)
+
+# Add a small cairn (stack of stones) near the stone circle
+cairn_x, cairn_y = 6, 6
+for i in range(5):
+    sz = 0.15 - i * 0.02
+    bpy.ops.mesh.primitive_cube_add(location=(cairn_x, cairn_y, 0.05 + i * 0.12))
+    cstone = bpy.context.active_object
+    cstone.scale = (sz, sz * 0.8, 0.06)
+    cstone.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+    cstone.data.materials.append(stone_mat)
+
+# Add some more distant headstones
+for i in range(30):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(25, 45)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    height = random.uniform(0.4, 0.9)
+    width = random.uniform(0.2, 0.4)
+    
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, height/2))
+    hs = bpy.context.active_object
+    hs.scale = (width/2, 0.07, height/2)
+    hs.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+    hs.data.materials.append(cemetery_stone_mat)
+
+# Set up render settings
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 256
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.resolution_percentage = 100
+
+# Make sure the camera is properly set
+if scene.camera:
+    cam = scene.camera
+    cam.location = (0, -14, 3.5)
+    cam.data.lens = 50
+    target = Vector((0, 0, 1.0))
+    direction = target - cam.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam.rotation_euler = rot_quat.to_euler()
+
+print("Scene further refined")
+print("Total objects:", len(bpy.data.objects))

@@ -1,0 +1,203 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Fix camera to look at the scene
+cam = bpy.data.objects.get("Camera")
+if cam is None:
+    bpy.ops.object.camera_add(location=(0, 12, 40))
+    cam = bpy.context.active_object
+# Position camera in front of maze, looking toward hotel
+cam.location = (0, 10, 45)
+# Look toward the hotel (negative z)
+direction = Vector((0, -20, -55)) - cam.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = cam
+
+# Remove broken snow plane if it exists
+sp = bpy.data.objects.get("Plane")
+if sp:
+    bpy.data.objects.remove(sp, do_unlink=True)
+
+# --- SNOWFALL with small icosphere instances ---
+# Create a tiny snowflake object
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.06, location=(0, -50, 0))
+flake = bpy.context.active_object
+flake.name = "Snowflake"
+mat_flake = bpy.data.materials.new("flake_mat")
+mat_flake.use_nodes = True
+bsdf = mat_flake.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.95, 0.95, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 1.0
+flake.data.materials.append(mat_flake)
+flake.hide_render = True
+flake.hide_viewport = True
+
+# Emitter plane above the scene
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 40, 0))
+snow_plane = bpy.context.active_object
+snow_plane.name = "SnowEmitter"
+snow_plane.rotation_euler = (math.radians(90), 0, 0)
+
+psys = snow_plane.modifiers.new("Snowfall", 'PARTICLE_SYSTEM')
+settings = psys.particle_system.settings
+settings.count = 3000
+settings.frame_start = -100
+settings.frame_end = 500
+settings.lifetime = 300
+settings.emit_from = 'FACE'
+settings.normal_factor = 0.0
+settings.factor_random = 0.3
+settings.effector_weights.gravity = 0.015
+settings.render_type = 'OBJECT'
+settings.instance_object = flake
+settings.particle_size = 1.0
+settings.size_random = 0.5
+settings.use_rotations = True
+settings.rotation_factor_random = 1.0
+settings.phase_factor_random = 1.0
+snow_plane.hide_render = True
+
+# --- ADD TREES around the scene for atmosphere ---
+mat_trunk = bpy.data.materials.new("trunk_mat")
+mat_trunk.use_nodes = True
+mat_trunk.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.15, 0.08, 0.04, 1.0)
+mat_trunk.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+
+mat_snow_tree = bpy.data.materials.new("snow_tree_mat")
+mat_snow_tree.use_nodes = True
+mat_snow_tree.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.85, 0.88, 0.95, 1.0)
+mat_snow_tree.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.9
+
+def add_tree(x, z, scale=1.0):
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3*scale, depth=3*scale, location=(x, 1.5*scale, z))
+    trunk = bpy.context.active_object
+    trunk.data.materials.append(mat_trunk)
+    # Snow-covered cone layers
+    for i in range(4):
+        h = 2.5 + i * 1.5
+        r = (2.5 - i * 0.5) * scale
+        bpy.ops.mesh.primitive_cone_add(radius1=r, radius2=0, depth=2.0*scale, location=(x, h*scale, z))
+        cone = bpy.context.active_object
+        cone.data.materials.append(mat_snow_tree)
+
+# Place trees around the perimeter
+random.seed(42)
+for _ in range(40):
+    angle = random.uniform(0, 2*math.pi)
+    dist = random.uniform(55, 80)
+    tx = math.cos(angle) * dist
+    tz = math.sin(angle) * dist
+    # Avoid placing on the hotel
+    if abs(tx) < 30 and tz < -30:
+        continue
+    add_tree(tx, tz, scale=random.uniform(0.8, 1.5))
+
+# --- PATH from maze to hotel (snowy walkway) ---
+mat_path = bpy.data.materials.new("path_mat")
+mat_path.use_nodes = True
+mat_path.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.85, 0.85, 0.9, 1.0)
+mat_path.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.95
+
+# A path from front of maze to hotel entrance
+for i in range(20):
+    z = -10 - i * 2.5
+    x = random.uniform(-0.5, 0.5)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0.05, z))
+    path_seg = bpy.context.active_object
+    path_seg.scale = (3, 0.1, 1.5)
+    path_seg.data.materials.append(mat_path)
+
+# --- MORE LIGHTING ---
+# Moon glow (large area light from above)
+bpy.ops.object.light_add(type='AREA', location=(0, 50, 0))
+moon = bpy.context.active_object
+moon.name = "Moon"
+moon.data.energy = 800
+moon.data.color = (0.5, 0.6, 0.9)
+moon.data.size = 30
+moon.rotation_euler = (0, 0, 0)
+
+# Blue ambient fill
+bpy.ops.object.light_add(type='SUN', location=(-30, 30, -30))
+blue_fill = bpy.context.active_object
+blue_fill.name = "BlueFill"
+blue_fill.data.energy = 0.15
+blue_fill.data.color = (0.2, 0.3, 0.6)
+blue_fill.rotation_euler = (math.radians(50), 0, math.radians(45))
+
+# Warm spill from hotel windows
+for wx in [-12, -4, 4, 12]:
+    bpy.ops.object.light_add(type='POINT', location=(wx, 5, -40))
+    wl = bpy.context.active_object
+    wl.name = f"WindowGlow_{wx}"
+    wl.data.energy = 20
+    wl.data.color = (1.0, 0.7, 0.3)
+    wl.data.shadow_soft_size = 3
+
+# --- STARS in the sky ---
+# Use a large sphere with emission dots - simpler: add small emissive planes
+mat_star = bpy.data.materials.new("star_mat")
+mat_star.use_nodes = True
+bsdf_s = mat_star.node_tree.nodes["Principled BSDF"]
+bsdf_s.inputs["Emission Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+bsdf_s.inputs["Emission Strength"].default_value = 5.0
+bsdf_s.inputs["Base Color"].default_value = (0, 0, 0, 1.0)
+
+random.seed(123)
+for _ in range(150):
+    theta = random.uniform(0, 2*math.pi)
+    phi = random.uniform(0.1, math.pi/2 - 0.1)
+    r = 150
+    sx = r * math.sin(phi) * math.cos(theta)
+    sy = r * math.cos(phi)
+    sz = r * math.sin(phi) * math.sin(theta)
+    if sy > 5:  # only upper hemisphere
+        bpy.ops.mesh.primitive_plane_add(size=0.3, location=(sx, sy, sz))
+        star = bpy.context.active_object
+        star.rotation_euler = (math.radians(90), 0, 0)
+        star.data.materials.append(mat_star)
+
+# --- MOON DISC ---
+mat_moon = bpy.data.materials.new("moon_mat")
+mat_moon.use_nodes = True
+bsdf_m = mat_moon.node_tree.nodes["Principled BSDF"]
+bsdf_m.inputs["Emission Color"].default_value = (0.9, 0.92, 1.0, 1.0)
+bsdf_m.inputs["Emission Strength"].default_value = 10.0
+bsdf_m.inputs["Base Color"].default_value = (0.9, 0.92, 1.0, 1.0)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=5, location=(40, 80, -60))
+moon_disc = bpy.context.active_object
+moon_disc.data.materials.append(mat_moon)
+
+# --- SNOW DRIFT MOUNDS around the maze ---
+for _ in range(30):
+    dx = random.uniform(-35, 35)
+    dz = random.uniform(-25, 25)
+    # Don't put on paths
+    if abs(dx) < 4 and dz > -15:
+        continue
+    dr = random.uniform(1, 3)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=dr, location=(dx, 0, dz))
+    drift = bpy.context.active_object
+    drift.scale = (1, 0.3, 1)
+    drift.data.materials.append(bpy.data.materials.get("snow"))
+
+# --- RENDER SETTINGS ---
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.view_settings.look = 'Medium High Contrast'
+scene.view_settings.exposure = 0.0
+scene.view_settings.gamma = 1.0
+
+# Set current frame so snow particles exist
+scene.frame_set(100)
+
+print("Scene refined! Camera fixed, trees, stars, moon, snowfall, paths added.")

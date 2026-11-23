@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: mathutils.Vector(): takes at most 1 argument (3 given)",
+ "error_line": "noise_val = noise.noise(Vector(vertex.co.x * 5, vertex.co.y * 5, vertex.co.z * 5))",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  0.979,
+  0.979,
+  1.175
+ ],
+ "scene_center": [
+  0.0,
+  -0.0,
+  0.6
+ ],
+ "scene_radius": 0.9079,
+ "process": "exit 0",
+ "seconds": 1.0,
+ "image": false
+}

@@ -1,0 +1,196 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is too dark. Let's make everything much brighter and fix the camera.
+
+# 1. Make world background brighter
+world = bpy.context.scene.world
+if world:
+    bg = world.node_tree.nodes.get('Background')
+    if bg:
+        bg.inputs['Color'].default_value = (0.05, 0.08, 0.15, 1.0)
+        bg.inputs['Strength'].default_value = 2.0
+
+# 2. Boost ALL lights significantly
+for light in bpy.data.lights:
+    light.energy *= 5
+
+# 3. Make all materials much brighter with strong emission
+for mat in bpy.data.materials:
+    if mat.use_nodes:
+        bsdf = mat.node_tree.nodes.get('Principled BSDF')
+        if bsdf:
+            # Set a bright base color
+            base_color = bsdf.inputs['Base Color'].default_value
+            bsdf.inputs['Base Color'].default_value = (
+                min(1.0, base_color[0] * 3 + 0.3),
+                min(1.0, base_color[1] * 3 + 0.3),
+                min(1.0, base_color[2] * 3 + 0.3),
+                1.0
+            )
+            # Add strong emission
+            bsdf.inputs['Emission Color'].default_value = (
+                min(1.0, base_color[0] * 2 + 0.5),
+                min(1.0, base_color[1] * 2 + 0.5),
+                min(1.0, base_color[2] * 2 + 0.5),
+                1.0
+            )
+            bsdf.inputs['Emission Strength'].default_value = 3.0
+
+# 4. Fix camera - position it to clearly see Kong, ESB, biplanes, and city
+cam_obj = bpy.data.objects.get('Camera')
+if cam_obj:
+    # Position camera at a good viewing angle
+    cam_obj.location = (150, 150, 400)
+    # Look at a point between Kong and the city
+    target = Vector((0, 0, 350))
+    direction = target - cam_obj.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    cam_obj.rotation_euler = rot_quat.to_euler()
+    cam_obj.data.lens = 30  # Wide angle
+
+# 5. Add a strong key light directly on Kong
+key_light = bpy.data.lights.get('KongKey')
+if key_light:
+    key_light.energy = 5000
+    key_light.color = (1.0, 0.9, 0.7)
+    key_obj = bpy.data.objects.get('KongKey')
+    if key_obj:
+        key_obj.location = (50, 50, 550)
+
+# 6. Add more visible biplanes with bright colors
+mat_biplane_bright = bpy.data.materials.new('BiplaneBright')
+mat_biplane_bright.use_nodes = True
+bsdf_bb = mat_biplane_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_bb.inputs['Base Color'].default_value = (1.0, 0.2, 0.2, 1.0)
+bsdf_bb.inputs['Emission Color'].default_value = (1.0, 0.2, 0.2, 1.0)
+bsdf_bb.inputs['Emission Strength'].default_value = 5.0
+
+# Add new biplanes at different positions
+for i in range(8):
+    angle = (i / 8) * 2 * math.pi
+    x = 100 * math.cos(angle)
+    y = 100 * math.sin(angle)
+    z = 480 + 20 * math.sin(angle * 2)
+    
+    # Fuselage
+    bpy.ops.mesh.primitive_cylinder_add(radius=1.5, depth=12, location=(x, y, z), vertices=8)
+    fus = bpy.context.active_object
+    fus.name = f'BrightPlane_{i}_Fus'
+    fus.rotation_euler = (0, math.radians(90), angle + math.pi/2)
+    fus.data.materials.append(mat_biplane_bright)
+    
+    # Wings
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z+2))
+    wing = bpy.context.active_object
+    wing.name = f'BrightPlane_{i}_Wing'
+    wing.scale = (16, 1, 0.5)
+    wing.rotation_euler = (0, 0, angle + math.pi/2)
+    wing.data.materials.append(mat_biplane_bright)
+    
+    # Tail
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z-6))
+    tail = bpy.context.active_object
+    tail.name = f'BrightPlane_{i}_Tail'
+    tail.scale = (0.5, 6, 1.5)
+    tail.rotation_euler = (0, 0, angle + math.pi/2)
+    tail.data.materials.append(mat_biplane_bright)
+
+# 7. Make Kong much bigger and brighter
+mat_kong_bright = bpy.data.materials.new('KongBright')
+mat_kong_bright.use_nodes = True
+bsdf_kb = mat_kong_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_kb.inputs['Base Color'].default_value = (0.6, 0.5, 0.4, 1.0)
+bsdf_kb.inputs['Emission Color'].default_value = (0.6, 0.5, 0.4, 1.0)
+bsdf_kb.inputs['Emission Strength'].default_value = 5.0
+
+# Recreate Kong with brighter material
+# Remove old Kong parts
+for obj in list(bpy.data.objects):
+    if obj.name.startswith('Kong_') or obj.name.startswith('Fur_'):
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# New Kong - larger
+add_sphere = lambda name, r, loc, mat, scale=(1,1,1): (
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=loc, segments=16, ring_count=8),
+    bpy.context.active_object.name := name,
+    bpy.context.active_object.scale := scale,
+    bpy.context.active_object.data.materials.append(mat)
+)[0]
+
+# Torso
+bpy.ops.mesh.primitive_uv_sphere_add(radius=20, location=(0, 0, 490), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_Torso'
+obj.scale = (1.3, 1.0, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=12, location=(0, 0, 525), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_Head'
+obj.scale = (1, 1, 1.1)
+obj.data.materials.append(mat_kong_bright)
+
+# Arms
+bpy.ops.mesh.primitive_uv_sphere_add(radius=8, location=(-12, 0, 505), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_ArmL'
+obj.scale = (0.6, 0.6, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=8, location=(12, 0, 505), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_ArmR'
+obj.scale = (0.6, 0.6, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+# Legs
+bpy.ops.mesh.primitive_uv_sphere_add(radius=9, location=(-10, 0, 470), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_LegL'
+obj.scale = (0.8, 0.8, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=9, location=(10, 0, 470), segments=16, ring_count=8)
+obj = bpy.context.active_object
+obj.name = 'Kong_LegR'
+obj.scale = (0.8, 0.8, 1.5)
+obj.data.materials.append(mat_kong_bright)
+
+# Eyes (bright)
+mat_eye = bpy.data.materials.new('EyeMat')
+mat_eye.use_nodes = True
+bsdf_e = mat_eye.node_tree.nodes.get('Principled BSDF')
+bsdf_e.inputs['Base Color'].default_value = (1.0, 1.0, 0.5, 1.0)
+bsdf_e.inputs['Emission Color'].default_value = (1.0, 1.0, 0.5, 1.0)
+bsdf_e.inputs['Emission Strength'].default_value = 20.0
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3, location=(-5, 8, 527), segments=8, ring_count=4)
+obj = bpy.context.active_object
+obj.name = 'Kong_EyeL'
+obj.data.materials.append(mat_eye)
+
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3, location=(5, 8, 527), segments=8, ring_count=4)
+obj = bpy.context.active_object
+obj.name = 'Kong_EyeR'
+obj.data.materials.append(mat_eye)
+
+# 8. Make ESB brighter
+mat_building_bright = bpy.data.materials.new('BuildingBright')
+mat_building_bright.use_nodes = True
+bsdf_bb = mat_building_bright.node_tree.nodes.get('Principled BSDF')
+bsdf_bb.inputs['Base Color'].default_value = (0.5, 0.5, 0.6, 1.0)
+bsdf_bb.inputs['Emission Color'].default_value = (0.5, 0.5, 0.6, 1.0)
+bsdf_bb.inputs['Emission Strength'].default_value = 3.0
+
+# Apply to ESB parts
+for obj_name in ['ESB_Main', 'ESB_Upper', 'ESB_Setback', 'ESB_Crown', 'ESB_SpireBase', 'ESB_Spire', 'ESB_SpireTip']:
+    obj = bpy.data.objects.get(obj_name)
+    if obj:
+        obj.data.materials.clear()
+        obj.data.materials.append(mat_building_bright)
+
+print("Scene dramatically brightened: world, lights, materials, Kong, ESB, biplanes all boosted. Camera repositioned.")

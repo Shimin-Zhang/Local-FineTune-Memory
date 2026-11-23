@@ -1,0 +1,249 @@
+import bpy
+import math
+import random
+from mathutils import Vector, Matrix
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set units
+scene = bpy.context.scene
+scene.unit_settings.system = 'METRIC'
+scene.unit_settings.scale_length = 1.0
+
+random.seed(42)
+
+# ---------- MATERIALS ----------
+def make_mat(name, color, rough=0.8, metal=0.0, emission=0.0, emit_col=(1,1,1,1)):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    if emission > 0:
+        bsdf.inputs["Emission Strength"].default_value = emission
+        bsdf.inputs["Emission Color"].default_value = emit_col
+    return mat
+
+mat_gravel   = make_mat("Gravel",  (0.35, 0.32, 0.28, 1), rough=0.95)
+mat_wall     = make_mat("CabinWall", (0.85, 0.80, 0.70, 1), rough=0.85)
+mat_roof     = make_mat("Roof",    (0.25, 0.20, 0.18, 1), rough=0.9)
+mat_garage   = make_mat("GarageWall", (0.70, 0.65, 0.55, 1), rough=0.85)
+mat_garageR  = make_mat("GarageRoof", (0.22, 0.18, 0.16, 1), rough=0.9)
+mat_door     = make_mat("Door",    (0.30, 0.22, 0.15, 1), rough=0.7)
+mat_window   = make_mat("Window",  (0.10, 0.15, 0.20, 1), rough=0.3, metal=0.1)
+mat_neon     = make_mat("Neon",    (0.0, 0.0, 0.0, 1), rough=0.5, emission=2.0, emit_col=(1.0, 0.1, 0.1, 1))
+mat_neon2    = make_mat("NeonBlue",(0.0, 0.0, 0.0, 1), rough=0.5, emission=2.0, emit_col=(0.1, 0.3, 1.0, 1))
+mat_neon3    = make_mat("NeonGreen",(0.0,0.0,0.0,1), rough=0.5, emission=2.0, emit_col=(0.1,1.0,0.2,1))
+mat_swing    = make_mat("SwingFrame",(0.4,0.4,0.4,1), rough=0.6, metal=0.8)
+mat_swingSeat= make_mat("SwingSeat",(0.3,0.2,0.1,1), rough=0.8)
+mat_trunk    = make_mat("Trunk",   (0.25, 0.18, 0.12, 1), rough=0.95)
+mat_leaves   = make_mat("Leaves",  (0.15, 0.35, 0.10, 1), rough=0.9)
+mat_pole     = make_mat("Pole",    (0.3, 0.3, 0.3, 1), rough=0.6, metal=0.7)
+mat_ground   = make_mat("Ground",  (0.25, 0.30, 0.20, 1), rough=0.95)
+mat_roofTrim = make_mat("RoofTrim",(0.5,0.45,0.40,1), rough=0.8)
+
+# ---------- HELPERS ----------
+def add_box(name, size, loc, mat, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc, rotation=rot)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0], size[1], size[2])
+    obj.data.materials.append(mat)
+    return obj
+
+def add_cyl(name, r, depth, loc, mat, rot=(0,0,0), verts=16):
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=depth, location=loc, rotation=rot, vertices=verts)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(mat)
+    return obj
+
+def add_sphere(name, r, loc, mat, segs=16, rings=12):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, location=loc, segments=segs, ring_count=rings)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(mat)
+    return obj
+
+def add_cone(name, r, depth, loc, mat, rot=(0,0,0), verts=16):
+    bpy.ops.mesh.primitive_cone_add(radius1=r, radius2=0, depth=depth, location=loc, rotation=rot, vertices=verts)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(mat)
+    return obj
+
+# ---------- GROUND ----------
+bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.data.materials.append(mat_ground)
+
+# Gravel court (oval-ish area)
+bpy.ops.mesh.primitive_cylinder_add(radius=18, depth=0.05, location=(0, 0, 0.025), vertices=64)
+court = bpy.context.active_object
+court.name = "GravelCourt"
+court.scale = (1.0, 0.65, 1.0)
+court.data.materials.append(mat_gravel)
+
+# ---------- CABIN + GARAGE ----------
+def build_cabin_garage(index, cx, cy, angle_deg):
+    """Build a small gabled cabin with attached garage, neon sign, swing, and shade tree."""
+    angle = math.radians(angle_deg)
+    # Local frame: forward = +Y rotated by angle
+    fwd = Vector((math.sin(angle), math.cos(angle), 0))
+    right = Vector((math.cos(angle), -math.sin(angle), 0))
+
+    # Cabin dimensions
+    cab_w, cab_d, cab_h = 4.0, 5.0, 2.8   # width, depth, wall height
+    roof_h = 1.5                           # gable peak height above walls
+
+    # Garage dimensions
+    gar_w, gar_d, gar_h = 3.5, 4.0, 2.5
+    gar_roof_h = 0.8
+
+    # Cabin center offset from (cx,cy): cabin is behind garage
+    cab_center = Vector((cx, cy, 0)) + right * (cab_w/2 + 0.3) + fwd * (cab_d/2)
+    gar_center = Vector((cx, cy, 0)) + fwd * (gar_d/2)
+
+    # --- Cabin walls ---
+    add_box(f"Cabin_{index}", (cab_w, cab_d, cab_h),
+            (cab_center.x, cab_center.y, cab_h/2), mat_wall)
+
+    # --- Cabin gable roof (two sloped planes + triangular gable ends) ---
+    # Roof ridge runs along X (width direction)
+    ridge_z = cab_h + roof_h
+    # Left roof panel
+    roof_l = add_box(f"CabinRoofL_{index}", (cab_w + 0.3, 0.1, cab_d * math.cos(math.atan2(roof_h, cab_d/2)) + 0.3),
+                     (cab_center.x - cab_w/4, cab_center.y, cab_h + roof_h/2), mat_roof)
+    roof_l.rotation_euler = (0, math.atan2(roof_h, cab_d/2), 0)
+    # Right roof panel
+    roof_r = add_box(f"CabinRoofR_{index}", (cab_w + 0.3, 0.1, cab_d * math.cos(math.atan2(roof_h, cab_d/2)) + 0.3),
+                     (cab_center.x + cab_w/4, cab_center.y, cab_h + roof_h/2), mat_roof)
+    roof_r.rotation_euler = (0, -math.atan2(roof_h, cab_d/2), 0)
+
+    # Gable end triangles (front and back)
+    for end in [-1, 1]:
+        gable_y = cab_center.y + end * cab_d/2
+        # Use a cone (triangular prism approximation) or just a thin box
+        add_box(f"Gable_{index}_{end}", (cab_w, 0.05, roof_h),
+                (cab_center.x, gable_y, cab_h + roof_h/2), mat_wall)
+
+    # --- Door on front of cabin ---
+    door_loc = cab_center + fwd * (cab_d/2 + 0.02)
+    add_box(f"Door_{index}", (1.0, 0.08, 2.0), (door_loc.x, door_loc.y, 1.0), mat_door)
+
+    # --- Windows ---
+    for wx in [-1.0, 1.0]:
+        wloc = cab_center + right * wx + fwd * (cab_d/2 + 0.02)
+        add_box(f"Window_{index}_{wx}", (0.8, 0.06, 1.0), (wloc.x, wloc.y, 1.6), mat_window)
+
+    # --- Garage ---
+    add_box(f"Garage_{index}", (gar_w, gar_d, gar_h),
+            (gar_center.x, gar_center.y, gar_h/2), mat_garage)
+    # Garage flat-ish roof
+    add_box(f"GarageRoof_{index}", (gar_w + 0.2, gar_d + 0.2, 0.15),
+            (gar_center.x, gar_center.y, gar_h + 0.075), mat_garageR)
+    # Garage door
+    gdoor_loc = gar_center + fwd * (gar_d/2 + 0.02)
+    add_box(f"GarageDoor_{index}", (2.5, 0.08, 2.2), (gdoor_loc.x, gdoor_loc.y, 1.1), mat_door)
+
+    # --- Neon sign on a pole beside the cabin ---
+    pole_x = cab_center.x + right.x * (cab_w/2 + 1.5)
+    pole_y = cab_center.y + right.y * (cab_w/2 + 1.5)
+    add_cyl(f"SignPole_{index}", 0.06, 4.0, (pole_x, pole_y, 2.0), mat_pole)
+    # Neon sign board
+    sign_colors = [mat_neon, mat_neon2, mat_neon3]
+    add_box(f"NeonSign_{index}", (2.0, 0.08, 0.8),
+            (pole_x, pole_y, 3.8), sign_colors[index % 3])
+    # Small neon tube ring
+    add_cyl(f"NeonRing_{index}", 0.3, 0.05, (pole_x, pole_y, 3.2), sign_colors[(index+1) % 3], rot=(math.pi/2, 0, 0))
+
+    # --- Swing set ---
+    swing_x = cab_center.x + right.x * (cab_w/2 + 3.0)
+    swing_y = cab_center.y - right.y * 1.0
+    # A-frame legs
+    for leg in [-1, 1]:
+        lx = swing_x + leg * 0.8
+        add_cyl(f"SwingLeg_{index}_{leg}", 0.04, 2.2, (lx, swing_y, 1.1), mat_swing)
+    # Top bar
+    add_cyl(f"SwingBar_{index}", 0.04, 1.8, (swing_x, swing_y, 2.2), mat_swing, rot=(0, math.pi/2, 0))
+    # Seat
+    add_box(f"SwingSeat_{index}", (0.5, 0.15, 0.05), (swing_x, swing_y, 0.6), mat_swingSeat)
+    # Chains (thin cylinders)
+    for ch in [-0.2, 0.2]:
+        add_cyl(f"SwingChain_{index}_{ch}", 0.01, 1.6, (swing_x + ch, swing_y, 1.4), mat_swing)
+
+    # --- Big shade tree ---
+    tree_x = cab_center.x + right.x * (cab_w/2 + 5.0)
+    tree_y = cab_center.y + right.y * 2.0
+    add_cyl(f"Trunk_{index}", 0.25, 4.0, (tree_x, tree_y, 2.0), mat_trunk, verts=12)
+    # Canopy: several overlapping spheres
+    for i in range(5):
+        ox = (random.random() - 0.5) * 2.5
+        oy = (random.random() - 0.5) * 2.5
+        oz = 3.5 + random.random() * 2.0
+        r = 1.2 + random.random() * 1.0
+        add_sphere(f"Leaves_{index}_{i}", r, (tree_x + ox, tree_y + oy, oz), mat_leaves, segs=12, rings=8)
+
+# ---------- ARRANGE CABINS AROUND THE COURT ----------
+num_cabins = 8
+radius = 14.0
+for i in range(num_cabins):
+    angle_deg = (i / num_cabins) * 360
+    cx = radius * math.sin(math.radians(angle_deg))
+    cy = radius * 0.65 * math.cos(math.radians(angle_deg))  # elliptical court
+    # Face inward (toward center)
+    face_angle = angle_deg + 180
+    build_cabins_garage = build_cabin_garage(i, cx, cy, face_angle)
+
+# ---------- CENTRAL NEON SIGN (MOTEL SIGN) ----------
+# Big vertical sign in the center-front of the court
+sign_base_x, sign_base_y = 0, -8
+add_cyl("CentralSignPole", 0.15, 8.0, (sign_base_x, sign_base_y, 4.0), mat_pole, verts=12)
+# Sign board
+add_box("CentralSignBoard", (3.0, 0.15, 5.0), (sign_base_x, sign_base_y, 6.0), mat_neon)
+# Text-like neon strips
+for i in range(4):
+    add_box(f"NeonStrip_{i}", (2.5, 0.05, 0.3), (sign_base_x, sign_base_y - 0.1, 4.5 + i * 1.0), mat_neon2)
+# Arrow neon
+add_box("NeonArrow", (1.5, 0.05, 0.4), (sign_base_x + 1.5, sign_base_y - 0.1, 8.0), mat_neon3)
+
+# ---------- LIGHTING ----------
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(20, -30, 40))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.data.color = (1.0, 0.95, 0.85)
+sun.rotation_euler = (math.radians(50), 0, math.radians(30))
+
+# Ambient
+bpy.ops.object.light_add(type='Hemi', location=(0, 0, 30))
+hemi = bpy.context.active_object
+hemi.name = "Ambient"
+hemi.data.strength = 0.3
+hemi.data.sky_color = (0.4, 0.5, 0.7)
+hemi.data.ground_color = (0.2, 0.15, 0.1)
+
+# ---------- CAMERA ----------
+bpy.ops.object.camera_add(location=(25, -25, 15))
+cam = bpy.context.active_object
+cam.name = "Camera"
+# Point camera at center
+target = Vector((0, 0, 2))
+direction = target - cam.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+scene.camera = cam
+
+# Set render settings
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+scene.view_settings.view_transform = 'Filmic'
+scene.view_settings.look = 'Medium High Contrast'
+
+print("1930s Motor Court built successfully!")

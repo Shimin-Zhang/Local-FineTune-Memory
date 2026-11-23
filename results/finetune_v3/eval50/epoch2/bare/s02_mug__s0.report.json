@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "ValueError: too many values to unpack (expected 2)",
+ "error_line": "oak, oak2, red, white, steam, coal, brass, dark = (paint(c, rough=r) for c, r in (((.22, .12, .07), .7), ((.16, .08, .05), .7), ((.62, .05, .05), .25), ((.8, .78, .72), .5), ((.9, .95, 1), 1.2, .9), (",
+ "n_renderable_objects": 0,
+ "object_types": {},
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.7321,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.7,
+ "image": true
+}

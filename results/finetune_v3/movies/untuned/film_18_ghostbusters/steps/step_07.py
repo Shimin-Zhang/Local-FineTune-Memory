@@ -1,0 +1,119 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Final polish - add a few more details to complete the scene
+# 1. Add a few more people
+# 2. Add some more atmospheric elements
+# 3. Add a few more street details
+# 4. Improve the overall color balance
+# 5. Add a few more building details
+# 6. Add some more varied car colors
+# 7. Add a few more people on the sidewalks
+# 8. Add some more atmospheric dust
+# 9. Final camera and lighting adjustment
+
+# Add a few more people
+for i in range(5):
+    x = random.uniform(-5, 5)
+    y = random.uniform(-8, 8)
+    if abs(x) < 2:
+        continue
+    z = 0.8
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2, location=(x, y, z))
+    person = bpy.context.active_object
+    person.name = f"LastPerson_{i}"
+    person.scale = (0.5, 0.5, 0.9)
+    cloth_colors = [
+        (0.5, 0.2, 0.2, 1.0), (0.2, 0.3, 0.5, 1.0), (0.3, 0.5, 0.3, 1.0),
+        (0.6, 0.5, 0.2, 1.0), (0.4, 0.2, 0.5, 1.0),
+    ]
+    color = random.choice(cloth_colors)
+    mat_person = bpy.data.materials.new(f"LastPerson_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0)]
+    skin = random.choice(skin_colors)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.13, location=(x, y, 1.05))
+    phead = bpy.context.active_object
+    phead.name = f"LastPerson_{i}_Head"
+    mat_phead = bpy.data.materials.new(f"LastPerson_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = skin
+    phead.data.materials.append(mat_phead)
+
+# Add a few more atmospheric dust particles
+for i in range(10):
+    x = random.uniform(-2, 2)
+    y = random.uniform(-3, 3)
+    z = random.uniform(0.1, 1)
+    size = random.uniform(0.005, 0.02)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    dust = bpy.context.active_object
+    dust.name = f"LastDust_{i}"
+    mat_dust = bpy.data.materials.new(f"LastDust_{i}_mat")
+    mat_dust.use_nodes = True
+    bsdf = mat_dust.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.2, 0.2, 0.2, 1.0)
+    bsdf.inputs['Roughness'].default_value = 1.0
+    dust.data.materials.append(mat_dust)
+
+# Add a few more building windows
+for i in range(10):
+    side = random.choice([-1, 1])
+    x = side * (12 + random.uniform(0, 3))
+    y = random.uniform(-45, 45)
+    z = random.uniform(2, 18)
+    bpy.ops.mesh.primitive_cube_add(size=0.15, location=(x - side * 0.15, y, z))
+    win = bpy.context.active_object
+    win.name = f"LastWin2_{i}"
+    if random.random() > 0.5:
+        mat_win = bpy.data.materials.new(f"LastWin2_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (1.0, 0.9, 0.5, 1.0)
+        bsdf.inputs['Emission Color'].default_value = (1.0, 0.8, 0.4, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = 0.5
+    else:
+        mat_win = bpy.data.materials.new(f"LastWin2_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (0.01, 0.01, 0.04, 1.0)
+    win.data.materials.append(mat_win)
+
+# Add a few more stars
+for i in range(10):
+    x = random.uniform(-30, 30)
+    y = random.uniform(-30, -5)
+    z = random.uniform(20, 45)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.03, location=(x, y, z))
+    star = bpy.context.active_object
+    star.name = f"LastStar_{i}"
+    mat_star = bpy.data.materials.new(f"LastStar_{i}_mat")
+    mat_star.use_nodes = True
+    bsdf = mat_star.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Strength'].default_value = 1.5
+    star.data.materials.append(mat_star)
+
+# Final camera adjustment
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, -15, 2)
+    camera.rotation_euler = (math.radians(90), 0, 0)
+    camera.data.lens = 25
+
+# Adjust the world background to be slightly less dark
+world = bpy.data.worlds.get("World")
+if world:
+    world_node_tree = world.node_tree
+    for node in world_node_tree.nodes:
+        if node.type == 'BACKGROUND':
+            node.inputs['Color'].default_value = (0.02, 0.02, 0.

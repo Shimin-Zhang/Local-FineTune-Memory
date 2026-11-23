@@ -1,0 +1,101 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(946)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def stuff(rgb, em=0, rough=.85):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+gravel, road, lawn, wood, wood2 = stuff((.2, .17, .13)), stuff((.07, .06, .06)), stuff((.1, .2, .07)), stuff((.35, .22, .12)), stuff((.22, .14, .08))
+roof, white, trunk, leaf, leaf2 = stuff((.3, .1, .08)), stuff((.6, .55, .45)), stuff((.2, .12, .07)), stuff((.12, .28, .08)), stuff((.2, .35, .08))
+neon, neon2, neon3, bulb, glass = stuff((1, .1, .3), 14), stuff((.1, .8, 1), 14), stuff((1, .7, .1), 12), stuff((1, .85, .5), 10), stuff((1, .7, .3), 6)
+car, tire, chrome = stuff((.7, .08, .06), rough=.3), stuff((.03, .03, .03)), stuff((.7, .7, .75), rough=.2)
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, at, rot)
+def cyl(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, at, rot)
+def gable(at, w, d, h, rise, m, ridge_y=0):
+    bm = bmesh.new(); p = [bm.verts.new(c) for c in ((-w/2, -d/2, 0), (w/2, -d/2, 0), (w/2, d/2, 0), (-w/2, d/2, 0), (-w/2, 0, rise), (w/2, 0, rise))]
+    for f in ((0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 3, 2, 1)): bm.faces.new([p[i] for i in f])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return mk(bm, m, at)
+def beam(a, b, w, m):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * w, (v.co.z + .5) * d.length))
+    return mk(bm, m, a, d.to_track_quat('Z', 'Y').to_euler())
+def bulb(at, r, m):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    return mk(bm, m, at)
+def lamp(kind, at, col, e, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = col, e
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=15, depth=3)
+for v in bm.verts:
+    v.co.x *= 1.15
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .3)))
+    v.co.z -= 1.5
+mk(bm, gravel)
+blk((0, -7.5, 0), (26, 3.4, .06), road)
+blk((0, 5.5, 0), (22, 1.2, .06), road)
+# four cabins, each with a gable roof, porch, garage with door and a neon sign
+cols = (neon, neon2, neon3, neon)
+for i, x in enumerate((-9.5, -3.2, 3.2, 9.5)):
+    blk((x, 5.5, 0), (4.4, 3.6, 2.2), white); gable((x, 5.5, 2.2), 4.8, 4.2, .1, 1.5, roof)
+    blk((x, 3.6, 0), (3.6, .5, .15), wood2); blk((x, 3.3, 2.0), (3.8, .15, .15), wood2)
+    for sx in (-1.5, 1.5): blk((x + sx, 3.4, 0), (.15, .15, 2.0), wood)
+    blk((x, 3.7, 0), (.9, .1, 1.6), wood2); blk((x + 1.4, 3.68, .9), (.8, .08, .9), glass)
+    blk((x + 1.4, 3.6, 1.8), (.9, .1, .08), bulb)
+    gx = x - 4.0
+    blk((gx, 5.5, 0), (2.6, 3.2, 1.9), wood); gable((gx, 5.5, 1.9), 3.0, 3.6, .1, 1.0, roof)
+    blk((gx, 3.85, 0), (1.8, .12, 1.4), white)
+    for k in range(3): blk((gx - .6 + k * .6, 3.78, 0), (.06, .06, 1.4), wood2)
+    blk((x, 3.0, 2.3), (1.5, .12, .9), cols[i]); blk((x, 2.9, 2.2), (1.8, .1, .12), white)
+    lamp("POINT", (x, 2.2, 2.7), (1, .2, .45) if i % 2 == 0 else (.2, .8, 1), 450)
+    lamp("POINT", (x + 1.4, 3.2, 1.4), (1, .7, .3), 120)
+# office with a tall neon sign at the front left
+blk((-12.5, -4, 0), (3.4, 2.6, 2.6), wood); gable((-12.5, -4, 2.6), 3.8, 3.0, .1, 1.2, roof)
+blk((-12.5, -5.35, .8), (1.2, .1, 1.0), glass); blk((-12.5, -5.4, 2.6), (1.4, .1, .8), neon3)
+blk((-12.5, -5.5, 3.4), (2.4, .15, .5), neon)
+lamp("POINT", (-12.5, -6.5, 3.6), (1, .7, .1), 700)
+# swing on a forked pole, a big shade tree, lamps and a parked car
+sx0 = 7.0
+for s in (-1, 1): beam((sx0 + s * 1.2, -2.0, 0), (sx0 + s * 1.2, -2.0, 2.6), .16, trunk)
+beam((sx0 - 1.2, -2.0, 2.6), (sx0 + 1.2, -2.0, 2.6), .16, trunk)
+for s in (-.3, .3): beam((sx0 + s, -2.0, 2.6), (sx0 + s, -2.0, 1.0), .05, chrome)
+blk((sx0, -2.0, .9), (.9, .5, .1), wood2)
+tx, ty = 11.0, -4.0
+cyl((tx, ty, 0), .55, 4.2, 6, trunk, .3)
+for k, (dx, dy, dz, r) in enumerate(((0, 0, 5.2, 2.4), (-1.8, .5, 4.6, 1.8), (1.8, -.4, 4.8, 1.9), (0, 1.6, 4.4, 1.7))):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.1)
+    mk(bm, leaf if k % 2 else leaf2, (tx + dx, ty + dy, dz))
+beam((tx - 2.5, ty + 1.5, 0), (tx - 3.2, ty + 2.2, 1.0), .14, trunk); beam((tx - 3.2, ty + 2.2, 1.0), (tx - 2.4, ty + 1.4, 1.0), .14, trunk)
+for x in (-7, 0, 7):
+    beam((x, -5.5, 0), (x, -5.5, 3.2), .1, chrome); cyl((x, -5.5, 3.2), .35, .4, 6, bulb)
+    lamp("POINT", (x, -5.5, 3.6), (1, .8, .4), 200)
+cx, cy = 1.0, -7.5
+blk((cx, cy, .6), (4.4, 2.0, .9), car); blk((cx, cy, 1.5), (2.2, 1.8, .8), car, (0, 0, 0))
+blk((cx - .2, cy, 1.55), (1.8, 1.5, .1), glass)
+for dx in (-1.5, 1.5):
+    for dy in (-1.0, 1.0): cyl((cx + dx, cy + dy, .5), .5, .35, 8, tire, rot=(math.pi / 2, 0, 0))
+for dx in (-2.25, 2.25): blk((cx + dx, cy - .7, .9), (.1, .4, .3), bulb)
+lamp("SUN", (-24, -22, 10), (.9, .5, .35), 4, (0, 0, 1)); lamp("SUN", (22, 24, 12), (.3, .4, .9), 2.2, (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .02, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((10, -62, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,82 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1355)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(rgb, glow=0, rough=.9):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if glow:
+        n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = glow
+    return m
+basalt, basalt2, foam, sea, sand = paint((.07, .08, .11)), paint((.11, .12, .15)), paint((.7, .75, .8)), paint((.03, .1, .16), rough=.3), paint((.25, .22, .17))
+skin, boot, turf, thatch, timber = paint((.45, .35, .27)), paint((.2, .12, .07)), paint((.1, .22, .1)), paint((.3, .2, .1)), paint((.2, .12, .07))
+lantern, lantern2 = paint((1, .6, .2), 14), paint((1, .6, .2), 10)
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("o", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def prism(at, r, h, m, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def block(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return add(bm, m, at, rot)
+def boulder(at, r, m, sq=.7):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.8, 1.2); v.co.z *= sq
+    return add(bm, m, at)
+def glowlight(rgb, w, at):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = rgb, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=5, radius2=12, depth=3.2)
+for v in bm.verts:
+    v.co.z -= 1.6
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .3)))
+add(bm, sand)
+block((0, -7.2, .05), (17, 8, .12), sea)
+for i in range(7):
+    a = i * .9 + .2
+    block((math.cos(a) * 10, -7.2 + math.sin(a) * 2.5, .15), (3.2, .5, .1), foam, (0, 0, a + 1.57)).scale.z = 1
+# hexagonal basalt columns on the land, stepping stones into the sea
+for i in range(16):
+    x, y = random.uniform(-10, 1), random.uniform(-1.5, 9.5)
+    if y > 6 and x < -6: continue
+    h = random.uniform(1.2, 2.8)
+    prism((x, y, 0), random.uniform(.9, 1.2), h, basalt if i % 2 else basalt2)
+    prism((x, y, h), .95, .12, basalt2 if i % 2 else basalt)
+for k, (x, y) in enumerate(((2.5, -3), (4, -4.5), (5.8, -5.8), (7.6, -6.8), (9.4, -7.5))):
+    prism((x, y, -.1), 1.0, .8 + .1 * k, basalt2 if k % 2 else basalt); prism((x, y, .6 + .1 * k), .95, .1, basalt)
+# the sleeping giant's boot: a huge foot with a heel and a curled toe, on its side
+block((-3, 3.5, 0), (5.2, 3.2, 2.4), skin, (0, 0, .15)); block((-6.2, 3.2, 0), (2.6, 2.6, 3.2), skin, (0, 0, .15))
+block((-3, 3.5, 2.4), (5.2, 3.2, .5), turf, (0, 0, .15))
+for i in range(5): block((-5.2 + i * 1.0, 2.2, 0), (.8, .8, .9), skin, (0, 0, .15))
+block((-1.5, 3.5, .3), (.7, 2.6, .6), boot, (0, 0, .15)); block((-6.2, 3.2, 1.6), (2.6, 2.6, .6), boot, (0, 0, .15))
+for x, y in ((-8, 6), (-5, 7.5), (0, 7.5), (4, 6.5)): boulder((x, y, 0), random.uniform(1.2, 1.8), turf, .8)
+# fisherman's hut with a glowing window, door, thatch roof and chimney
+hx, hy = -6.5, -3.5
+block((hx, hy, 0), (4, 3, 2.2), timber)
+for i in range(5): block((hx - 1.8 + i * .9, hy - 1.55, 0), (.15, .1, 2.2), boot)
+block((hx, hy, 2.2), (4.8, 3.8, .3), thatch, (0, 0, 0)); block((hx, hy, 2.5), (4.2, 3.2, .25), thatch)
+block((hx - 1, hy - 1.55, .9), (.9, .1, .8), lantern2); block((hx + 1, hy - 1.55, 0), (.9, .1, 1.5), boot)
+block((hx + 1.3, hy + .8, 2.4), (.7, .7, 1.2), basalt2)
+glowlight((1, .6, .2), 250, (hx - 1, hy - 2.5, 1.4))
+# lantern on a post, a net, a boat, a fish
+prism((2.5, -1.5, 0), .12, 3.2, timber, 5); block((2.2, -1.8, 3.2), (.7, .7, .8), lantern); glowlight((1, .6, .2), 350, (2.5, -1.5, 3.5))
+block((hx + 3.5, hy - 1.5, 0), (2.4, .1, .1), timber); block((hx + 3.5, hy - 1.5, 1.4), (2.4, .1, .1), timber)
+for i in range(5): block((hx + 2.5 + i * .5, hy - 1.5, .1), (.06, .06, 1.3), timber)
+block((8.5, -3.5, .1), (3, 1.1, .5), timber, (0, 0, .3)); block((8.5, -3.5, .6), (1.4, .8, .3), boot, (0, 0, .3))
+for i in range(6): boulder((random.uniform(-9, 9), random.uniform(-9, -5.5), .15), random.uniform(.3, .6), basalt2, .8)
+for c, w, p in (((.5, .6, 1), 5, (-24, -12, 8)), ((1, .5, .35), 2.2, (22, 16, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .04, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80; cm.clip_end = 500
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+t = Vector((0, 0, 1)); co.location = t + Vector((12, -50, 32))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,277 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a collection for the bedroom
+bedroom = bpy.data.collections.new("Bedroom")
+bpy.context.scene.collection.children.link(bedroom)
+
+def create_mesh_object(name, vertices, faces, location=(0, 0, 0), collection=bedroom):
+    """Create a mesh object from vertices and faces."""
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    collection.objects.link(obj)
+    obj.location = location
+    return obj
+
+def create_box(name, size, location=(0, 0, 0), collection=bedroom):
+    """Create a simple box object."""
+    w, h, d = size
+    vertices = [
+        (-w/2, -h/2, -d/2),
+        ( w/2, -h/2, -d/2),
+        ( w/2,  h/2, -d/2),
+        (-w/2,  h/2, -d/2),
+        (-w/2, -h/2,  d/2),
+        ( w/2, -h/2,  d/2),
+        ( w/2,  h/2,  d/2),
+        (-w/2,  h/2,  d/2),
+    ]
+    faces = [
+        (0, 1, 2, 3),  # bottom
+        (4, 5, 6, 7),  # top
+        (0, 1, 5, 4),  # front
+        (2, 3, 7, 6),  # back
+        (0, 3, 7, 4),  # left
+        (1, 2, 6, 5),  # right
+    ]
+    return create_mesh_object(name, vertices, faces, location, collection)
+
+def create_cylinder(name, radius, depth, location=(0, 0, 0), collection=bedroom):
+    """Create a cylinder object."""
+    mesh = bpy.data.meshes.new(name)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=radius, depth=depth, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    # Move to collection
+    for col in obj.users_collection:
+        col.objects.unlink(obj)
+    collection.objects.link(obj)
+    return obj
+
+# ============================================
+# ROOM STRUCTURE (Floor, Walls, Ceiling)
+# ============================================
+
+# Floor
+floor = create_box("Floor", (8, 6, 0.1), location=(0, 0, -0.05))
+
+# Back wall (behind bed)
+back_wall = create_box("BackWall", (8, 0.1, 3), location=(0, -3, 1.5))
+
+# Left wall
+left_wall = create_box("LeftWall", (0.1, 6, 3), location=(-4, 0, 1.5))
+
+# Right wall (with window)
+# We'll create the right wall with a window opening
+# Wall segments around the window
+# Window: 2m wide, 1.5m tall, centered at y=0, from z=1 to z=2.5
+# Right wall is at x=4
+# Bottom segment (below window)
+rw_bottom = create_box("RightWall_Bottom", (0.1, 6, 1), location=(4, 0, 0.5))
+# Top segment (above window)
+rw_top = create_box("RightWall_Top", (0.1, 6, 0.5), location=(4, 0, 2.75))
+# Left segment (left of window, y from -3 to -1)
+rw_left = create_box("RightWall_Left", (0.1, 2, 3), location=(4, -2, 1.5))
+# Right segment (right of window, y from 1 to 3)
+rw_right = create_box("RightWall_Right", (0.1, 2, 3), location=(4, 2, 1.5))
+
+# Window frame
+window_frame_outer = create_box("WindowFrame", (0.05, 2.1, 1.6), location=(4, 0, 1.75))
+# Window glass (slightly inset)
+window_glass = create_box("WindowGlass", (0.02, 2, 1.5), location=(4.02, 0, 1.75))
+
+# Ceiling
+ceiling = create_box("Ceiling", (8, 6, 0.1), location=(0, 0, 3.05))
+
+# ============================================
+# BED
+# ============================================
+
+# Bed frame
+bed_frame = create_box("BedFrame", (2, 1.8, 0.3), location=(-1, -2, 0.15))
+
+# Mattress
+mattress = create_box("Mattress", (1.9, 1.7, 0.2), location=(-1, -2, 0.4))
+
+# Bedding (slightly larger than mattress for comfort look)
+bedding = create_box("Bedding", (1.95, 1.75, 0.15), location=(-1, -2, 0.55))
+
+# Pillows
+pillow1 = create_box("Pillow1", (0.5, 0.3, 0.15), location=(-1.3, -2.5, 0.65))
+pillow2 = create_box("Pillow2", (0.5, 0.3, 0.15), location=(-0.7, -2.5, 0.65))
+
+# Headboard
+headboard = create_box("Headboard", (2, 0.1, 1.2), location=(-1, -2.9, 0.9))
+
+# ============================================
+# NIGHTSTAND WITH LAMP
+# ============================================
+
+# Nightstand (next to bed, on the right side)
+nightstand = create_box("Nightstand", (0.6, 0.5, 0.6), location=(0.2, -2.5, 0.3))
+
+# Nightstand drawer front
+drawer_front = create_box("DrawerFront", (0.5, 0.4, 0.1), location=(0.2, -2.25, 0.3))
+
+# Lamp base
+lamp_base = create_cylinder("LampBase", 0.08, 0.05, location=(0.2, -2.5, 0.625))
+
+# Lamp stem
+lamp_stem = create_cylinder("LampStem", 0.02, 0.3, location=(0.2, -2.5, 0.775))
+
+# Lamp shade (cone shape - using a cylinder with different radii)
+# We'll use a truncated cone
+mesh = bpy.data.meshes.new("LampShade")
+import bmesh
+bm = bmesh.new()
+bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=32, radius1=0.12, radius2=0.08, depth=0.2)
+bm.to_mesh(mesh)
+bm.free()
+lamp_shade = bpy.data.objects.new("LampShade", mesh)
+bedroom.objects.link(lamp_shade)
+lamp_shade.location = (0.2, -2.5, 1.0)
+
+# ============================================
+# WARDROBE
+# ============================================
+
+# Wardrobe body
+wardrobe_body = create_box("Wardrobe", (1.2, 0.6, 2), location=(-3.2, -2.5, 1))
+
+# Wardrobe doors (two doors)
+wardrobe_door1 = create_box("WardrobeDoor1", (0.55, 0.05, 1.9), location=(-3.5, -2.2, 1))
+wardrobe_door2 = create_box("WardrobeDoor2", (0.55, 0.05, 1.9), location=(-2.9, -2.2, 1))
+
+# Door handles
+handle1 = create_cylinder("Handle1", 0.02, 0.1, location=(-3.25, -2.15, 1))
+handle2 = create_cylinder("Handle2", 0.02, 0.1, location=(-3.15, -2.15, 1))
+
+# ============================================
+# RUG
+# ============================================
+
+# Rug on the floor (circular)
+rug = create_cylinder("Rug", 1.2, 0.02, location=(-1, -1, 0.01))
+
+# ============================================
+# ADD MATERIALS
+# ============================================
+
+def add_material(name, color, roughness=0.5):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = roughness
+    return mat
+
+# Materials
+mat_floor = add_material("FloorWood", (0.5, 0.3, 0.15), 0.6)
+mat_wall = add_material("WallPaint", (0.85, 0.85, 0.8), 0.8)
+mat_bed_frame = add_material("BedFrameWood", (0.35, 0.2, 0.1), 0.7)
+mat_mattress = add_material("MattressWhite", (0.9, 0.9, 0.85), 0.9)
+mat_bedding = add_material("BeddingBlue", (0.2, 0.3, 0.6), 0.8)
+mat_pillow = add_material("PillowWhite", (0.95, 0.95, 0.9), 0.9)
+mat_nightstand = add_material("NightstandWood", (0.4, 0.25, 0.12), 0.6)
+mat_lamp_base = add_material("LampMetal", (0.3, 0.3, 0.35), 0.3)
+mat_lamp_shade = add_material("LampShadeFabric", (0.9, 0.85, 0.7), 0.7)
+mat_wardrobe = add_material("WardrobeWood", (0.3, 0.18, 0.08), 0.5)
+mat_rug = add_material("RugRed", (0.6, 0.15, 0.1), 0.9)
+mat_window_frame = add_material("WindowFrameWhite", (0.9, 0.9, 0.85), 0.4)
+mat_glass = add_material("Glass", (0.7, 0.8, 0.9), 0.1)
+mat_ceiling = add_material("CeilingWhite", (0.95, 0.95, 0.95), 0.9)
+
+# Assign materials
+floor.data.materials.append(mat_floor)
+back_wall.data.materials.append(mat_wall)
+left_wall.data.materials.append(mat_wall)
+rw_bottom.data.materials.append(mat_wall)
+rw_top.data.materials.append(mat_wall)
+rw_left.data.materials.append(mat_wall)
+rw_right.data.materials.append(mat_wall)
+ceiling.data.materials.append(mat_ceiling)
+
+bed_frame.data.materials.append(mat_bed_frame)
+mattress.data.materials.append(mat_mattress)
+bedding.data.materials.append(mat_bedding)
+pillow1.data.materials.append(mat_pillow)
+pillow2.data.materials.append(mat_pillow)
+headboard.data.materials.append(mat_bed_frame)
+
+nightstand.data.materials.append(mat_nightstand)
+drawer_front.data.materials.append(mat_nightstand)
+lamp_base.data.materials.append(mat_lamp_base)
+lamp_stem.data.materials.append(mat_lamp_base)
+lamp_shade.data.materials.append(mat_lamp_shade)
+
+wardrobe_body.data.materials.append(mat_wardrobe)
+wardrobe_door1.data.materials.append(mat_wardrobe)
+wardrobe_door2.data.materials.append(mat_wardrobe)
+handle1.data.materials.append(mat_lamp_base)
+handle2.data.materials.append(mat_lamp_base)
+
+rug.data.materials.append(mat_rug)
+window_frame_outer.data.materials.append(mat_window_frame)
+window_glass.data.materials.append(mat_glass)
+
+# ============================================
+# LIGHTING
+# ============================================
+
+# Add a point light for the lamp
+lamp_light_data = bpy.data.lights.new("LampLight", type='POINT')
+lamp_light_data.energy = 15
+lamp_light_data.color = (1.0, 0.9, 0.7)
+lamp_light_obj = bpy.data.objects.new("LampLight", lamp_light_data)
+bedroom.objects.link(lamp_light_obj)
+lamp_light_obj.location = (0.2, -2.5, 1.0)
+
+# Add a sun light coming through the window
+sun_data = bpy.data.lights.new("SunLight", type='SUN')
+sun_data.energy = 3
+sun_data.color = (1.0, 0.95, 0.85)
+sun_obj = bpy.data.objects.new("SunLight", sun_data)
+bedroom.objects.link(sun_obj)
+sun_obj.location = (5, 0, 2)
+sun_obj.rotation_euler = (math.radians(30), 0, math.radians(-90))
+
+# Add ambient light
+ambient_data = bpy.data.lights.new("AmbientLight", type='POINT')
+ambient_data.energy = 5
+ambient_data.color = (1.0, 1.0, 1.0)
+ambient_obj = bpy.data.objects.new("AmbientLight", ambient_data)
+bedroom.objects.link(ambient_obj)
+ambient_obj.location = (0, 0, 2.5)
+
+# ============================================
+# CAMERA
+# ============================================
+
+camera_data = bpy.data.cameras.new("Camera")
+camera_obj = bpy.data.objects.new("Camera", camera_data)
+bedroom.objects.link(camera_obj)
+camera_obj.location = (3, 2, 1.8)
+camera_obj.rotation_euler = (math.radians(75), 0, math.radians(-120))
+
+# Set as active camera
+bpy.context.scene.camera = camera_obj
+
+# ============================================
+# WORLD BACKGROUND
+# ============================================
+
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.8, 0.85, 0.9, 1.0)
+    bg_node.inputs[1].default_value = 1.0

@@ -1,0 +1,92 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1144)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+paints = {}
+def tint(name, rgb, glow=0, rough=.8):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if glow:
+        p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    paints[name] = m
+for k, c in dict(deck=(.16, .17, .2), pad=(.07, .2, .25), line=(.7, .72, .75), steel=(.2, .22, .26), glass=(.25, .4, .55), net=(.85, .85, .8),
+                 seat=(.35, .1, .1), post=(.3, .3, .32), white=(.6, .6, .62), shirt=(.7, .1, .12), skin=(.5, .32, .25), can=(.1, .45, .7)).items(): tint(k, c)
+tint("neon", (1, .15, .5), 12); tint("lamp", (1, .95, .85), 16); tint("flood", (1, .95, .8), 22); tint("cyan", (.2, .8, 1), 8)
+def shape(bm, key, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(paints[key]); return o
+def slab(at, d, key, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * d[0], v.co.y * d[1], (v.co.z + .5) * d[2]))
+    return shape(bm, key, at, (0, 0, rz))
+def rod(at, r, h, n, key, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return shape(bm, key, at)
+def ball(at, r, key):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r); return shape(bm, key, at)
+def lit(at, col, w):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = col, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+# the roof slab is the base: a tapered block with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    v.co = Vector((v.co.x * 30, v.co.y * 22, v.co.z * 3))
+    if v.co.z < 0: v.co = Vector((v.co.x * .7 + random.uniform(-.8, .8), v.co.y * .7 + random.uniform(-.8, .8), v.co.z - random.uniform(0, 1.6)))
+shape(bm, "deck", (0, 0, -1.5))
+slab((0, 0, 0), (28.4, 21.4, .12), "deck")
+# parapet walls on the back and left, with a neon strip
+slab((0, 10.6, 0), (30, .6, 1.1), "post"); slab((-14.6, 0, 0), (.6, 22, 1.1), "post")
+slab((0, 10.2, .9), (29, .12, .15), "neon"); slab((-14.2, 0, .9), (.12, 21, .15), "neon")
+# padel court: floor, lines, glass walls with steel posts, net
+slab((0, 0, .12), (15.4, 9.4, .08), "pad")
+slab((0, 0, .2), (15, .14, .03), "line"); slab((0, 0, .2), (.14, 9, .03), "line")
+for y in (-4.4, 4.4): slab((0, y, .2), (15, .12, .03), "line")
+for x in (-7.5, 7.5): slab((x, 0, .2), (.12, 9, .03), "line")
+for i in range(13):
+    x = -7.5 + i * 1.25
+    slab((x, -4.7, .2), (.12, .12, 3.0), "steel"); slab((x, 4.7, .2), (.12, .12, 3.0), "steel")
+for i in range(8):
+    y = -4.7 + i * 1.36
+    slab((-7.8, y, .2), (.12, .12, 3.0), "steel"); slab((7.8, y, .2), (.12, .12, 3.0), "steel")
+slab((0, -4.7, 3.2), (15.4, .14, .14), "steel"); slab((0, 4.7, 3.2), (15.4, .14, .14), "steel")
+slab((-7.8, 0, 3.2), (.14, 9.4, .14), "steel"); slab((7.8, 0, 3.2), (.14, 9.4, .14), "steel")
+slab((0, -4.7, .2), (15, .06, 3.0), "glass"); slab((0, 4.7, .2), (15, .06, 3.0), "glass"); slab((-7.8, 0, .2), (.06, 9.4, 3.0), "glass"); slab((7.8, 0, .2), (.06, 9.4, 3.0), "glass")
+slab((0, 0, .2), (.1, 9.4, 1.0), "net"); slab((0, 0, 1.2), (.2, 9.4, .08), "net"); slab((0, 0, .2), (.2, 9.4, .08), "net")
+# floodlights on masts at the four corners of the court, each a bank of lamps
+for x, y in ((-9.5, -6.6), (9.5, -6.6), (-9.5, 6.6), (9.5, 6.6)):
+    rod((x, y, 0), .16, 6.2, 6, "steel"); slab((x, y, 6.2), (1.6, .5, .9), "steel")
+    for k in range(3): slab((x - .5 + k * .5, y - .3, 6.35), (.4, .1, .5), "flood")
+    lit((x, y - 1.2, 6.4), (1, .95, .8), 500)
+# players, a ball and a racket
+for x, y, k in ((-3, 1.5, "shirt"), (3.5, -1.5, "white")):
+    rod((x, y, .2), .35, 1.3, 6, k, .22); ball((x, y, 1.8), .3, "skin"); rod((x + .4, y, .9), .06, .9, 4, "steel"); slab((x + .4, y, 1.8), (.3, .08, .5), "can")
+ball((0, 0, 2.6), .22, "line")
+# spectators' benches with a few people
+for i in range(3):
+    slab((.5, 8.2, .1), (3.4, .6, .5), "seat"); slab((.5, 8.6, .5), (3.4, .12, .7), "seat")
+    for k in range(3):
+        if (i + k) % 4 != 3:
+            rod((-1 + k * 1.1, 8.2, .6), .3, .8, 5, random.choice(("shirt", "cyan", "white")), .2); ball((-1 + k * 1.1, 8.2, 1.7), .26, "skin")
+# drinks cooler: glowing fridge with a row of cans
+slab((12, 6.5, 0), (1.6, 1.2, 1.8), "white"); slab((12, 5.85, .2), (1.2, .08, 1.3), "cyan"); lit((12, 5.2, 1.0), (.2, .8, 1), 250)
+for k in range(5): rod((11.4 + k * .3, 5.4, 0), .1, .45, 6, "can")
+# city lights beyond: a few low towers behind the parapet, with lit windows
+for i, (x, h) in enumerate(((-11, 5), (-4, 7.5), (3, 4.5), (9, 6.5), (13, 5.5))):
+    slab((x, 12.5, 0), (3.2, 2.4, h), "post")
+    for r in range(int(h / 1.2)):
+        for c in range(2): slab((x - .9 + c * 1.8, 11.25, .8 + r * 1.2), (.7, .06, .5), random.choice(("lamp", "neon", "cyan")) if random.random() < .6 else "post")
+# blue hour: deep blue key from the right, violet rim from the back-left
+for col, w, at in (((.35, .5, 1), 5, (30, -14, 12)), ((.8, .35, .9), 2.2, (-22, 24, 10))):
+    s = bpy.data.lights.new("s", "SUN"); s.color, s.energy = col, w
+    o = bpy.data.objects.new("s", s); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+sc.world = bpy.data.worlds.new("blue"); sc.world.use_nodes = True
+next(n for n in sc.world.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .02, .06, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 2.5)); co.location = t + Vector((12, -72, 40))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

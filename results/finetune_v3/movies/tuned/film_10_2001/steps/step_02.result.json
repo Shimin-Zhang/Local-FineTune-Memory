@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.9,
+ "error": "AttributeError: bpy_prop_collection: attribute \"unlink\" not found",
+ "error_line": "for o in list(sc.objects): sc.objects.unlink(o)",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 76,
+ "n_lights": 0,
+ "n_materials": 8,
+ "own_camera": false,
+ "render_error": null
+}

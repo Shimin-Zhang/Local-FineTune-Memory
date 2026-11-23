@@ -1,0 +1,83 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector as V
+random.seed(757)
+for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+sc = bpy.context.scene
+def fabric(c, glow=0, r=.9):
+    m = bpy.data.materials.new("f"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r
+    if glow:
+        n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = glow
+    return m
+lawn, lawn2, red, cream = fabric((.1, .22, .08)), fabric((.07, .16, .06)), fabric((.6, .08, .08)), fabric((.7, .65, .5))
+wicker, wicker2, cloth, apple = fabric((.5, .3, .1)), fabric((.35, .18, .06)), fabric((.1, .3, .55)), fabric((.8, .1, .08))
+leaf, trunk, flame, jar = fabric((.12, .3, .1)), fabric((.2, .12, .07)), fabric((1, .5, .1), 16), fabric((.2, .5, .3), .4)
+def build(bm, m, loc=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("b"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("b", me); o.location = loc; o.rotation_euler = rot
+    o.data.materials.append(m); sc.collection.objects.link(o); return o
+def box(m, x, y, z, w, d, h, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = V((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return build(bm, m, (x, y, z), (0, 0, rz))
+def cone(m, x, y, z, r, h, n=6, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return build(bm, m, (x, y, z))
+def orb(m, x, y, z, r, sq=1, jit=.12):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = V((v.co.x, v.co.y, v.co.z * sq)) * random.uniform(1 - jit, 1 + jit)
+    return build(bm, m, (x, y, z))
+def lamp(kind, c, e, loc, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = c; L.energy = e
+    o = bpy.data.objects.new("l", L); o.location = loc; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (V(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# a round lawn disc, rough underneath
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=12, depth=3.2)
+for v in bm.verts:
+    if v.co.z < 0: v.co += V((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.2, .2)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.6
+build(bm, lawn)
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(2, 10.5)
+    cone(lawn2, math.cos(a) * r, math.sin(a) * r, 0, random.uniform(.5, 1.1), .06, 6)
+# the blanket: a checkered cloth laid flat, with a folded edge and a slight tilt
+for i in range(8):
+    for j in range(8):
+        box(red if (i + j) % 2 else cream, -5.25 + i * 1.5, -5.25 + j * 1.5, .02, 1.5, 1.5, .06)
+box(cloth, 0, -6.2, .02, 12, .5, .08)
+# wicker basket: body of stacked bands, lid, handle, cloth tied around the neck
+bx, by = -1.6, 1.2
+for k in range(5):
+    cone(wicker if k % 2 else wicker2, bx, by, .08 + k * .38, 1.5 - k * .12, .38, 8)
+cone(wicker2, bx, by, 1.95, 1.0, .25, 8, .6)
+for s in (-1, 1):
+    for k in range(6):
+        t = k / 5
+        box(wicker, bx + s * (.15 + 1.0 * math.sin(t * 1.57) * 1.0), by, 2.1 + 1.5 * math.sin(t * 1.57) - .05, .22, .22, .22)
+for k in range(5): box(cloth, bx + 1.35 * math.cos(k * 1.256) * .9, by + 1.35 * math.sin(k * 1.256) * .9, 1.5, .3, .3, .25, k * 1.256)
+box(cloth, bx + 1.4, by, 1.5, .15, .15, 1.0)
+# picnic items: plates, apples, a bottle, a loaf in a cloth, a lantern on a stool
+for (x, y) in ((2.4, -1.2), (3.4, .2)):
+    cone(cream, x, y, .08, .9, .1, 8); cone(cloth, x, y, .18, .6, .08, 8)
+for (x, y) in ((2.2, -1.4), (3.6, .1), (-4, -2.6)): orb(apple, x, y, .35, .32, .9)
+cone(jar, 4.3, -2.4, .08, .3, 1.0, 6, .22); cone(cream, 4.3, -2.4, 1.08, .22, .3, 6, .05)
+box(cloth, -3.6, 3.0, .08, 1.8, .9, .5, .3); orb(cream, -3.5, 3.0, .6, .45, .6, .05)
+box(wicker2, 3.0, 3.0, 0, .9, .9, .8)
+cone(flame, 3.0, 3.0, .8, .35, .8, 6, .3); cone(wicker2, 3.0, 3.0, 1.6, .4, .15, 6)
+lamp("POINT", (1, .5, .1), 900, (3.0, 3.0, 1.2))
+# a tree and a few bushes at the back
+cone(trunk, -6.5, 6.5, 0, .5, 4.5, 6, .3)
+for (dx, dy, dz, r) in ((0, 0, 5.2, 2.4), (1.5, .5, 4.4, 1.7), (-1.5, -.5, 4.5, 1.8)): orb(leaf, -6.5 + dx, 6.5 + dy, dz, r, .8, .15)
+for (x, y) in ((7.5, 5), (8.5, 1), (-8.5, 1), (-7.5, -4.5), (7, -6.5)): orb(leaf, x, y, .3, random.uniform(.7, 1.1), .7, .2)
+lamp("SUN", (1, .62, .35), 5, (-24, -12, 8), (0, 0, 1)); lamp("SUN", (.4, .55, 1), 2, (22, 16, 10), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .02, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+tgt = V((0, 0, 1.5)); co.location = tgt + V((9, -42, 26))
+co.rotation_euler = (tgt - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

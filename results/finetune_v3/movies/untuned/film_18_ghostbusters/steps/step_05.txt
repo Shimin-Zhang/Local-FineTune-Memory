@@ -1,0 +1,197 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is looking good! Let's add final touches:
+# 1. Add a subtle rim light to Stay Puft to make him pop
+# 2. Add a few more people in the foreground
+# 3. Add some more atmospheric elements
+# 4. Add a few more street details
+# 5. Improve the overall lighting balance
+# 6. Add a few more building details
+# 7. Add some more varied car colors
+# 8. Add a few more people on the sidewalks
+# 9. Add some more atmospheric dust
+# 10. Final camera adjustment
+
+# Add a rim light behind Stay Puft
+rim_data = bpy.data.lights.new("RimLight", type='SPOT')
+rim_data.energy = 50
+rim_data.color = (0.8, 0.8, 1.0)
+rim_data.spot_size = math.radians(60)
+rim_data.spot_blend = 0.5
+rim_data.shadow_soft_size = 1.0
+rim_obj = bpy.data.objects.new("RimLight", rim_data)
+rim_obj.location = (0, 10, 8)
+rim_obj.rotation_euler = (math.radians(120), 0, 0)
+bpy.context.collection.objects.link(rim_obj)
+
+# Add a few more people in the foreground
+for i in range(8):
+    x = random.uniform(-6, 6)
+    y = random.uniform(-15, -5)
+    if abs(x) < 2:
+        continue
+    z = 0.8
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(x, y, z))
+    person = bpy.context.active_object
+    person.name = f"FGPerson_{i}"
+    person.scale = (0.7, 0.7, 1.1)
+    cloth_colors = [
+        (0.5, 0.2, 0.2, 1.0), (0.2, 0.3, 0.5, 1.0), (0.3, 0.5, 0.3, 1.0),
+        (0.6, 0.5, 0.2, 1.0), (0.4, 0.2, 0.5, 1.0), (0.2, 0.4, 0.4, 1.0),
+    ]
+    color = random.choice(cloth_colors)
+    mat_person = bpy.data.materials.new(f"FGPerson_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0), (0.5, 0.3, 0.2, 1.0)]
+    skin = random.choice(skin_colors)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.18, location=(x, y, 1.15))
+    phead = bpy.context.active_object
+    phead.name = f"FGPerson_{i}_Head"
+    mat_phead = bpy.data.materials.new(f"FGPerson_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = skin
+    phead.data.materials.append(mat_phead)
+
+# Add a few more atmospheric dust particles
+for i in range(20):
+    x = random.uniform(-4, 4)
+    y = random.uniform(-8, 8)
+    z = random.uniform(0.3, 2)
+    size = random.uniform(0.01, 0.04)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    dust = bpy.context.active_object
+    dust.name = f"Dust2_{i}"
+    mat_dust = bpy.data.materials.new(f"Dust2_{i}_mat")
+    mat_dust.use_nodes = True
+    bsdf = mat_dust.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.4, 0.4, 0.4, 1.0)
+    bsdf.inputs['Roughness'].default_value = 1.0
+    dust.data.materials.append(mat_dust)
+
+# Add a few more building details - more windows
+for i in range(20):
+    side = random.choice([-1, 1])
+    x = side * (12 + random.uniform(0, 3))
+    y = random.uniform(-55, 55)
+    z = random.uniform(2, 25)
+    bpy.ops.mesh.primitive_cube_add(size=0.25, location=(x - side * 0.25, y, z))
+    win = bpy.context.active_object
+    win.name = f"FinalWin_{i}"
+    if random.random() > 0.5:
+        mat_win = bpy.data.materials.new(f"FinalWin_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (1.0, 0.9, 0.5, 1.0)
+        bsdf.inputs['Emission Color'].default_value = (1.0, 0.8, 0.4, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = 0.8
+    else:
+        mat_win = bpy.data.materials.new(f"FinalWin_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (0.03, 0.03, 0.08, 1.0)
+    win.data.materials.append(mat_win)
+
+# Add a few more street details
+for i in range(5):
+    x = random.choice([-7.5, 7.5])
+    y = random.uniform(-30, 30)
+    # Bench
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 0.4))
+    bench = bpy.context.active_object
+    bench.name = f"Bench_{i}"
+    bench.scale = (0.3, 1.5, 0.1)
+    mat_bench = bpy.data.materials.new(f"Bench_{i}_mat")
+    mat_bench.use_nodes = True
+    bsdf = mat_bench.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.2, 0.15, 0.1, 1.0)
+    bench.data.materials.append(mat_bench)
+    
+    # Bench legs
+    for lx in [-0.6, 0.6]:
+        bpy.ops.mesh.primitive_cube_add(size=0.1, location=(x, y + lx, 0.2))
+        leg = bpy.context.active_object
+        leg.name = f"BenchLeg_{i}_{lx}"
+        leg.scale = (0.1, 0.1, 0.2)
+        mat_leg = bpy.data.materials.new(f"BenchLeg_{i}_{lx}_mat")
+        mat_leg.use_nodes = True
+        bsdf = mat_leg.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (0.1, 0.1, 0.1, 1.0)
+        leg.data.materials.append(mat_leg)
+
+# Add a few more stars
+for i in range(20):
+    x = random.uniform(-50, 50)
+    y = random.uniform(-50, -5)
+    z = random.uniform(30, 55)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=(x, y, z))
+    star = bpy.context.active_object
+    star.name = f"Star4_{i}"
+    mat_star = bpy.data.materials.new(f"Star4_{i}_mat")
+    mat_star.use_nodes = True
+    bsdf = mat_star.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Strength'].default_value = 2.5
+    star.data.materials.append(mat_star)
+
+# Add a few more people on the sidewalks
+for i in range(10):
+    side = random.choice([-1, 1])
+    x = side * 7.5
+    y = random.uniform(-25, 25)
+    z = 0.8
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.22, location=(x, y, z))
+    person = bpy.context.active_object
+    person.name = f"SidePerson_{i}"
+    person.scale = (0.6, 0.6, 1.0)
+    cloth_colors = [
+        (0.5, 0.2, 0.2, 1.0), (0.2, 0.3, 0.5, 1.0), (0.3, 0.5, 0.3, 1.0),
+        (0.6, 0.5, 0.2, 1.0), (0.4, 0.2, 0.5, 1.0),
+    ]
+    color = random.choice(cloth_colors)
+    mat_person = bpy.data.materials.new(f"SidePerson_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0)]
+    skin = random.choice(skin_colors)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(x, y, 1.1))
+    phead = bpy.context.active_object
+    phead.name = f"SidePerson_{i}_Head"
+    mat_phead = bpy.data.materials.new(f"SidePerson_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = skin
+    phead.data.materials.append(mat_phead)
+
+# Final camera adjustment
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, -18, 2.5)
+    camera.rotation_euler = (math.radians(90), 0, 0)
+    camera.data.lens = 30
+
+# Add a subtle warm light from the street lamps to balance the cool moonlight
+warm_data = bpy.data.lights.new("WarmFill", type='POINT')
+warm_data.energy = 20
+warm_data.color = (1.0, 0.8, 0.5)
+warm_data.shadow_soft_size = 3
+warm_obj = bpy.data.objects.new("WarmFill", warm_data)
+warm_obj.location = (0, 0, 10)
+bpy.context.collection.objects.link(warm_obj)
+
+print("Final touches added! Scene is complete.")
+```

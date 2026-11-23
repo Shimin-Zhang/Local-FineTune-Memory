@@ -1,0 +1,135 @@
+import bpy
+import math
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a material helper
+def create_material(name, color, roughness=0.5, metallic=0.0):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+# Materials
+mat_desk = create_material("Desk", (0.3, 0.2, 0.1), roughness=0.6)
+mat_monitor = create_material("Monitor", (0.05, 0.05, 0.05), roughness=0.3, metallic=0.2)
+mat_screen = create_material("Screen", (0.1, 0.1, 0.15), roughness=0.1, metallic=0.0)
+mat_keyboard = create_material("Keyboard", (0.1, 0.1, 0.1), roughness=0.7)
+mat_mug = create_material("Mug", (0.7, 0.3, 0.1), roughness=0.4)
+mat_lamp_base = create_material("LampBase", (0.1, 0.1, 0.1), roughness=0.3, metallic=0.8)
+mat_lamp_arm = create_material("LampArm", (0.1, 0.1, 0.1), roughness=0.3, metallic=0.8)
+mat_lamp_head = create_material("LampHead", (0.1, 0.1, 0.1), roughness=0.3, metallic=0.8)
+mat_light = create_material("LightBulb", (1.0, 0.9, 0.7), roughness=0.1)
+
+# Desk
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, -0.25))
+desk = bpy.context.object
+desk.name = "Desk"
+desk.scale = (2.0, 1.0, 0.05)
+desk.data.materials.append(mat_desk)
+
+# Monitor stand
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.02, location=(0, -0.3, 0.01))
+stand_base = bpy.context.object
+stand_base.name = "MonitorStandBase"
+stand_base.data.materials.append(mat_monitor)
+
+# Monitor stand post
+bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.3, location=(0, -0.3, 0.16))
+stand_post = bpy.context.object
+stand_post.name = "MonitorStandPost"
+stand_post.data.materials.append(mat_monitor)
+
+# Monitor screen
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -0.3, 0.45))
+monitor = bpy.context.object
+monitor.name = "Monitor"
+monitor.scale = (0.5, 0.02, 0.3)
+monitor.data.materials.append(mat_monitor)
+
+# Screen face (slightly in front)
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, -0.279, 0.45))
+screen = bpy.context.object
+screen.name = "Screen"
+screen.scale = (0.48, 0.28, 1)
+screen.rotation_euler = (math.radians(90), 0, 0)
+screen.data.materials.append(mat_screen)
+
+# Keyboard
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0.2, 0.01))
+keyboard = bpy.context.object
+keyboard.name = "Keyboard"
+keyboard.scale = (0.4, 0.15, 0.015)
+keyboard.data.materials.append(mat_keyboard)
+
+# Mug
+bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.12, location=(0.6, 0.2, 0.06))
+mug = bpy.context.object
+mug.name = "Mug"
+mug.data.materials.append(mat_mug)
+
+# Mug handle
+bpy.ops.mesh.primitive_torus_add(major_radius=0.04, minor_radius=0.008, location=(0.65, 0.2, 0.06), rotation=(0, math.radians(90), 0))
+handle = bpy.context.object
+handle.name = "MugHandle"
+handle.data.materials.append(mat_mug)
+
+# Lamp base
+bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.02, location=(-0.7, -0.3, 0.01))
+lamp_base = bpy.context.object
+lamp_base.name = "LampBase"
+lamp_base.data.materials.append(mat_lamp_base)
+
+# Lamp arm 1
+bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.3, location=(-0.7, -0.3, 0.16))
+arm1 = bpy.context.object
+arm1.name = "LampArm1"
+arm1.rotation_euler = (0, math.radians(15), 0)
+arm1.data.materials.append(mat_lamp_arm)
+
+# Lamp arm 2
+bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.25, location=(-0.6, -0.3, 0.35))
+arm2 = bpy.context.object
+arm2.name = "LampArm2"
+arm2.rotation_euler = (0, math.radians(-30), 0)
+arm2.data.materials.append(mat_lamp_arm)
+
+# Lamp head
+bpy.ops.mesh.primitive_cone_add(radius1=0.08, radius2=0.03, depth=0.1, location=(-0.5, -0.3, 0.45))
+lamp_head = bpy.context.object
+lamp_head.name = "LampHead"
+lamp_head.rotation_euler = (0, math.radians(45), 0)
+lamp_head.data.materials.append(mat_lamp_head)
+
+# Light bulb inside lamp head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.02, location=(-0.5, -0.3, 0.42))
+bulb = bpy.context.object
+bulb.name = "LightBulb"
+bulb.data.materials.append(mat_light)
+
+# Add a point light for the lamp
+light_data = bpy.data.lights.new(name="LampLight", type='POINT')
+light_data.energy = 50
+light_data.color = (1.0, 0.9, 0.7)
+light_obj = bpy.data.objects.new(name="LampLight", object_data=light_data)
+light_obj.location = (-0.5, -0.3, 0.42)
+bpy.context.collection.objects.link(light_obj)
+
+# Add ambient light
+sun_data = bpy.data.lights.new(name="Sun", type='SUN')
+sun_data.energy = 3
+sun_obj = bpy.data.objects.new(name="Sun", object_data=sun_data)
+sun_obj.rotation_euler = (math.radians(45), math.radians(30), 0)
+bpy.context.collection.objects.link(sun_obj)
+
+# Set camera
+bpy.ops.object.camera_add(location=(0, 2.5, 1.0))
+camera = bpy.context.object
+camera.name = "Camera"
+camera.rotation_euler = (math.radians(70), 0, 0)
+bpy.context.scene.camera = camera

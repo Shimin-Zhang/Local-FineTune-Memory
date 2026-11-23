@@ -1,0 +1,867 @@
+[
+ {
+  "id": "Qwen/Qwen3.5-2B-Base",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "Qwen3_5ForConditionalGeneration",
+  "class_text": "Qwen3_5ForCausalLM",
+  "hub_params": 2274069824,
+  "counted_params_full": 2213241664,
+  "counted_params_text": 1881825088,
+  "diff_vs_hub_pct": -2.67485894,
+  "tied_embeddings": true,
+  "embedding_params": 508559360,
+  "output_head_params": 0,
+  "text_linear_weight_params": 1372717056,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 548672,
+  "vision_params": 331416576,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 24,
+  "n_full_attention_layers": 6,
+  "kv_bytes_per_token_fp16": 12288,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head",
+   "model.embed_tokens"
+  ],
+  "bnb_quantizable_params": 1372717056,
+  "notes": "Hub stores +60,828,160 params vs the instantiated full model (-2.6749%). explained: 60,828,160 = multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated [mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header]. residual after the explanations above: 0 (exact).",
+  "hub_params_dtype_sum": 2274069824,
+  "diff_vs_hub_dtype_sum_pct": -2.67485894,
+  "full_text_part_params": 1881825088,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": true,
+  "config_tie_word_embeddings_text": true,
+  "nontext_modules": {
+   "model.visual": 331416576
+  },
+  "text_other_detail": {
+   "Conv1d.weight": 442368,
+   "Qwen3_5RMSNorm": 103424,
+   "Qwen3_5RMSNormGated": 2304,
+   "Qwen3_5GatedDeltaNet": 576
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 6,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 18,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "linear_attention": 18,
+    "full_attention": 6
+   },
+   "kv_dims_full": [
+    [
+     2,
+     256
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "6/6 layers"
+  },
+  "bnb_unquantized_params": 509108032,
+  "bnb_quantizable_share_of_text": 0.72946,
+  "bnb_detail": {
+   "n_linear4bit_modules": 186,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 60828160,
+   "explained": [
+    {
+     "reason": "multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated",
+     "params": 60828160,
+     "basis": "mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header"
+    }
+   ],
+   "residual": 0
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "Qwen/Qwen3.6-35B-A3B",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "Qwen3_5MoeForConditionalGeneration",
+  "class_text": "Qwen3_5MoeForCausalLM",
+  "hub_params": 35951822704,
+  "counted_params_full": 35107181936,
+  "counted_params_text": 34660610688,
+  "diff_vs_hub_pct": -2.34936842,
+  "tied_embeddings": false,
+  "embedding_params": 508559360,
+  "output_head_params": 508559360,
+  "text_linear_weight_params": 1409105920,
+  "text_moe_expert_params": 32212254720,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 22131328,
+  "vision_params": 446571248,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 40,
+  "n_full_attention_layers": 10,
+  "kv_bytes_per_token_fp16": 20480,
+  "moe": {
+   "num_experts": 256,
+   "num_experts_config": 256,
+   "experts_per_token": 8,
+   "n_moe_layers": 40,
+   "expert_module_class": [
+    "Qwen3_5MoeExperts"
+   ],
+   "expert_params_total": 32212254720,
+   "expert_weight_params_3d": 32212254720,
+   "expert_params_active_per_token": 1006632960,
+   "expert_params_per_expert_per_layer": 3145728,
+   "shared_expert_params": 125911040,
+   "router_params": 20971520,
+   "active_params_per_token_text": 3454988928
+  },
+  "bnb_skip_modules": [
+   "lm_head"
+  ],
+  "bnb_quantizable_params": 1409105920,
+  "notes": "Hub stores +844,640,768 params vs the instantiated full model (-2.3494%). explained: 844,640,768 = multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated [mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header]. residual after the explanations above: 0 (exact). MoE experts are fused 3D nn.Parameter tensors (Qwen3_5MoeExperts), not nn.Linear, so load_in_4bit leaves all 32,212,254,720 expert params in 16-bit (replace_with_bnb_linear only swaps nn.Linear/Conv1D).",
+  "hub_params_dtype_sum": 35951822704,
+  "diff_vs_hub_dtype_sum_pct": -2.34936842,
+  "full_text_part_params": 34660610688,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": false,
+  "config_tie_word_embeddings_text": false,
+  "nontext_modules": {
+   "model.visual": 446571248
+  },
+  "text_other_detail": {
+   "Qwen3_5MoeTopKRouter": 20971520,
+   "Conv1d.weight": 983040,
+   "Qwen3_5MoeRMSNorm": 171008,
+   "Qwen3_5MoeRMSNormGated": 3840,
+   "Qwen3_5MoeGatedDeltaNet": 1920
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 10,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 30,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "linear_attention": 30,
+    "full_attention": 10
+   },
+   "kv_dims_full": [
+    [
+     2,
+     256
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "10/10 layers"
+  },
+  "bnb_unquantized_params": 33251504768,
+  "bnb_quantizable_share_of_text": 0.040654,
+  "bnb_detail": {
+   "n_linear4bit_modules": 350,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 844640768,
+   "explained": [
+    {
+     "reason": "multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated",
+     "params": 844640768,
+     "basis": "mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header"
+    }
+   ],
+   "residual": 0
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "Qwen/Qwen3.8-27B",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "Qwen3_5ForConditionalGeneration",
+  "class_text": "Qwen3_5ForCausalLM",
+  "hub_params": 27781427952,
+  "counted_params_full": 27356728560,
+  "counted_params_text": 26895998464,
+  "diff_vs_hub_pct": -1.52871693,
+  "tied_embeddings": false,
+  "embedding_params": 1271398400,
+  "output_head_params": 1271398400,
+  "text_linear_weight_params": 24350556160,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 2645504,
+  "vision_params": 460730096,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 64,
+  "n_full_attention_layers": 16,
+  "kv_bytes_per_token_fp16": 65536,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head"
+  ],
+  "bnb_quantizable_params": 24350556160,
+  "notes": "Hub stores +424,699,392 params vs the instantiated full model (-1.5287%). explained: 424,699,392 = multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated [mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header]. residual after the explanations above: 0 (exact).",
+  "hub_params_dtype_sum": 27781427952,
+  "diff_vs_hub_dtype_sum_pct": -1.52871693,
+  "full_text_part_params": 26895998464,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": false,
+  "config_tie_word_embeddings_text": false,
+  "nontext_modules": {
+   "model.visual": 460730096
+  },
+  "text_other_detail": {
+   "Conv1d.weight": 1966080,
+   "Qwen3_5RMSNorm": 668672,
+   "Qwen3_5RMSNormGated": 6144,
+   "Qwen3_5GatedDeltaNet": 4608
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 16,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 48,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "linear_attention": 48,
+    "full_attention": 16
+   },
+   "kv_dims_full": [
+    [
+     4,
+     256
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "16/16 layers"
+  },
+  "bnb_unquantized_params": 2545442304,
+  "bnb_quantizable_share_of_text": 0.90536,
+  "bnb_detail": {
+   "n_linear4bit_modules": 496,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 424699392,
+   "explained": [
+    {
+     "reason": "multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated",
+     "params": 424699392,
+     "basis": "mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header"
+    }
+   ],
+   "residual": 0
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "meta-llama/Llama-3.3-70B-Instruct",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "LlamaForCausalLM",
+  "class_text": "LlamaForCausalLM",
+  "hub_params": 70553706496,
+  "counted_params_full": 70553706496,
+  "counted_params_text": 70553706496,
+  "diff_vs_hub_pct": 0.0,
+  "tied_embeddings": false,
+  "embedding_params": 1050673152,
+  "output_head_params": 1050673152,
+  "text_linear_weight_params": 68451041280,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 1318912,
+  "vision_params": 0,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 80,
+  "n_full_attention_layers": 80,
+  "kv_bytes_per_token_fp16": 327680,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head"
+  ],
+  "bnb_quantizable_params": 68451041280,
+  "notes": "counted full-model params equal the Hub's stored count exactly.",
+  "hub_params_dtype_sum": 70553706496,
+  "diff_vs_hub_dtype_sum_pct": 0.0,
+  "full_text_part_params": 70553706496,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": false,
+  "config_tie_word_embeddings_text": false,
+  "nontext_modules": {},
+  "text_other_detail": {
+   "LlamaRMSNorm": 1318912
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 80,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 0,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "full_attention": 80
+   },
+   "kv_dims_full": [
+    [
+     8,
+     128
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "80/80 layers"
+  },
+  "bnb_unquantized_params": 2102665216,
+  "bnb_quantizable_share_of_text": 0.970198,
+  "bnb_detail": {
+   "n_linear4bit_modules": 560,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 0,
+   "explained": [],
+   "residual": 0,
+   "candidates_not_in_hub_total": []
+  },
+  "formula_check": {
+   "formula_total": 70553706496,
+   "matches_text_count": true,
+   "formula_linear_weight": 68451041280,
+   "matches_linear_weight": true,
+   "formula_kv_bytes_per_token_fp16": 327680,
+   "matches_kv": true
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "Qwen/Qwen3.5-0.8B-Base",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "Qwen3_5ForConditionalGeneration",
+  "class_text": "Qwen3_5ForCausalLM",
+  "hub_params": 873438784,
+  "counted_params_full": 852985920,
+  "counted_params_text": 752393024,
+  "diff_vs_hub_pct": -2.34164825,
+  "tied_embeddings": true,
+  "embedding_params": 254279680,
+  "output_head_params": 0,
+  "text_linear_weight_params": 497614848,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 498496,
+  "vision_params": 100592896,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 24,
+  "n_full_attention_layers": 6,
+  "kv_bytes_per_token_fp16": 12288,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head",
+   "model.embed_tokens"
+  ],
+  "bnb_quantizable_params": 497614848,
+  "notes": "Hub stores +20,452,864 params vs the instantiated full model (-2.3416%). explained: 20,452,864 = multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated [mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header]. residual after the explanations above: 0 (exact).",
+  "hub_params_dtype_sum": 873438784,
+  "diff_vs_hub_dtype_sum_pct": -2.34164825,
+  "full_text_part_params": 752393024,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": true,
+  "config_tie_word_embeddings_text": true,
+  "nontext_modules": {
+   "model.visual": 100592896
+  },
+  "text_other_detail": {
+   "Conv1d.weight": 442368,
+   "Qwen3_5RMSNorm": 53248,
+   "Qwen3_5RMSNormGated": 2304,
+   "Qwen3_5GatedDeltaNet": 576
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 6,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 18,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "linear_attention": 18,
+    "full_attention": 6
+   },
+   "kv_dims_full": [
+    [
+     2,
+     256
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "6/6 layers"
+  },
+  "bnb_unquantized_params": 254778176,
+  "bnb_quantizable_share_of_text": 0.661376,
+  "bnb_detail": {
+   "n_linear4bit_modules": 186,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 20452864,
+   "explained": [
+    {
+     "reason": "multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated",
+     "params": 20452864,
+     "basis": "mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header"
+    }
+   ],
+   "residual": 0
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "Qwen/Qwen3.5-4B-Base",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "Qwen3_5ForConditionalGeneration",
+  "class_text": "Qwen3_5ForCausalLM",
+  "hub_params": 4659865088,
+  "counted_params_full": 4539265536,
+  "counted_params_text": 4205751296,
+  "diff_vs_hub_pct": -2.58804815,
+  "tied_embeddings": true,
+  "embedding_params": 635699200,
+  "output_head_params": 0,
+  "text_linear_weight_params": 3569090560,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 961536,
+  "vision_params": 333514240,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 32,
+  "n_full_attention_layers": 8,
+  "kv_bytes_per_token_fp16": 32768,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head",
+   "model.embed_tokens"
+  ],
+  "bnb_quantizable_params": 3569090560,
+  "notes": "Hub stores +120,599,552 params vs the instantiated full model (-2.5880%). explained: 120,599,552 = multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated [mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header]. residual after the explanations above: 0 (exact).",
+  "hub_params_dtype_sum": 4659865088,
+  "diff_vs_hub_dtype_sum_pct": -2.58804815,
+  "full_text_part_params": 4205751296,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": true,
+  "config_tie_word_embeddings_text": true,
+  "nontext_modules": {
+   "model.visual": 333514240
+  },
+  "text_other_detail": {
+   "Conv1d.weight": 786432,
+   "Qwen3_5RMSNorm": 170496,
+   "Qwen3_5RMSNormGated": 3072,
+   "Qwen3_5GatedDeltaNet": 1536
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 8,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 24,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "linear_attention": 24,
+    "full_attention": 8
+   },
+   "kv_dims_full": [
+    [
+     4,
+     256
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "8/8 layers"
+  },
+  "bnb_unquantized_params": 636660736,
+  "bnb_quantizable_share_of_text": 0.848621,
+  "bnb_detail": {
+   "n_linear4bit_modules": 248,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 120599552,
+   "explained": [
+    {
+     "reason": "multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated",
+     "params": 120599552,
+     "basis": "mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header"
+    }
+   ],
+   "residual": 0
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "Qwen/Qwen3.5-9B-Base",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "Qwen3_5ForConditionalGeneration",
+  "class_text": "Qwen3_5ForCausalLM",
+  "hub_params": 9653104368,
+  "counted_params_full": 9409813744,
+  "counted_params_text": 8953803264,
+  "diff_vs_hub_pct": -2.52033558,
+  "tied_embeddings": false,
+  "embedding_params": 1017118720,
+  "output_head_params": 1017118720,
+  "text_linear_weight_params": 6918504448,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 1061376,
+  "vision_params": 456010480,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 32,
+  "n_full_attention_layers": 8,
+  "kv_bytes_per_token_fp16": 32768,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head"
+  ],
+  "bnb_quantizable_params": 6918504448,
+  "notes": "Hub stores +243,290,624 params vs the instantiated full model (-2.5203%). explained: 243,290,624 = multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated [mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header]. residual after the explanations above: 0 (exact).",
+  "hub_params_dtype_sum": 9653104368,
+  "diff_vs_hub_dtype_sum_pct": -2.52033558,
+  "full_text_part_params": 8953803264,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": false,
+  "config_tie_word_embeddings_text": false,
+  "nontext_modules": {
+   "model.visual": 456010480
+  },
+  "text_other_detail": {
+   "Conv1d.weight": 786432,
+   "Qwen3_5RMSNorm": 270336,
+   "Qwen3_5RMSNormGated": 3072,
+   "Qwen3_5GatedDeltaNet": 1536
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 8,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 24,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "linear_attention": 24,
+    "full_attention": 8
+   },
+   "kv_dims_full": [
+    [
+     4,
+     256
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "8/8 layers"
+  },
+  "bnb_unquantized_params": 2035298816,
+  "bnb_quantizable_share_of_text": 0.772689,
+  "bnb_detail": {
+   "n_linear4bit_modules": 248,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 243290624,
+   "explained": [
+    {
+     "reason": "multi-token-prediction head (mtp_num_hidden_layers=1) stored but not instantiated",
+     "params": 243290624,
+     "basis": "mtp.fc 2H*H + 3 norms + one full-attention decoder layer copied from the instantiated model; this layout was checked tensor-by-tensor against the local Qwen3.5-0.8B-Base safetensors header"
+    }
+   ],
+   "residual": 0
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "Qwen/Qwen3-14B-Base",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "Qwen3ForCausalLM",
+  "class_text": "Qwen3ForCausalLM",
+  "hub_params": 14768307200,
+  "counted_params_full": 14768307200,
+  "counted_params_text": 14768307200,
+  "diff_vs_hub_pct": 0.0,
+  "tied_embeddings": false,
+  "embedding_params": 777912320,
+  "output_head_params": 777912320,
+  "text_linear_weight_params": 13212057600,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 424960,
+  "vision_params": 0,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 40,
+  "n_full_attention_layers": 40,
+  "kv_bytes_per_token_fp16": 163840,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head"
+  ],
+  "bnb_quantizable_params": 13212057600,
+  "notes": "counted full-model params equal the Hub's stored count exactly.",
+  "hub_params_dtype_sum": 14768307200,
+  "diff_vs_hub_dtype_sum_pct": 0.0,
+  "full_text_part_params": 14768307200,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": false,
+  "config_tie_word_embeddings_text": false,
+  "nontext_modules": {},
+  "text_other_detail": {
+   "Qwen3RMSNorm": 424960
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 40,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 0,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "full_attention": 40
+   },
+   "kv_dims_full": [
+    [
+     8,
+     128
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "40/40 layers"
+  },
+  "bnb_unquantized_params": 1556249600,
+  "bnb_quantizable_share_of_text": 0.894622,
+  "bnb_detail": {
+   "n_linear4bit_modules": 280,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 0,
+   "explained": [],
+   "residual": 0,
+   "candidates_not_in_hub_total": []
+  },
+  "formula_check": {
+   "formula_total": 14768307200,
+   "matches_text_count": true,
+   "formula_linear_weight": 13212057600,
+   "matches_linear_weight": true,
+   "formula_kv_bytes_per_token_fp16": 163840,
+   "matches_kv": true
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ },
+ {
+  "id": "Nanbeige/Nanbeige4.3-33B-Base",
+  "status": "ok",
+  "analytic": false,
+  "class_full": "LlamaForCausalLM",
+  "class_text": "LlamaForCausalLM",
+  "hub_params": 33118977024,
+  "counted_params_full": 33118977024,
+  "counted_params_text": 33118977024,
+  "diff_vs_hub_pct": 0.0,
+  "tied_embeddings": false,
+  "embedding_params": 1196425216,
+  "output_head_params": 1196425216,
+  "text_linear_weight_params": 30725373952,
+  "text_moe_expert_params": 0,
+  "text_extra_embedding_params": 0,
+  "text_other_params": 752640,
+  "vision_params": 0,
+  "audio_params": 0,
+  "other_params": 0,
+  "n_text_layers": 52,
+  "n_full_attention_layers": 52,
+  "kv_bytes_per_token_fp16": 212992,
+  "moe": null,
+  "bnb_skip_modules": [
+   "lm_head"
+  ],
+  "bnb_quantizable_params": 30725373952,
+  "notes": "counted full-model params equal the Hub's stored count exactly.",
+  "hub_params_dtype_sum": 33118977024,
+  "diff_vs_hub_dtype_sum_pct": 0.0,
+  "full_text_part_params": 33118977024,
+  "full_equals_text_plus_nontext": true,
+  "tied_embeddings_full": false,
+  "config_tie_word_embeddings_text": false,
+  "nontext_modules": {},
+  "text_other_detail": {
+   "LlamaRMSNorm": 752640
+  },
+  "persistent_buffer_values": {
+   "text": 0,
+   "nontext": 0
+  },
+  "meta_init": {
+   "full": "params+buffers on meta",
+   "text": "params+buffers on meta"
+  },
+  "kv_detail": {
+   "n_full_attention_layers_in_layer_types": 52,
+   "n_sliding_attention_layers": 0,
+   "n_linear_attention_layers": 0,
+   "n_kv_shared_layers": 0,
+   "n_non_attention_layers": 0,
+   "layer_kinds": {
+    "full_attention": 52
+   },
+   "kv_dims_full": [
+    [
+     8,
+     128
+    ]
+   ],
+   "kv_bytes_per_token_sliding_fp16": 0,
+   "kv_dims_sliding": [],
+   "sliding_window": null,
+   "kv_module_shapes_checked": "52/52 layers"
+  },
+  "bnb_unquantized_params": 2393603072,
+  "bnb_quantizable_share_of_text": 0.927727,
+  "bnb_detail": {
+   "n_linear4bit_modules": 364,
+   "keep_in_fp32_modules": [],
+   "keep_in_fp32_modules_strict": [],
+   "linear_weights_left_16bit": 0
+  },
+  "hub_diff": {
+   "hub_minus_counted_full": 0,
+   "explained": [],
+   "residual": 0,
+   "candidates_not_in_hub_total": []
+  },
+  "formula_check": {
+   "formula_total": 33118977024,
+   "matches_text_count": true,
+   "formula_linear_weight": 30725373952,
+   "matches_linear_weight": true,
+   "formula_kv_bytes_per_token_fp16": 212992,
+   "matches_kv": true
+  },
+  "bnb_function": "transformers.quantizers.quantizer_bnb_4bit.Bnb4BitHfQuantizer.get_modules_to_not_convert(model, llm_int8_skip_modules=None, model._keep_in_fp32_modules) -> transformers.quantizers.base.get_keys_to_not_convert(model) [tied keys + last parameter + get_output_embeddings()] plus _keep_in_fp32_modules; then transformers.integrations.bitsandbytes.replace_with_bnb_linear converts every module with type(m) is nn.Linear or Conv1D whose name passes should_convert_module(name, skip)",
+  "counted_with": "transformers 5.22.2 / torch 2.14.1+cu126 / accelerate 1.15.0 / bitsandbytes 0.50.2"
+ }
+]

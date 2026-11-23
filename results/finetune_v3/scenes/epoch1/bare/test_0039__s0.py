@@ -1,0 +1,97 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1076)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+V = {}
+def dye(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = .9
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    V[name] = m
+for k, c in dict(moss=(.07, .17, .08), leaf=(.06, .22, .12), leaf2=(.1, .28, .12), bark=(.18, .12, .09), stone=(.3, .3, .32),
+                 tile=(.1, .12, .14), wall=(.45, .4, .33), bamboo=(.4, .35, .15), leaftea=(.2, .3, .08), red=(.7, .08, .06),
+                 yellow=(.8, .6, .1), white=(.7, .7, .65), clay=(.4, .15, .08), iron=(.08, .08, .1)).items(): dye(k, c)
+dye("ember", (1, .4, .05), 14); dye("tea", (.3, .65, .2), 2)
+def mold(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new(k); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(k, me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); me.materials.append(V[k]); return o
+def box(k, at, s, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mold(bm, k, at, rot)
+def cyl(k, at, r, h, n=6, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mold(bm, k, at, rot)
+def clump(k, at, r, sq=.75):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return mold(bm, k, at)
+def beam(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mold(bm, k)
+def flame(kind, c, w, at, aim=None):
+    l = bpy.data.lights.new(kind, kind); l.color, l.energy = c, w
+    o = bpy.data.objects.new(kind, l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+# mossy hillside base
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=14.5, depth=3.5)
+for v in bm.verts:
+    v.co.z -= 1.75
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.5, .3)))
+    else: v.co.z += random.uniform(-.15, .15)
+mold(bm, "moss", (0, 0, 0))
+# stone path winding from the front to the house
+for i in range(11):
+    t = i / 10; x = 3 * math.sin(t * 5) - 2 + 4 * t; y = -9 + t * 11
+    box("stone", (x, y, 0), (1.4, 1.2, .22), (0, 0, random.uniform(-.4, .4)))
+# the old tea tree with a forked trunk, tied ribbons and a stone basin
+for sx in (-1, 1): beam((sx * .5, 8, 0), (sx * 1.2, 8.4, 4.5), .9, "bark")
+beam((0, 8, 4), (0, 8, 6), .7, "bark"); beam((0, 8, 4.5), (-1.2, 8.4, 6.2), .4, "bark"); beam((0, 8, 4.5), (1.2, 8.4, 6.2), .4, "bark")
+for x, y, z, r in ((0, 8, 6.8, 2.4), (-1.5, 8.5, 6.2, 1.8), (1.6, 8.3, 6.2, 1.8), (0, 7.2, 7.6, 1.7)): clump("leaf2", (x, y, z), r, .8)
+for i, c in enumerate(("red", "yellow", "white", "red")):
+    for s in (-1, 1): box(c, (s * (.3 + i * .22), 8 - .5, 3.6 - i * .1), (.12, .05, 1.0 + .2 * (i % 2)))
+cyl("stone", (0, 5.8, 0), .8, .5, 7); cyl("tea", (0, 5.8, .45), .65, .08, 7)
+# village house: tiled roof, walls, door, glowing window, chimney
+box("wall", (-8, 5, 0), (6, 4.4, 2.8)); box("tile", (-8, 5, 2.8), (7, 5.2, .3), (.25, 0, 0)); box("tile", (-8, 5, 3.1), (7, 5.2, .3), (-.25, 0, 0))
+box("bark", (-8, 2.75, 0), (1.1, .15, 1.8)); box("ember", (-6.2, 2.75, 1.0), (1.2, .15, .9)); box("bark", (-10.5, 5, 3), (.9, .9, 1.4))
+flame("POINT", (1, .55, .2), 400, (-6.2, 1.8, 1.4))
+# drying yard: bamboo trays on a rack and on the ground
+for sx in (-1, 1):
+    beam((-1 + sx * 3.4, -1, 0), (-1 + sx * 3.4, -1, 1.9), .15, "bamboo"); beam((-1 + sx * 3.4, -1, 1.7), (-1 + sx * 3.4, -1, 1.7), .1, "bamboo")
+beam((-4.4, -1, 1.7), (2.4, -1, 1.7), .12, "bamboo")
+for i in range(6):
+    x = -3.7 + i * 1.15
+    cyl("bamboo", (x, -1, 1.75), .55, .1, 8); cyl("leaftea", (x, -1, 1.85), .45, .06, 8)
+for i in range(3):
+    x, y = -3.2 + i * 1.6, -3.4
+    for s in (-1, 1): beam((x + s * .7, y, 0), (x + s * .7, y, .9), .08, "bamboo")
+    beam((x - .7, y, .9), (x + .7, y, .9), .08, "bamboo"); cyl("bamboo", (x, y, .95), .6, .08, 8); cyl("leaftea", (x, y, 1.03), .48, .05, 8)
+# tea rows: young bushes on mounds
+for r in range(4):
+    for c in range(6):
+        x, y = -12 + c * 2.0 + r * .5, -9 + r * 3.2
+        if (x, y) in ((-3, -1),) or abs(x - 3 * math.sin((y + 9) / 11 * 5) - 2 + 4 * (y + 9) / 11) < 1.6: continue
+        clump("leaf", (x, y, .35), .85, .6)
+# pot of tea on a fire
+for i in range(4): box("stone", (5.5 + .9 * math.cos(i * 1.57), -6.5 + .9 * math.sin(i * 1.57), 0), (.6, .5, .4), (0, 0, i * 1.57))
+cyl("ember", (5.5, -6.5, .1), .5, .3, 6); flame("POINT", (1, .45, .1), 350, (5.5, -6.5, .9))
+cyl("iron", (5.5, -6.5, .3), .6, .8, 7, .5); cyl("tea", (5.5, -6.5, 1.1), .45, .05, 7)
+beam((5.5, -6.5, 1.1), (5.5, -6.5, 1.7), .08, "iron")
+# misty pines
+for x, y, h in ((11, 8, 5), (12.5, 2, 6), (-12, 9, 5.5), (-13, -2, 6), (10, -8, 4.5)):
+    cyl("bark", (x, y, 0), .3, h * .4, 5)
+    for k in range(3): cyl("leaf", (x, y, h * .35 + k * h * .22), 1.7 - k * .45, h * .3, 6, .1)
+# dawn mist: soft pink key from the left, teal rim behind
+flame("SUN", (1, .72, .6), 4.5, (-30, -14, 10), (0, 0, 1)); flame("SUN", (.3, .7, .7), 2, (22, 28, 12), (0, 0, 1))
+w = bpy.data.worlds.new("mist"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .035, .035, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 2.5)); co.location = t + Vector((8, -62, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

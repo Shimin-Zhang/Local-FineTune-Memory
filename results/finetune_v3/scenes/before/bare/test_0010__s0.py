@@ -1,0 +1,234 @@
+import bpy
+import math
+import random
+from mathutils import Vector, noise
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+bpy.ops.object.select_all(action='DESELECT')
+
+# ============ MATERIALS ============
+def mat(name, color, rough=0.8, metal=0.0, emit=0.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1.0)
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    if emit > 0:
+        bsdf.inputs["Emission Strength"].default_value = emit
+    return m
+
+mat_rock   = mat("Rock",   (0.25, 0.22, 0.18), 0.9)
+mat_dirt   = mat("Dirt",   (0.35, 0.25, 0.15), 0.95)
+mat_moss   = mat("Moss",   (0.15, 0.4,  0.1),  0.9)
+mat_water  = mat("Water",  (0.05, 0.15, 0.3),  0.1, 0.0)
+mat_bone   = mat("Bone",   (0.85, 0.8,  0.7),  0.6)
+mat_cub    = mat("Cub",    (0.6,  0.4,  0.25), 0.8)
+mat_root   = mat("Root",   (0.4,  0.28, 0.15), 0.9)
+mat_wall   = mat("DenWall",(0.3,  0.25, 0.2),  0.95)
+mat_grass  = mat("Grass",  (0.1,  0.35, 0.08), 0.9)
+
+# ============ RIVERBANK / WATER ============
+# Water surface (large plane)
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, -5, 0))
+water = bpy.context.object
+water.name = "Water"
+water.data.materials.append(mat_water)
+# Subdivide for ripple displacement
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=60)
+bpy.ops.object.mode_set(mode='OBJECT')
+
+# Ripple trail in water (concentric torus rings)
+for i in range(5):
+    r = 0.5 + i * 0.4
+    bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.02,
+                                     location=(3, -5, 0.02 + i*0.01),
+                                     major_segments=48, minor_segments=8)
+    ring = bpy.context.object
+    ring.name = f"Ripple_{i}"
+    ring.data.materials.append(mat_water)
+    # Slightly flatten
+    ring.scale.z = 0.1
+
+# Riverbank (curved embankment)
+bpy.ops.mesh.primitive_cylinder_add(radius=12, depth=2, location=(0, 3, -0.5))
+bank = bpy.context.object
+bank.name = "RiverBank"
+bank.data.materials.append(mat_dirt)
+# Flatten top
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.mesh.transform(matrix=__import__('mathutils').Matrix.Translation((0,0,1.5)))
+bpy.ops.object.mode_set(mode='OBJECT')
+bank.scale.z = 0.3
+
+# Grass on top of bank
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 3, 0.6))
+grass = bpy.context.object
+grass.name = "Grass"
+grass.data.materials.append(mat_grass)
+grass.rotation_euler.x = 0.05
+
+# ============ HIDDEN DEN (cave) ============
+# Main cave chamber (sphere, partially buried)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=2.5, location=(0, 2, -0.5), segments=32, ring_count=16)
+cave = bpy.context.object
+cave.name = "Den_Chamber"
+cave.data.materials.append(mat_wall)
+# Cutaway: delete front-facing faces to reveal interior
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+# Select faces pointing toward camera (positive Z / toward viewer)
+bpy.ops.object.mode_set(mode='OBJECT')
+# Use bmesh to delete front half
+import bmesh
+bm = bmesh.new()
+bm.from_mesh(cave.data)
+for face in bm.faces:
+    if face.normal.z > 0.1 and face.calc_center_median().y > 0:
+        face.select = True
+bmesh.ops.delete(bm, geom=bm.faces[:], context='FACES')
+bm.to_mesh(cave.data)
+bm.free()
+cave.data.update()
+
+# Inner floor
+bpy.ops.mesh.primitive_plane_add(size=4, location=(0, 2, -1.2))
+floor = bpy.context.object
+floor.name = "Den_Floor"
+floor.data.materials.append(mat_dirt)
+
+# ============ TREE ROOTS OVER DEN ============
+random.seed(42)
+for i in range(8):
+    angle = i * (2 * math.pi / 8) + random.uniform(-0.2, 0.2)
+    r = 2.0 + random.uniform(0, 0.5)
+    x = r * math.cos(angle)
+    y = 2 + r * math.sin(angle)
+    # Create a curved root using a curve
+    cu = bpy.data.curves.new(f"RootCurve_{i}", 'CURVE')
+    cu.dimensions = '3D'
+    cu.extrude = 0.08 + random.uniform(0, 0.05)
+    cu.bevel_depth = 0.03
+    spline = cu.splines.new('BEZIER')
+    spline.bezier_points.add(2)
+    # Start at bank surface, curve down into den
+    p0 = Vector((x, y, 0.8))
+    p1 = Vector((x * 0.7, y * 0.7 + 0.5, 0.2))
+    p2 = Vector((x * 0.4, y * 0.4 + 1.0, -0.8))
+    for bp, loc in zip(spline.bezier_points, [p0, p1, p2]):
+        bp.co = loc
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+    root_obj = bpy.data.objects.new(f"Root_{i}", cu)
+    bpy.context.collection.objects.link(root_obj)
+    root_obj.data.materials.append(mat_root)
+
+# ============ TWO CUBS ============
+def make_cub(name, loc, scale=1.0):
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=loc, segments=16, ring_count=8)
+    body = bpy.context.object
+    body.name = f"{name}_Body"
+    body.scale = (1.4, 1.0, 0.8)
+    body.data.materials.append(mat_cub)
+    # Head
+    hx, hy, hz = loc[0] + 0.4, loc[1], loc[2] + 0.1
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.18, location=(hx, hy, hz), segments=12, ring_count=8)
+    head = bpy.context.object
+    head.name = f"{name}_Head"
+    head.data.materials.append(mat_cub)
+    # Ears
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cone_add(radius1=0.06, depth=0.1,
+                                        location=(hx, hy + side*0.1, hz+0.15),
+                                        rotation=(0, side*0.3, 0))
+        ear = bpy.context.object
+        ear.name = f"{name}_Ear_{side}"
+        ear.data.materials.append(mat_cub)
+    # Tail
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.3,
+                                        location=(loc[0]-0.4, loc[1], loc[2]),
+                                        rotation=(0, math.pi/2, 0))
+    tail = bpy.context.object
+    tail.name = f"{name}_Tail"
+    tail.data.materials.append(mat_cub)
+    return body
+
+make_cub("Cub1", (-0.5, 2.2, -0.9))
+make_cub("Cub2", (0.5, 2.5, -0.9))
+
+# ============ FISH BONES ============
+def make_fish_bone(name, loc, rot_z=0):
+    # Spine
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.6,
+                                        location=loc, rotation=(0, math.pi/2, rot_z))
+    spine = bpy.context.object
+    spine.name = f"{name}_Spine"
+    spine.data.materials.append(mat_bone)
+    # Rib bones
+    for i in range(5):
+        offset = -0.2 + i * 0.1
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.01, depth=0.15,
+                                            location=(loc[0]+offset, loc[1], loc[2]),
+                                            rotation=(0, 0, rot_z))
+        rib = bpy.context.object
+        rib.name = f"{name}_Rib_{i}"
+        rib.data.materials.append(mat_bone)
+        rib.rotation_euler.x = math.pi/2
+    # Tail fin (flat plane)
+    bpy.ops.mesh.primitive_plane_add(size=0.1,
+                                      location=(loc[0]-0.35, loc[1], loc[2]),
+                                      rotation=(0, 0, rot_z))
+    tail = bpy.context.object
+    tail.name = f"{name}_Tail"
+    tail.scale = (1, 1.5, 1)
+    tail.data.materials.append(mat_bone)
+    return spine
+
+make_fish_bone("Fish1", (-1.0, 1.5, -1.15), rot_z=0.3)
+make_fish_bone("Fish2", (0.8, 1.8, -1.15), rot_z=-0.5)
+make_fish_bone("Fish3", (0.0, 3.0, -1.15), rot_z=1.2)
+
+# ============ SCENE SETUP ============
+# Camera
+bpy.ops.object.camera_add(location=(8, -8, 5))
+cam = bpy.context.object
+cam.name = "Camera"
+# Look at den
+direction = Vector((0, 2, -0.5)) - cam.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+cam.rotation_euler = rot_quat.to_euler()
+bpy.context.scene.camera = cam
+
+# Lighting
+bpy.ops.object.light_add(type='SUN', location=(5, -5, 10))
+sun = bpy.context.object
+sun.name = "Sun"
+sun.rotation_euler = (math.radians(45), math.radians(20), math.radians(30))
+sun.data.energy = 3.0
+
+# Fill light
+bpy.ops.object.light_add(type='AREA', location=(-5, 5, 5))
+fill = bpy.context.object
+fill.name = "Fill"
+fill.data.energy = 100
+fill.data.size = 5
+
+# World background
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes["Background"]
+bg.inputs[0].default_value = (0.1, 0.15, 0.25, 1.0)
+bg.inputs[1].default_value = 1.0
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1280
+bpy.context.scene.render.resolution_y = 720
+bpy.context.scene.render.film_transparent = False

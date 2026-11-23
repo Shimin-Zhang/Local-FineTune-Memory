@@ -1,0 +1,86 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1559)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(c, e=0, r=.6):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = r
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+rock, rock2, pad, steel = paint((.12, .12, .15)), paint((.2, .2, .24)), paint((.3, .3, .34)), paint((.35, .37, .4), 0, .4)
+body, stripe, fin, nose = paint((.8, .82, .85)), paint((.7, .1, .08)), paint((.75, .12, .1)), paint((.85, .2, .1))
+glass, flame, flame2, panel = paint((.3, .9, 1), 10), paint((1, .45, .08), 22), paint((1, .9, .4), 30), paint((.04, .08, .25), 0, .3)
+def mk(bm, m, p=(0, 0, 0), r=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location = p; o.rotation_euler = r
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def bar(p, s, m, rz=0):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return mk(bm, m, p, (0, 0, rz))
+def cone(p, r, h, n, m, r2=0, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, p, rot)
+def ball(p, r, m, sq=1):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co.z *= sq
+    return mk(bm, m, p)
+def strut(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return mk(bm, m)
+def shine(kind, p, c, w, aim=None):
+    L = bpy.data.lights.new("s", kind); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=11, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.3, 1.3), random.uniform(-1.3, 1.3), random.uniform(-1.4, .2)))
+mk(bm, rock)
+cone((0, 0, 0), 6.4, .35, 9, pad, 6.4); cone((0, 0, .35), 5.2, .25, 9, steel, 5.2)
+for i in range(9):
+    a = i * .698; bar((math.cos(a) * 5.9, math.sin(a) * 5.9, .35), (1.0, .15, .06), stripe, a)
+# the rocket: body, banded stripes, nose cone, nozzle
+cone((0, 0, .6), 1.7, 9.0, 8, body, 1.7)
+for z in (1.6, 2.4, 7.2, 8.0): cone((0, 0, z), 1.72, .4, 8, stripe, 1.72)
+cone((0, 0, 9.6), 1.7, 2.8, 8, nose, .05)
+cone((0, 0, .3), 1.7, .9, 8, steel, 1.0, (math.pi, 0, 0)).location.z = .6
+cone((0, 0, .25), 1.0, .3, 8, steel, 1.0)
+# round window with a glowing ring
+cone((0, -1.62, 5.4), 1.0, .2, 10, steel, 1.0, (math.pi / 2, 0, 0))
+cone((0, -1.72, 5.4), .75, .2, 10, glass, .75, (math.pi / 2, 0, 0))
+shine("POINT", (0, -3.2, 5.4), (.4, .9, 1), 500)
+# three fins, each with a rib and a tip stripe
+for k in range(3):
+    a = k * 2.094 + 1.57
+    bm = bmesh.new(); f = [bm.verts.new(c) for c in ((0, 0, 0), (2.6, 0, .6), (2.6, 0, 3.0), (0, 0, 3.4))]
+    bm.faces.new(f); bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=.35)
+    mk(bm, fin, (math.cos(a) * 1.5, math.sin(a) * 1.5, 1.0), (0, 0, a))
+    bar((math.cos(a) * 3.0, math.sin(a) * 3.0, 1.6), (.12, .5, .3), stripe, a)
+# launch tower with a gantry arm and walkway
+for sx in (-1, 1):
+    for sy in (-1, 1): strut((-6 + sx * 1.2, sy * 1.2, 0), (-6 + sx * 1.2, sy * 1.2, 10), .22, steel)
+for z in (2, 4.5, 7, 9.5):
+    for sy in (-1, 1): bar((-6, sy * 1.2, z), (2.4, .15, .15), steel)
+    for sx in (-1, 1): bar((-6 + sx * 1.2, 0, z), (.15, 2.4, .15), steel)
+bar((-4.4, 0, 6.2), (3.2, .5, .2), steel); bar((-4.4, 0, 5.6), (3.2, .12, .12), steel)
+bar((-6, 0, 10), (3.0, 2.6, .3), pad); bar((-6, 0, 10.3), (2.2, 2.0, .6), body)
+# solar panel on a post
+strut((6, 3, 0), (6, 3, 2.4), .15, steel); bar((6, 3, 2.4), (3.2, 1.8, .12), panel, .4)
+# crates, a tanker and a lamp post
+for i, (x, y) in enumerate(((5, -3), (6.4, -2.4), (5.5, -4.6))): bar((x, y, 0), (1.3, 1.3, 1.2), stripe if i != 1 else body, i * .5)
+cone((-1.5, -6, 0), .9, 2.4, 8, body, .9); cone((-1.5, -6, 2.4), .9, .5, 8, stripe, .2)
+strut((9, -4, 0), (9, -4, 4.5), .15, steel); ball((9, -4, 4.7), .4, glass); shine("POINT", (9, -4, 4.7), (.8, .95, 1), 250)
+for i in range(14): ball((random.uniform(-10, 10), random.uniform(-9, 9), .1), random.uniform(.3, .7), rock2, .6)
+shine("SUN", (-26, -16, 12), (.6, .75, 1), 5, (0, 0, 4)); shine("SUN", (22, 24, 10), (1, .5, .25), 2.2, (0, 0, 4))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .04, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 5.5)); co.location = t + Vector((16, -54, 32))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

@@ -1,0 +1,213 @@
+```python
+import bpy
+import bmesh
+import math
+import random
+from mathutils import Vector, noise
+
+# Clean up default objects
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# --- Create the Lava Rock ---
+# Start with a subdivided icosphere and displace it for a chunky look
+bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=1.0, location=(0, 0, 0))
+rock_obj = bpy.context.active_object
+rock_obj.name = "LavaRock"
+
+# Apply some noise displacement for irregular shape
+bm = bmesh.new()
+bm.from_mesh(rock_obj.data)
+
+random.seed(42)
+for vert in bm.verts:
+    # Use noise for organic displacement
+    n = noise.noise(vert.co * 1.5)
+    vert.co += vert.co.normalized() * n * 0.4
+    # Add some random jitter
+    vert.co += Vector((
+        random.uniform(-0.05, 0.05),
+        random.uniform(-0.05, 0.05),
+        random.uniform(-0.05, 0.05)
+    ))
+
+bm.to_mesh(rock_obj.data)
+bm.free()
+
+# Shade flat for a chunky look
+bpy.ops.object.shade_flat()
+
+# --- Create Cracks using Wireframe + Displacement approach ---
+# We'll create a separate crack mesh by using a wireframe modifier on a copy
+# and then displacing it slightly inward
+
+# Duplicate rock for crack base
+bpy.ops.object.duplicate()
+crack_obj = bpy.context.active_object
+crack_obj.name = "LavaCracks"
+
+# Add wireframe modifier to create crack lines
+wire_mod = crack_obj.modifiers.new(name="Wireframe", type='WIREFRAME')
+wire_mod.thickness = 0.015
+wire_mod.use_even_offset = True
+
+# Apply the wireframe modifier
+bpy.ops.object.modifier_apply(modifier="Wireframe")
+
+# Displace crack mesh slightly inward so it sits on the surface
+bm = bmesh.new()
+bm.from_mesh(crack_obj.data)
+for vert in bm.verts:
+    # Move vertices slightly toward center
+    vert.co -= vert.co.normalized() * 0.005
+bm.to_mesh(crack_obj.data)
+bm.free()
+
+# --- Materials ---
+
+# Rock Material
+rock_mat = bpy.data.materials.new(name="LavaRockMaterial")
+rock_mat.use_nodes = True
+nodes = rock_mat.node_tree.nodes
+links = rock_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+bsdf.location = (0, 0)
+output = nodes.new(type='ShaderNodeOutputMaterial')
+output.location = (300, 0)
+
+# Noise texture for rock surface detail
+noise_tex = nodes.new(type='ShaderNodeTexNoise')
+noise_tex.location = (-500, 0)
+noise_tex.inputs['Scale'].default_value = 8.0
+noise_tex.inputs['Detail'].default_value = 6.0
+noise_tex.inputs['Roughness'].default_value = 0.7
+
+# ColorRamp for rock color variation
+color_ramp = nodes.new(type='ShaderNodeValToRGB')
+color_ramp.location = (-200, 0)
+color_ramp.color_ramp.elements[0].position = 0.3
+color_ramp.color_ramp.elements[0].color = (0.05, 0.03, 0.02, 1)  # Dark rock
+color_ramp.color_ramp.elements[1].position = 0.7
+color_ramp.color_ramp.elements[1].color = (0.15, 0.1, 0.08, 1)   # Lighter rock
+
+# Roughness variation
+rough_ramp = nodes.new(type='ShaderNodeValToRGB')
+rough_ramp.location = (-200, -300)
+rough_ramp.color_ramp.elements[0].position = 0.3
+rough_ramp.color_ramp.elements[0].color = (0.9, 0.9, 0.9, 1)
+rough_ramp.color_ramp.elements[1].position = 0.7
+rough_ramp.color_ramp.elements[1].color = (0.7, 0.7, 0.7, 1)
+
+# Bump mapping
+bump = nodes.new(type='ShaderNodeBump')
+bump.location = (-200, 300)
+bump.inputs['Strength'].default_value = 0.3
+
+# Connect nodes
+links.new(noise_tex.outputs['Fac'], color_ramp.inputs['Fac'])
+links.new(noise_tex.outputs['Fac'], rough_ramp.inputs['Fac'])
+links.new(noise_tex.outputs['Fac'], bump.inputs['Height'])
+links.new(color_ramp.outputs['Color'], bsdf.inputs['Base Color'])
+links.new(rough_ramp.outputs['Color'], bsdf.inputs['Roughness'])
+links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+rock_obj.data.materials.append(rock_mat)
+
+# Crack Material (Glowing)
+crack_mat = bpy.data.materials.new(name="LavaCrackMaterial")
+crack_mat.use_nodes = True
+nodes_c = crack_mat.node_tree.nodes
+links_c = crack_mat.node_tree.links
+
+for node in nodes_c:
+    nodes_c.remove(node)
+
+# Emission shader for glowing cracks
+emission = nodes_c.new(type='ShaderNodeEmission')
+emission.location = (0, 0)
+emission.inputs['Color'].default_value = (1.0, 0.3, 0.05, 1)  # Orange-red glow
+emission.inputs['Strength'].default_value = 15.0
+
+output_c = nodes_c.new(type='ShaderNodeOutputMaterial')
+output_c.location = (300, 0)
+
+links_c.new(emission.outputs['Emission'], output_c.inputs['Surface'])
+
+crack_obj.data.materials.append(crack_mat)
+
+# --- Lighting ---
+# Add a point light inside the rock for glow effect
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 0))
+light_obj = bpy.context.active_object
+light_obj.name = "LavaGlowLight"
+light_obj.data.energy = 50
+light_obj.data.color = (1.0, 0.4, 0.1)
+light_obj.data.shadow_soft_size = 0.5
+
+# Add a dim ambient light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun_obj = bpy.context.active_object
+sun_obj.name = "AmbientLight"
+sun_obj.data.energy = 0.5
+sun_obj.data.color = (0.8, 0.7, 0.6)
+
+# --- World Settings ---
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs['Color'].default_value = (0.02, 0.01, 0.01, 1)
+    bg.inputs['Strength'].default_value = 1.0
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(3, -3, 2))
+cam_obj = bpy.context.active_object
+cam_obj.name = "Camera"
+bpy.context.scene.camera = cam_obj
+
+# Point camera at the rock
+direction = Vector((0, 0, 0)) - cam_obj.location
+rot_quat = direction.to_track_quat('-Z', 'Y')
+cam_obj.rotation_euler = rot_quat.to_euler()
+
+# --- Render Settings ---
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+
+# Enable bloom/emission glow in compositor
+bpy.context.scene.use_nodes = True
+comp_nodes = bpy.context.scene.node_tree.nodes
+comp_links = bpy.context.scene.node_tree.links
+
+for node in comp_nodes:
+    comp_nodes.remove(node)
+
+render_comp = comp_nodes.new(type='CompositorNodeRenderLayers')
+render_comp.location = (0, 0)
+
+glare = comp_nodes.new(type='CompositorNodeGlare')
+glare.location = (300, 0)
+glare.glare_type = 'BLOOM'
+glare.quality = 'HIGH'
+glare.threshold = 1.0
+glare.size = 8
+
+comp_out = comp_nodes.new(type='CompositorNodeComposite')
+comp_out.location = (600, 0)
+
+comp_links.new(render_comp.outputs['Image'], glare.inputs['Image'])
+comp_links.new(glare.outputs['Image'], comp_out.inputs['Image'])
+
+print("Lava rock with glowing cracks created successfully!")
+```

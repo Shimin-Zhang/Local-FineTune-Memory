@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 5.8,
+ "error": null,
+ "error_line": null,
+ "printed": "Camera forward: <Vector (0.0000, 0.9986, 0.0526)>\nCamera location: <Vector (0.0000, 100.0000, 15.0000)>\nNew camera rotation: <Euler (x=1.5708, y=0.0000, z=0.0000), order='XYZ'>\n",
+ "state_saved": true,
+ "n_objects": 558,
+ "n_lights": 71,
+ "n_materials": 261,
+ "own_camera": true,
+ "render_error": null
+}

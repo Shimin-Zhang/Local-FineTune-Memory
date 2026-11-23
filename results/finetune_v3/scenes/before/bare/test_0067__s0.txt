@@ -1,0 +1,249 @@
+```python
+import bpy
+import math
+import bmesh
+from mathutils import Vector, Matrix
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up scene
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+
+# Camera
+cam_data = bpy.data.cameras.new("Camera")
+cam = bpy.data.objects.new("Camera", cam_data)
+scene.collection.objects.link(cam)
+cam.location = (18, -14, 10)
+cam.rotation_euler = (math.radians(72), 0, math.radians(40))
+scene.camera = cam
+
+# Light
+light_data = bpy.data.lights.new("Sun", type='SUN')
+light_data.energy = 4
+light_data.color = (1.0, 0.95, 0.85)
+light = bpy.data.objects.new("Sun", light_data)
+scene.collection.objects.link(light)
+light.rotation_euler = (math.radians(45), math.radians(20), math.radians(30))
+
+# World
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.6, 0.75, 0.9, 1.0)
+    bg.inputs[1].default_value = 0.8
+
+# Helper: create a material
+def make_mat(name, color, rough=0.8, metal=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = rough
+        bsdf.inputs["Metallic"].default_value = metal
+    return mat
+
+# Materials
+mat_water   = make_mat("Water", (0.15, 0.35, 0.5, 1), rough=0.2)
+mat_island  = make_mat("Island", (0.35, 0.55, 0.2, 1), rough=0.9)
+mat_stilts  = make_mat("Stilts", (0.4, 0.25, 0.12, 1), rough=0.8)
+mat_house   = make_mat("House", (0.85, 0.75, 0.6, 1), rough=0.7)
+mat_roof    = make_mat("Thatch", (0.7, 0.55, 0.25, 1), rough=0.95)
+mat_jetty   = make_mat("Jetty", (0.5, 0.35, 0.18, 1), rough=0.85)
+mat_nest    = make_mat("Nest", (0.55, 0.4, 0.2, 1), rough=0.95)
+mat_sign    = make_mat("Sign", (0.9, 0.85, 0.7, 1), rough=0.6)
+mat_sign_post = make_mat("SignPost", (0.35, 0.22, 0.1, 1), rough=0.8)
+mat_tree_trunk = make_mat("Trunk", (0.35, 0.22, 0.1, 1), rough=0.9)
+mat_tree_leaf  = make_mat("Leaves", (0.2, 0.45, 0.15, 1), rough=0.95)
+
+# --- WATER (lake) ---
+bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, 0))
+water = bpy.context.active_object
+water.name = "Lake"
+water.data.materials.append(mat_water)
+
+# --- ISLAND ---
+# Create a blobby island using a displaced plane
+bpy.ops.mesh.primitive_plane_add(size=12, location=(0, 0, 0.3))
+island = bpy.context.active_object
+island.name = "Island"
+island.scale = (1.0, 0.8, 1.0)
+# Subdivide for displacement
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.subdivide(number_cuts=8)
+bpy.ops.object.mode_set(mode='OBJECT')
+# Displace with noise
+mod = island.modifiers.new("Noise", 'DISPLACE')
+mod.texture = bpy.data.textures.new("IslandNoise", type='CLOUDS')
+mod.texture.noise_scale = 0.5
+mod.strength = 0.4
+bpy.ops.object.modifier_apply(modifier="Noise")
+island.data.materials.append(mat_island)
+
+# --- STILTS ---
+stilt_positions = [(-1.5, -1.2), (1.5, -1.2), (-1.5, 1.2), (1.5, 1.2)]
+for sx, sy in stilt_positions:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=3.5, location=(sx, sy, 1.75))
+    stilt = bpy.context.active_object
+    stilt.name = f"Stilt_{sx}_{sy}"
+    stilt.data.materials.append(mat_stilts)
+
+# --- HOUSE BODY ---
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 3.8))
+house = bpy.context.active_object
+house.name = "SwanHouse"
+house.scale = (3.0, 2.4, 1.2)
+bpy.ops.object.transform_apply(scale=True)
+house.data.materials.append(mat_house)
+
+# --- THATCHED ROOF ---
+# Create a cone/pyramid roof
+bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=3.2, radius2=0, depth=2.0, location=(0, 0, 5.5))
+roof = bpy.context.active_object
+roof.name = "ThatchedRoof"
+roof.rotation_euler = (0, 0, math.radians(45))
+roof.scale = (1.0, 0.85, 1.0)
+bpy.ops.object.transform_apply(scale=True)
+roof.data.materials.append(mat_roof)
+
+# Roof overhang (second smaller cone for layered thatch look)
+bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=3.6, radius2=0, depth=1.2, location=(0, 0, 4.8))
+roof2 = bpy.context.active_object
+roof2.name = "ThatchedRoofOverhang"
+roof2.rotation_euler = (0, 0, math.radians(45))
+roof2.scale = (1.0, 0.85, 1.0)
+bpy.ops.object.transform_apply(scale=True)
+roof2.data.materials.append(mat_roof)
+
+# --- FEEDING JETTY ---
+# Jetty extends from island toward water
+jetty_length = 5
+bpy.ops.mesh.primitive_cube_add(size=1, location=(jetty_length/2 + 4, 0, 0.5))
+jetty = bpy.context.active_object
+jetty.name = "FeedingJetty"
+jetty.scale = (jetty_length, 1.0, 0.15)
+bpy.ops.object.transform_apply(scale=True)
+jetty.data.materials.append(mat_jetty)
+
+# Jetty support posts
+for jx in [4.5, 6.5, 8.5]:
+    for jy in [-0.4, 0.4]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=1.2, location=(jx, jy, 0.1))
+        post = bpy.context.active_object
+        post.name = f"JettyPost_{jx}_{jy}"
+        post.data.materials.append(mat_stilts)
+
+# --- SWAN NEST ---
+# A small mound with a hollow center (torus + cylinder)
+nest_loc = (-2.5, 2.0, 0.8)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.6, depth=0.3, location=nest_loc)
+nest_base = bpy.context.active_object
+nest_base.name = "NestBase"
+nest_base.data.materials.append(mat_nest)
+
+bpy.ops.mesh.primitive_torus_add(major_radius=0.45, minor_radius=0.15, location=(nest_loc[0], nest_loc[1], nest_loc[2] + 0.15))
+nest_rim = bpy.context.active_object
+nest_rim.name = "NestRim"
+nest_rim.data.materials.append(mat_nest)
+
+# --- SIGNBOARD ---
+sign_loc = (3.5, -2.5, 0)
+# Post
+bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=1.8, location=(sign_loc[0], sign_loc[1], 0.9))
+sign_post = bpy.context.active_object
+sign_post.name = "SignPost"
+sign_post.data.materials.append(mat_sign_post)
+
+# Board
+bpy.ops.mesh.primitive_cube_add(size=1, location=(sign_loc[0], sign_loc[1], 1.6))
+sign_board = bpy.context.active_object
+sign_board.name = "SignBoard"
+sign_board.scale = (1.2, 0.05, 0.5)
+bpy.ops.object.transform_apply(scale=True)
+sign_board.data.materials.append(mat_sign)
+
+# --- DECORATIVE TREES on island ---
+def add_tree(x, y, scale=1.0):
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.1*scale, depth=1.5*scale, location=(x, y, 0.75*scale))
+    trunk = bpy.context.active_object
+    trunk.name = f"TreeTrunk_{x}_{y}"
+    trunk.data.materials.append(mat_tree_trunk)
+    # Leaves (stacked cones)
+    for i, (h, r) in enumerate([(1.0, 0.7), (0.8, 0.55), (0.6, 0.4)]):
+        bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=r*scale, radius2=0, depth=h*scale,
+                                         location=(x, y, (1.5 + i*0.5)*scale))
+        leaf = bpy.context.active_object
+        leaf.name = f"TreeLeaf_{x}_{y}_{i}"
+        leaf.data.materials.append(mat_tree_leaf)
+
+add_tree(-3.5, -1.5, 1.0)
+add_tree(2.0, 2.5, 0.8)
+add_tree(-1.0, 3.0, 0.6)
+
+# --- SWAN (simple) on the water near the jetty ---
+def add_swan(x, y, z, scale=1.0, facing=0.0):
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3*scale, location=(x, y, z))
+    body = bpy.context.active_object
+    body.name = f"SwanBody_{x}_{y}"
+    body.scale = (1.3, 1.0, 0.7)
+    bpy.ops.object.transform_apply(scale=True)
+    mat_swan = make_mat(f"Swan_{x}_{y}", (0.95, 0.95, 0.95, 1), rough=0.5)
+    body.data.materials.append(mat_swan)
+    # Neck
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08*scale, depth=0.5*scale, location=(x + 0.25*scale, y, z + 0.35*scale))
+    neck = bpy.context.active_object
+    neck.name = f"SwanNeck_{x}_{y}"
+    neck.rotation_euler = (0, math.radians(-20), 0)
+    neck.data.materials.append(mat_swan)
+    # Head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1*scale, location=(x + 0.35*scale, y, z + 0.55*scale))
+    head = bpy.context.active_object
+    head.name = f"SwanHead_{x}_{y}"
+    head.data.materials.append(mat_swan)
+    # Beak
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=0.05*scale, radius2=0, depth=0.12*scale,
+                                     location=(x + 0.45*scale, y, z + 0.55*scale))
+    beak = bpy.context.active_object
+    beak.name = f"SwanBeak_{x}_{y}"
+    beak.rotation_euler = (0, math.radians(90), 0)
+    mat_beak = make_mat(f"Beak_{x}_{y}", (0.9, 0.5, 0.1, 1), rough=0.6)
+    beak.data.materials.append(mat_beak)
+
+add_swan(7.5, 1.5, 0.15, 1.0)
+add_swan(6.5, -1.0, 0.15, 0.8)
+
+# --- ADD TEXT ON SIGNBOARD ---
+# Create a text object for the sign
+bpy.ops.object.text_add(location=(3.5, -2.5, 1.6))
+text_obj = bpy.context.active_object
+text_obj.name = "SignText"
+text_obj.data.body = "SWAN HOUSE"
+text_obj.data.align_x = 'CENTER'
+text_obj.data.align_y = 'CENTER'
+text_obj.data.size = 0.3
+text_obj.rotation_euler = (math.radians(90), 0, math.radians(90))
+text_obj.location = (3.5, -2.52, 1.6)
+mat_text = make_mat("SignText", (0.1, 0.1, 0.1, 1), rough=0.5)
+text_obj.data.materials.append(mat_text)
+
+# --- FINISHING: Smooth shading where appropriate ---
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        bpy.context.view_layer.objects.active = obj
+        obj.select_set(True)
+        bpy.ops.object.shade_smooth()
+        obj.select_set(False)
+
+# Set render engine
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 64
+scene.cycles.use_denoising = True
+```

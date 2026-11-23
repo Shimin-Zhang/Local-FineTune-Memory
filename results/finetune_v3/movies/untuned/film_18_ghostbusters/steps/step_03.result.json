@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 25.8,
+ "error": null,
+ "error_line": null,
+ "printed": "Scene refined with more details!\n",
+ "state_saved": true,
+ "n_objects": 786,
+ "n_lights": 51,
+ "n_materials": 786,
+ "own_camera": true,
+ "render_error": null
+}

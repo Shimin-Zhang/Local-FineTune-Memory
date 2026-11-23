@@ -1,0 +1,186 @@
+```python
+import bpy
+import math
+import random
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create materials
+mat_red = bpy.data.materials.new("RedPaint")
+mat_red.use_nodes = True
+bsdf = mat_red.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.8, 0.1, 0.1, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.6
+
+mat_wall = bpy.data.materials.new("Wall")
+mat_wall.use_nodes = True
+bsdf = mat_wall.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.9, 0.85, 0.8, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+
+mat_roof = bpy.data.materials.new("Roof")
+mat_roof.use_nodes = True
+bsdf = mat_roof.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.5, 0.5, 0.5, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.9
+
+mat_glass = bpy.data.materials.new("Glass")
+mat_glass.use_nodes = True
+bsdf = mat_glass.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.7, 0.85, 0.95, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.1
+bsdf.inputs["Transmission"].default_value = 1.0
+bsdf.inputs["IOR"].default_value = 1.5
+
+mat_ground = bpy.data.materials.new("Ground")
+mat_ground.use_nodes = True
+bsdf = mat_ground.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.4, 0.3, 0.2, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.95
+
+mat_vine = bpy.data.materials.new("Vine")
+mat_vine.use_nodes = True
+bsdf = mat_vine.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.2, 0.5, 0.15, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.7
+
+mat_shrine = bpy.data.materials.new("Shrine")
+mat_shrine.use_nodes = True
+bsdf = mat_shrine.node_tree.nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.95, 0.9, 0.85, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.5
+
+# Helper: add box
+def add_box(name, loc, size, material):
+    bpy.ops.mesh.primitive_cube_add(location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(material)
+    return obj
+
+# Ground
+bpy.ops.mesh.primitive_plane_add(location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground.scale = (50, 50, 1)
+bpy.ops.object.transform_apply(scale=True)
+ground.data.materials.append(mat_ground)
+
+# House parameters
+num_stories = 3
+story_height = 3.5
+wall_thickness = 0.3
+base_w = 12
+base_d = 10
+house_x = -5
+house_y = -5
+
+# Build each story
+for i in range(num_stories):
+    z_base = i * story_height
+    z_top = z_base + story_height
+
+    # Walls (4 walls)
+    # Front wall (facing +Y)
+    front = add_box(f"Wall_F_{i}", (house_x, house_y + base_d/2, z_base + story_height/2), (base_w, wall_thickness, story_height), mat_wall)
+    # Back wall
+    back = add_box(f"Wall_B_{i}", (house_x, house_y - base_d/2, z_base + story_height/2), (base_w, wall_thickness, story_height), mat_wall)
+    # Left wall
+    left = add_box(f"Wall_L_{i}", (house_x - base_w/2, house_y, z_base + story_height/2), (wall_thickness, base_d, story_height), mat_wall)
+    # Right wall
+    right = add_box(f"Wall_R_{i}", (house_x + base_w/2, house_y, z_base + story_height/2), (wall_thickness, base_d, story_height), mat_wall)
+
+    # Floor slab
+    if i == 0:
+        floor = add_box(f"Floor_{i}", (house_x, house_y, z_base + 0.15), (base_w + 0.4, base_d + 0.4, 0.3), mat_roof)
+    else:
+        floor = add_box(f"Floor_{i}", (house_x, house_y, z_base + 0.15), (base_w + 0.4, base_d + 0.4, 0.3), mat_roof)
+
+    # Flat roof terrace slab
+    roof = add_box(f"Roof_{i}", (house_x, house_y, z_top + 0.15), (base_w + 0.6, base_d + 0.6, 0.3), mat_roof)
+
+    # Red columns on terrace (for upper stories, place on the roof of previous story)
+    if i > 0:
+        col_positions = [
+            (house_x - base_w/2 + 0.5, house_y - base_d/2 + 0.5),
+            (house_x + base_w/2 - 0.5, house_y - base_d/2 + 0.5),
+            (house_x - base_w/2 + 0.5, house_y + base_d/2 - 0.5),
+            (house_x + base_w/2 - 0.5, house_y + base_d/2 - 0.5),
+            (house_x, house_y - base_d/2 + 0.5),
+            (house_x, house_y + base_d/2 - 0.5),
+        ]
+        for j, (cx, cy) in enumerate(col_positions):
+            col = add_box(f"Col_{i}_{j}", (cx, cy, z_base + story_height/2), (0.4, 0.4, story_height), mat_red)
+
+# Windows on front face
+for i in range(num_stories):
+    z_base = i * story_height
+    z_center = z_base + story_height/2
+    # Two windows per story on front
+    for wx in [-3, 3]:
+        win = add_box(f"Win_{i}_{wx}", (house_x + wx, house_y + base_d/2 + 0.01, z_center), (2, 0.1, 1.5), mat_glass)
+
+# Window shaft (vertical glass shaft on one side)
+shaft_x = house_x + base_w/2 + 0.15
+shaft = add_box("WindowShaft", (shaft_x, house_y, num_stories * story_height / 2), (0.3, 6, num_stories * story_height), mat_glass)
+# Shaft frame
+shaft_frame = add_box("ShaftFrame", (shaft_x, house_y, num_stories * story_height / 2), (0.4, 6.2, num_stories * story_height + 0.2), mat_red)
+
+# Small shrine room on top floor terrace
+shrine_w = 3
+shrine_d = 2.5
+shrine_h = 2.5
+shrine_x = house_x + base_w/2 - shrine_w/2 - 0.5
+shrine_y = house_y + base_d/2 - shrine_d/2 - 0.5
+shrine_z = (num_stories - 1) * story_height + story_height + 0.3  # on top roof
+
+# Shrine walls
+shrine_front = add_box("Shrine_F", (shrine_x, shrine_y + shrine_d/2, shrine_z + shrine_h/2), (shrine_w, 0.2, shrine_h), mat_shrine)
+shrine_back = add_box("Shrine_B", (shrine_x, shrine_y - shrine_d/2, shrine_z + shrine_h/2), (shrine_w, 0.2, shrine_h), mat_shrine)
+shrine_left = add_box("Shrine_L", (shrine_x - shrine_w/2, shrine_y, shrine_z + shrine_h/2), (0.2, shrine_d, shrine_h), mat_shrine)
+shrine_right = add_box("Shrine_R", (shrine_x + shrine_w/2, shrine_y, shrine_z + shrine_h/2), (0.2, shrine_d, shrine_h), mat_shrine)
+shrine_roof = add_box("Shrine_Roof", (shrine_x, shrine_y, shrine_z + shrine_h + 0.1), (shrine_w + 0.3, shrine_d + 0.3, 0.2), mat_roof)
+# Shrine door
+shrine_door = add_box("Shrine_Door", (shrine_x, shrine_y + shrine_d/2 + 0.01, shrine_z + shrine_h/2), (1.2, 0.05, 2.0), mat_glass)
+
+# Vineyard: rows of vine plants
+random.seed(42)
+vine_x_start = 8
+vine_y_start = -15
+vine_rows = 8
+vine_cols = 10
+vine_spacing_x = 2.5
+vine_spacing_y = 3.0
+
+for r in range(vine_rows):
+    for c in range(vine_cols):
+        vx = vine_x_start + c * vine_spacing_x + random.uniform(-0.3, 0.3)
+        vy = vine_y_start + r * vine_spacing_y + random.uniform(-0.3, 0.3)
+        # Vine trunk
+        trunk = add_box(f"VineTrunk_{r}_{c}", (vx, vy, 0.6), (0.15, 0.15, 1.2), mat_vine)
+        # Vine foliage (small box on top)
+        foliage = add_box(f"VineFol_{r}_{c}", (vx, vy, 1.4), (0.8, 0.8, 0.6), mat_vine)
+        # Support post
+        post = add_box(f"VinePost_{r}_{c}", (vx, vy, 1.0), (0.1, 0.1, 2.0), mat_red)
+
+# Camera and light
+bpy.ops.object.camera_add(location=(20, 25, 12))
+cam = bpy.context.active_object
+cam.name = "Camera"
+cam.rotation_euler = (math.radians(65), 0, math.radians(-40))
+bpy.context.scene.camera = cam
+
+bpy.ops.object.light_add(type='SUN', location=(0, 0, 30))
+sun = bpy.context.active_object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(15), 0)
+
+# Set render resolution
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+```

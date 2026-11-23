@@ -1,0 +1,150 @@
+c04_desk__s0.py              exit 0       3.0s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+c02_park__s0.py              exit 0       3.2s image=True objects=0 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "BLENDER_EEVEE_NEXT" not found in ('BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES')
+c03_solar_system__s2.py      exit 0       3.3s image=True objects=9 viewport_only_materials=9 error=None
+c03_solar_system__s0.py      exit 0       3.3s image=True objects=9 viewport_only_materials=9 error=None
+c03_solar_system__s1.py      exit 0       3.6s image=True objects=1 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+c01_living_room__s0.py       exit 0       3.6s image=True objects=19 viewport_only_materials=0 error=None
+c01_living_room__s1.py       exit 0       3.7s image=True objects=24 viewport_only_materials=0 error=None
+c02_park__s2.py              exit 0       4.3s image=True objects=4 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "rings" unrecognized
+c01_living_room__s2.py       exit 0       4.3s image=True objects=20 viewport_only_materials=0 error=None
+c02_park__s1.py              exit 0       6.3s image=True objects=54 viewport_only_materials=0 error=None
+c05_kitchen__s0.py           exit 0       4.1s image=True objects=28 viewport_only_materials=0 error=None
+c04_desk__s1.py              exit 0       4.4s image=True objects=56 viewport_only_materials=0 error=None
+c05_kitchen__s1.py           exit 0       4.5s image=True objects=22 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+c04_desk__s2.py              exit 0       4.8s image=True objects=76 viewport_only_materials=0 error=None
+c06_harbour__s0.py           exit 0       4.4s image=True objects=1 viewport_only_materials=0 error=SyntaxError: '(' was never closed (script.py, line 257)
+c06_harbour__s1.py           exit 0       5.0s image=True objects=29 viewport_only_materials=29 error=None
+c06_harbour__s2.py           exit 0       4.7s image=True objects=37 viewport_only_materials=0 error=None
+c05_kitchen__s2.py           exit 0       5.7s image=True objects=20 viewport_only_materials=0 error=None
+c07_campsite__s2.py          exit 0       2.8s image=True objects=0 viewport_only_materials=0 error=AttributeError: bpy_prop_collection: attribute "clear" not found
+c07_campsite__s1.py          exit 0       4.5s image=True objects=1 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "radius" unrecognized
+c08_playground__s2.py        exit 0       5.4s image=True objects=45 viewport_only_materials=7 error=None
+c09_street_corner__s2.py     exit 0       4.5s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+c08_playground__s0.py        exit 0       6.1s image=True objects=63 viewport_only_materials=0 error=None
+c09_street_corner__s1.py     exit 0       4.9s image=True objects=24 viewport_only_materials=0 error=None
+c08_playground__s1.py        exit 0       5.8s image=True objects=21 viewport_only_materials=0 error=None
+c09_street_corner__s0.py     exit 0       5.8s image=True objects=45 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+c07_campsite__s0.py          exit 0       9.6s image=True objects=149 viewport_only_materials=0 error=None
+c10_castle__s1.py            exit 0       4.0s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+c10_castle__s2.py            exit 0       6.2s image=True objects=69 viewport_only_materials=0 error=None
+c10_castle__s0.py            exit 0       8.8s image=True objects=112 viewport_only_materials=0 error=None
+c12_bedroom__s1.py           exit 0       5.3s image=True objects=35 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+l01_key_rim__s1.py           exit 0       5.0s image=True objects=0 viewport_only_materials=0 error=RuntimeError: Error: Node type NodeBackground undefined
+c11_farm__s0.py              exit 0       6.0s image=True objects=82 viewport_only_materials=0 error=None
+c12_bedroom__s2.py           exit 0       5.9s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+c11_farm__s2.py              exit 0       7.3s image=True objects=6 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "rings" unrecognized
+c11_farm__s1.py              exit 0       7.6s image=True objects=63 viewport_only_materials=0 error=None
+c12_bedroom__s0.py           exit 0       8.1s image=True objects=27 viewport_only_materials=0 error=None
+l01_key_rim__s0.py           exit 0       9.4s image=True objects=3 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Principled Bsdf" not found'
+l02_three_point__s2.py       exit 0       7.7s image=True objects=9 viewport_only_materials=0 error=None
+l02_three_point__s0.py       exit 0       8.9s image=True objects=10 viewport_only_materials=0 error=None
+l02_three_point__s1.py       exit 0       8.5s image=True objects=7 viewport_only_materials=0 error=None
+l01_key_rim__s2.py           exit 0      10.8s image=True objects=4 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+l04_campfire_night__s2.py    exit 0       6.5s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 4 items, not 3
+l03_product_shot__s1.py      exit 0      12.8s image=True objects=4 viewport_only_materials=0 error=None
+l03_product_shot__s2.py      exit 0      11.8s image=True objects=4 viewport_only_materials=0 error=AttributeError: bpy_prop_collection: attribute "links" not found
+l03_product_shot__s0.py      exit 0      14.7s image=True objects=4 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+l05_desk_lamp__s2.py         exit 0       7.1s image=True objects=13 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+l04_campfire_night__s0.py    exit 0      13.4s image=True objects=32 viewport_only_materials=0 error=None
+l05_desk_lamp__s1.py         exit 0       7.8s image=True objects=11 viewport_only_materials=0 error=None
+l04_campfire_night__s1.py    exit 0      13.3s image=True objects=49 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "Medium High Contrast" not found in ('None', 'AgX - Punchy', 'AgX - Greyscale', 'AgX - Very High Contrast', 'AgX - High Contrast', 'AgX - Medium High Contrast', 'AgX - Base Contrast', 'AgX - Medium Low Contrast', 'AgX - Low Contrast', 'AgX - Very Low Contrast')
+l05_desk_lamp__s0.py         exit 0       9.5s image=True objects=12 viewport_only_materials=0 error=None
+l06_showroom__s2.py          exit 0       5.3s image=True objects=1 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "IOR" not found'
+l07_sunset__s1.py            exit 0       4.0s image=True objects=0 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "NISHITA" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')
+l07_sunset__s0.py            exit 0       5.8s image=True objects=12 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 4
+l06_showroom__s0.py          exit 0      11.0s image=True objects=7 viewport_only_materials=0 error=None
+l07_sunset__s2.py            exit 0       4.4s image=True objects=0 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "NISHITA" not found in ('SINGLE_SCATTERING', 'MULTIPLE_SCATTERING', 'PREETHAM', 'HOSEK_WILKIE')
+l06_showroom__s1.py          exit 0      10.6s image=True objects=9 viewport_only_materials=0 error=None
+l09_stage_spots__s0.py       exit 0       4.9s image=True objects=1 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 3 items, not 4
+l08_spooky_pumpkin__s0.py    exit 0       7.9s image=True objects=3 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+l09_stage_spots__s1.py       exit 0       5.6s image=True objects=1 viewport_only_materials=0 error=None
+l08_spooky_pumpkin__s2.py    exit 0       9.2s image=True objects=3 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+l09_stage_spots__s2.py       exit 0       6.1s image=True objects=1 viewport_only_materials=0 error=None
+l08_spooky_pumpkin__s1.py    exit 0      10.6s image=True objects=3 viewport_only_materials=0 error=None
+l10_depth_of_field__s1.py    exit 0       6.8s image=True objects=17 viewport_only_materials=0 error=AttributeError: 'Vector' object has no attribute 'distance_to'
+s02_mug__s0.py               exit 0       6.2s image=True objects=2 viewport_only_materials=0 error=None
+l10_depth_of_field__s0.py    exit 0       8.4s image=True objects=15 viewport_only_materials=0 error=None
+s02_mug__s1.py               exit 0       6.0s image=True objects=1 viewport_only_materials=0 error=RuntimeError: Operator bpy.ops.mesh.select_all.poll() failed, context is incorrect
+s02_mug__s2.py               exit 0       4.9s image=True objects=2 viewport_only_materials=0 error=None
+s03_table_vase__s1.py        exit 0       3.6s image=True objects=6 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+s03_table_vase__s2.py        exit 0       4.0s image=True objects=6 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+s04_duck__s0.py              exit 0       3.9s image=True objects=8 viewport_only_materials=0 error=None
+s03_table_vase__s0.py        exit 0       5.9s image=True objects=9 viewport_only_materials=0 error=None
+s04_duck__s1.py              exit 0       4.5s image=True objects=8 viewport_only_materials=0 error=None
+s05_snowman__s2.py           exit 0       4.0s image=True objects=5 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "segments" unrecognized
+s04_duck__s2.py              exit 0       4.7s image=True objects=6 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+s05_snowman__s1.py           exit 0       4.7s image=True objects=12 viewport_only_materials=0 error=None
+s06_car__s1.py               exit 0       4.0s image=True objects=6 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+s05_snowman__s0.py           exit 0       5.5s image=True objects=7 viewport_only_materials=0 error=None
+s06_car__s0.py               exit 0       4.9s image=True objects=6 viewport_only_materials=0 error=None
+s07_house__s1.py             exit 0       4.3s image=True objects=5 viewport_only_materials=0 error=None
+s06_car__s2.py               exit 0       5.1s image=True objects=6 viewport_only_materials=0 error=None
+s08_traffic_light__s0.py     exit 0       3.6s image=True objects=6 viewport_only_materials=0 error=None
+s07_house__s0.py             exit 0       6.5s image=True objects=6 viewport_only_materials=0 error=None
+s08_traffic_light__s1.py     exit 0       3.9s image=True objects=5 viewport_only_materials=0 error=None
+s08_traffic_light__s2.py     exit 0       3.7s image=True objects=6 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+s09_rocket__s1.py            exit 0       3.5s image=True objects=7 viewport_only_materials=0 error=None
+s09_rocket__s0.py            exit 0       3.9s image=True objects=6 viewport_only_materials=0 error=None
+s07_house__s2.py             exit 0       6.1s image=True objects=6 viewport_only_materials=0 error=None
+s10_cactus__s0.py            exit 0       3.4s image=True objects=3 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Bump" not found'
+s09_rocket__s2.py            exit 0       3.7s image=True objects=8 viewport_only_materials=0 error=None
+s10_cactus__s1.py            exit 0       3.6s image=True objects=10 viewport_only_materials=0 error=None
+t01_teapot__s0.py            exit 0       5.2s image=True objects=1 viewport_only_materials=0 error=AttributeError: module 'math' has no attribute 'random'
+s11_lighthouse__s1.py        exit 0       5.6s image=True objects=13 viewport_only_materials=0 error=None
+s10_cactus__s2.py            exit 0       5.8s image=True objects=4 viewport_only_materials=0 error=None
+t01_teapot__s1.py            exit 0       4.4s image=True objects=1 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 2 items, not 3
+s11_lighthouse__s2.py        exit 0       5.6s image=True objects=9 viewport_only_materials=0 error=None
+s11_lighthouse__s0.py        exit 0       6.1s image=True objects=4 viewport_only_materials=0 error=None
+t01_teapot__s2.py            exit 0       4.8s image=True objects=11 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+t02_lemon__s0.py             exit 0       4.7s image=True objects=1 viewport_only_materials=0 error=None
+t03_orange__s0.py            exit 0       3.7s image=True objects=3 viewport_only_materials=0 error=None
+t04_barrel__s1.py            exit 0       4.2s image=True objects=4 viewport_only_materials=0 error=None
+t03_orange__s1.py            exit 0       4.7s image=True objects=3 viewport_only_materials=0 error=None
+t05_marble_pawn__s0.py       exit 0       4.3s image=True objects=2 viewport_only_materials=0 error=None
+t02_lemon__s2.py             exit 0       5.8s image=True objects=1 viewport_only_materials=0 error=AttributeError: 'NoneType' object has no attribute 'shading'
+t04_barrel__s0.py            exit 0       5.5s image=True objects=1 viewport_only_materials=0 error=TypeError: mathutils.Vector(): takes at most 1 argument (3 given)
+t04_barrel__s2.py            exit 0       4.7s image=True objects=1 viewport_only_materials=0 error=AttributeError: 'MeshVertex' object has no attribute 'z'
+t05_marble_pawn__s1.py       exit 0       3.9s image=True objects=1 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+t05_marble_pawn__s2.py       exit 0       3.9s image=True objects=1 viewport_only_materials=0 error=None
+t02_lemon__s1.py             exit 0      12.5s image=True objects=1 viewport_only_materials=0 error=None
+t07_frosted_vase__s0.py      exit 0       3.8s image=True objects=1 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Distribution" not found'
+t06_neon_ring__s2.py         exit 0       4.1s image=True objects=2 viewport_only_materials=0 error=AttributeError: 'Scene' object has no attribute 'node_tree'
+t06_neon_ring__s1.py         exit 0       4.6s image=True objects=2 viewport_only_materials=0 error=AttributeError: 'Scene' object has no attribute 'node_tree'
+t06_neon_ring__s0.py         exit 0       6.2s image=True objects=2 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+t03_orange__s2.py            exit 0      11.1s image=True objects=1 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 2 items, not 3
+t08_crate__s1.py             exit 0       4.7s image=True objects=31 viewport_only_materials=0 error=TypeError: unsupported operand type(s) for /: 'Material' and 'int'
+t09_trophy__s0.py            exit 0       4.6s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 2 items, not 3
+t09_trophy__s1.py            exit 0       4.3s image=True objects=1 viewport_only_materials=0 error=TypeError: ObjectModifiers.new(): error with keyword argument "type" -  enum "SPIN" not found in ('GREASE_PENCIL_VERTEX_WEIGHT_PROXIMITY', 'DATA_TRANSFER', 'MESH_CACHE', 'MESH_SEQUENCE_CACHE', 'NORMAL_EDIT', 'WEIGHTED_NORMAL', 'UV_PROJECT', 'UV_WARP', 'VERTEX_WEIGHT_EDIT', 'VERTEX_WEIGHT_MIX', 'VERTEX_WEIGHT_P
+t07_frosted_vase__s1.py      exit 0       8.9s image=True objects=1 viewport_only_materials=0 error=None
+t08_crate__s0.py             exit 0       6.1s image=True objects=39 viewport_only_materials=0 error=None
+t08_crate__s2.py             exit 0       5.3s image=True objects=36 viewport_only_materials=0 error=AttributeError: Calling operator "bpy.ops.object.camera_set_active" error, could not be found
+t09_trophy__s2.py            exit 0       3.9s image=True objects=0 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 2 items, not 3
+t10_watermelon__s0.py        exit 0       3.8s image=True objects=1 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Detail Distortion" not found'
+t10_watermelon__s1.py        exit 0       2.2s image=True objects=2 viewport_only_materials=0 error=None
+t07_frosted_vase__s2.py      exit 0       8.9s image=True objects=1 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Thickness" not found'
+t11_brick_wall__s1.py        exit 0       2.4s image=True objects=1 viewport_only_materials=0 error=IndexError: list index out of range
+t10_watermelon__s2.py        exit 0       2.8s image=True objects=2 viewport_only_materials=0 error=None
+t11_brick_wall__s2.py        exit 0       4.7s image=True objects=2 viewport_only_materials=0 error=None
+t12_basketball__s1.py        exit 0       5.0s image=True objects=1 viewport_only_materials=0 error=TypeError: Converting py args to operator properties:: keyword "resolution" unrecognized
+t12_basketball__s2.py        exit 0       5.1s image=True objects=1 viewport_only_materials=0 error=None
+t12_basketball__s0.py        exit 0       5.9s image=True objects=1 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Hardness" not found'
+t13_crystal_ball__s0.py      exit 0       4.4s image=True objects=4 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Transmission Weight" not found'
+t13_crystal_ball__s1.py      exit 0       4.4s image=True objects=4 viewport_only_materials=0 error=ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 2 items, not 3
+t14_candy_cane__s0.py        exit 0       3.7s image=True objects=1 viewport_only_materials=0 error=None
+t11_brick_wall__s0.py        exit 0       6.5s image=True objects=182 viewport_only_materials=0 error=None
+t14_candy_cane__s1.py        exit 0       2.3s image=True objects=1 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Detail Distortion" not found'
+t15_lava_rock__s0.py         exit 0       3.0s image=True objects=1 viewport_only_materials=0 error=KeyError: 'bpy_prop_collection[key]: key "Specular" not found'
+t14_candy_cane__s2.py        exit 0       3.8s image=True objects=1 viewport_only_materials=0 error=RuntimeError: Error: Node type ShaderNodeSeparateUV undefined
+t16_picnic__s2.py            exit 0       3.9s image=True objects=0 viewport_only_materials=0 error=TypeError: bpy_struct: item.attr = val: enum "BLENDER_EEVEE_NEXT" not found in ('BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'CYCLES')
+t16_picnic__s1.py            exit 0       4.5s image=True objects=3 viewport_only_materials=0 error=AttributeError: Calling operator "bpy.ops.transform.scale" error, could not be found
+t15_lava_rock__s2.py         exit 0       4.7s image=True objects=2 viewport_only_materials=0 error=AttributeError: 'Scene' object has no attribute 'node_tree'
+t16_picnic__s0.py            exit 0       4.6s image=True objects=7 viewport_only_materials=0 error=AttributeError: Vector subtraction: (tuple - Vector) invalid type for this operation
+t17_mossy_boulder__s0.py     exit 0       4.5s image=True objects=1 viewport_only_materials=0 error=AttributeError: 'Mesh' object has no attribute 'use_auto_smooth'
+t13_crystal_ball__s2.py      exit 0       9.1s image=True objects=5 viewport_only_materials=0 error=None
+t18_soap_bubble__s0.py       exit 0       2.1s image=True objects=1 viewport_only_materials=0 error=RuntimeError: Error: Element not found in element collection or last element
+t18_soap_bubble__s2.py       exit 0       2.7s image=True objects=1 viewport_only_materials=0 error=RuntimeError: Error: Element not found in element collection or last element
+t18_soap_bubble__s1.py       exit 0       3.5s image=True objects=1 viewport_only_materials=0 error=None
+t17_mossy_boulder__s1.py     exit 0       5.9s image=True objects=22 viewport_only_materials=0 error=AttributeError: 'ViewLayer' object has no attribute 'shading'
+t17_mossy_boulder__s2.py     exit 0       7.1s image=True objects=36 viewport_only_materials=0 error=None
+t15_lava_rock__s1.py         exit 0      11.5s image=True objects=1 viewport_only_materials=0 error=None
+l10_depth_of_field__s2.py    exit 0      81.0s image=True objects=11 viewport_only_materials=0 error=None

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 5.5,
+ "error": null,
+ "error_line": null,
+ "printed": "Binary Sunset scene rebuilt with fixes and more detail!\n",
+ "state_saved": true,
+ "n_objects": 70,
+ "n_lights": 2,
+ "n_materials": 10,
+ "own_camera": true,
+ "render_error": null
+}

@@ -1,0 +1,184 @@
+```python
+import bpy
+import math
+from mathutils import Vector
+
+# Clear existing scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the teapot
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, location=(0, 0, 0))
+teapot = bpy.context.active_object
+teapot.name = "Teapot"
+
+# Scale to make it teapot-like (wider than tall)
+teapot.scale = (1.2, 1.2, 0.8)
+bpy.ops.object.transform_apply(scale=True)
+
+# Create a handle (torus)
+bpy.ops.mesh.primitive_torus_add(
+    location=(1.5, 0, 0.2),
+    major_radius=0.5,
+    minor_radius=0.1,
+    major_segments=32,
+    minor_segments=16
+)
+handle = bpy.context.active_object
+handle.name = "Handle"
+handle.rotation_euler = (0, math.radians(90), 0)
+
+# Create a spout (cone)
+bpy.ops.mesh.primitive_cone_add(
+    location=(-1.5, 0, 0.3),
+    radius1=0.3,
+    radius2=0.1,
+    depth=1.0,
+    vertices=16
+)
+spout = bpy.context.active_object
+spout.name = "Spout"
+spout.rotation_euler = (0, math.radians(-45), 0)
+
+# Create a lid (smaller sphere on top)
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.4, location=(0, 0, 0.8))
+lid = bpy.context.active_object
+lid.name = "Lid"
+lid.scale = (1.0, 1.0, 0.6)
+bpy.ops.object.transform_apply(scale=True)
+
+# Create lid knob
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(0, 0, 1.0))
+knob = bpy.context.active_object
+knob.name = "Knob"
+
+# Join all teapot parts
+bpy.ops.object.select_all(action='DESELECT')
+for obj in [teapot, handle, spout, lid, knob]:
+    obj.select_set(True)
+bpy.context.view_layer.objects.active = teapot
+bpy.ops.object.join()
+teapot = bpy.context.active_object
+teapot.name = "PurpleTeapot"
+
+# Create purple material
+purple_mat = bpy.data.materials.new(name="PurpleTeapotMat")
+purple_mat.use_nodes = True
+nodes = purple_mat.node_tree.nodes
+links = purple_mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create Principled BSDF
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.location = (0, 0, 0)
+
+# Set purple color
+bsdf.inputs['Base Color'].default_value = (0.5, 0.0, 0.5, 1.0)  # Purple
+bsdf.inputs['Metallic'].default_value = 0.3
+bsdf.inputs['Roughness'].default_value = 0.3
+
+# Output
+output = nodes.new('ShaderNodeOutputMaterial')
+output.location = (300, 0, 0)
+links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+# Assign material to teapot
+teapot.data.materials.clear()
+teapot.data.materials.append(purple_mat)
+
+# Create cloud material
+cloud_mat = bpy.data.materials.new(name="CloudMat")
+cloud_mat.use_nodes = True
+nodes_c = cloud_mat.node_tree.nodes
+links_c = cloud_mat.node_tree.links
+
+for node in nodes_c:
+    nodes_c.remove(node)
+
+bsdf_c = nodes_c.new('ShaderNodeBsdfPrincipled')
+bsdf_c.location = (0, 0, 0)
+bsdf_c.inputs['Base Color'].default_value = (0.9, 0.9, 0.95, 1.0)  # Light gray/white
+bsdf_c.inputs['Roughness'].default_value = 0.8
+
+output_c = nodes_c.new('ShaderNodeOutputMaterial')
+output_c.location = (300, 0, 0)
+links_c.new(bsdf_c.outputs['BSDF'], output_c.inputs['Surface'])
+
+# Create clouds on the teapot surface
+# Cloud positions on the teapot (on the surface)
+cloud_positions = [
+    (0.8, 0.3, 0.5),
+    (-0.7, 0.4, 0.3),
+    (0.2, -0.8, 0.4),
+    (-0.3, 0.7, 0.6),
+    (0.5, -0.5, 0.7),
+    (-0.6, -0.6, 0.5),
+    (0.0, 0.9, 0.3),
+    (0.9, -0.2, 0.2),
+]
+
+clouds = []
+for i, pos in enumerate(cloud_positions):
+    # Create a small cloud (multiple overlapping spheres)
+    cloud_center = Vector(pos)
+    
+    # Create main cloud body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=cloud_center)
+    main_cloud = bpy.context.active_object
+    main_cloud.scale = (1.0, 0.8, 0.6)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Add smaller spheres to make it cloud-like
+    offset1 = Vector((0.1, 0.05, 0.05))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=cloud_center + offset1)
+    sub1 = bpy.context.active_object
+    sub1.scale = (1.0, 0.8, 0.6)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    offset2 = Vector((-0.08, -0.05, 0.03))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.09, location=cloud_center + offset2)
+    sub2 = bpy.context.active_object
+    sub2.scale = (1.0, 0.8, 0.6)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Join cloud parts
+    bpy.ops.object.select_all(action='DESELECT')
+    main_cloud.select_set(True)
+    sub1.select_set(True)
+    sub2.select_set(True)
+    bpy.context.view_layer.objects.active = main_cloud
+    bpy.ops.object.join()
+    cloud = bpy.context.active_object
+    cloud.name = f"Cloud_{i}"
+    
+    # Assign cloud material
+    cloud.data.materials.clear()
+    cloud.data.materials.append(cloud_mat)
+    
+    clouds.append(cloud)
+
+# Add a second purple material for the teapot with slight variation
+# Ensure teapot is selected and active
+bpy.ops.object.select_all(action='DESELECT')
+teapot.select_set(True)
+bpy.context.view_layer.objects.active = teapot
+
+# Add lighting
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 5))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Add a point light for better illumination
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 3))
+point_light = bpy.context.active_object
+point_light.data.energy = 50
+
+# Set viewport shading to material preview
+bpy.context.space_data.shading.type = 'MATERIAL'
+
+print("Purple teapot with clouds created successfully!")
+```

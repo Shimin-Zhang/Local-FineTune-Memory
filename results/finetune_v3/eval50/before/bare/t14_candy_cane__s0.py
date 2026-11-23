@@ -1,0 +1,210 @@
+import bpy
+import math
+import mathutils
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create the candy cane curve
+# Define the candy cane shape as a curve
+cane_length = 3.0
+cane_radius = 0.15
+hook_length = 1.5
+hook_radius = 0.8
+
+# Create a Bezier curve for the candy cane shape
+curve_data = bpy.data.curves.new(name="CandyCaneCurve", type='CURVE')
+curve_data.dimensions = '3D'
+curve_data.resolution_u = 24
+curve_data.resolution_v = 24
+
+spline = curve_data.splines.new('BEZIER')
+spline.bezier_points.add(3)  # 4 points total
+
+# Point 0: Start of the straight part (bottom)
+bp0 = spline.bezier_points[0]
+bp0.co = mathutils.Vector((0, 0, 0))
+bp0.handle_left = mathutils.Vector((0, 0, -0.5))
+bp0.handle_right = mathutils.Vector((0, 0, 0.5))
+bp0.handle_left_type = 'AUTO'
+bp0.handle_right_type = 'AUTO'
+
+# Point 1: End of straight part / start of hook
+bp1 = spline.bezier_points[1]
+bp1.co = mathutils.Vector((0, 0, cane_length))
+bp1.handle_left = mathutils.Vector((0, 0, cane_length - 0.5))
+bp1.handle_right = mathutils.Vector((0, 0, cane_length + 0.5))
+bp1.handle_left_type = 'AUTO'
+bp1.handle_right_type = 'AUTO'
+
+# Point 2: Top of the hook (curving to the right)
+bp2 = spline.bezier_points[2]
+bp2.co = mathutils.Vector((hook_radius, 0, cane_length + hook_length * 0.5))
+bp2.handle_left = mathutils.Vector((hook_radius - 0.5, 0, cane_length + hook_length * 0.5))
+bp2.handle_right = mathutils.Vector((hook_radius + 0.5, 0, cane_length + hook_length * 0.5))
+bp2.handle_left_type = 'AUTO'
+bp2.handle_right_type = 'AUTO'
+
+# Point 3: End of the hook (curving down and back)
+bp3 = spline.bezier_points[3]
+bp3.co = mathutils.Vector((hook_radius, 0, cane_length - hook_length * 0.3))
+bp3.handle_left = mathutils.Vector((hook_radius + 0.5, 0, cane_length - hook_length * 0.3))
+bp3.handle_right = mathutils.Vector((hook_radius - 0.5, 0, cane_length - hook_length * 0.3))
+bp3.handle_left_type = 'AUTO'
+bp3.handle_right_type = 'AUTO'
+
+# Set the curve to use a bevel (round cross-section)
+curve_data.bevel_depth = cane_radius
+curve_data.bevel_resolution = 12
+curve_data.use_fill_caps = True
+
+# Create the object
+cane_obj = bpy.data.objects.new("CandyCane", curve_data)
+bpy.context.collection.objects.link(cane_obj)
+
+# Convert to mesh for material application
+bpy.context.view_layer.objects.active = cane_obj
+cane_obj.select_set(True)
+bpy.ops.object.convert(target='MESH')
+cane_obj = bpy.context.view_layer.objects.active
+
+# Create materials
+# Red material
+red_mat = bpy.data.materials.new(name="CandyRed")
+red_mat.use_nodes = True
+nodes = red_mat.node_tree.nodes
+links = red_mat.node_tree.links
+nodes.clear()
+
+red_output = nodes.new('ShaderNodeOutputMaterial')
+red_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+red_bsdf.inputs['Base Color'].default_value = (0.8, 0.0, 0.0, 1.0)
+red_bsdf.inputs['Roughness'].default_value = 0.3
+links.new(red_bsdf.outputs['BSDF'], red_output.inputs['Surface'])
+
+# White material
+white_mat = bpy.data.materials.new(name="CandyWhite")
+white_mat.use_nodes = True
+nodes = white_mat.node_tree.nodes
+links = white_mat.node_tree.links
+nodes.clear()
+
+white_output = nodes.new('ShaderNodeOutputMaterial')
+white_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+white_bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+white_bsdf.inputs['Roughness'].default_value = 0.3
+links.new(white_bsdf.outputs['BSDF'], white_output.inputs['Surface'])
+
+# Create a procedural texture for spiral stripes
+# We'll use a combination of texture coordinates and math nodes to create spiral stripes
+stripe_mat = bpy.data.materials.new(name="CandyStripe")
+stripe_mat.use_nodes = True
+nodes = stripe_mat.node_tree.nodes
+links = stripe_mat.node_tree.links
+nodes.clear()
+
+# Output
+output_node = nodes.new('ShaderNodeOutputMaterial')
+output_node.location = (800, 0)
+
+# Mix shader
+mix_node = nodes.new('ShaderNodeMixShader')
+mix_node.location = (600, 0)
+
+# Red BSDF
+red_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+red_bsdf.location = (400, 100)
+red_bsdf.inputs['Base Color'].default_value = (0.8, 0.0, 0.0, 1.0)
+red_bsdf.inputs['Roughness'].default_value = 0.3
+
+# White BSDF
+white_bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+white_bsdf.location = (400, -100)
+white_bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+white_bsdf.inputs['Roughness'].default_value = 0.3
+
+# Texture coordinate
+tex_coord = nodes.new('ShaderNodeTexCoord')
+tex_coord.location = (-400, 0)
+
+# Separate XYZ
+sep_xyz = nodes.new('ShaderNodeSeparateXYZ')
+sep_xyz.location = (-200, 0)
+links.new(tex_coord.outputs['Object'], sep_xyz.inputs['Vector'])
+
+# We need to create a spiral pattern based on the object's position
+# Use Z coordinate for the spiral phase and angle around the axis
+# For a candy cane, the spiral goes around the length of the cane
+
+# Create a mapping to get the angle around the local axis
+# Use atan2 of X and Y to get the angle
+math_atan = nodes.new('ShaderNodeMath')
+math_atan.operation = 'ARCTAN2'
+math_atan.location = (0, 100)
+links.new(sep_xyz.outputs['X'], math_atan.inputs[0])
+links.new(sep_xyz.outputs['Y'], math_atan.inputs[1])
+
+# Z coordinate
+z_coord = nodes.new('ShaderNodeMath')
+z_coord.operation = 'MULTIPLY'
+z_coord.location = (0, -100)
+links.new(sep_xyz.outputs['Z'], z_coord.inputs[0])
+z_coord.inputs[1].default_value = 5.0  # Number of spirals per unit length
+
+# Combine angle and z for spiral
+math_add = nodes.new('ShaderNodeMath')
+math_add.operation = 'ADD'
+math_add.location = (200, 0)
+links.new(math_atan.outputs['Value'], math_add.inputs[0])
+links.new(z_coord.outputs['Value'], math_add.inputs[1])
+
+# Scale the spiral
+math_scale = nodes.new('ShaderNodeMath')
+math_scale.operation = 'MULTIPLY'
+math_scale.location = (300, 0)
+links.new(math_add.outputs['Value'], math_scale.inputs[0])
+math_scale.inputs[1].default_value = 1.0 / (2 * math.pi)
+
+# Create a sine wave for the stripe pattern
+math_sin = nodes.new('ShaderNodeMath')
+math_sin.operation = 'SINE'
+math_sin.location = (400, 0)
+links.new(math_scale.outputs['Value'], math_sin.inputs[0])
+
+# Map the sine to a 0-1 range
+math_map = nodes.new('ShaderNodeMapRange')
+math_map.location = (500, 0)
+math_map.inputs['From Min'].default_value = -1.0
+math_map.inputs['From Max'].default_value = 1.0
+math_map.inputs['To Min'].default_value = 0.0
+math_map.inputs['To Max'].default_value = 1.0
+links.new(math_sin.outputs['Value'], math_map.inputs['Value'])
+
+# Use the mapped value as the factor for the mix shader
+links.new(math_map.outputs['Result'], mix_node.inputs['Fac'])
+links.new(white_bsdf.outputs['BSDF'], mix_node.inputs[1])
+links.new(red_bsdf.outputs['BSDF'], mix_node.inputs[2])
+links.new(mix_node.outputs['Shader'], output_node.inputs['Surface'])
+
+# Assign the stripe material to the candy cane
+cane_obj.data.materials.clear()
+cane_obj.data.materials.append(stripe_mat)
+
+# Add a light for better visualization
+light_data = bpy.data.lights.new(name="CandyLight", type='POINT')
+light_data.energy = 500
+light_obj = bpy.data.objects.new(name="CandyLight", object_data=light_data)
+light_obj.location = (2, 2, 4)
+bpy.context.collection.objects.link(light_obj)
+
+# Set up the camera
+camera_data = bpy.data.cameras.new(name="CandyCamera")
+camera_obj = bpy.data.objects.new(name="CandyCamera", object_data=camera_data)
+camera_obj.location = (3, -3, 3)
+camera_obj.rotation_euler = (math.radians(45), 0, math.radians(45))
+bpy.context.collection.objects.link(camera_obj)
+bpy.context.scene.camera = camera_obj
+
+# Set viewport to show the candy cane
+bpy.context.view_layer.update()

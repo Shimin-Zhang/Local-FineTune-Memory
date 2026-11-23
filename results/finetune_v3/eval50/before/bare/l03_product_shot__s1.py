@@ -1,0 +1,137 @@
+import bpy
+import math
+import mathutils
+
+# Clear default scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create a white background plane
+bpy.ops.mesh.primitive_plane_add(size=10, location=(0, 0, 0))
+bg_plane = bpy.context.active_object
+bg_plane.name = "Background"
+
+# White material for background
+mat_bg = bpy.data.materials.new(name="WhiteBG")
+mat_bg.use_nodes = True
+nodes = mat_bg.node_tree.nodes
+links = mat_bg.node_tree.links
+bsdf = nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+bg_plane.data.materials.append(mat_bg)
+
+# Create perfume bottle - a simple rounded rectangular glass bottle
+# Body
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0.6))
+body = bpy.context.active_object
+body.name = "BottleBody"
+body.scale = (0.4, 0.25, 0.6)
+bpy.ops.object.transform_apply(scale=True)
+
+# Glass material
+mat_glass = bpy.data.materials.new(name="PerfumeGlass")
+mat_glass.use_nodes = True
+nodes_g = mat_glass.node_tree.nodes
+links_g = mat_glass.node_tree.links
+bsdf_g = nodes_g.get("Principled BSDF")
+bsdf_g.inputs["Base Color"].default_value = (0.95, 0.9, 0.85, 1.0)
+bsdf_g.inputs["Transmission Weight"].default_value = 1.0
+bsdf_g.inputs["Roughness"].default_value = 0.05
+bsdf_g.inputs["IOR"].default_value = 1.5
+body.data.materials.append(mat_glass)
+
+# Neck
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.15, location=(0, 0, 1.25))
+neck = bpy.context.active_object
+neck.name = "BottleNeck"
+neck.data.materials.append(mat_glass)
+
+# Cap
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.12, location=(0, 0, 1.4))
+cap = bpy.context.active_object
+cap.name = "BottleCap"
+mat_cap = bpy.data.materials.new(name="CapMetal")
+mat_cap.use_nodes = True
+nodes_c = mat_cap.node_tree.nodes
+bsdf_c = nodes_c.get("Principled BSDF")
+bsdf_c.inputs["Base Color"].default_value = (0.85, 0.8, 0.7, 1.0)
+bsdf_c.inputs["Metallic"].default_value = 1.0
+bsdf_c.inputs["Roughness"].default_value = 0.3
+cap.data.materials.append(mat_cap)
+
+# Add a slight bevel to the body for realism
+mod_bevel = body.modifiers.new(name="Bevel", type='BEVEL')
+mod_bevel.width = 0.03
+mod_bevel.segments = 4
+
+# Camera
+bpy.ops.object.camera_add(location=(0, -2.5, 2.0))
+camera = bpy.context.active_object
+camera.name = "ProductCamera"
+
+# Point camera slightly down at the bottle
+direction = mathutils.Vector((0, 0, 0.7)) - camera.location
+camera.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+# Set as active camera
+bpy.context.scene.camera = camera
+
+# Camera settings
+camera.data.lens = 85
+camera.data.sensor_width = 36
+
+# Lighting - soft light from above
+# Key light (area light from above)
+bpy.ops.object.light_add(type='AREA', location=(0, 0, 4))
+key_light = bpy.context.active_object
+key_light.name = "KeyLight"
+key_light.data.energy = 150
+key_light.data.size = 3.0
+key_light.data.size_y = 3.0
+key_light.rotation_euler = (0, 0, 0)  # Pointing straight down
+
+# Fill light (softer, from front-left)
+bpy.ops.object.light_add(type='AREA', location=(-2, -1.5, 2))
+fill_light = bpy.context.active_object
+fill_light.name = "FillLight"
+fill_light.data.energy = 50
+fill_light.data.size = 2.0
+fill_light.data.size_y = 2.0
+direction_fill = mathutils.Vector((0, 0, 0.7)) - fill_light.location
+fill_light.rotation_euler = direction_fill.to_track_quat('-Z', 'Y').to_euler()
+
+# Rim light (from back-right for edge definition)
+bpy.ops.object.light_add(type='AREA', location=(2, 1.5, 2.5))
+rim_light = bpy.context.active_object
+rim_light.name = "RimLight"
+rim_light.data.energy = 80
+rim_light.data.size = 1.5
+rim_light.data.size_y = 1.5
+direction_rim = mathutils.Vector((0, 0, 0.7)) - rim_light.location
+rim_light.rotation_euler = direction_rim.to_track_quat('-Z', 'Y').to_euler()
+
+# World settings - soft white ambient
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+nodes_w = world.node_tree.nodes
+links_w = world.node_tree.links
+bg_node = nodes_w.get("Background")
+bg_node.inputs[0].default_value = (1.0, 1.0, 1.0, 1.0)
+bg_node.inputs[1].default_value = 0.3  # Soft ambient
+
+# Render settings
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 256
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'
+
+# Set output
+bpy.context.scene.render.filepath = "/tmp/perfume_product_shot.png"

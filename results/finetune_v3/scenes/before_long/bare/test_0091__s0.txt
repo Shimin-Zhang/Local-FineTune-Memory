@@ -1,0 +1,325 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# ---------------- MATERIALS ----------------
+def make_mat(name, color, emission=0.0, rough=0.7, metal=0.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = (*color, 1)
+    bsdf.inputs["Roughness"].default_value = rough
+    bsdf.inputs["Metallic"].default_value = metal
+    if emission > 0:
+        bsdf.inputs["Emission Color"].default_value = (1.0, 0.85, 0.55, 1)
+        bsdf.inputs["Emission Strength"].default_value = emission
+    return m
+
+mat_ground   = make_mat("Ground",   (0.18, 0.14, 0.10), rough=0.95)
+mat_brick    = make_mat("Brick",    (0.45, 0.18, 0.12), rough=0.85)
+mat_brick2   = make_mat("Brick2",   (0.52, 0.22, 0.14), rough=0.85)
+mat_mortar   = make_mat("Mortar",   (0.60, 0.58, 0.55), rough=0.95)
+mat_concrete = make_mat("Concrete", (0.55, 0.53, 0.50), rough=0.90)
+mat_steel    = make_mat("Steel",    (0.35, 0.35, 0.38), rough=0.30, metal=0.85)
+mat_crane    = make_mat("Crane",    (0.85, 0.55, 0.05), rough=0.45, metal=0.30)
+mat_hut      = make_mat("Hut",      (0.75, 0.72, 0.68), rough=0.70)
+mat_hut_roof = make_mat("HutRoof",  (0.20, 0.20, 0.22), rough=0.60)
+mat_scaffold = make_mat("Scaffold", (0.55, 0.55, 0.58), rough=0.50, metal=0.60)
+mat_lamp     = make_mat("Lamp",     (1.0, 0.9, 0.6), emission=2.5)
+mat_glass    = make_mat("Glass",    (0.85, 0.90, 0.95), rough=0.10)
+mat_hoist    = make_mat("Hoist",    (0.90, 0.85, 0.75), rough=0.60)
+mat_cable    = make_mat("Cable",    (0.10, 0.10, 0.10), rough=0.50)
+mat_pallet   = make_mat("Pallet",   (0.50, 0.38, 0.22), rough=0.80)
+
+# ---------------- HELPERS ----------------
+def box(name, loc, size, mat, rot=(0,0,0)):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    o = bpy.context.active_object
+    o.name = name
+    o.scale = (size[0]/2, size[1]/2, size[2]/2)
+    o.rotation_euler = Euler(rot)
+    o.data.materials.append(mat)
+    bpy.ops.object.transform_apply(scale=True)
+    return o
+
+def cyl(name, loc, r, depth, mat, rot=(0,0,0), verts=16):
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=depth, location=loc, vertices=verts)
+    o = bpy.context.active_object
+    o.name = name
+    o.rotation_euler = Euler(rot)
+    o.data.materials.append(mat)
+    return o
+
+# ---------------- GROUND ----------------
+box("Ground", (0, 0, -0.25), (80, 80, 0.5), mat_ground)
+
+# ---------------- HALF-BUILT BRICK BLOCK ----------------
+# 3 floors, front 2 floors complete, back 1 floor, some walls missing
+def brick_wall(name, loc, w, h, d, mat, rot=(0,0,0)):
+    o = box(name, loc, (w, h, d), mat, rot)
+    return o
+
+bx, by = -8, -6   # block center
+bw, bd = 12, 10   # width, depth
+floor_h = 3.0
+floors  = 3
+
+# Floor slabs (concrete)
+for f in range(floors + 1):
+    z = f * floor_h
+    if f == floors:  # top slab only partial
+        box(f"Slab{f}", (bx, by, z), (bw, bd*0.6, 0.25), mat_concrete)
+    else:
+        box(f"Slab{f}", (bx, by, z), (bw, bd, 0.25), mat_concrete)
+
+# Walls – front (y = by - bd/2), back (y = by + bd/2), left (x = bx - bw/2), right (x = bx + bw/2)
+wall_t = 0.35
+for f in range(floors):
+    z0 = f * floor_h + 0.125
+    zc = z0 + floor_h / 2
+    # Front wall – all floors
+    brick_wall(f"Front{f}", (bx, by - bd/2 + wall_t/2, zc), bw, floor_h, wall_t, mat_brick)
+    # Back wall – floors 0,1 full; floor 2 partial (left half)
+    if f < 2:
+        brick_wall(f"Back{f}", (bx, by + bd/2 - wall_t/2, zc), bw, floor_h, wall_t, mat_brick2)
+    else:
+        brick_wall(f"Back{f}", (bx - bw/4, by + bd/2 - wall_t/2, zc), bw/2, floor_h, wall_t, mat_brick2)
+    # Left wall
+    brick_wall(f"Left{f}", (bx - bw/2 + wall_t/2, by, zc), wall_t, floor_h, bd, mat_brick)
+    # Right wall – floors 0,1; floor 2 partial (back half)
+    if f < 2:
+        brick_wall(f"Right{f}", (bx + bw/2 - wall_t/2, by, zc), wall_t, floor_h, bd, mat_brick2)
+    else:
+        brick_wall(f"Right{f}", (bx + bw/2 - wall_t/2, by + bd/4, zc), wall_t, floor_h, bd/2, mat_brick2)
+
+# Windows (dark insets) on front wall
+for f in range(2):
+    zc = f * floor_h + 0.125 + floor_h * 0.55
+    for i in range(3):
+        wx = bx - bw/2 + 2.0 + i * 3.5
+        box(f"Win{f}_{i}", (wx, by - bd/2 + wall_t/2, zc), (1.2, wall_t+0.05, 1.0), mat_glass)
+
+# ---------------- SCAFFOLDING ----------------
+def scaffold_post(x, y, h):
+    cyl(f"ScafPost_{x:.1f}_{y:.1f}", (x, y, h/2), 0.06, h, mat_scaffold)
+
+def scaffold_hbar(x1, y1, x2, y2, z):
+    dx, dy = x2-x1, y2-y1
+    L = math.sqrt(dx*dx + dy*dy)
+    mid = ((x1+x2)/2, (y1+y2)/2, z)
+    ang = math.atan2(dy, dx)
+    o = box(f"ScafBar_{x1:.1f}_{y1:.1f}_{z:.1f}", mid, (L, 0.08, 0.08), mat_scaffold, (0, 0, ang))
+    return o
+
+# Posts around the block at 3m intervals
+sx0, sy0 = bx - bw/2 - 0.5, by - bd/2 - 0.5
+sx1, sy1 = bx + bw/2 + 0.5, by + bd/2 + 0.5
+steps_x = 4
+steps_y = 3
+for i in range(steps_x + 1):
+    x = sx0 + i * (sx1 - sx0) / steps_x
+    for j in range(steps_y + 1):
+        y = sy0 + j * (sy1 - sy0) / steps_y
+        # only scaffold on floors 0 and 1 (up to 6m)
+        h = 6.0 if (i in (0, steps_x) or j in (0, steps_y)) else 4.5
+        scaffold_post(x, y, h)
+
+# Horizontal bars at each level
+for lvl in [1.5, 3.0, 4.5, 6.0]:
+    for i in range(steps_x):
+        x1 = sx0 + i * (sx1 - sx0) / steps_x
+        x2 = sx0 + (i+1) * (sx1 - sx0) / steps_x
+        scaffold_hbar(x1, sy0, x2, sy0, lvl)
+        scaffold_hbar(x1, sy1, x2, sy1, lvl)
+    for j in range(steps_y):
+        y1 = sy0 + j * (sy1 - sy0) / steps_y
+        y2 = sy0 + (j+1) * (sy1 - sy0) / steps_y
+        scaffold_hbar(sx0, y1, sx0, y2, lvl)
+        scaffold_hbar(sx1, y1, sx1, y2, lvl)
+
+# ---------------- STACKS OF BRICKS ----------------
+def brick_stack(cx, cy, rows=5, cols=4, layers=3):
+    bw2, bh2, bd2 = 0.22, 0.09, 0.11
+    for l in range(layers):
+        for r in range(rows):
+            for c in range(cols):
+                x = cx + c * (bw2 + 0.01)
+                y = cy + r * (bd2 + 0.01)
+                z = l * (bh2 + 0.01) + bh2/2
+                m = mat_brick if (l + r + c) % 2 == 0 else mat_brick2
+                box(f"Brick_{cx:.1f}_{cy:.1f}_{l}_{r}_{c}", (x, y, z), (bw2, bh2, bd2), m)
+
+# Pallet under stacks
+def pallet(cx, cy):
+    box(f"Pallet_{cx:.1f}_{cy:.1f}", (cx, cy, 0.05), (1.2, 0.8, 0.1), mat_pallet)
+
+pallet(5, -10)
+brick_stack(5, -10)
+pallet(7, -10)
+brick_stack(7, -10, rows=4, cols=3, layers=2)
+pallet(3, -11)
+brick_stack(3, -11, rows=3, cols=3, layers=4)
+
+# ---------------- SITE HUT ----------------
+hx, hy = 12, 4
+box("HutBody", (hx, hy, 1.2), (3.5, 2.5, 2.4), mat_hut)
+box("HutRoof", (hx, hy, 2.45), (3.8, 2.8, 0.15), mat_hut_roof)
+# Door
+box("HutDoor", (hx - 1.0, hy - 1.28, 0.9), (0.8, 0.05, 1.8), mat_steel)
+# Window
+box("HutWin", (hx + 0.8, hy - 1.28, 1.3), (1.0, 0.05, 0.7), mat_glass)
+# Small lamp on hut
+cyl("HutLampPole", (hx + 1.5, hy - 1.3, 2.8), 0.04, 0.6, mat_steel)
+box("HutLampHead", (hx + 1.5, hy - 1.3, 3.1), (0.25, 0.15, 0.2), mat_lamp)
+
+# ---------------- TOWER CRANE ----------------
+cx, cy = -2, 8   # crane base
+crane_h = 22
+# Base
+box("CraneBase", (cx, cy, 0.3), (3, 3, 0.6), mat_concrete)
+# Mast (lattice simplified as box)
+box("CraneMast", (cx, cy, crane_h/2 + 0.6), (0.8, 0.8, crane_h), mat_crane)
+# Mast cross braces (visual)
+for i in range(10):
+    z = 1.0 + i * (crane_h - 1) / 10
+    box(f"MastBrace{i}", (cx, cy, z), (1.0, 1.0, 0.08), mat_steel, (0, math.radians(45), 0))
+    box(f"MastBrace2{i}", (cx, cy, z), (1.0, 1.0, 0.08), mat_steel, (0, math.radians(-45), 0))
+
+# Slewing unit
+box("CraneSlew", (cx, cy, crane_h + 1.0), (1.2, 1.2, 0.6), mat_steel)
+
+# Operator cab
+box("CraneCab", (cx + 1.0, cy, crane_h + 1.5), (1.2, 1.0, 1.2), mat_crane)
+box("CraneCabWin", (cx + 1.6, cy, crane_h + 1.5), (0.05, 0.8, 0.9), mat_glass)
+
+# Jib (horizontal arm) – extends in +x direction
+jib_len = 18
+jib_z = crane_h + 1.8
+box("CraneJib", (cx + jib_len/2 + 1.0, cy, jib_z), (jib_len, 0.6, 0.6), mat_crane)
+# Jib lattice cross
+for i in range(9):
+    x = cx + 1.5 + i * (jib_len - 1) / 9
+    box(f"JibBrace{i}", (x, cy, jib_z), (0.08, 0.8, 0.8), mat_steel, (math.radians(45), 0, 0))
+    box(f"JibBrace2{i}", (x, cy, jib_z), (0.08, 0.8, 0.8), mat_steel, (math.radians(-45), 0, 0))
+
+# Counter-jib
+cj_len = 6
+box("CraneCounterJib", (cx - cj_len/2 - 0.5, cy, jib_z), (cj_len, 0.6, 0.6), mat_crane)
+# Counterweights
+for i in range(3):
+    box(f"CounterWeight{i}", (cx - 1.0 - i*0.8, cy, jib_z - 0.4), (0.7, 0.8, 0.8), mat_concrete)
+
+# Tie bars (from top of mast to jib and counter-jib)
+top_z = crane_h + 2.5
+# Tie to jib tip
+tie_jib = box("TieJib", (cx + jib_len/2 + 1.0, cy, (jib_z + top_z)/2),
+              (jib_len, 0.06, 0.06), mat_steel, (0, math.atan2(jib_z - top_z, jib_len), 0))
+# Tie to counter-jib
+tie_cj = box("TieCJ", (cx - cj_len/2 - 0.5, cy, (jib_z + top_z)/2),
+             (cj_len, 0.06, 0.06), mat_steel, (0, math.atan2(top_z - jib_z, cj_len), 0))
+
+# Top pylon
+box("CraneTop", (cx, cy, crane_h + 2.8), (0.4, 0.4, 1.0), mat_crane)
+
+# ---------------- HOIST (trolley + hook + load) ----------------
+trolley_x = cx + 10.0
+box("Trolley", (trolley_x, cy, jib_z - 0.45), (0.8, 0.8, 0.3), mat_steel)
+# Cable down
+cable_len = 8.0
+cyl("HoistCable", (trolley_x, cy, jib_z - 0.6 - cable_len/2), 0.02, cable_len, mat_cable)
+# Hook block
+box("HookBlock", (trolley_x, cy, jib_z - 0.6 - cable_len), (0.3, 0.3, 0.4), mat_steel)
+# Load – a pallet of bricks
+load_z = jib_z - 0.6 - cable_len - 0.3
+box("HoistLoad", (trolley_x, cy, load_z), (1.2, 0.8, 0.5), mat_pallet)
+for r in range(3):
+    for c in range(4):
+        box(f"LoadBrick_{r}_{c}",
+            (trolley_x - 0.45 + c*0.3, cy - 0.25 + r*0.25, load_z + 0.35),
+            (0.22, 0.09, 0.11), mat_brick)
+
+# ---------------- DUSK LAMPS ----------------
+def site_lamp(x, y, h=4.0):
+    cyl(f"LampPole_{x:.1f}_{y:.1f}", (x, y, h/2), 0.05, h, mat_steel)
+    box(f"LampHead_{x:.1f}_{y:.1f}", (x, y, h + 0.1), (0.4, 0.25, 0.15), mat_lamp)
+    # Point light
+    light_data = bpy.data.lights.new(f"LampLight_{x:.1f}_{y:.1f}", type='POINT')
+    light_data.energy = 200
+    light_data.color = (1.0, 0.8, 0.5)
+    light_data.shadow_soft_size = 0.5
+    light_obj = bpy.data.objects.new(f"LampLight_{x:.1f}_{y:.1f}", light_data)
+    light_obj.location = (x, y, h + 0.1)
+    bpy.context.collection.objects.link(light_obj)
+
+site_lamp(6, -8, 5)
+site_lamp(14, 0, 4)
+site_lamp(-14, 2, 4)
+site_lamp(0, 14, 4)
+site_lamp(-12, -12, 4)
+
+# Crane top beacon light
+beacon_data = bpy.data.lights.new("CraneBeacon", type='POINT')
+beacon_data.energy = 50
+beacon_data.color = (1.0, 0.2, 0.1)
+beacon_obj = bpy.data.objects.new("CraneBeacon", beacon_data)
+beacon_obj.location = (cx, cy, crane_h + 3.5)
+bpy.context.collection.objects.link(beacon_obj)
+box("BeaconHead", (cx, cy, crane_h + 3.3), (0.15, 0.15, 0.15), make_mat("Beacon", (1.0, 0.1, 0.0), emission=3.0))
+
+# ---------------- WORLD – DUSK SKY ----------------
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+wn = world.node_tree
+wn.nodes.clear()
+sky = wn.nodes.new('ShaderNodeTexSky')
+sky.sky_type = 'NISHITA'
+sky.sun_elevation = math.radians(3)   # just below horizon → dusk
+sky.sun_rotation = math.radians(200)
+sky.sun_intensity = 0.3
+sky.altitude = 0
+sky.air_density = 2.0
+sky.dust_density = 4.0
+sky.ozone_density = 3.0
+
+bg = wn.nodes.new('ShaderNodeBackground')
+bg.inputs['Strength'].default_value = 0.6
+out = wn.nodes.new('ShaderNodeOutputWorld')
+wn.links.new(sky.outputs['Color'], bg.inputs['Color'])
+wn.links.new(bg.outputs['Background'], out.inputs['Surface'])
+
+# ---------------- SUN (dusk, low warm) ----------------
+sun_data = bpy.data.lights.new("DuskSun", type='SUN')
+sun_data.energy = 1.5
+sun_data.color = (1.0, 0.6, 0.3)
+sun_data.angle = math.radians(5)
+sun_obj = bpy.data.objects.new("DuskSun", sun_data)
+sun_obj.rotation_euler = Euler((math.radians(80), 0, math.radians(200)))
+bpy.context.collection.objects.link(sun_obj)
+
+# ---------------- CAMERA ----------------
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam_obj = bpy.data.objects.new("Camera", cam_data)
+cam_obj.location = (22, -18, 8)
+cam_obj.rotation_euler = Euler((math.radians(75), 0, math.radians(140)))
+bpy.context.collection.objects.link(cam_obj)
+bpy.context.scene.camera = cam_obj
+
+# ---------------- RENDER SETTINGS ----------------
+bpy.context.scene.render.engine = 'CYCLES'
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'
+
+print("Dusk construction scene built.")
+```

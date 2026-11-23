@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 34.4,
+ "error": "NameError: name 'mat_town_roof' is not defined",
+ "error_line": "church_roof.data.materials.append(mat_town_roof)",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1787,
+ "n_lights": 1,
+ "n_materials": 835,
+ "own_camera": true,
+ "render_error": null
+}

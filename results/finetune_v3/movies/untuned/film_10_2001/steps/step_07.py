@@ -1,0 +1,91 @@
+import bpy
+import math
+from mathutils import Vector
+
+scene = bpy.context.scene
+
+# Fix the look setting
+scene.view_settings.look = 'AgX - Medium High Contrast'
+scene.view_settings.exposure = 0.3
+
+# The sky is too washed out - let's make the sunrise colors more saturated and warm
+world = scene.world
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+
+# Find and update the color ramp for the sky
+for node in nodes:
+    if node.type == 'VALTORGB':
+        # This is the sky color ramp
+        node.color_ramp.elements[0].color = (1.0, 0.4, 0.1, 1)  # Deep orange horizon
+        node.color_ramp.elements[1].color = (0.4, 0.6, 0.9, 1)  # Blue sky top
+        if len(node.color_ramp.elements) > 2:
+            node.color_ramp.elements[1].color = (1.0, 0.55, 0.25, 1)  # Warm middle
+
+# Boost sun for stronger warm light
+sun = bpy.data.objects.get("Sun")
+if sun:
+    sun.data.energy = 4.0
+    sun.data.color = (1.0, 0.65, 0.3)
+
+rim = bpy.data.objects.get("RimSun")
+if rim:
+    rim.data.energy = 2.5
+    rim.data.color = (1.0, 0.5, 0.2)
+
+# Make the monolith darker and more reflective
+monolith = bpy.data.objects.get("Monolith")
+if monolith and monolith.data.materials:
+    mat = monolith.data.materials[0]
+    if mat.use_nodes:
+        for node in mat.node_tree.nodes:
+            if node.type == 'BSDF_PRINCIPLED':
+                node.inputs['Base Color'].default_value = (0.005, 0.005, 0.005, 1)
+                node.inputs['Roughness'].default_value = 0.02
+                node.inputs['Metallic'].default_value = 0.5
+
+# Add a subtle warm bounce light from the ground
+bounce_data = bpy.data.lights.new("Bounce", type='AREA')
+bounce_data.energy = 20
+bounce_data.color = (0.8, 0.5, 0.3)
+bounce_data.size = 30
+bounce_obj = bpy.data.objects.new("Bounce", bounce_data)
+scene.collection.objects.link(bounce_obj)
+bounce_obj.location = (0, 0, 0.5)
+bounce_obj.rotation_euler = (math.radians(180), 0, 0)
+
+# Add some dust particles in the air for atmosphere
+# Use a simple particle system on an emitter
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 3))
+dust_emitter = bpy.context.active_object
+dust_emitter.name = "DustEmitter"
+dust_emitter.display_type = 'WIRE'
+
+ps_mod = dust_emitter.modifiers.new("Dust", 'PARTICLE_SYSTEM')
+psys = dust_emitter.particle_systems[0]
+psys.settings.count = 200
+psys.settings.frame_start = 1
+psys.settings.frame_end = 1
+psys.settings.lifetime = 1
+psys.settings.emit_from = 'FACE'
+psys.settings.normal_factor = 0.0
+psys.settings.factor_random = 0.5
+psys.settings.render_type = 'HALO'
+psys.settings.halo_size = 0.05
+psys.settings.halo_intensity = 0.3
+
+# Hide the emitter from render
+dust_emitter.hide_render = True
+
+# Adjust camera slightly for better composition
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (6.5, 9, 1.0)
+    target = Vector((0, 0, 3.0))
+    direction = target - camera.location
+    rot_quat = direction.to_track_quat('-Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    camera.data.lens = 50
+
+print("Scene refined with better lighting and atmosphere")
+print(f"Objects: {len(bpy.data.objects)}")

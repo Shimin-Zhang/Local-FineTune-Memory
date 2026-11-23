@@ -1,0 +1,84 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(379)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def coat(rgb, glow=0):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .85
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+turf, dirt, pine, bench = coat((.07, .17, .06)), coat((.2, .15, .1)), coat((.04, .13, .08)), coat((.2, .12, .06))
+red, blue, yellow, white = coat((.7, .08, .06)), coat((.1, .25, .6)), coat((.8, .6, .05)), coat((.75, .75, .7))
+skin, cloth1, cloth2, cloth3 = coat((.6, .4, .3)), coat((.5, .1, .1)), coat((.1, .3, .35)), coat((.4, .35, .2))
+led, lamp, rock = coat((1, .15, .1), 12), coat((1, .75, .35), 20), coat((.2, .2, .22))
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = data(me, m); o.location, o.rotation_euler = at, rot; sc.collection.objects.link(o); return o
+def data(me, m):
+    o = bpy.data.objects.new("m", me); o.data.materials.append(m); return o
+def slab(m, at, s, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return make(bm, m, at, rot)
+def post(m, at, r, h, n=6, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at)
+def glim(c, w, at):
+    L = bpy.data.lights.new("l", "POINT"); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+# the field: a long grassy strip with a rough underside
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=15, depth=4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.8, .3)))
+    v.co.z -= 2
+make(bm, turf)
+slab(dirt, (0, -3.5, 0), (22, 5, .12)); slab(dirt, (-6, 6, 0), (4, 8, .1))
+# bench with three pilots, each with a model plane
+slab(bench, (-2, 5, .55), (7, 1.2, .25))
+for x in (-5.2, 1.2): slab(bench, (x, 5, 0), (.3, 1.2, .55))
+for i, (x, c) in enumerate(((-4.2, cloth1), (-2, cloth2), (.2, cloth3))):
+    post(c, (x, 5, .8), .5, 1.3, 6, .38); post(skin, (x, 5, 2.1), .34, .55, 6, .3)
+    post(white, (x, 5, 2.55), .38, .12, 6, .3); slab(c, (x + .45, 4.7, 1.5), (.2, .2, .7), (0, .4, 0))
+    slab(white, (x + .3, 4.3, 1.3), (.8, .1, .1), (0, 0, .3)); slab(c, (x + .3, 4.3, 1.2), (1.6, .1, .08), (0, 0, .3))
+# trestle table with tools, a battery pack and a lamp
+slab(bench, (6, 0, 1.0), (4.2, 1.6, .15))
+for x in (4.3, 7.7):
+    for y in (-.6, .6): slab(bench, (x, y, 0), (.15, .15, 1.0))
+slab(cloth1, (5.2, 0, 1.15), (1.0, .7, .5)); post(led, (5.2, 0, 1.65), .08, .1, 5)
+slab(cloth2, (7, 0, 1.15), (.5, .4, .3)); slab(yellow, (6.2, -.3, 1.15), (.8, .1, .12), (0, 0, .4))
+post(lamp, (8.2, 1.4, 0), .12, 2.2, 5); post(lamp, (8.2, 1.4, 2.2), .3, .4, 6, .25)
+glim((1, .7, .35), 450, (8.2, 1.4, 2.6))
+# pit area: pit board with a pit tube, a launch rod, and a coiled line
+slab(bench, (-9, -2, 0), (3.2, 2.4, .12)); slab(cloth2, (-9, -2, .12), (2.8, 2.0, .06))
+slab(white, (-9, -2, .18), (.5, 1.8, .08), (0, 0, .3)); slab(red, (-9, -2, .26), (.3, 1.4, .08), (0, 0, .3))
+post(rock, (-10.2, -1, 0), .1, 2.6, 5, .06); slab(rock, (-10.2, -1, 2.6), (.5, .15, .15))
+for i in range(3): slab(cloth3, (-8 + i * .4, -1, .18), (.3, .3, .05))
+# the tiny planes aloft, each with a glowing LED
+for i, (x, y, z, rz, c) in enumerate(((3, 4, 12, .3, red), (-6, -1, 15, -.5, blue), (8, -6, 10, 1.2, yellow), (-1, 9, 18, .8, white))):
+    ca, sa = math.cos(rz), math.sin(rz)
+    def part(sx, sy, sz, w):
+        slab(c, (x + sx * ca - sy * sa, y + sx * sa + sy * ca, z + sz), w, (0, 0, rz))
+    part(0, 0, 0, (2.4, .3, .3)); part(0, 0, .1, (1.6, 2.4, .08)); part(-1.0, 0, .1, (.5, 1.2, .08)); part(-1.0, 0, .1, (.08, .5, .6))
+    slab(led, (x + 1.2 * ca, y + 1.2 * sa, z + .15), (.25, .25, .25)); glim((1, .2, .15), 120, (x, y, z))
+# windsock, flag pole, trees and rocks
+post(rock, (11, -6, 0), .1, 4.5, 5); slab(yellow, (11.6, -6, 4.0), (1.4, .5, .5)); slab(red, (12.1, -6, 4.0), (.5, .45, .45))
+post(rock, (-11, 3, 0), .1, 3.5, 5); slab(blue, (-10.6, 3, 3.0), (1.0, .06, .6))
+for i in range(8):
+    a = i * .8 + .3; r = 12 + (i % 3) * 1.2
+    if abs(a - 1.57) < .5: continue
+    x, y = math.cos(a) * r * 1.0, math.sin(a) * r * .75
+    post(pine, (x, y, 0), .9, 1.2, 6, .6); post(pine, (x, y, 1.0), 1.1, 2.2, 6, .1); post(pine, (x, y, 2.4), .8, 1.6, 6, .05)
+for i in range(7): post(rock, (random.uniform(-12, 12), random.uniform(-9, 9), 0), random.uniform(.25, .5), .3, 5, .2)
+# long evening light: low gold key from the right, a cool violet rim
+for c, e, p in (((1, .6, .25), 6, (30, -10, 7)), ((.4, .4, .9), 2.2, (-24, 20, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color, L.energy = c, e
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 3)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.03, .015, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co); co.location = (-6, -60, 34)
+co.rotation_euler = (Vector((0, 0, 6)) - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

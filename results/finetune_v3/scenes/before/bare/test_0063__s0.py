@@ -1,0 +1,236 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Create collections
+def get_or_create_collection(name):
+    if name in bpy.data.collections:
+        return bpy.data.collections[name]
+    coll = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(coll)
+    return coll
+
+hut_coll = get_or_create_collection("SkiPatrolHut")
+storm_coll = get_or_create_collection("Storm")
+
+# --- Materials ---
+def create_mat(name, color, roughness=0.7, metallic=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+mat_red = create_mat("Red", (0.8, 0.05, 0.05, 1.0), 0.5)
+mat_white = create_mat("White", (0.95, 0.95, 0.95, 1.0), 0.3)
+mat_wood = create_mat("Wood", (0.35, 0.2, 0.1, 1.0), 0.8)
+mat_metal = create_mat("Metal", (0.5, 0.5, 0.5, 1.0), 0.4, 0.8)
+mat_dark_metal = create_mat("DarkMetal", (0.2, 0.2, 0.2, 1.0), 0.5, 0.7)
+mat_rope = create_mat("Rope", (0.6, 0.45, 0.3, 1.0), 0.9)
+mat_bag = create_mat("Bag", (0.7, 0.6, 0.4, 1.0), 0.8)
+mat_snow = create_mat("Snow", (0.98, 0.98, 1.0, 1.0), 0.4)
+mat_glass = create_mat("Glass", (0.8, 0.9, 1.0, 1.0), 0.1)
+mat_therm = create_mat("Thermometer", (0.9, 0.9, 0.9, 1.0), 0.3)
+mat_therm_red = create_mat("ThermRed", (0.9, 0.1, 0.1, 1.0), 0.3)
+
+# --- Ground ---
+bpy.ops.mesh.primitive_plane_add(size=50, location=(0, 0, 0))
+ground = bpy.context.object
+ground.name = "Ground"
+ground.data.materials.append(mat_snow)
+# Move to hut_coll
+for coll in ground.users_collection:
+    coll.objects.unlink(ground)
+hut_coll.objects.link(ground)
+
+# --- Hut Body ---
+def add_box(name, size, loc, mat, coll):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    obj.data.materials.append(mat)
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    coll.objects.link(obj)
+    return obj
+
+# Main hut
+hut = add_box("Hut", (6, 5, 4), (0, 0, 2), mat_wood, hut_coll)
+
+# Roof
+bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=4.5, radius2=0, depth=3, location=(0, 0, 5.5))
+roof = bpy.context.object
+roof.name = "Roof"
+roof.rotation_euler = (0, 0, math.radians(45))
+roof.data.materials.append(mat_dark_metal)
+for c in roof.users_collection:
+    c.objects.unlink(roof)
+hut_coll.objects.link(roof)
+
+# Door
+door = add_box("Door", (1.2, 0.1, 2.5), (0, 2.55, 1.25), mat_dark_metal, hut_coll)
+
+# Windows
+win1 = add_box("Window1", (1.0, 0.1, 1.0), (-2, 2.55, 2.2), mat_glass, hut_coll)
+win2 = add_box("Window2", (1.0, 0.1, 1.0), (2, 2.55, 2.2), mat_glass, hut_coll)
+
+# --- Red Cross on Front ---
+cross_h = add_box("CrossH", (2.0, 0.1, 0.5), (0, 2.6, 3.5), mat_red, hut_coll)
+cross_v = add_box("CrossV", (0.5, 0.1, 2.0), (0, 2.6, 3.5), mat_red, hut_coll)
+
+# --- Stretcher Sled ---
+# Sled base
+sled_base = add_box("SledBase", (3.0, 0.8, 0.1), (4, 0, 0.3), mat_wood, hut_coll)
+# Sled runners
+runner1 = add_box("Runner1", (3.0, 0.05, 0.15), (4, -0.4, 0.15), mat_metal, hut_coll)
+runner2 = add_box("Runner2", (3.0, 0.05, 0.15), (4, 0.4, 0.15), mat_metal, hut_coll)
+# Stretcher pad
+pad = add_box("StretcherPad", (2.8, 0.6, 0.15), (4, 0, 0.4), mat_white, hut_coll)
+# Pillow
+pillow = add_box("Pillow", (0.5, 0.5, 0.15), (2.8, 0, 0.5), mat_white, hut_coll)
+
+# --- Rope Bags ---
+def add_cylinder(name, radius, depth, loc, mat, coll):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=loc)
+    obj = bpy.context.object
+    obj.name = name
+    obj.data.materials.append(mat)
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    coll.objects.link(obj)
+    return obj
+
+# Bag 1
+bag1 = add_cylinder("RopeBag1", 0.4, 0.8, (-3.5, 1.5, 0.4), mat_bag, hut_coll)
+# Bag 2
+bag2 = add_cylinder("RopeBag2", 0.35, 0.7, (-3.5, 2.5, 0.35), mat_bag, hut_coll)
+# Bag 3
+bag3 = add_cylinder("RopeBag3", 0.3, 0.6, (-4.2, 2.0, 0.3), mat_bag, hut_coll)
+# Rope coils on bags
+coil1 = add_cylinder("Coil1", 0.2, 0.1, (-3.5, 1.5, 0.85), mat_rope, hut_coll)
+coil2 = add_cylinder("Coil2", 0.18, 0.1, (-3.5, 2.5, 0.75), mat_rope, hut_coll)
+coil3 = add_cylinder("Coil3", 0.15, 0.1, (-4.2, 2.0, 0.65), mat_rope, hut_coll)
+
+# --- Thermometer ---
+# Mounting plate
+plate = add_box("ThermPlate", (0.3, 0.05, 1.2), (3.2, 2.55, 2.0), mat_metal, hut_coll)
+# Thermometer tube
+therm = add_cylinder("Thermometer", 0.05, 1.0, (3.2, 2.6, 2.0), mat_therm, hut_coll)
+therm.rotation_euler = (math.radians(90), 0, 0)
+# Red fill
+therm_fill = add_cylinder("ThermFill", 0.03, 0.6, (3.2, 2.6, 1.8), mat_therm_red, hut_coll)
+therm_fill.rotation_euler = (math.radians(90), 0, 0)
+# Bulb
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(3.2, 2.6, 1.45))
+bulb = bpy.context.object
+bulb.name = "ThermBulb"
+bulb.data.materials.append(mat_therm_red)
+for c in bulb.users_collection:
+    c.objects.unlink(bulb)
+hut_coll.objects.link(bulb)
+
+# --- Stove Chimney ---
+# Stove inside (visible through window)
+stove = add_box("Stove", (0.8, 0.8, 1.0), (1.5, 0, 0.5), mat_dark_metal, hut_coll)
+# Chimney pipe
+chimney = add_cylinder("Chimney", 0.15, 5.0, (1.5, 0, 5.5), mat_metal, hut_coll)
+# Chimney cap
+bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=0.3, radius2=0.1, depth=0.4, location=(1.5, 0, 8.1))
+cap = bpy.context.object
+cap.name = "ChimneyCap"
+cap.data.materials.append(mat_metal)
+for c in cap.users_collection:
+    c.objects.unlink(cap)
+hut_coll.objects.link(cap)
+
+# --- Snow Drifts around hut ---
+for i in range(8):
+    angle = i * math.radians(45)
+    x = math.cos(angle) * 4
+    y = math.sin(angle) * 4
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1.5 + random.random()*0.5, location=(x, y, 0.3))
+    drift = bpy.context.object
+    drift.name = f"Drift{i}"
+    drift.scale = (1.5, 1.5, 0.4)
+    drift.data.materials.append(mat_snow)
+    for c in drift.users_collection:
+        c.objects.unlink(drift)
+    hut_coll.objects.link(drift)
+
+# --- Snow on roof ---
+roof_snow = add_box("RoofSnow", (5.0, 5.0, 0.3), (0, 0, 6.8), mat_snow, hut_coll)
+
+# --- Storm: Falling Powder (Particle-like snowflakes) ---
+# Create a large plane above as emitter, but we'll just scatter snowflakes
+random.seed(42)
+num_flakes = 500
+for i in range(num_flakes):
+    x = random.uniform(-15, 15)
+    y = random.uniform(-15, 15)
+    z = random.uniform(0, 15)
+    size = random.uniform(0.03, 0.1)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    flake = bpy.context.object
+    flake.name = f"Snowflake{i}"
+    flake.data.materials.append(mat_snow)
+    for c in flake.users_collection:
+        c.objects.unlink(flake)
+    storm_coll.objects.link(flake)
+
+# --- Lighting ---
+# Sun
+bpy.ops.object.light_add(type='SUN', location=(10, 10, 20))
+sun = bpy.context.object
+sun.name = "Sun"
+sun.data.energy = 2.0
+sun.data.color = (1.0, 0.95, 0.9)
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+for c in sun.users_collection:
+    c.objects.unlink(sun)
+hut_coll.objects.link(sun)
+
+# Ambient fill
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 8))
+fill = bpy.context.object
+fill.name = "FillLight"
+fill.data.energy = 100
+fill.data.color = (0.8, 0.85, 1.0)
+for c in fill.users_collection:
+    c.objects.unlink(fill)
+hut_coll.objects.link(fill)
+
+# --- World: Stormy Sky ---
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs["Color"].default_value = (0.5, 0.55, 0.65, 1.0)
+    bg.inputs["Strength"].default_value = 0.8
+
+# --- Camera ---
+bpy.ops.object.camera_add(location=(12, 12, 6))
+cam = bpy.context.object
+cam.name = "Camera"
+cam.rotation_euler = (math.radians(70), 0, math.radians(-45))
+bpy.context.scene.camera = cam
+for c in cam.users_collection:
+    c.objects.unlink(cam)
+hut_coll.objects.link(cam)
+
+# --- Render settings ---
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+bpy.context.scene.cycles.samples = 128
+bpy.context.scene.cycles.use_denoising = True
+
+print("Ski patrol hut scene created successfully!")

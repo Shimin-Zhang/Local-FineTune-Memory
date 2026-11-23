@@ -1,0 +1,380 @@
+import bpy
+import math
+import mathutils
+from mathutils import Vector
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create collections
+def get_or_create_collection(name):
+    if name in bpy.data.collections:
+        return bpy.data.collections[name]
+    col = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(col)
+    return col
+
+col_terrain = get_or_create_collection("Terrain")
+col_stream = get_or_create_collection("Stream")
+col_aqueduct = get_or_create_collection("Aqueduct")
+col_bridge = get_or_create_collection("Bridge")
+col_washing = get_or_create_collection("WashingPlace")
+col_tank = get_or_create_collection("DistributionTank")
+
+# Materials
+def create_material(name, color, roughness=0.7, metallic=0.0):
+    mat = bpy.data.materials.get(name)
+    if mat is None:
+        mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = color
+        bsdf.inputs["Roughness"].default_value = roughness
+        bsdf.inputs["Metallic"].default_value = metallic
+    return mat
+
+mat_stone = create_material("Stone", (0.55, 0.5, 0.45), roughness=0.8)
+mat_stone_dark = create_material("StoneDark", (0.4, 0.38, 0.35), roughness=0.85)
+mat_water = create_material("Water", (0.2, 0.4, 0.5), roughness=0.1, metallic=0.1)
+mat_earth = create_material("Earth", (0.35, 0.25, 0.15), roughness=0.9)
+mat_grass = create_material("Grass", (0.2, 0.4, 0.15), roughness=0.9)
+mat_concrete = create_material("Concrete", (0.6, 0.6, 0.58), roughness=0.7)
+
+# Helper: assign material to object
+def assign_material(obj, mat):
+    if obj.data.materials:
+        obj.data.materials[0] = mat
+    else:
+        obj.data.materials.append(mat)
+
+# Helper: create a box mesh
+def create_box(name, size, location, mat=None, collection=None):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0] / 2, size[1] / 2, size[2] / 2)
+    bpy.ops.object.transform_apply(scale=True)
+    if mat:
+        assign_material(obj, mat)
+    if collection:
+        for col in obj.users_collection:
+            col.objects.unlink(obj)
+        collection.objects.link(obj)
+    return obj
+
+# Helper: create a cylinder
+def create_cylinder(name, radius, depth, location, mat=None, collection=None, rotation=(0, 0, 0)):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    if mat:
+        assign_material(obj, mat)
+    if collection:
+        for col in obj.users_collection:
+            col.objects.unlink(obj)
+        collection.objects.link(obj)
+    return obj
+
+# Helper: create an arch (using a torus segment or extruded profile)
+def create_arch(name, width, height, thickness, location, mat=None, collection=None):
+    """
+    Create a simple arch using a boolean approach:
+    Create a box and subtract a cylinder to make an arch opening.
+    width = total width of the arch unit
+    height = height of the arch unit
+    thickness = depth (into the screen)
+    """
+    # Create the outer box
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location)
+    outer = bpy.context.active_object
+    outer.name = name + "_outer"
+    outer.scale = (width / 2, thickness / 2, height / 2)
+    bpy.ops.object.transform_apply(scale=True)
+    
+    # Create the inner cylinder to cut out (for the arch opening)
+    arch_radius = width / 2
+    arch_center_y = location[1]
+    arch_center_z = location[2] - height / 2 + arch_radius  # center of the semicircle at the base
+    bpy.ops.mesh.primitive_cylinder_add(radius=arch_radius, depth=thickness, location=(location[0], arch_center_y, arch_center_z), rotation=(math.radians(90), 0, 0))
+    inner = bpy.context.active_object
+    inner.name = name + "_inner"
+    
+    # Boolean operation
+    mod = outer.modifiers.new("ArchCut", 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = inner
+    bpy.context.view_layer.objects.active = outer
+    bpy.ops.object.modifier_apply(modifier="ArchCut")
+    
+    bpy.ops.object.select_all(action='DESELECT')
+    inner.select_set(True)
+    bpy.context.view_layer.objects.active = inner
+    bpy.ops.object.delete(use_global=False)
+    
+    if mat:
+        assign_material(outer, mat)
+    if collection:
+        for col in outer.users_collection:
+            col.objects.unlink(outer)
+        collection.objects.link(outer)
+    
+    outer.name = name
+    return outer
+
+# Helper: create a row of arches
+def create_arch_row(name_prefix, num_arches, arch_width, arch_height, arch_thickness, start_x, start_z, y, mat=None, collection=None, z_offset=0):
+    """
+    Create a row of arches along the X axis.
+    """
+    arches = []
+    for i in range(num_arches):
+        x = start_x + i * arch_width
+        loc = (x, y, start_z + z_offset)
+        arch = create_arch(f"{name_prefix}_{i}", arch_width, arch_height, arch_thickness, loc, mat, collection)
+        arches.append(arch)
+    return arches
+
+# ==================== TERRAIN ====================
+# Create a valley terrain using a grid with displacement
+bpy.ops.mesh.primitive_grid_add(x_subdivisions=100, y_subdivisions=100, size=200, location=(0, 0, 0))
+terrain = bpy.context.active_object
+terrain.name = "Terrain"
+assign_material(terrain, mat_earth)
+for col in terrain.users_collection:
+    col.objects.unlink(terrain)
+col_terrain.objects.link(terrain)
+
+# Add displacement to create valley shape
+# We'll use a simple procedural approach: modify vertices based on position
+import bmesh
+me = terrain.data
+bm = bmesh.new()
+bm.from_mesh(me)
+
+for vert in bm.verts:
+    x, y, z = vert.co
+    # Valley: lower in the middle (along Y axis), higher on sides
+    # Stream runs along X axis at Y=0
+    valley_depth = 10 * math.exp(-(y * y) / (50 * 50))
+    vert.co.z = -valley_depth + 2  # slight elevation overall
+
+bm.to_mesh(me)
+bm.free()
+
+# Smooth shading
+bpy.ops.object.shade_smooth()
+
+# ==================== STREAM ====================
+# Create a stream along the valley bottom
+bpy.ops.mesh.primitive_plane_add(size=1, location=(0, 0, -8))
+stream = bpy.context.active_object
+stream.name = "Stream"
+stream.scale = (100, 8, 1)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(stream, mat_water)
+for col in stream.users_collection:
+    col.objects.unlink(stream)
+col_stream.objects.link(stream)
+
+# ==================== AQUEDUCT ====================
+# Two tiers of arches crossing the valley
+# The aqueduct runs along the X axis, crossing the valley (Y direction)
+# Tier 1 (lower): larger arches, Tier 2 (upper): smaller arches
+
+# Parameters
+num_arches_lower = 8
+arch_width_lower = 12
+arch_height_lower = 15
+arch_thickness = 3
+aqueduct_y = 0  # crosses at Y=0
+aqueduct_z_lower = -5  # base of lower tier
+aqueduct_z_upper = aqueduct_z_lower + arch_height_lower
+
+# Lower tier arches
+lower_arches = create_arch_row(
+    "ArchLower", num_arches_lower, arch_width_lower, arch_height_lower, arch_thickness,
+    start_x=-num_arches_lower * arch_width_lower / 2 + arch_width_lower / 2,
+    start_z=aqueduct_z_lower, y=aqueduct_y, mat=mat_stone, collection=col_aqueduct
+)
+
+# Upper tier arches (smaller, on top of lower tier)
+num_arches_upper = 10
+arch_width_upper = 10
+arch_height_upper = 10
+upper_arches = create_arch_row(
+    "ArchUpper", num_arches_upper, arch_width_upper, arch_height_upper, arch_thickness,
+    start_x=-num_arches_upper * arch_width_upper / 2 + arch_width_upper / 2,
+    start_z=aqueduct_z_upper, y=aqueduct_y, mat=mat_stone, collection=col_aqueduct
+)
+
+# Add the water channel on top of the upper tier
+channel_width = 8
+channel_length = num_arches_upper * arch_width_upper
+channel_height = 2
+channel_z = aqueduct_z_upper + arch_height_upper
+channel_y = aqueduct_y
+
+# Channel base
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, channel_y, channel_z))
+channel_base = bpy.context.active_object
+channel_base.name = "ChannelBase"
+channel_base.scale = (channel_length / 2, channel_width / 2, channel_height / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(channel_base, mat_concrete)
+for col in channel_base.users_collection:
+    col.objects.unlink(channel_base)
+col_aqueduct.objects.link(channel_base)
+
+# Channel walls
+wall_height = 1.5
+wall_thickness = 0.5
+# Left wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(-channel_width / 2, channel_y, channel_z + channel_height / 2 + wall_height / 2))
+wall_left = bpy.context.active_object
+wall_left.name = "ChannelWallLeft"
+wall_left.scale = (channel_length / 2, wall_thickness / 2, wall_height / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(wall_left, mat_concrete)
+for col in wall_left.users_collection:
+    col.objects.unlink(wall_left)
+col_aqueduct.objects.link(wall_left)
+
+# Right wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(channel_width / 2, channel_y, channel_z + channel_height / 2 + wall_height / 2))
+wall_right = bpy.context.active_object
+wall_right.name = "ChannelWallRight"
+wall_right.scale = (channel_length / 2, wall_thickness / 2, wall_height / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(wall_right, mat_concrete)
+for col in wall_right.users_collection:
+    col.objects.unlink(wall_right)
+col_aqueduct.objects.link(wall_right)
+
+# Water in the channel
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, channel_y, channel_z + channel_height / 2 + 0.3))
+channel_water = bpy.context.active_object
+channel_water.name = "ChannelWater"
+channel_water.scale = ((channel_length - 1) / 2, (channel_width - 1) / 2, 0.3 / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(channel_water, mat_water)
+for col in channel_water.users_collection:
+    col.objects.unlink(channel_water)
+col_aqueduct.objects.link(channel_water)
+
+# ==================== STONE BRIDGE ====================
+# A small stone bridge crossing the stream at one end of the aqueduct
+bridge_x = -num_arches_lower * arch_width_lower / 2 - 10
+bridge_y = 0
+bridge_z = -8  # at stream level
+
+# Bridge deck
+bpy.ops.mesh.primitive_cube_add(size=1, location=(bridge_x, bridge_y, bridge_z + 1))
+bridge_deck = bpy.context.active_object
+bridge_deck.name = "BridgeDeck"
+bridge_deck.scale = (15 / 2, 10 / 2, 1 / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(bridge_deck, mat_stone)
+for col in bridge_deck.users_collection:
+    col.objects.unlink(bridge_deck)
+col_bridge.objects.link(bridge_deck)
+
+# Bridge arches (3 arches)
+bridge_arch_width = 4
+bridge_arch_height = 3
+num_bridge_arches = 3
+for i in range(num_bridge_arches):
+    ax = bridge_x - (num_bridge_arches - 1) * bridge_arch_width / 2 + i * bridge_arch_width
+    arch = create_arch(f"BridgeArch_{i}", bridge_arch_width, bridge_arch_height, 10, (ax, bridge_y, bridge_z), mat_stone, col_bridge)
+
+# Bridge side walls
+bpy.ops.mesh.primitive_cube_add(size=1, location=(bridge_x, -5, bridge_z + 1.5))
+bridge_wall_left = bpy.context.active_object
+bridge_wall_left.name = "BridgeWallLeft"
+bridge_wall_left.scale = (15 / 2, 0.5 / 2, 1.5 / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(bridge_wall_left, mat_stone)
+for col in bridge_wall_left.users_collection:
+    col.objects.unlink(bridge_wall_left)
+col_bridge.objects.link(bridge_wall_left)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(bridge_x, 5, bridge_z + 1.5))
+bridge_wall_right = bpy.context.active_object
+bridge_wall_right.name = "BridgeWallRight"
+bridge_wall_right.scale = (15 / 2, 0.5 / 2, 1.5 / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(bridge_wall_right, mat_stone)
+for col in bridge_wall_right.users_collection:
+    col.objects.unlink(bridge_wall_right)
+col_bridge.objects.link(bridge_wall_right)
+
+# ==================== WASHING PLACE ====================
+# A stone basin near the stream where people would wash
+washing_x = bridge_x + 20
+washing_y = 5
+washing_z = -7
+
+# Basin
+bpy.ops.mesh.primitive_cube_add(size=1, location=(washing_x, washing_y, washing_z))
+basin = bpy.context.active_object
+basin.name = "WashingBasin"
+basin.scale = (6 / 2, 4 / 2, 1 / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(basin, mat_stone)
+for col in basin.users_collection:
+    col.objects.unlink(basin)
+col_washing.objects.link(basin)
+
+# Basin interior (water)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(washing_x, washing_y, washing_z + 0.3))
+basin_water = bpy.context.active_object
+basin_water.name = "WashingWater"
+basin_water.scale = (5 / 2, 3 / 2, 0.3 / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(basin_water, mat_water)
+for col in basin_water.users_collection:
+    col.objects.unlink(basin_water)
+col_washing.objects.link(basin_water)
+
+# Basin walls
+wall_h = 1
+wall_t = 0.3
+# Front wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(washing_x, washing_y - 2, washing_z + wall_h / 2))
+b_wall_front = bpy.context.active_object
+b_wall_front.name = "BasinWallFront"
+b_wall_front.scale = (6 / 2, wall_t / 2, wall_h / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(b_wall_front, mat_stone)
+for col in b_wall_front.users_collection:
+    col.objects.unlink(b_wall_front)
+col_washing.objects.link(b_wall_front)
+
+# Back wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(washing_x, washing_y + 2, washing_z + wall_h / 2))
+b_wall_back = bpy.context.active_object
+b_wall_back.name = "BasinWallBack"
+b_wall_back.scale = (6 / 2, wall_t / 2, wall_h / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(b_wall_back, mat_stone)
+for col in b_wall_back.users_collection:
+    col.objects.unlink(b_wall_back)
+col_washing.objects.link(b_wall_back)
+
+# Left wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(washing_x - 3, washing_y, washing_z + wall_h / 2))
+b_wall_left = bpy.context.active_object
+b_wall_left.name = "BasinWallLeft"
+b_wall_left.scale = (wall_t / 2, 4 / 2, wall_h / 2)
+bpy.ops.object.transform_apply(scale=True)
+assign_material(b_wall_left, mat_stone)
+for col in b_wall_left.users_collection:
+    col.objects.unlink(b_wall_left)
+col_washing.objects.link(b_wall_left)
+
+# Right wall
+bpy.ops.mesh.primitive_cube_add(size=1, location=(washing_x + 3, washing_y, washing_z + wall_h / 2))
+b_wall_right = bpy.context.active_object
+b_wall_right.name = "BasinWallRight"
+b_wall_right.scale = (wall_t / 2, 4 / 2, wall

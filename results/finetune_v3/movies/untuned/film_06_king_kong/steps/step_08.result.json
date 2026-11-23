@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 1.9,
+ "error": "SyntaxError: cannot use assignment expressions with attribute (script.py, line 118)",
+ "error_line": "bpy.context.active_object.name := name,",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1978,
+ "n_lights": 10,
+ "n_materials": 20,
+ "own_camera": true,
+ "render_error": null
+}

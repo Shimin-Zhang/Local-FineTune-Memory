@@ -1,0 +1,53 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "ValueError: bpy_struct: item.attr = val: sequences of dimension 0 should contain 2 items, not 3",
+ "error_line": "glass_bsdf.location = (0, 0, 0)",
+ "n_renderable_objects": 4,
+ "object_types": {
+  "MESH": 4
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Stand_Material",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.1,
+    0.05,
+    0.02
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  0.6,
+  0.6,
+  0.7
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.35
+ ],
+ "scene_radius": 0.55,
+ "process": "exit 0",
+ "seconds": 0.7,
+ "image": false
+}

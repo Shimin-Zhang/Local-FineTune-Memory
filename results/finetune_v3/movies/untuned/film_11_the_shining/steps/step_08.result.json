@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 10.2,
+ "error": null,
+ "error_line": null,
+ "printed": "Camera euler: 0.52, 0.00, 2.09\nCamera loc: 30.0, 20.0, 45.0\nTarget: 0.0, 3.0, -15.0\nDirection: -30.0, -17.0, -60.0\nFog box found: Cube.481\nCamera should now look at the scene. Added sign, mailbox, interior lights.\n",
+ "state_saved": true,
+ "n_objects": 1279,
+ "n_lights": 24,
+ "n_materials": 22,
+ "own_camera": true,
+ "render_error": null
+}

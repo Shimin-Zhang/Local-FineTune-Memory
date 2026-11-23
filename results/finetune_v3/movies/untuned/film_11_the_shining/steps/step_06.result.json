@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 20.7,
+ "error": null,
+ "error_line": null,
+ "printed": "Done! Camera fixed, chimney, porch, rocks, fog, trees, drifts all added.\n",
+ "state_saved": true,
+ "n_objects": 1074,
+ "n_lights": 13,
+ "n_materials": 18,
+ "own_camera": true,
+ "render_error": null
+}

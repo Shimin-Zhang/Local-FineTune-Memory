@@ -1,0 +1,287 @@
+import bpy
+import math
+from mathutils import Vector
+
+# Clear the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create ground
+bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+mat_ground = bpy.data.materials.new(name="Grass")
+mat_ground.use_nodes = True
+nodes = mat_ground.node_tree.nodes
+links = mat_ground.node_tree.links
+bsdf = nodes["Principled BSDF"]
+bsdf.inputs["Base Color"].default_value = (0.2, 0.6, 0.2, 1)
+ground.data.materials.append(mat_ground)
+
+# Helper function to create a material
+def create_material(name, color):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    bsdf = nodes["Principled BSDF"]
+    bsdf.inputs["Base Color"].default_value = color
+    return mat
+
+# Materials
+mat_red = create_material("Red", (0.8, 0.1, 0.1, 1))
+mat_blue = create_material("Blue", (0.1, 0.3, 0.8, 1))
+mat_yellow = create_material("Yellow", (0.9, 0.8, 0.1, 1))
+mat_green = create_material("Green", (0.1, 0.6, 0.1, 1))
+mat_sand = create_material("Sand", (0.85, 0.75, 0.5, 1))
+mat_wood = create_material("Wood", (0.5, 0.3, 0.1, 1))
+mat_metal = create_material("Metal", (0.6, 0.6, 0.6, 1))
+
+# ==================== SLIDE ====================
+# Slide platform
+bpy.ops.mesh.primitive_cube_add(size=1, location=(5, 0, 2))
+platform = bpy.context.active_object
+platform.name = "SlidePlatform"
+platform.scale = (2, 2, 0.2)
+platform.data.materials.append(mat_red)
+
+# Slide legs
+for x in [4, 6]:
+    for y in [-1.5, 1.5]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=2, location=(x, y, 1))
+        leg = bpy.context.active_object
+        leg.name = f"SlideLeg_{x}_{y}"
+        leg.data.materials.append(mat_red)
+
+# Slide chute
+bpy.ops.mesh.primitive_cube_add(size=1, location=(2.5, 0, 1.2))
+chute = bpy.context.active_object
+chute.name = "SlideChute"
+chute.scale = (3, 1.5, 0.1)
+chute.rotation_euler = (0, math.radians(-20), 0)
+chute.data.materials.append(mat_blue)
+
+# Slide handrails
+for y in [-0.8, 0.8]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=3.5, location=(2.5, y, 1.5))
+    rail = bpy.context.active_object
+    rail.name = f"SlideRail_{y}"
+    rail.rotation_euler = (0, math.radians(-20), 0)
+    rail.data.materials.append(mat_yellow)
+
+# Ladder steps
+for i in range(4):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(6.5, 0, 0.5 + i * 0.5))
+    step = bpy.context.active_object
+    step.name = f"LadderStep_{i}"
+    step.scale = (0.8, 1.5, 0.05)
+    step.data.materials.append(mat_yellow)
+
+# Ladder side rails
+for y in [-0.7, 0.7]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=2.5, location=(6.5, y, 1.25))
+    lrail = bpy.context.active_object
+    lrail.name = f"LadderRail_{y}"
+    lrail.data.materials.append(mat_yellow)
+
+# ==================== SWING SET ====================
+# Swing frame A-frame left
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=3, location=(-5, -2, 1.5))
+frame_l1 = bpy.context.active_object
+frame_l1.name = "SwingFrameL1"
+frame_l1.rotation_euler = (math.radians(15), 0, 0)
+frame_l1.data.materials.append(mat_metal)
+
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=3, location=(-5, 2, 1.5))
+frame_l2 = bpy.context.active_object
+frame_l2.name = "SwingFrameL2"
+frame_l2.rotation_euler = (math.radians(-15), 0, 0)
+frame_l2.data.materials.append(mat_metal)
+
+# Swing frame A-frame right
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=3, location=(-5, -2, 1.5))
+frame_r1 = bpy.context.active_object
+frame_r1.name = "SwingFrameR1"
+frame_r1.rotation_euler = (math.radians(15), 0, 0)
+frame_r1.data.materials.append(mat_metal)
+
+bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=3, location=(-5, 2, 1.5))
+frame_r2 = bpy.context.active_object
+frame_r2.name = "SwingFrameR2"
+frame_r2.rotation_euler = (math.radians(-15), 0, 0)
+frame_r2.data.materials.append(mat_metal)
+
+# Top bar
+bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=5, location=(-5, 0, 2.8))
+top_bar = bpy.context.active_object
+top_bar.name = "SwingTopBar"
+top_bar.rotation_euler = (0, math.radians(90), 0)
+top_bar.data.materials.append(mat_metal)
+
+# Swing chains and seats
+for i, x in enumerate([-5.5, -4.5]):
+    # Chains
+    for y in [-0.3, 0.3]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=2, location=(x, y, 1.8))
+        chain = bpy.context.active_object
+        chain.name = f"SwingChain_{i}_{y}"
+        chain.data.materials.append(mat_metal)
+    # Seat
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0, 0.8))
+    seat = bpy.context.active_object
+    seat.name = f"SwingSeat_{i}"
+    seat.scale = (0.5, 0.8, 0.05)
+    seat.data.materials.append(mat_red)
+
+# ==================== SANDBOX ====================
+# Sandbox base (wooden frame)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 8, 0.3))
+sandbox_base = bpy.context.active_object
+sandbox_base.name = "SandboxBase"
+sandbox_base.scale = (3, 3, 0.6)
+sandbox_base.data.materials.append(mat_wood)
+
+# Sand fill
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 8, 0.55))
+sand = bpy.context.active_object
+sand.name = "SandboxSand"
+sand.scale = (2.8, 2.8, 0.1)
+sand.data.materials.append(mat_sand)
+
+# Sandbox border walls
+for i, (dx, dy) in enumerate([(0, 1.5), (0, -1.5), (1.5, 0), (-1.5, 0)]):
+    if i < 2:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(0 + dx, 8 + dy, 0.3))
+        wall = bpy.context.active_object
+        wall.name = f"SandboxWall_{i}"
+        wall.scale = (3, 0.1, 0.6)
+        wall.data.materials.append(mat_wood)
+    else:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(0 + dx, 8 + dy, 0.3))
+        wall = bpy.context.active_object
+        wall.name = f"SandboxWall_{i}"
+        wall.scale = (0.1, 3, 0.6)
+        wall.data.materials.append(mat_wood)
+
+# Sandbox toys
+# Bucket
+bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.3, location=(-0.5, 7.5, 0.7))
+bucket = bpy.context.active_object
+bucket.name = "SandboxBucket"
+bucket.data.materials.append(mat_red)
+
+# Shovel
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.5, 8.5, 0.65))
+shovel_handle = bpy.context.active_object
+shovel_handle.name = "SandboxShovelHandle"
+shovel_handle.scale = (0.05, 0.5, 0.05)
+shovel_handle.data.materials.append(mat_yellow)
+
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0.5, 8.9, 0.6))
+shovel_blade = bpy.context.active_object
+shovel_blade.name = "SandboxShovelBlade"
+shovel_blade.scale = (0.15, 0.15, 0.02)
+shovel_blade.data.materials.append(mat_metal)
+
+# ==================== SEESAW ====================
+# Seesaw fulcrum
+bpy.ops.mesh.primitive_cone_add(radius1=0.5, radius2=0.3, depth=0.5, location=(10, 0, 0.25))
+fulcrum = bpy.context.active_object
+fulcrum.name = "SeesawFulcrum"
+fulcrum.data.materials.append(mat_metal)
+
+# Seesaw beam
+bpy.ops.mesh.primitive_cube_add(size=1, location=(10, 0, 0.6))
+beam = bpy.context.active_object
+beam.name = "SeesawBeam"
+beam.scale = (4, 0.5, 0.1)
+beam.rotation_euler = (0, math.radians(5), 0)
+beam.data.materials.append(mat_yellow)
+
+# Seesaw seats
+for x in [8, 12]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0, 0.65))
+    seat = bpy.context.active_object
+    seat.name = f"SeesawSeat_{x}"
+    seat.scale = (0.8, 0.5, 0.05)
+    seat.rotation_euler = (0, math.radians(5), 0)
+    seat.data.materials.append(mat_green)
+
+# Seesaw handles
+for x in [8, 12]:
+    for y in [-0.3, 0.3]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.5, location=(x, y, 0.9))
+        handle = bpy.context.active_object
+        handle.name = f"SeesawHandle_{x}_{y}"
+        handle.data.materials.append(mat_red)
+
+# ==================== DECORATIVE ELEMENTS ====================
+# Trees
+for tx, ty in [(-8, -5), (8, -5), (-8, 5), (8, 5)]:
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=2, location=(tx, ty, 1))
+    trunk = bpy.context.active_object
+    trunk.name = f"TreeTrunk_{tx}_{ty}"
+    trunk.data.materials.append(mat_wood)
+    # Leaves
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=1.2, location=(tx, ty, 2.5))
+    leaves = bpy.context.active_object
+    leaves.name = f"TreeLeaves_{tx}_{ty}"
+    leaves.data.materials.append(mat_green)
+
+# Bushes
+for bx, by in [(-3, -6), (3, -6), (-3, 6), (3, 6)]:
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=0.5, location=(bx, by, 0.3))
+    bush = bpy.context.active_object
+    bush.name = f"Bush_{bx}_{by}"
+    bush.scale = (1, 1, 0.7)
+    bush.data.materials.append(mat_green)
+
+# Flowers
+import random
+for i in range(20):
+    fx = random.uniform(-10, 10)
+    fy = random.uniform(-10, 10)
+    # Avoid placing flowers on playground equipment
+    if abs(fx - 5) < 3 and abs(fy) < 3:
+        continue
+    if abs(fx + 5) < 3 and abs(fy) < 3:
+        continue
+    if abs(fx) < 4 and abs(fy - 8) < 4:
+        continue
+    if abs(fx - 10) < 4 and abs(fy) < 3:
+        continue
+    
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=0.1, location=(fx, fy, 0.1))
+    flower = bpy.context.active_object
+    flower.name = f"Flower_{i}"
+    mat_flower = create_material(f"FlowerMat_{i}", (random.random(), random.random(), random.random(), 1))
+    flower.data.materials.append(mat_flower)
+
+# Set up camera
+bpy.ops.object.camera_add(location=(0, -15, 8))
+camera = bpy.context.active_object
+camera.name = "PlaygroundCamera"
+camera.rotation_euler = (math.radians(70), 0, 0)
+
+# Set camera as active
+bpy.context.scene.camera = camera
+
+# Set up lighting
+bpy.ops.object.light_add(type='SUN', location=(10, -10, 15))
+sun = bpy.context.active_object
+sun.name = "Sunlight"
+sun.data.energy = 3
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# World settings
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+nodes = world.node_tree.nodes
+bg = nodes["Background"]
+bg.inputs[0].default_value = (0.5, 0.7, 1.0, 1)
+bg.inputs[1].default_value = 1.0
+
+print("Playground built successfully!")

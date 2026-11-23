@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 2.0,
+ "error": "SyntaxError: '(' was never closed (script.py, line 181)",
+ "error_line": "bpy.ops.mesh.primitive_cube_add(size=1, location=(dl.x-0.",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1,
+ "n_lights": 1,
+ "n_materials": 1,
+ "own_camera": false,
+ "render_error": null
+}

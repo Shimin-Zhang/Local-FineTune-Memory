@@ -1,0 +1,26 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "KeyError: 'bpy_prop_collection[key]: key \"Detail Distortion\" not found'",
+ "error_line": "wave.inputs['Detail Distortion'].default_value = 0.0",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "bbox_size": [
+  2.0,
+  2.0,
+  1.7
+ ],
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 3.8,
+ "image": true
+}

@@ -1,0 +1,92 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(364)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tint(rgb, em=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if em: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = em
+    return m
+sand, dune, rockc, canvas, canvas2, post, steel, redl, star, star2, milk, chair, bag, paper = (tint((.32, .22, .14)), tint((.4, .28, .17)), tint((.2, .16, .15)), tint((.55, .45, .3)), tint((.45, .15, .12)),
+    tint((.25, .15, .08)), tint((.12, .13, .16)), tint((1, .05, .03), 12), tint((.9, .95, 1), 3), tint((1, .8, .5), 3), tint((.55, .5, .85), .5), tint((.7, .1, .08)), tint((.3, .25, .2)), tint((.7, .65, .5)))
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def prism(at, r0, r1, h, n, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r0, radius2=r1, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at, rot)
+def slab(at, w, d, h, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * w, v.co.y * d, (v.co.z + .5) * h))
+    return make(bm, m, at, rot)
+def strut(a, b, r, m):
+    a, b = Vector(a), Vector(b); d = b - a
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=r, radius2=r, depth=d.length)
+    return make(bm, m, (a + b) / 2, d.to_track_quat('Z', 'Y').to_euler())
+def shine(kind, at, col, w, aim=None):
+    L = bpy.data.lights.new("s", kind); L.color, L.energy = col, w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=6, radius2=14, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.2, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.5
+make(bm, sand)
+for i in range(5):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=random.uniform(3, 5), radius2=.3, depth=random.uniform(1.2, 2))
+    for v in bm.verts: v.co += Vector((random.uniform(-.3, .3), random.uniform(-.3, .3), 0))
+    make(bm, dune, (random.uniform(-9, 9), random.uniform(-9, 9), -.2))
+for i in range(8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.4, .9))
+    for v in bm.verts: v.co *= random.uniform(.7, 1.2)
+    a = random.uniform(0, 6.28); r = random.uniform(10, 12.5)
+    make(bm, rockc, (math.cos(a) * r, math.sin(a) * r, .1))
+# three tents: canvas prism with a ridge, a dark door flap and a guy rope
+for i, (x, y, m) in enumerate(((-8, 3, canvas), (-3, 7.5, canvas2), (3, 8, canvas))):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        v.co = Vector((v.co.x * 3.4, v.co.y * 2.6, (v.co.z + .5) * 2.2))
+        if v.co.z > 1: v.co.y *= .1
+    make(bm, m, (x, y, 0), (0, 0, i * .3))
+    slab((x, y - 1.4, 0), 1.0, .1, 1.5, post, (0, 0, i * .3))
+    for s in (-1, 1): strut((x + s * 1.7, y - 1.3, 2.0), (x + s * 3.2, y - 3.2, .1), .03, post)
+# telescope tripods with tubes, eyepieces and counterweights, tilted at the sky
+for x, y, tilt in ((-5, -3, .5), (2, -5, .3), (8, -1, .6)):
+    for k in range(3):
+        a = k * 2.09 + x
+        strut((x, y, 0), (x + math.cos(a) * 1.5, y + math.sin(a) * 1.5, 2.4), .07, post)
+    prism((x, y, 2.2), .45, .45, .5, 8, steel, (tilt, 0, .4))
+    prism((x, y, 2.5), .38, .3, 3.2, 8, steel, (tilt, 0, .4)).location = (x - math.sin(.4) * 0, y, 2.5)
+    prism((x - math.sin(tilt) * 0, y, 2.5), .38, .3, 3.2, 8, steel, (tilt, 0, .4)).rotation_euler = (tilt, 0, .4)
+    prism((x, y, 2.5), .4, .4, .3, 8, post, (tilt, 0, .4)).location = (x, y, 2.5)
+    prism((x + 1.4, y - 1.2, 2.3), .15, .15, .6, 5, steel, (0, 1.57, 0))
+# red camp lamp on a tripod, the brightest thing on the ground
+strut((6, 4, 0), (6.4, 4.3, 1.8), .05, post); strut((6, 4, 0), (5.6, 4.3, 1.8), .05, post); strut((6, 4, 0), (6, 3.5, 1.8), .05, post)
+prism((6, 4, 1.8), .35, .3, .8, 6, redl); shine("POINT", (6, 4, 2.4), (1, .1, .05), 900)
+# folding chairs, a crate, a telescope bag and a star chart table
+for i, (x, y) in enumerate(((-1, 0), (0, 1.2), (1.2, -.2), (-7, -5), (4, 3))):
+    slab((x, y, .1), .7, .7, .08, chair, (0, 0, i)); slab((x, y + .3, .1), .7, .08, .8, chair, (-.2, 0, i))
+    for s in (-1, 1): slab((x + s * .3, y, 0), .06, .6, .5, post)
+slab((-4, 2.5, 0), 1.0, 1.0, .9, post); slab((-4, 2.5, .9), .9, .9, .06, paper)
+prism((-2.5, -2, 0), .35, .35, 1.1, 7, bag, (0, 1.57, .5)); slab((-2.5, -2, 0), .5, 1.2, .1, bag)
+slab((5, -3.5, 0), 2.2, 1.0, .1, post, (0, 0, .3)); slab((5, -3.5, 0), .1, .1, .8, post)
+# the Milky Way: a tilted band of cloud and scattered stars above the camp
+for i in range(7):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(1.2, 2.2))
+    for v in bm.verts: v.co.z *= .45
+    make(bm, milk, (-9 + i * 3.0, 8 + i * .6, 14.5 + math.sin(i) * 1.2), (0, 0, 0))
+for i in range(40):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.1, .22))
+    make(bm, star if i % 3 else star2, (random.uniform(-13, 13), random.uniform(-6, 13), random.uniform(8, 17)))
+shine("SUN", (-22, -14, 8), (.5, .6, 1), 3, (0, 0, 2)); shine("SUN", (18, 22, 10), (.4, .35, .8), 2, (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.005, .008, .03, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 2, 7)); co.location = t + Vector((8, -66, 40))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

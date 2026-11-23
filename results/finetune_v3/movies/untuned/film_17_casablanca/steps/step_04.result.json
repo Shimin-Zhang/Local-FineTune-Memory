@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.9,
+ "error": "AttributeError: 'CyclesRenderSettings' object has no attribute 'film_transparent'",
+ "error_line": "scene.cycles.film_transparent = False",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 171,
+ "n_lights": 12,
+ "n_materials": 40,
+ "own_camera": true,
+ "render_error": null
+}

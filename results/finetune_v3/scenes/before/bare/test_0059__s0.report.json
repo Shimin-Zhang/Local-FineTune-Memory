@@ -1,0 +1,56 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: 'Mesh' object has no attribute 'clear'",
+ "error_line": "me.clear()",
+ "n_renderable_objects": 3,
+ "object_types": {
+  "MESH": 3
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Ocean",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    0.02,
+    0.15,
+    0.25
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 2,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "left_out_of_framing": "Ocean",
+ "bbox_size": [
+  1.0,
+  1.0,
+  0.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.5
+ ],
+ "scene_radius": 0.7071,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 6.8,
+ "image": true
+}

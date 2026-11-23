@@ -1,0 +1,66 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(19)
+sc = bpy.context.scene
+def tint(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+snow, hedge, path, trunk = tint((.55, .6, .72)), tint((.05, .14, .08)), tint((.5, .45, .4)), tint((.14, .08, .05))
+lampc, sled, ski, red, dark = tint((1, .8, .45), 14), tint((.5, .1, .08)), tint((.7, .7, .75)), tint((.6, .08, .06)), tint((.03, .03, .04))
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def cone(at, r, h, n, m, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at)
+def lamp(kind, at, col, w, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = col; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+gx, gy, pitch = -6, -3, 2.6
+# a winding path through the maze: from the gate to the hotel door, stepping between cells
+def cell(c): return Vector((gx + (c[0] + .5) * pitch, gy + (c[1] + .5) * pitch))
+route = [(2, 0), (2, 1), (1, 1), (1, 2), (2, 2), (3, 2), (3, 3), (2, 3), (2, 4), (3, 4), (4, 4), (4, 5), (4, 6)]
+for a, b in zip(route, route[1:]):
+    pa, pb = cell(a), cell(b)
+    for k in range(4):
+        q = pa.lerp(pb, k / 4); blk((q.x, q.y, .02), (1.3, 1.3, .05), path, (0, 0, random.uniform(-.1, .1)))
+# a small lantern at the dead end of the path, and a bench in the middle of the maze
+blk((gx + 4.5 * pitch, gy + 4.5 * pitch, 0), (.35, .35, .3), lampc); cone((gx + 4.5 * pitch, gy + 4.5 * pitch, .3), .22, .25, 5, dark, .05)
+lamp("POINT", (gx + 4.5 * pitch, gy + 4.5 * pitch, .6), (1, .75, .4), 220)
+blk((gx + 2.5 * pitch, gy + 1.5 * pitch, .02), (1.1, .4, .15), trunk)
+# the Overlook: door steps, porch lamp, chimney stacks and a snow-laden roofline
+hx, hy = 0, 10.5
+for k in range(3): blk((hx, hy - 3.6 - k * .6, 0), (2.4 - k * .3, .6, .25 + .2 * (2 - k)), tint((.35, .3, .28)))
+for sx in (-1, 1):
+    cone((hx + sx * 3.4, hy - 3.4, 0), .08, 2.0, 5, trunk, .06); blk((hx + sx * 3.4, hy - 3.4, 2.0), (.4, .4, .4), lampc)
+    lamp("POINT", (hx + sx * 3.4, hy - 3.4, 2.2), (1, .75, .4), 300)
+for x in (-8, 8): blk((x, hy + 1.5, 4.5), (1.2, 1.2, 2.4), tint((.25, .1, .08))); blk((x, hy + 1.5, 6.9), (1.5, 1.5, .25), snow)
+# snow drifts piled against the hotel wall, and a trail of footprints from the path to the door
+for k in range(6):
+    drift_x = -10 + k * 4; cone((drift_x, hy - 3.6, 0), 1.5, .5, 6, snow, .2)
+for k in range(10): blk((hx + (k % 2 - .5) * .4, hy - 5 - k * .55, .02), (.3, .15, .03), path)
+# a child's sled, skis, and a little toy car abandoned in the snow
+blk((-10, -9, .15), (2.2, .8, .12), sled); blk((-10, -9.4, .27), (2.2, .1, .1), red)
+for s in (-1, 1): blk((-10 + s * .8, -9, .02), (.1, .1, .15), dark)
+for s in (-1, 1): blk((-8 + s * .3, -10.5, .05), (.12, 2.8, .08), ski, (0, 0, .15 * s))
+blk((-5, -11, .1), (.9, .5, .3), red); cone((-5.3, -11, .35), .15, .1, 5, dark, .15); cone((-4.7, -11, .35), .15, .1, 5, dark, .15)
+# a snowman at the maze entrance, made bigger than life, with a hat and carrot nose
+for (r, z) in ((.7, .6), (.55, 1.7), (.4, 2.6)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r); put(bm, snow, (-1.5, -9.5, z))
+cone((-1.5, -9.5, 2.9), .45, .12, 6, dark, .45); cone((-1.5, -9.5, 3.0), .25, .5, 6, dark, .2)
+cone((-1.5, -9.9, 2.65), .08, .5, 4, tint((.9, .4, .05), 3), .02)
+lamp("SUN", (-26, -18, 12), (.45, .55, 1), 1.2, (0, 0, 2))
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 3)); co.location = t + Vector((8, -76, 46))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

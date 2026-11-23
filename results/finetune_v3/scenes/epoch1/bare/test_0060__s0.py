@@ -1,0 +1,113 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1348)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def tone(rgb, glow=0, rough=.8, metal=0):
+    m = bpy.data.materials.new("t"); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = rough; b.inputs["Metallic"].default_value = metal
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    return m
+def mk(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(m, x, y, z, w, d, h, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * k, v.co.y * d * k, (v.co.z + .5) * h))
+    return mk(bm, m, (x, y, z), (0, 0, rz))
+def cyl(m, x, y, z, r, h, n=7, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return mk(bm, m, (x, y, z), rot)
+def leaf(m, x, y, z, r, sq=.8):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return mk(bm, m, (x, y, z))
+def lamp(kind, rgb, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color = rgb; L.energy = w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+road, kerb, soil, grass = tone((.07, .08, .1)), tone((.2, .2, .22)), tone((.1, .07, .05)), tone((.06, .17, .08))
+glass, frame, steel = tone((.3, .65, .7), .5, .1), tone((.12, .14, .16)), tone((.35, .38, .42), 0, .4, .8)
+wood, trunk, leaf1, leaf2 = tone((.3, .18, .09)), tone((.2, .12, .07)), tone((.05, .3, .1)), tone((.1, .38, .12))
+hut, roofm, lampm, win = tone((.2, .24, .26)), tone((.1, .12, .15)), tone((1, .8, .4), 14), tone((.7, 1, .8), 8)
+red, car = tone((.5, .08, .06)), tone((.55, .55, .6), 0, .4, .6)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=12.5, depth=3.2)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.3, .3)))
+    v.co.z -= 1.6
+mk(bm, road)
+# the block: raised kerb, lawn, the dome on a round concrete plinth
+blk(kerb, 0, 0, 0, 14, 14, .5); blk(grass, 0, 0, .5, 13.2, 13.2, .25)
+cyl(steel, 0, 0, .75, 5.2, .8, 12); cyl(steel, 0, 0, 1.55, 4.9, .3, 12)
+# glass dome: rings of ribs, a translucent shell of panels, and the hub at top
+R, H = 4.6, 5.2
+bm = bmesh.new(); bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=7, radius=1)
+bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < .05], context='VERTS')
+for v in bm.verts: v.co = Vector((v.co.x * R, v.co.y * R, (v.co.z + .05) * H))
+mk(bm, glass)
+for k in range(12):
+    a = k * math.pi / 6
+    for j in range(1, 7):
+        t0, t1 = math.pi / 2 - j * .36, math.pi / 2 - (j + 1) * .36
+        p0, p1 = Vector((R * math.cos(t0) * math.cos(a), R * math.cos(t0) * math.sin(a), H * math.sin(t0))), Vector((R * math.cos(t1) * math.cos(a), R * math.cos(t1) * math.sin(a), H * math.sin(t1)))
+        d = p1 - p0; q = d.to_track_quat('Z', 'Y')
+        bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+        for v in bm.verts: v.co = q @ Vector((v.co.x * .12, v.co.y * .12, (v.co.z + .5) * d.length)) + p0
+        mk(bm, frame)
+for j in (1, 3, 5):
+    t = math.pi / 2 - j * .36; r, z = R * math.cos(t), H * math.sin(t)
+    for k in range(12):
+        a0, a1 = k * math.pi / 6, (k + 1) * math.pi / 6
+        p0, p1 = Vector((r * math.cos(a0), r * math.sin(a0), z)), Vector((r * math.cos(a1), r * math.sin(a1), z))
+        d = p1 - p0; q = d.to_track_quat('Z', 'Y')
+        bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+        for v in bm.verts: v.co = q @ Vector((v.co.x * .1, v.co.y * .1, (v.co.z + .5) * d.length)) + p0
+        mk(bm, frame)
+cyl(steel, 0, 0, H - .2, .5, .5, 8, .3)
+# airlock door at the front of the dome
+blk(steel, 0, -4.9, .75, 1.9, .5, 2.4); blk(frame, 0, -5.2, .75, 1.5, .12, 2.0); cyl(steel, 0, -5.4, 1.6, .12, .5, 6, rot=(math.pi / 2, 0, 0))
+blk(win, -.3, -5.3, 1.2, .6, .06, .9); blk(steel, 0, -5.5, 1.5, .1, .1, 1.2)
+# tropical trees inside: palms, ferns, a big leafy tree
+for x, y, h in ((-2.2, 1.5, 3.6), (2.4, 1.2, 3.0), (-.5, 2.8, 2.6), (1.0, -1.8, 2.2)):
+    cyl(trunk, x, y, 1.85, .16, h, 5, .1)
+    for k in range(6):
+        a = k * math.pi / 3 + x
+        bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=4, radius1=.5, radius2=.05, depth=1.8)
+        for v in bm.verts: v.co.z += .9
+        mk(bm, leaf1 if k % 2 else leaf2, (x, y, 1.85 + h), (math.pi / 2 - .5, 0, a + math.pi / 2))
+    leaf(leaf2, x, y, 1.9 + h, .35)
+for x, y in ((-3.0, -.6), (3.2, -.3), (-1.5, 3.0), (2.0, 2.6)):
+    for k in range(5): leaf(leaf1, x + random.uniform(-.3, .3), y + random.uniform(-.3, .3), 2.0 + random.uniform(0, .4), .5, .7)
+leaf(leaf1, 0, .5, 3.2, 1.2, .8); cyl(trunk, 0, .5, 1.85, .3, 1.5, 5)
+# wooden walkway spiralling up to the hut on a platform
+for k in range(10):
+    a = -2.2 + k * .35
+    blk(wood, 1.4 * math.cos(a) * 1.2, 1.4 * math.sin(a) * 1.2, 1.85 + k * .08, 1.1, .9, .12, a + math.pi / 2)
+    if k % 2 == 0: blk(steel, 1.4 * math.cos(a + .5) * 1.2, 1.4 * math.sin(a + .5) * 1.2, 1.9 + k * .08, .06, .06, .6)
+cyl(steel, 3.0, 2.6, 1.85, 1.2, .9, 7)
+blk(hut, 3.0, 2.6, 2.75, 1.8, 1.6, 1.5); blk(roofm, 3.0, 2.6, 4.25, 2.1, 1.9, .3, 0, .85)
+blk(win, 2.2, 2.3, 3.3, .06, .8, .7); blk(win, 3.0, 1.75, 3.3, .8, .06, .7); blk(frame, 3.0, 1.7, 3.1, 1.0, .06, .1)
+lamp("POINT", (1, .8, .4), 300, (2.6, 1.3, 3.4)); lamp("POINT", (.5, 1, .7), 500, (0, 0, 3.5))
+# city block around: four facades of buildings, a car, street lamps
+for x, y, w, d, h, m in ((-9.5, 0, 4, 10, 7, hut), (-9.5, 8.5, 4, 4, 5, roofm), (9.5, 0, 4, 10, 8, hut), (9.5, -8.5, 4, 4, 4.5, roofm), (0, 9.5, 10, 4, 6, hut)):
+    blk(m, x, y, 0, w, d, h)
+    for k in range(int(h // 1.8)):
+        for j in range(int((w if abs(x) > 5 else d) // 1.8)):
+            if abs(x) > 5: blk(win if (k + j) % 3 else frame, x + (1 if x < 0 else -1) * (w / 2 + .05), y - 3.6 + j * 1.8, 1.2 + k * 1.8, .1, .8, .9)
+            else: blk(win if (k + j) % 3 else frame, x - 3.6 + j * 1.8, y + (1 if y > 0 else -1) * (d / 2 + .05), 1.2 + k * 1.8, .8, .1, .9)
+blk(car, -2.5, -10.2, .2, 2.6, 1.2, .8, 0, .8); blk(win, -2.5, -10.2, .8, 1.8, .9, .5, 0, .8)
+for x in (-6.5, 6.5):
+    cyl(steel, x, -7.2, 0, .1, 4.5, 5); blk(lampm, x, -7.2, 4.4, .8, .5, .3)
+    lamp("POINT", (1, .85, .5), 200, (x, -7.2, 4.2))
+lamp("SUN", (1, .65, .4), 5, (-22, -14, 9), (0, 0, 2)); lamp("SUN", (.3, .6, .8), 2, (20, 22, 10), (0, 0, 2))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .035, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 400
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3)); co.location = t + Vector((10, -56, 32))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

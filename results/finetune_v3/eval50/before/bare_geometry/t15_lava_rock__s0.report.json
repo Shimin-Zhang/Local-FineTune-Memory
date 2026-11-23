@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "KeyError: 'bpy_prop_collection[key]: key \"Specular\" not found'",
+ "error_line": "rock_bsdf.inputs['Specular'].default_value = 0.1",
+ "n_renderable_objects": 1,
+ "object_types": {
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.5,
+  2.459,
+  2.836
+ ],
+ "scene_center": [
+  0.0471,
+  -0.1111,
+  0.0447
+ ],
+ "scene_radius": 2.2551,
+ "process": "exit 0",
+ "seconds": 0.6,
+ "image": false
+}

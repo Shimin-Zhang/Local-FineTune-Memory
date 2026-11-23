@@ -1,0 +1,11 @@
+matrix optimizers: 10 probes, 0 already done
+[1/10] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 23.10 GB 6.2s
+[2/10] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.64 GB 4.7s
+[3/10] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 23.10 GB 4.5s
+[4/10] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.64 GB 4.7s
+[5/10] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 23.10 GB 4.5s
+[6/10] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.64 GB 4.7s
+[7/10] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 23.10 GB 4.5s
+[8/10] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.64 GB 4.7s
+[9/10] Qwen3.5-0.8B-Base full_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 23.10 GB 4.6s
+[10/10] Qwen3.5-0.8B-Base lora_bf16 ckpt=0 2x2048 loss=vanilla  -> oom (phase step0_forward) peak 22.64 GB 4.8s

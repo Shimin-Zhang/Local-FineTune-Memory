@@ -1,0 +1,303 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Set up basic scene
+scene = bpy.context.scene
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+
+# Night sky color
+world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
+scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs[0].default_value = (0.02, 0.03, 0.08, 1.0)
+    bg_node.inputs[1].default_value = 1.0
+
+# Add a subtle moon
+bpy.ops.mesh.primitive_uv_sphere_add(radius=15, location=(200, -500, 150))
+moon = bpy.context.active_object
+moon.name = "Moon"
+mat = bpy.data.materials.new("MoonMat")
+mat.use_nodes = True
+bsdf = mat.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Emission Color"].default_value = (1.0, 0.95, 0.8, 1.0)
+bsdf.inputs["Emission Strength"].default_value = 5.0
+bsdf.inputs["Base Color"].default_value = (0.8, 0.8, 0.7, 1.0)
+moon.data.materials.append(mat)
+
+# Ground / water surface
+bpy.ops.mesh.primitive_plane_add(size=600, location=(0, 0, -2))
+ground = bpy.context.active_object
+ground.name = "WaterSurface"
+mat = bpy.data.materials.new("WaterMat")
+mat.use_nodes = True
+bsdf = mat.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.02, 0.05, 0.12, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.1
+bsdf.inputs["Metallic"].default_value = 0.3
+ground.data.materials.append(mat)
+
+# Bathhouse base - large platform
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
+platform = bpy.context.active_object
+platform.name = "BathhousePlatform"
+platform.scale = (60, 40, 2)
+mat = bpy.data.materials.new("WoodDarkMat")
+mat.use_nodes = True
+bsdf = mat.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.15, 0.08, 0.04, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.8
+platform.data.materials.append(mat)
+
+# Main bathhouse body
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 5, 5))
+main_body = bpy.context.active_object
+main_body.name = "BathhouseMain"
+main_body.scale = (50, 30, 8)
+mat = bpy.data.materials.new("WoodBathMat")
+mat.use_nodes = True
+bsdf = mat.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.35, 0.18, 0.08, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.7
+main_body.data.materials.append(mat)
+
+# Upper floor
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 5, 12))
+upper = bpy.context.active_object
+upper.name = "BathhouseUpper"
+upper.scale = (45, 25, 5)
+upper.data.materials.append(mat)
+
+# Roof - traditional Japanese curved roof
+# Main roof
+bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=55, radius2=20, depth=12, location=(0, 5, 20))
+roof = bpy.context.active_object
+roof.name = "MainRoof"
+roof.rotation_euler = (0, 0, math.radians(45))
+roof.scale = (1.2, 0.9, 1)
+mat_roof = bpy.data.materials.new("RoofTileMat")
+mat_roof.use_nodes = True
+bsdf = mat_roof.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.1, 0.1, 0.12, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.5
+roof.data.materials.append(mat_roof)
+
+# Upper roof
+bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=45, radius2=15, depth=10, location=(0, 5, 27))
+roof2 = bpy.context.active_object
+roof2.name = "UpperRoof"
+roof2.rotation_euler = (0, 0, math.radians(45))
+roof2.scale = (1.1, 0.85, 1)
+roof2.data.materials.append(mat_roof)
+
+# Top spire/ornament
+bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=3, radius2=0.5, depth=8, location=(0, 5, 35))
+spire = bpy.context.active_object
+spire.name = "RoofSpire"
+mat_spire = bpy.data.materials.new("GoldMat")
+mat_spire.use_nodes = True
+bsdf = mat_spire.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.8, 0.6, 0.2, 1.0)
+bsdf.inputs["Metallic"].default_value = 1.0
+bsdf.inputs["Roughness"].default_value = 0.3
+spire.data.materials.append(mat_spire)
+
+# Windows - glowing warm light
+for i in range(8):
+    x = -25 + i * 7
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 20.5, 5))
+    win = bpy.context.active_object
+    win.name = f"Window_{i}"
+    win.scale = (2.5, 0.5, 3)
+    mat_win = bpy.data.materials.new(f"WindowGlow_{i}")
+    mat_win.use_nodes = True
+    bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (1.0, 0.7, 0.3, 1.0)
+    bsdf.inputs["Emission Color"].default_value = (1.0, 0.6, 0.2, 1.0)
+    bsdf.inputs["Emission Strength"].default_value = 3.0
+    win.data.materials.append(mat_win)
+
+# Upper floor windows
+for i in range(6):
+    x = -20 + i * 8
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 27.5, 12))
+    win2 = bpy.context.active_object
+    win2.name = f"UpperWindow_{i}"
+    win2.scale = (2, 0.5, 2.5)
+    mat_win2 = bpy.data.materials.new(f"UpperWindowGlow_{i}")
+    mat_win2.use_nodes = True
+    bsdf = mat_win2.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (1.0, 0.65, 0.25, 1.0)
+    bsdf.inputs["Emission Color"].default_value = (1.0, 0.55, 0.15, 1.0)
+    bsdf.inputs["Emission Strength"].default_value = 2.5
+    win2.data.materials.append(mat_win2)
+
+# Red bridge
+bridge_length = 80
+bridge_y_start = 40
+# Bridge deck
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, bridge_y_start + bridge_length/2, 1))
+bridge_deck = bpy.context.active_object
+bridge_deck.name = "BridgeDeck"
+bridge_deck.scale = (8, bridge_length/2, 0.5)
+mat_bridge = bpy.data.materials.new("RedBridgeMat")
+mat_bridge.use_nodes = True
+bsdf = mat_bridge.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.6, 0.05, 0.05, 1.0)
+bsdf.inputs["Roughness"].default_value = 0.6
+bridge_deck.data.materials.append(mat_bridge)
+
+# Bridge railings
+for side in [-1, 1]:
+    for i in range(15):
+        y = bridge_y_start + i * 5
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(side * 4, y, 1.5))
+        post = bpy.context.active_object
+        post.name = f"BridgePost_{side}_{i}"
+        post.scale = (0.3, 0.3, 1.5)
+        post.data.materials.append(mat_bridge)
+
+# Railing bars
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(side * 4, bridge_y_start + bridge_length/2, 2.5))
+    rail = bpy.context.active_object
+    rail.name = f"BridgeRail_{side}"
+    rail.scale = (0.3, bridge_length/2, 0.2)
+    rail.data.materials.append(mat_bridge)
+
+# Bridge support pillars
+for i in range(4):
+    y = bridge_y_start + 10 + i * 20
+    bpy.ops.mesh.primitive_cylinder_add(radius=1, depth=3, location=(0, y, -0.5))
+    pillar = bpy.context.active_object
+    pillar.name = f"BridgePillar_{i}"
+    mat_pillar = bpy.data.materials.new("StonePillarMat")
+    mat_pillar.use_nodes = True
+    bsdf = mat_pillar.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (0.4, 0.35, 0.3, 1.0)
+    bsdf.inputs["Roughness"].default_value = 0.9
+    pillar.data.materials.append(mat_pillar)
+
+# Lanterns along the bridge
+for i in range(6):
+    y = bridge_y_start + 5 + i * 12
+    for side in [-1, 1]:
+        # Lantern post
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=3, location=(side * 3, y, 2))
+        lpost = bpy.context.active_object
+        lpost.name = f"LanternPost_{side}_{i}"
+        lpost.data.materials.append(mat_bridge)
+        
+        # Lantern body
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.8, location=(side * 3, y, 3.5))
+        lantern = bpy.context.active_object
+        lantern.name = f"Lantern_{side}_{i}"
+        lantern.scale = (1, 1, 1.3)
+        mat_lantern = bpy.data.materials.new(f"LanternGlow_{side}_{i}")
+        mat_lantern.use_nodes = True
+        bsdf = mat_lantern.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs["Base Color"].default_value = (1.0, 0.3, 0.1, 1.0)
+        bsdf.inputs["Emission Color"].default_value = (1.0, 0.4, 0.1, 1.0)
+        bsdf.inputs["Emission Strength"].default_value = 8.0
+        lantern.data.materials.append(mat_lantern)
+
+# Bathhouse entrance lanterns
+for x in [-15, 15]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=4, location=(x, 25, 3))
+    elpost = bpy.context.active_object
+    elpost.name = f"EntranceLanternPost_{x}"
+    elpost.data.materials.append(mat_bridge)
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=(x, 25, 5))
+    elantern = bpy.context.active_object
+    elantern.name = f"EntranceLantern_{x}"
+    elantern.scale = (1, 1, 1.4)
+    mat_elantern = bpy.data.materials.new(f"EntranceLanternGlow_{x}")
+    mat_elantern.use_nodes = True
+    bsdf = mat_elantern.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (1.0, 0.35, 0.1, 1.0)
+    bsdf.inputs["Emission Color"].default_value = (1.0, 0.45, 0.15, 1.0)
+    bsdf.inputs["Emission Strength"].default_value = 10.0
+    elantern.data.materials.append(mat_elantern)
+
+# Steam particles - use simple spheres with low opacity
+for i in range(20):
+    x = random.uniform(-20, 20)
+    y = random.uniform(15, 35)
+    z = random.uniform(10, 30)
+    size = random.uniform(1, 3)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    steam = bpy.context.active_object
+    steam.name = f"Steam_{i}"
+    mat_steam = bpy.data.materials.new(f"SteamMat_{i}")
+    mat_steam.use_nodes = True
+    mat_steam.blend_method = 'BLEND'
+    bsdf = mat_steam.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 0.95, 1.0)
+    bsdf.inputs["Alpha"].default_value = 0.15
+    bsdf.inputs["Roughness"].default_value = 1.0
+    steam.data.materials.append(mat_steam)
+
+# Side wings of bathhouse
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(side * 35, 10, 4))
+    wing = bpy.context.active_object
+    wing.name = f"BathhouseWing_{side}"
+    wing.scale = (15, 20, 5)
+    wing.data.materials.append(mat)
+    
+    # Wing roof
+    bpy.ops.mesh.primitive_cone_add(vertices=4, radius1=18, radius2=8, depth=8, location=(side * 35, 10, 10))
+    wroof = bpy.context.active_object
+    wroof.name = f"WingRoof_{side}"
+    wroof.rotation_euler = (0, 0, math.radians(45))
+    wroof.scale = (1, 0.8, 1)
+    wroof.data.materials.append(mat_roof)
+
+# Additional structural columns
+for x in [-45, -30, 30, 45]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=1.5, depth=16, location=(x, 20, 8))
+    col = bpy.context.active_object
+    col.name = f"Column_{x}"
+    col.data.materials.append(mat)
+
+# Decorative beams
+bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 20, 16))
+beam = bpy.context.active_object
+beam.name = "MainBeam"
+beam.scale = (50, 1, 1)
+beam.data.materials.append(mat)
+
+# Set up camera
+bpy.ops.object.camera_add(location=(0, 120, 20))
+camera = bpy.context.active_object
+camera.name = "MainCamera"
+scene.camera = camera
+camera.rotation_euler = (math.radians(80), 0, 0)
+
+# Add a light to simulate moonlight
+bpy.ops.object.light_add(type='SUN', location=(50, -100, 100))
+sun = bpy.context.active_object
+sun.name = "Moonlight"
+sun.data.energy = 0.5
+sun.data.color = (0.7, 0.8, 1.0)
+sun.rotation_euler = (math.radians(45), math.radians(20), 0)
+
+# Warm fill light from the bathhouse
+bpy.ops.object.light_add(type='POINT', location=(0, 20, 10))
+warm_light = bpy.context.active_object
+warm_light.name = "BathhouseWarmLight"
+warm_light.data.energy = 500
+warm_light.data.color = (1.0, 0.6, 0.3)
+warm_light.data.shadow_soft_size = 5
+```

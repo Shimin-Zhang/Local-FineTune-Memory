@@ -1,0 +1,315 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Enable collections
+scene = bpy.context.scene
+if "Pond" not in bpy.data.collections:
+    pond_col = bpy.data.collections.new("Pond")
+    scene.collection.children.link(pond_col)
+
+random.seed(42)
+
+def link_to_pond(obj):
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    pond_col.objects.link(obj)
+
+# ---------- Materials ----------
+mat_water = bpy.data.materials.new("Water")
+mat_water.use_nodes = True
+nodes = mat_water.node_tree.nodes
+links = mat_water.node_tree.links
+nodes.clear()
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.05, 0.15, 0.2, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.1
+bsdf.inputs['Transmission Weight'].default_value = 0.8
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs[0], out.inputs[0])
+
+mat_stone = bpy.data.materials.new("Stone")
+mat_stone.use_nodes = True
+nodes = mat_stone.node_tree.nodes
+links = mat_stone.node_tree.links
+nodes.clear()
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.3, 0.3, 0.3, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.8
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs[0], out.inputs[0])
+
+mat_reed = bpy.data.materials.new("Reed")
+mat_reed.use_nodes = True
+nodes = mat_reed.node_tree.nodes
+links = mat_reed.node_tree.links
+nodes.clear()
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.1, 0.3, 0.05, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.7
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs[0], out.inputs[0])
+
+mat_lilypad = bpy.data.materials.new("LilyPad")
+mat_lilypad.use_nodes = True
+nodes = mat_lilypad.node_tree.nodes
+links = mat_lilypad.node_tree.links
+nodes.clear()
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.05, 0.35, 0.1, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.6
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs[0], out.inputs[0])
+
+mat_frog = bpy.data.materials.new("Frog")
+mat_frog.use_nodes = True
+nodes = mat_frog.node_tree.nodes
+links = mat_frog.node_tree.links
+nodes.clear()
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.1, 0.4, 0.1, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.5
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs[0], out.inputs[0])
+
+mat_dragonfly = bpy.data.materials.new("Dragonfly")
+mat_dragonfly.use_nodes = True
+nodes = mat_dragonfly.node_tree.nodes
+links = mat_dragonfly.node_tree.links
+nodes.clear()
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.1, 0.3, 0.5, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.3
+bsdf.inputs['Metallic'].default_value = 0.3
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs[0], out.inputs[0])
+
+mat_nymph = bpy.data.materials.new("Nymph")
+mat_nymph.use_nodes = True
+nodes = mat_nymph.node_tree.nodes
+links = mat_nymph.node_tree.links
+nodes.clear()
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Base Color'].default_value = (0.2, 0.3, 0.2, 1.0)
+bsdf.inputs['Roughness'].default_value = 0.6
+out = nodes.new('ShaderNodeOutputMaterial')
+links.new(bsdf.outputs[0], out.inputs[0])
+
+# ---------- Water surface (flat disc) ----------
+bpy.ops.mesh.primitive_cylinder_add(radius=3.0, depth=0.02, location=(0, 0, 0))
+water = bpy.context.object
+water.name = "Water"
+water.data.materials.append(mat_water)
+link_to_pond(water)
+
+# ---------- Stone (frog perch) ----------
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=(1.2, 0.8, 0.3))
+stone = bpy.context.object
+stone.name = "Stone"
+stone.scale = (1.2, 1.0, 0.6)
+stone.data.materials.append(mat_stone)
+link_to_pond(stone)
+
+# ---------- Lily Pad ----------
+# Create a flat disc with a slit (use a circle mesh with one edge removed)
+bpy.ops.mesh.primitive_circle_add(vertices=32, radius=0.4, fill_type='NGON', location=(-0.8, -0.5, 0.02))
+lilypad = bpy.context.object
+lilypad.name = "LilyPad"
+# Scale flat
+lilypad.scale = (1, 1, 0.05)
+lilypad.data.materials.append(mat_lilypad)
+link_to_pond(lilypad)
+
+# ---------- Reeds ----------
+def make_reed(location, height=1.5, lean=0.0):
+    # Stem
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=height, location=(location[0], location[1], location[2] + height/2))
+    stem = bpy.context.object
+    stem.name = "ReedStem"
+    stem.rotation_euler = Euler((lean, lean*0.5, 0))
+    stem.data.materials.append(mat_reed)
+    link_to_pond(stem)
+    
+    # Leaf (thin elongated plane)
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(location[0]+0.05, location[1], location[2]+height*0.7))
+    leaf = bpy.context.object
+    leaf.name = "ReedLeaf"
+    leaf.scale = (0.02, height*0.4, 1)
+    leaf.rotation_euler = Euler((math.radians(80), 0, random.uniform(0, 2*math.pi)))
+    leaf.data.materials.append(mat_reed)
+    link_to_pond(leaf)
+
+# Place several reeds around the pond edge
+reed_positions = [
+    (2.2, 1.5, 0), (-2.0, 1.8, 0), (2.5, -1.0, 0),
+    (-1.5, -2.2, 0), (1.8, 2.0, 0), (-2.3, -0.5, 0),
+    (0.5, 2.5, 0), (-0.5, -2.5, 0), (2.0, 0.5, 0)
+]
+for pos in reed_positions:
+    h = random.uniform(1.2, 2.0)
+    lean = random.uniform(-0.15, 0.15)
+    make_reed(pos, h, lean)
+
+# ---------- Frog on stone ----------
+def make_frog(location):
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=location)
+    body = bpy.context.object
+    body.name = "FrogBody"
+    body.scale = (1.2, 1.0, 0.8)
+    body.data.materials.append(mat_frog)
+    link_to_pond(body)
+    
+    # Head
+    head_loc = (location[0] + 0.15, location[1], location[2] + 0.05)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.1, location=head_loc)
+    head = bpy.context.object
+    head.name = "FrogHead"
+    head.scale = (1.0, 0.9, 0.8)
+    head.data.materials.append(mat_frog)
+    link_to_pond(head)
+    
+    # Eyes
+    for dx in [0.06, -0.06]:
+        eye_loc = (head_loc[0] + 0.08, head_loc[1] + dx, head_loc[2] + 0.06)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.03, location=eye_loc)
+        eye = bpy.context.object
+        eye.name = "FrogEye"
+        eye.data.materials.append(mat_frog)
+        link_to_pond(eye)
+    
+    # Legs (front)
+    for dx in [0.1, -0.1]:
+        leg_loc = (location[0] + 0.12, location[1] + dx, location[2] - 0.08)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.15, location=leg_loc)
+        leg = bpy.context.object
+        leg.name = "FrogLegFront"
+        leg.rotation_euler = Euler((0, math.radians(30), 0))
+        leg.data.materials.append(mat_frog)
+        link_to_pond(leg)
+    
+    # Back legs
+    for dx in [0.15, -0.15]:
+        leg_loc = (location[0] - 0.15, location[1] + dx, location[2] - 0.05)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.2, location=leg_loc)
+        leg = bpy.context.object
+        leg.name = "FrogLegBack"
+        leg.rotation_euler = Euler((math.radians(-20), 0, 0))
+        leg.data.materials.append(mat_frog)
+        link_to_pond(leg)
+
+frog_pos = (1.2, 0.8, 0.55)
+make_frog(frog_pos)
+
+# ---------- Dragonflies (hovering) ----------
+def make_dragonfly(location):
+    # Body
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.015, depth=0.25, location=location)
+    body = bpy.context.object
+    body.name = "DragonflyBody"
+    body.rotation_euler = Euler((math.radians(90), 0, 0))
+    body.data.materials.append(mat_dragonfly)
+    link_to_pond(body)
+    
+    # Head
+    head_loc = (location[0], location[1], location[2] + 0.14)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.025, location=head_loc)
+    head = bpy.context.object
+    head.name = "DragonflyHead"
+    head.data.materials.append(mat_dragonfly)
+    link_to_pond(head)
+    
+    # Wings (4 thin planes)
+    for side in [-1, 1]:
+        for angle in [0, 30]:
+            wing_loc = (location[0] + side*0.05, location[1], location[2])
+            bpy.ops.mesh.primitive_plane_add(size=1, location=wing_loc)
+            wing = bpy.context.object
+            wing.name = "DragonflyWing"
+            wing.scale = (0.12, 0.04, 1)
+            wing.rotation_euler = Euler((math.radians(10), math.radians(angle*side), 0))
+            wing.data.materials.append(mat_dragonfly)
+            link_to_pond(wing)
+
+# Place dragonflies hovering above the pond
+dragonfly_positions = [
+    (0.5, 0.3, 1.2),
+    (-1.0, 0.8, 1.5),
+    (0.2, -1.2, 1.0),
+    (-0.5, -0.3, 1.3)
+]
+for pos in dragonfly_positions:
+    make_dragonfly(pos)
+
+# ---------- Nymphs crawling from water ----------
+def make_nymph(location):
+    # Body (elongated sphere)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.04, location=location)
+    body = bpy.context.object
+    body.name = "NymphBody"
+    body.scale = (1.5, 1.0, 0.8)
+    body.data.materials.append(mat_nymph)
+    link_to_pond(body)
+    
+    # Head
+    head_loc = (location[0] + 0.05, location[1], location[2])
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.025, location=head_loc)
+    head = bpy.context.object
+    head.name = "NymphHead"
+    head.data.materials.append(mat_nymph)
+    link_to_pond(head)
+    
+    # Legs (6 small cylinders)
+    for i in range(3):
+        for side in [-1, 1]:
+            leg_loc = (location[0] + 0.02 - i*0.03, location[1] + side*0.03, location[2] - 0.02)
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.005, depth=0.04, location=leg_loc)
+            leg = bpy.context.object
+            leg.name = "NymphLeg"
+            leg.rotation_euler = Euler((math.radians(60*side), 0, 0))
+            leg.data.materials.append(mat_nymph)
+            link_to_pond(leg)
+
+# Place nymphs at the water's edge, appearing to crawl out
+nymph_positions = [
+    (1.8, 1.2, 0.02),
+    (-1.5, 1.5, 0.02),
+    (2.0, -0.8, 0.02),
+    (-1.8, -1.0, 0.02),
+    (0.8, 2.0, 0.02),
+    (-0.8, -2.0, 0.02)
+]
+for pos in nymph_positions:
+    make_nymph(pos)
+
+# ---------- Lighting ----------
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.object
+sun.name = "Sun"
+sun.data.energy = 3.0
+sun.rotation_euler = Euler((math.radians(45), math.radians(30), 0))
+link_to_pond(sun)
+
+# Ambient fill
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 3))
+fill = bpy.context.object
+fill.name = "FillLight"
+fill.data.energy = 50
+link_to_pond(fill)
+
+# Camera
+bpy.ops.object.camera_add(location=(4, -4, 3), rotation=(Euler((math.radians(60), 0, math.radians(45)))))
+cam = bpy.context.object
+cam.name = "Camera"
+scene.camera = cam
+link_to_pond(cam)
+
+print("Pond scene created with reeds, lily pad, dragonflies, nymphs, and a frog on a stone.")
+```

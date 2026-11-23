@@ -1,0 +1,32 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "TypeError: 'Material' object is not callable",
+ "error_line": "brick2, cloth, wood, thatch = clay((.45, .2, .13)), clay((.6, .55, .45)), clay((.28, .18, .1)), clay((.3, .22, .1))",
+ "n_renderable_objects": 0,
+ "object_types": {},
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  0.0,
+  0.0
+ ],
+ "scene_radius": 1.7321,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 2.9,
+ "image": true
+}

@@ -1,0 +1,367 @@
+import bpy
+import math
+import mathutils
+import random
+from mathutils import Vector
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Materials
+def mat(name, color, roughness=0.5, metallic=0.0, emit=None, emit_strength=0.0):
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nodes = m.node_tree.nodes
+    links = m.node_tree.links
+    bsdf = nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = color
+    bsdf.inputs["Roughness"].default_value = roughness
+    bsdf.inputs["Metallic"].default_value = metallic
+    if emit:
+        bsdf.inputs["Emission Color"].default_value = emit
+        bsdf.inputs["Emission Strength"].default_value = emit_strength
+    return m
+
+stone_mat = mat("Stone", (0.85, 0.80, 0.70), roughness=0.7)
+dark_stone_mat = mat("DarkStone", (0.45, 0.40, 0.35), roughness=0.6)
+dome_mat = mat("Dome", (0.70, 0.60, 0.45), roughness=0.5)
+rib_mat = mat("Rib", (0.35, 0.30, 0.25), roughness=0.4)
+gold_mat = mat("Gold", (1.0, 0.85, 0.3), roughness=0.2, metallic=1.0)
+glass_mat = mat("Glass", (0.2, 0.4, 0.6), roughness=0.1, metallic=0.0)
+glass_mat.blend_method = 'BLEND'
+bell_mat = mat("Bell", (0.9, 0.75, 0.3), roughness=0.3, metallic=1.0)
+clock_face_mat = mat("ClockFace", (0.95, 0.95, 0.90), roughness=0.3)
+clock_hand_mat = mat("ClockHand", (0.1, 0.1, 0.1), roughness=0.3)
+copper_mat = mat("Copper", (0.7, 0.4, 0.2), roughness=0.3, metallic=0.8)
+light_bulb_mat = mat("LightBulb", (1.0, 0.9, 0.5), roughness=0.2, emit=(1.0, 0.85, 0.4), emit_strength=5.0)
+string_mat = mat("String", (0.1, 0.1, 0.1), roughness=0.8)
+paving_mat = mat("Paving", (0.55, 0.50, 0.45), roughness=0.8)
+window_glow_mat = mat("WindowGlow", (1.0, 0.85, 0.5), roughness=0.3, emit=(1.0, 0.8, 0.4), emit_strength=3.0)
+
+def add_box(name, loc, size, material):
+    bpy.ops.mesh.primitive_cube_add(location=loc)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.scale = (size[0]/2, size[1]/2, size[2]/2)
+    bpy.ops.object.transform_apply(scale=True)
+    obj.data.materials.append(material)
+    return obj
+
+def add_cyl(name, loc, radius, depth, material, verts=32):
+    bpy.ops.mesh.primitive_cylinder_add(location=loc, radius=radius, depth=depth, vertices=verts)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(material)
+    return obj
+
+def add_sphere(name, loc, radius, material, segments=32, rings=16):
+    bpy.ops.mesh.primitive_uv_sphere_add(location=loc, radius=radius, segments=segments, ring_count=rings)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(material)
+    return obj
+
+def add_cone(name, loc, radius1, radius2, depth, material, verts=32):
+    bpy.ops.mesh.primitive_cone_add(location=loc, radius1=radius1, radius2=radius2, depth=depth, vertices=verts)
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.materials.append(material)
+    return obj
+
+# ===================== GROUND / SQUARE =====================
+bpy.ops.mesh.primitive_plane_add(location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Square"
+ground.scale = (80, 80, 1)
+bpy.ops.object.transform_apply(scale=True)
+ground.data.materials.append(paving_mat)
+
+# ===================== MAIN CHURCH BODY =====================
+# Nave
+nave = add_box("Nave", (0, 0, 12), (20, 40, 24), stone_mat)
+
+# Apsis (east end)
+bpy.ops.mesh.primitive_cylinder_add(location=(0, 20, 12), radius=10, depth=24, vertices=24)
+apsis = bpy.context.active_object
+apsis.name = "Apsis"
+apsis.rotation_euler = (0, 0, 0)
+# Flatten to make apsidal
+bpy.ops.object.transform_apply(rotation=True)
+# Scale to make it half
+bpy.ops.mesh.select_all(action='SELECT')
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+# Just use a cylinder for simplicity, position it
+bpy.ops.object.mode_set(mode='OBJECT')
+apsis.data.materials.append(stone_mat)
+
+# West facade
+facade = add_box("Facade", (0, -20, 14), (22, 4, 28), stone_mat)
+
+# Central portal
+portal = add_box("Portal", (0, -22, 8), (8, 2, 16), dark_stone_mat)
+# Portal arch (simplified with cylinder)
+bpy.ops.mesh.primitive_cylinder_add(location=(0, -22, 16), radius=4, depth=2, vertices=24)
+arch = bpy.context.active_object
+arch.name = "PortalArch"
+arch.rotation_euler = (math.radians(90), 0, 0)
+bpy.ops.object.transform_apply(rotation=True)
+arch.data.materials.append(dark_stone_mat)
+
+# ===================== RIBBED DOME =====================
+# Drum
+drum = add_cyl("Drum", (0, 0, 26), 12, 10, stone_mat, verts=32)
+
+# Dome (hemisphere)
+bpy.ops.mesh.primitive_uv_sphere_add(location=(0, 0, 31), radius=14, segments=48, ring_count=24)
+dome = bpy.context.active_object
+dome.name = "Dome"
+bpy.ops.object.mode_set(mode='EDIT')
+bpy.ops.mesh.select_all(action='DESELECT')
+# Delete bottom half
+bpy.ops.object.mode_set(mode='OBJECT')
+# Use bmesh to cut
+import bmesh
+bm = bmesh.new()
+bm.from_mesh(dome.data)
+geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, 0, 31), plane_no=(0, 0, -1), clear_inner=True)
+bm.to_mesh(dome.data)
+bm.free()
+dome.data.materials.append(dome_mat)
+
+# Ribs on dome (12 ribs)
+num_ribs = 12
+for i in range(num_ribs):
+    angle = i * (2 * math.pi / num_ribs)
+    # Create a curved rib using a series of small boxes or a curve
+    # Simplified: use a torus segment or just a thin cylinder bent
+    # Use a curve for accuracy
+    curve_data = bpy.data.curves.new(f"RibCurve{i}", 'CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.extrude = 0.3
+    curve_data.bevel_depth = 0.15
+    spline = curve_data.splines.new('BEZIER')
+    spline.bezier_points.add(4)  # 5 points
+    # Points along the dome surface from base to top
+    for j, t in enumerate([0, 0.25, 0.5, 0.75, 1.0]):
+        # Parametric point on hemisphere
+        theta = t * math.pi / 2  # 0 to 90 degrees
+        r = 14.2  # slightly outside dome
+        x = r * math.cos(theta) * math.cos(angle)
+        y = r * math.cos(theta) * math.sin(angle)
+        z = 31 + r * math.sin(theta)
+        bp = spline.bezier_points[j]
+        bp.co = (x, y, z)
+        bp.handle_left_type = 'AUTO'
+        bp.handle_right_type = 'AUTO'
+    rib_obj = bpy.data.objects.new(f"Rib{i}", curve_data)
+    bpy.context.collection.objects.link(rib_obj)
+    rib_obj.data.materials.append(rib_mat)
+
+# Lantern on top of dome
+lantern = add_cyl("Lantern", (0, 0, 45.5), 3, 4, stone_mat, verts=12)
+lantern_dome = add_sphere("LanternDome", (0, 0, 47.5), 3.2, copper_mat, segments=16, rings=8)
+# Cross on top
+cross_v = add_box("CrossV", (0, 0, 50.5), (0.4, 0.4, 4), gold_mat)
+cross_h = add_box("CrossH", (0, 0, 51), (2, 0.4, 0.4), gold_mat)
+
+# ===================== BELL TOWERS =====================
+def build_tower(name, x, y):
+    # Main tower body
+    tower = add_box(f"{name}_Body", (x, y, 15), (10, 10, 30), stone_mat)
+    
+    # Clock section
+    clock_sec = add_box(f"{name}_ClockSec", (x, y, 32), (11, 11, 6), dark_stone_mat)
+    
+    # Clock face (front, facing square = -y)
+    clock_face = add_cyl(f"{name}_ClockFace", (x, y - 5.6, 32), 3, 0.3, clock_face_mat, verts=32)
+    clock_face.rotation_euler = (math.radians(90), 0, 0)
+    bpy.ops.object.transform_apply(rotation=True)
+    
+    # Clock hands
+    # Hour hand
+    hh = add_box(f"{name}_HourHand", (x, y - 5.7, 32), (0.3, 0.1, 2), clock_hand_mat)
+    hh.rotation_euler = (0, 0, math.radians(30))
+    # Minute hand
+    mh = add_box(f"{name}_MinHand", (x, y - 5.7, 32), (0.2, 0.1, 2.5), clock_hand_mat)
+    mh.rotation_euler = (0, 0, math.radians(60))
+    
+    # Belfry (open section)
+    belfry = add_box(f"{name}_Belfry", (x, y, 38), (10, 10, 6), stone_mat)
+    # Belfry openings (simplified with dark boxes on each side)
+    for dx, dy, rot in [(0, -5.1, 0), (0, 5.1, 0), (-5.1, 0, math.radians(90)), (5.1, 0, math.radians(90))]:
+        opening = add_box(f"{name}_Opening", (x+dx, y+dy, 38), (4, 0.5, 4), dark_stone_mat)
+    
+    # Bells
+    for bell_offset in [(-2.5, 0), (2.5, 0)]:
+        bell = add_cone(f"{name}_Bell", (x + bell_offset[0], y + bell_offset[1], 37.5), 1.5, 0.5, 2, bell_mat, verts=16)
+    
+    # Tower roof (pyramid)
+    roof = add_cone(f"{name}_Roof", (x, y, 44), 7, 0, 6, copper_mat, verts=4)
+    roof.rotation_euler = (0, 0, math.radians(45))
+    bpy.ops.object.transform_apply(rotation=True)
+    
+    # Spire cross
+    spire_cross_v = add_box(f"{name}_CrossV", (x, y, 48), (0.3, 0.3, 3), gold_mat)
+    spire_cross_h = add_box(f"{name}_CrossH", (x, y, 48.5), (1.5, 0.3, 0.3), gold_mat)
+
+# Two towers flanking the facade
+build_tower("TowerWest", -14, -20)
+build_tower("TowerEast", 14, -20)
+
+# ===================== WINDOWS =====================
+# Nave windows (rows along sides)
+for side in [-1, 1]:
+    for i in range(5):
+        y_pos = -15 + i * 7
+        # Arched window (simplified as box + half cylinder)
+        win = add_box(f"NaveWin_{'L' if side<0 else 'R'}{i}", (side * 10.1, y_pos, 14), (0.5, 3, 5), window_glow_mat)
+        # Arch top
+        bpy.ops.mesh.primitive_cylinder_add(location=(side * 10.1, y_pos, 16.5), radius=1.5, depth=0.5, vertices=16)
+        arch_top = bpy.context.active_object
+        arch_top.name = f"NaveArch_{'L' if side<0 else 'R'}{i}"
+        arch_top.rotation_euler = (0, math.radians(90), 0)
+        bpy.ops.object.transform_apply(rotation=True)
+        arch_top.data.materials.append(window_glow_mat)
+
+# Rose window on facade
+bpy.ops.mesh.primitive_cylinder_add(location=(0, -22.1, 20), radius=4, depth=0.5, vertices=32)
+rose = bpy.context.active_object
+rose.name = "RoseWindow"
+rose.rotation_euler = (math.radians(90), 0, 0)
+bpy.ops.object.transform_apply(rotation=True)
+rose.data.materials.append(window_glow_mat)
+
+# ===================== FESTIVAL LIGHTS =====================
+# Strings of lights across the square
+def add_light_string(start, end, num_bulbs=20, sag=1.5):
+    # Create a curve for the string
+    curve_data = bpy.data.curves.new("LightString", 'CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.extrude = 0.02
+    curve_data.bevel_depth = 0.02
+    spline = curve_data.splines.new('BEZIER')
+    spline.bezier_points.add(1)
+    
+    start_v = Vector(start)
+    end_v = Vector(end)
+    mid_v = (start_v + end_v) / 2
+    mid_v.z -= sag
+    
+    bp0 = spline.bezier_points[0]
+    bp0.co = start_v
+    bp0.handle_left_type = 'AUTO'
+    bp0.handle_right_type = 'AUTO'
+    
+    bp1 = spline.bezier_points[1]
+    bp1.co = end_v
+    bp1.handle_left_type = 'AUTO'
+    bp1.handle_right_type = 'AUTO'
+    
+    string_obj = bpy.data.objects.new("LightString", curve_data)
+    bpy.context.collection.objects.link(string_obj)
+    string_obj.data.materials.append(string_mat)
+    
+    # Add bulbs along the curve
+    for i in range(num_bulbs):
+        t = i / (num_bulbs - 1)
+        # Quadratic bezier interpolation
+        pos = (1-t)**2 * start_v + 2*(1-t)*t * mid_v + t**2 * end_v
+        # Slight downward offset for bulb
+        bulb_pos = pos + Vector((0, 0, -0.3))
+        bulb = add_sphere(f"Bulb_{i}_{int(start[0])}_{int(end[0])}", bulb_pos, 0.15, light_bulb_mat, segments=8, rings=6)
+
+# Lights across the square (multiple strings)
+# String 1: from west tower to east tower, front
+add_light_string((-14, -25, 35), (14, -25, 35), num_bulbs=25, sag=2)
+# String 2: parallel, further back
+add_light_string((-14, -15, 35), (14, -15, 35), num_bulbs=25, sag=2)
+# String 3: diagonal from west tower to apsis area
+add_light_string((-14, -25, 35), (10, 15, 20), num_bulbs=30, sag=3)
+# String 4: diagonal from east tower to apsis area
+add_light_string((14, -25, 35), (-10, 15, 20), num_bulbs=30, sag=3)
+# String 5: across the middle
+add_light_string((-20, 0, 25), (20, 0, 25), num_bulbs=20, sag=2)
+# String 6: near the apsis
+add_light_string((-10, 10, 20), (10, 10, 20), num_bulbs=15, sag=1.5)
+
+# ===================== LIGHTING (NIGHT SCENE) =====================
+# World - dark night sky
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+bg.inputs[0].default_value = (0.02, 0.02, 0.05)  # Dark blue night
+bg.inputs[1].default_value = 1.0
+
+# Moon light (directional)
+bpy.ops.object.light_add(type='SUN', location=(50, 50, 80))
+moon = bpy.context.active_object
+moon.name = "Moon"
+moon.data.energy = 0.3
+moon.data.color = (0.7, 0.8, 1.0)
+moon.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# Warm point lights inside/near the church for glow
+# Interior glow through windows
+for x, y, z in [(0, -20, 10), (0, 0, 10), (0, 20, 10)]:
+    bpy.ops.object.light_add(type='POINT', location=(x, y, z))
+    light = bpy.context.active_object
+    light.name = f"InteriorGlow_{x}_{y}"
+    light.data.energy = 50
+    light.data.color = (1.0, 0.8, 0.5)
+    light.data.shadow_soft_size = 2
+
+# Light from festival bulbs (additional point lights for effect)
+for x, y in [(-14, -25), (14, -25), (0, -25), (-14, -15), (14, -15), (0, -15)]:
+    bpy.ops.object.light_add(type='POINT', location=(x, y, 33))
+    light = bpy.context.active_object
+    light.name = f"FestivalGlow_{x}_{y}"
+    light.data.energy = 20
+    light.data.color = (1.0, 0.85, 0.5)
+    light.data.shadow_soft_size = 1
+
+# Camera setup
+bpy.ops.object.camera_add(location=(0, -60, 15))
+cam = bpy.context.active_object
+cam.name = "Camera"
+# Look at the church
+direction = Vector((0, 0, 15)) - cam.location
+cam.rotation_euler = direction.to_track_quat('Z', 'Y').to_euler()
+bpy.context.scene.camera = cam
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+
+# Enable bloom/glow via compositor
+bpy.context.scene.use_nodes = True
+nt = bpy.context.scene.node_tree
+nodes = nt.nodes
+links = nt.links
+
+# Clear existing
+for node in nodes:
+    nodes.remove(node)
+
+# Render layer
+rl = nodes.new('CompositorNodeRLayers')
+# Glare
+glare = nodes.new('CompositorNodeGlare')
+glare.glare_type = 'BLOOM'
+glare.quality = 'HIGH'
+glare.threshold = 0.5
+glare.size = 8
+# Composite
+comp = nodes.new('CompositorNodeComposite')
+
+links.new(rl.outputs['Image'], glare.inputs['Image'])
+links.new(glare.outputs['Image'], comp.inputs['Image'])
+
+print("Maltese parish church with ribbed dome, clock towers, and festival lights built successfully!")

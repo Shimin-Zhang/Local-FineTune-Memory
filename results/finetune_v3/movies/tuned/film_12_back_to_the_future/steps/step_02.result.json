@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 2.0,
+ "error": "SyntaxError: '(' was never closed (script.py, line 58)",
+ "error_line": "pts.append(Vector((-6 + (i - 4) * .9 + random.uniform(-.6, .6), 5.5 + (i - 4) * .7 + random.uniform(-.6, .6), 24 - i * 2.9))",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 1,
+ "n_lights": 1,
+ "n_materials": 1,
+ "own_camera": false,
+ "render_error": null
+}

@@ -1,0 +1,84 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(575)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def shade(rgb, em=0, rough=.9):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*rgb, 1); n.inputs["Roughness"].default_value = rough
+    if em: n.inputs["Emission Color"].default_value = (*rgb, 1); n.inputs["Emission Strength"].default_value = em
+    return m
+soil, tobacco, tobacco2, stalk = shade((.22, .13, .08)), shade((.25, .42, .06)), shade((.32, .45, .08)), shade((.15, .25, .08))
+plank, plank2, roof, crate = shade((.3, .2, .12)), shade((.22, .14, .09)), shade((.35, .28, .18)), shade((.4, .26, .12))
+hanging, leaf, ember, wood = shade((.45, .33, .1)), shade((.2, .3, .05)), shade((1, .35, .05), 14), shade((.15, .09, .06))
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def blk(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def pole(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return put(bm, m)
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=13, depth=2.6)
+for v in bm.verts:
+    v.co.x *= 1.2; v.co.z -= 1.3
+    if v.co.z < -1: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.5, .2)))
+    else: v.co.z += random.uniform(-.08, .08)
+put(bm, soil)
+# the tobacco field: rows of leafy plants in the front third
+for r in range(6):
+    for i in range(10):
+        x, y = -14 + i * 1.4 + (r % 2) * .3, -12 + r * 1.3
+        if y > -6.5: continue
+        for k in range(4):
+            a = k * 1.6 + r
+            blk((x + math.cos(a) * .25, y + math.sin(a) * .25, .1 + k * .1), (.5, .3, .12), tobacco if (i + k) % 2 else tobacco2, (0, 0, a)).rotation_euler.x = -.4
+        blk((x, y, 0), (.12, .12, .35), stalk)
+# the open-sided drying shed: posts, rails, roof
+sx, sy = 0, 3
+for i in range(5):
+    for y in (sy - 3, sy + 3):
+        pole((sx - 7 + i * 3.5, y, 0), (sx - 7 + i * 3.5, y, 3.6), .3, plank2)
+for z in (1.0, 2.0, 3.0):
+    for i in range(4):
+        pole((sx - 7 + i * 3.5, sy - 3, z), (sx - 3.5 + i * 3.5, sy - 3, z), .12, plank)
+        pole((sx - 7 + i * 3.5, sy + 3, z), (sx - 3.5 + i * 3.5, sy + 3, z), .12, plank)
+for i in range(4):
+    for j in range(2):
+        x = sx - 5.2 + i * 3.5 + (j * .4)
+        for k in range(8):
+            blk((x, sy - 3 + k * .85, 2.0), (.12, .7, .9), hanging, (0, 0, 0)).scale.z = 1.0
+            blk((x, sy - 3 + k * .85, 1.6), (.5, .5, .08), leaf, (0, 0, 0)).location.z = 1.55
+for i in range(4):
+    for y in (-3, 3): pole((sx - 7 + i * 3.5, sy + y, 3.6), (sx - 7 + i * 3.5, sy + y, 4.4), .22, plank2)
+blk((sx, sy, 4.4), (15, 7.6, .2), roof, (-.1, 0, 0)); blk((sx, sy - 3.9, 4.2), (15, .2, .1), roof)
+# curing fire under the floor: a glowing grate at the shed's front
+blk((sx, sy - 1.2, 0), (5, 1.2, .3), wood)
+for k in range(5): blk((sx - 1.6 + k * .8, sy - 1.2, .3), (.35, .6, .3), ember)
+lamp("POINT", (1, .4, .08), 1500, (sx, sy - 1.2, 1.0))
+# a stack of crates and a loose one
+for i, (x, y, z) in enumerate(((-11, 6, 0), (-9.6, 6, 0), (-10.3, 6, 1.2), (-11, 7.4, 0), (-9.6, 7.4, 0), (-10.3, 7.4, 1.2), (-10.3, 6.7, 2.4))):
+    blk((x, y, z), (1.4, 1.4, 1.2), crate, (0, 0, i * .1))
+blk((-7, 7, 0), (1.4, 1.4, 1.2), crate, (0, 0, .5))
+# a stump, a lantern post, a path of trodden earth
+blk((9, -5, 0), (1.2, 1.2, .7), wood, (0, 0, .3))
+pole((6, -4, 0), (6, -4, 2.4), .14, plank2); blk((6, -4, 2.4), (.5, .5, .6), ember); lamp("POINT", (1, .6, .2), 300, (6, -4, 2.7))
+for i in range(8): blk((-1 + i * .9, -6 + i * .6, 0), (1.4, 1.0, .06), shade((.3, .2, .12)), (0, 0, .3))
+# hot afternoon: high gold sun, a hot haze, orange rim
+lamp("SUN", (1, .85, .55), 5.5, (-24, -12, 16), (0, 0, 1)); lamp("SUN", (1, .5, .25), 2, (22, 18, 10), (0, 0, 1))
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.05, .03, .015, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 1.5)); co.location = t + Vector((6, -66, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

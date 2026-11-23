@@ -1,0 +1,100 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1675)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+M = {}
+def tone(name, rgb, glow=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    b.inputs["Base Color"].default_value = (*rgb, 1); b.inputs["Roughness"].default_value = .9
+    if glow: b.inputs["Emission Color"].default_value = (*rgb, 1); b.inputs["Emission Strength"].default_value = glow
+    M[name] = m
+for k, c in dict(turf=(.07, .12, .08), path=(.28, .24, .2), stone=(.42, .4, .36), stone2=(.3, .29, .27), roof=(.16, .1, .09),
+                 wood=(.2, .12, .07), iron=(.05, .05, .06), grave=(.3, .3, .32), moss=(.1, .2, .1)).items(): tone(k, c)
+tone("window", (1, .65, .25), 9); tone("lantern", (1, .7, .3), 14)
+def add(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("m", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(M[k]); return o
+def blk(at, s, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * f, v.co.y * s[1] * f, (v.co.z + .5) * s[2]))
+    return add(bm, k, at, (0, 0, rz))
+def cone(at, r, h, n, k, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, k, at)
+def bar(a, b, t, k):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return add(bm, k)
+def beam(kind, c, w, at, aim=None):
+    l = bpy.data.lights.new("l", kind); l.color = c; l.energy = w
+    o = bpy.data.objects.new("l", l); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+
+# base: a rough slab of turf, tapering below
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=7, radius2=14, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.2, 1.2), random.uniform(-1.2, 1.2), random.uniform(-1.2, .3)))
+    else: v.co.z += random.uniform(-.1, .1)
+    v.co.z -= 1.5
+add(bm, "turf")
+# round church: drum of stone, conical roof, apse at the east, door with a porch at the west
+cone((0, 0, 0), 4.4, 4.2, 12, "stone", 4.4)
+cone((0, 0, 4.2), 4.9, 4.4, 12, "roof", .35)
+cone((0, 0, 8.6), .45, 1.2, 6, "stone", .1)
+blk((0, 0, 9.7), (.12, 1.5, .12), "iron"); blk((0, 0, 9.7), (1.5, .12, .12), "iron")
+cone((4.6, 0, 0), 2.2, 2.6, 8, "stone", 2.2); cone((4.6, 0, 2.6), 2.6, 2.0, 8, "roof", .1)
+blk((0, 0, 3.2), (9.6, .12, .35), "stone2")
+blk((-4.4, 0, 0), (.3, 1.4, 2.3), "window"); blk((-4.4, 0, 2.3), (.3, 1.6, .2), "stone2")
+blk((-5.4, 0, 0), (1.8, 2.4, .25), "stone2")
+for sy in (-1, 1): blk((-6.2, sy * 1.1, 0), (.3, .3, 2.6), "stone")
+blk((-6.2, 0, 2.6), (.3, 2.5, .3), "stone"); blk((-6.4, 0, 2.9), (.4, 2.8, .12), "roof")
+for i in range(8):
+    a = i * math.pi / 4 + .39
+    blk((4.55 * math.cos(a), 4.55 * math.sin(a), 1.4), (.12, .5, 1.0), "window", a + math.pi / 2)
+beam("POINT", (1, .65, .25), 600, (-2, 0, 1.8)); beam("POINT", (1, .65, .25), 400, (2, 0, 1.8))
+# the ring of low stone buildings, each with a steep roof and a lit window
+for i in range(10):
+    a = i * 2 * math.pi / 10 + .15
+    if abs(a - 4.712) < .6: continue
+    r = 9.0
+    x, y = r * math.cos(a), r * math.sin(a)
+    blk((x, y, 0), (3.2, 2.4, 1.9), "stone" if i % 2 else "stone2", a + math.pi / 2)
+    blk((x, y, 1.9), (3.6, 2.8, 1.2), "roof", a + math.pi / 2, .1)
+    wx, wy = x - 1.25 * math.sin(a + 0) * 0 - 1.25 * math.cos(a), y - 1.25 * math.sin(a)
+    blk((wx, wy, .6), (.12, .5, .6), "window", a)
+    cone((x + .8 * math.cos(a), y + .8 * math.sin(a), 2.6), .2, .8, 5, "stone2", .2)
+# the gate: two stone piers, a timber door, a lantern on a post
+gx, gy = 0, -9.0
+for sx in (-1, 1):
+    blk((gx + sx * 1.5, gy, 0), (1.0, 1.0, 2.4), "stone", 0, .9); blk((gx + sx * 1.5, gy, 2.4), (1.2, 1.2, .25), "stone2")
+    bar((gx + sx * 1.5, gy, 0), (gx + sx * 1.5, gy, 2.4), .12, "stone")
+for sx in (-1, 1): blk((gx + sx * .7, gy, 0), (1.2, .12, 1.9), "wood", 0, .85)
+blk((gx, gy, 1.9), (2.6, .2, .2), "wood")
+bar((gx + 3.2, gy - .5, 0), (gx + 3.2, gy - .5, 3.0), .12, "iron"); blk((gx + 3.2, gy - .5, 3.0), (.5, .5, .6), "lantern")
+beam("POINT", (1, .7, .3), 250, (gx + 3.2, gy - .8, 3.3))
+# path and a few gravestones and mossy stones
+blk((0, -5.6, 0), (1.6, 4.2, .08), "path"); blk((0, -8.0, 0), (2.4, 2.0, .06), "path")
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(6.5, 8.0)
+    if abs(a - 4.712) < .8: continue
+    blk((r * math.cos(a), r * math.sin(a), 0), (.5, .15, .6 + random.random() * .3), "grave", a + random.uniform(-.5, .5), .8)
+for i in range(16):
+    a = random.uniform(0, 6.28); r = random.uniform(10.5, 12.8)
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=random.uniform(.3, .8))
+    for v in bm.verts: v.co.z *= .6
+    add(bm, "moss", (r * math.cos(a), r * math.sin(a), .1))
+# light: cold blue dusk from the left, a faint green rim from behind
+beam("SUN", (.55, .7, 1), 4.5, (-24, -14, 9), (0, 0, 2)); beam("SUN", (.4, .9, .6), 2, (20, 22, 8), (0, 0, 2))
+w = bpy.data.worlds.new("dusk"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.012, .02, .035, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 3)); co.location = t + Vector((16, -56, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

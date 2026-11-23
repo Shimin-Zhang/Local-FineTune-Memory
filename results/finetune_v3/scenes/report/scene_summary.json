@@ -1,0 +1,22 @@
+{
+ "Sonnet (the reference)": {
+  "picture": 100
+ },
+ "27B untuned": {
+  "cut off": 29,
+  "error": 58,
+  "no own camera": 3,
+  "camera shows nothing": 9,
+  "picture": 1
+ },
+ "27B tuned, 1 epoch": {
+  "picture": 76,
+  "error": 23,
+  "cut off": 1
+ },
+ "27B tuned, 2 epochs": {
+  "picture": 84,
+  "cut off": 1,
+  "error": 15
+ }
+}

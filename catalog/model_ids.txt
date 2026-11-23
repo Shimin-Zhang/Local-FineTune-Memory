@@ -1,0 +1,10 @@
+# family | repo id   (the models this post measures, plus the two whose predictions it quotes)
+qwen | Qwen/Qwen3.5-0.8B-Base
+qwen | Qwen/Qwen3.5-2B-Base
+qwen | Qwen/Qwen3.5-4B-Base
+qwen | Qwen/Qwen3.5-9B-Base
+qwen | Qwen/Qwen3-14B-Base
+qwen | Qwen/Qwen3.8-27B
+nanbeige | Nanbeige/Nanbeige4.3-33B-Base
+qwen | Qwen/Qwen3.6-35B-A3B
+llama | meta-llama/Llama-3.3-70B-Instruct

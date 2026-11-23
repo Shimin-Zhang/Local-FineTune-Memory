@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.1,
+ "error": null,
+ "error_line": null,
+ "printed": "Fixed sky with proper Preetham sunrise\nObjects: 276\n",
+ "state_saved": true,
+ "n_objects": 271,
+ "n_lights": 4,
+ "n_materials": 151,
+ "own_camera": true,
+ "render_error": null
+}

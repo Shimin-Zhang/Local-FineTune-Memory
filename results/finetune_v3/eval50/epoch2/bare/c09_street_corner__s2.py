@@ -1,0 +1,79 @@
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1113)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, glow=0, rough=.8):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = p.inputs["Emission Color"].default_value = (r, g, b, 1)
+    p.inputs["Roughness"].default_value = rough; p.inputs["Emission Strength"].default_value = glow
+    return m
+tar, kerb, line, brickA, brickB, slate, window, lampg, post, red, green, wood = (paint(*c) for c in (
+    (.07, .07, .09), (.3, .3, .32), (.7, .7, .65), (.38, .14, .1), (.2, .2, .24), (.1, .11, .15), (1, .72, .3, 7), (1, .8, .45, 14), (.1, .1, .12), (.55, .06, .05), (.1, .5, .15), (.25, .15, .08)))
+def put(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("p"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("p", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def slab(at, s, m, rot=(0, 0, 0), top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return put(bm, m, at, rot)
+def rod(at, r, h, n, m, r2=None, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return put(bm, m, at, rot)
+def glowlight(kind, c, w, at, aim=None):
+    d = bpy.data.lights.new("l", kind); d.color = c; d.energy = w
+    o = bpy.data.objects.new("l", d); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=7, radius2=14, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.3, 0)))
+    v.co.z -= 1.5
+put(bm, tar)
+# two streets crossing: kerb-edged blocks, crosswalk stripes
+slab((0, -3.5, 0), (24, 5, .25), kerb); slab((0, 3.5, 0), (24, 5, .25), kerb); slab((-3.5, 0, 0), (5, 24, .25), kerb); slab((3.5, 0, 0), (5, 24, .25), kerb)
+for i in range(8):
+    slab((-9.5 + i * 2.7, 0, .25), (1.3, 3.2, .06), line)
+    slab((0, -9.5 + i * 2.7, .25), (3.2, 1.3, .06), line)
+# building A: brick corner shop with lit windows and a sign
+slab((-8, 6.5, .25), (9, 8, 8), brickA, top=.97)
+for k in range(3):
+    for i in range(3):
+        slab((-10.6 + i * 2.7, 2.45, 1.5 + k * 2.4), (1.2, .15, 1.4), window if (i + k) % 3 else slate)
+slab((-8, 2.4, .25), (3.4, .2, 2.6), slate)
+slab((-8, 2.3, 5.4), (6.5, .25, 1.0), red); slab((-8, 2.2, 5.4), (6.0, .1, .5), window)
+slab((-8, 6.5, 8.25), (9.6, 8.6, .35), slate, top=.9)
+# building B: pale stone with a gable roof and a chimney
+slab((8.5, 6.5, .25), (9, 8, 6.5), brickB, top=.97)
+for k in range(2):
+    for i in range(3):
+        slab((6 + i * 2.7, 2.45, 1.8 + k * 2.6), (1.2, .15, 1.4), window if (i + k) % 2 else slate)
+slab((8.5, 6.5, 6.75), (10, 9, 2.4), slate, top=.05)
+slab((11, 8, 6.75), (1.2, 1.2, 2.4), brickA)
+# street lamp, mailbox, bench, hydrant
+rod((-1.8, -1.2, .25), .14, 5.2, 6, post, .1); slab((-1.8, -1.2, 5.4), (.9, .9, .9), lampg, top=.8)
+glowlight("POINT", (1, .78, .4), 700, (-1.8, -1.2, 5.4))
+slab((1.8, -1.2, .25), (.9, .6, .9), red); rod((1.8, -1.2, 1.15), .45, .15, 8, red, .1, (math.pi / 2, 0, 0))
+slab((1.8, -1.55, .9), (.5, .06, .3), window)
+slab((-7.5, -1.2, .9), (2.6, .7, .15), wood); slab((-7.5, -1.55, 1.2), (2.6, .12, .6), wood)
+for sx in (-1.2, 1.2): slab((-7.5 + sx, -1.2, .25), (.15, .6, .65), post)
+rod((2.4, 1.4, .25), .35, .9, 6, red, .3); rod((2.4, 1.4, 1.1), .4, .2, 6, red, .05)
+# bins and a parked car's tail lights
+for x in (5.5, 6.5): rod((x, -1.2, .25), .3, .9, 6, green, .25)
+slab((7.5, -3.5, .25), (3.6, 1.8, 1.0), brickA, top=.9); slab((7.5, -3.5, 1.2), (2.2, 1.5, .6), slate, top=.8)
+slab((5.6, -3.5, .8), (.15, .8, .3), red)
+# neon sign on the lamp pole and a puddle
+slab((-1.8, -1.7, 3.6), (.9, .1, .5), red); glowlight("POINT", (1, .15, .2), 200, (-1.8, -2.2, 3.6))
+rod((4.5, -4.5, .25), 1.6, .04, 8, line)
+# night: teal streetlight from the left, magenta rim from behind
+glowlight("SUN", (.4, .8, .85), 3.5, (-26, -16, 9), (0, 0, 2)); glowlight("SUN", (.9, .3, .6), 2, (22, 24, 10), (0, 0, 2))
+w = bpy.data.worlds.new("night"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .015, .03, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 3)); co.location = t + Vector((12, -56, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

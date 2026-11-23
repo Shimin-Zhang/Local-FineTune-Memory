@@ -1,0 +1,5 @@
+{"model_id": "Qwen/Qwen3.5-4B-Base", "out": ".scratch/random/Qwen__Qwen3.5-4B-Base__base", "params": 4205751296, "init_seconds": 31.5, "save_seconds": 5.1, "disk_bytes": 8411554133, "class": "Qwen3_5ForCausalLM"}
+{"model_id": "Qwen/Qwen3.5-9B-Base", "out": ".scratch/random/Qwen__Qwen3.5-9B-Base__base", "params": 8953803264, "init_seconds": 56.9, "save_seconds": 13.1, "disk_bytes": 17907658743, "class": "Qwen3_5ForCausalLM"}
+{"model_id": "Qwen/Qwen3-14B-Base", "out": ".scratch/random/Qwen__Qwen3-14B-Base__base", "params": 14768307200, "init_seconds": 94.7, "save_seconds": 28.9, "disk_bytes": 29536668160, "class": "Qwen3ForCausalLM"}
+{"model_id": "Qwen/Qwen3.8-27B", "out": ".scratch/random/Qwen__Qwen3.8-27B__base", "params": 26895998464, "init_seconds": 169.9, "save_seconds": 30.2, "disk_bytes": 53792171568, "class": "Qwen3_5ForCausalLM"}
+{"model_id": "Nanbeige/Nanbeige4.3-33B-Base", "out": ".scratch/random/Nanbeige__Nanbeige4.3-33B-Base__base", "params": 33118977024, "init_seconds": 210.6, "save_seconds": 36.8, "disk_bytes": 66238049480, "class": "LlamaForCausalLM"}

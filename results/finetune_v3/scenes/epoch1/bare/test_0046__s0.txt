@@ -1,0 +1,83 @@
+```python
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1836)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+col = {}
+def dye(name, rgb, em=0):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .9
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    col[name] = m
+for k, c in dict(sand=(.4, .3, .18), sand2=(.3, .22, .13), log=(.2, .12, .06), log2=(.3, .2, .1), hull=(.34, .2, .1), hull2=(.22, .13, .07), thatch=(.4, .3, .12),
+                 thatch2=(.28, .2, .08), water=(.05, .2, .26), foam=(.6, .65, .6), stone=(.25, .25, .24), ember=(1, .4, .05), dark=(.03, .02, .02)).items(): dye(k, c)
+dye("flame", (1, .5, .1), 12); dye("lantern", (1, .6, .2), 10)
+def add(bm, k, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("m"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("o", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(col[k]); return o
+def slab(x, y, z, w, d, h, k, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        f = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * w * f, v.co.y * d * f, (v.co.z + .5) * h))
+    return add(bm, k, (x, y, z), (0, 0, rz))
+def pole(a, b, r, k, n=5):
+    a, b = Vector(a), Vector(b); q = (b - a).to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r, depth=(b - a).length)
+    for v in bm.verts: v.co = q @ Vector((v.co.x, v.co.y, v.co.z + (b - a).length / 2)) + a
+    return add(bm, k)
+def lump(x, y, z, r, k, sq=.6):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co *= random.uniform(.85, 1.15); v.co.z *= sq
+    return add(bm, k, (x, y, z))
+def spark(x, y, z, c, w):
+    L = bpy.data.lights.new("s", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = (x, y, z); sc.collection.objects.link(o)
+# sandy bank on the left, shallow water on the right, with a ragged shoreline
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co = Vector((v.co.x * 16 + random.uniform(-1, 1), v.co.y * 12 + random.uniform(-1, 1), -2.4 + random.uniform(-.6, .3)))
+    else: v.co = Vector((v.co.x * 24, v.co.y * 16, 0))
+add(bm, "sand")
+slab(9.5, 0, .02, 5, 15, .15, "water")
+for i in range(7): slab(6.4 + random.uniform(-.5, .5), -6 + i * 2, .1, 1.2, 1.5, .1, "foam", rz=random.uniform(-.4, .4))
+# half-carved dugout on two logs, with a dark hollowed top and an adze laid on it
+for y in (-1.6, 1.6): pole((-4, y, .9), (2, y, .9), .5, "log2")
+slab(-1, 0, 1.4, 7.2, 2.4, 1.4, "hull", top=.95)
+slab(-1, 0, 2.7, 6.2, 1.8, .1, "dark")
+slab(-1, 0, 2.8, 6.6, 2.0, .12, "hull2")
+for i in range(4): slab(-3.5 + i * 1.7, 0, 2.8, .12, 1.7, .06, "hull")
+pole((-1.5, 1.0, 2.95), (-.4, 1.0, 3.1), .07, "log2", 4); slab((.2, 1.0, 2.95), .5, .3, .1, "log")
+for i in range(14): slab(random.uniform(-4, 2), random.uniform(-2.2, 2.2), .05, random.uniform(.5, 1.1), .12, .03, "hull2", rz=random.uniform(0, 3))
+# finished canoe waiting at the water's edge, pointed ends, a paddle across it
+for i in range(7):
+    x = 8.6 + (i - 3) * .85; w = 1.5 * (1 - (i - 3) ** 2 / 12)
+    slab(x, -2.5, .3, .9, w, .55, "hull", top=.85); slab(x, -2.5, .8, .7, w * .6, .08, "hull2")
+pole((8.2, -2.5, 1.0), (10.6, -2.5, 1.0), .06, "log2", 4); slab((9.4, -2.5, 1.0), .9, .35, .1, "log")
+# thatched shed with a post, a lantern and a fire pit
+for sx in (-1, 1):
+    for sy in (-1, 1): pole((9 + sx * 2.2, 3.5 + sy * 1.7, 0), (9 + sx * 2.2, 3.5 + sy * 1.7, 2.6), .12, "log2", 5)
+slab(9, 3.5, 2.6, 5.6, 4.2, .15, "thatch", top=.5)
+slab(9, 3.5, 2.7, 5.0, 3.6, .2, "thatch2", top=.5)
+slab(9, 4.4, 0, 3.4, .6, .8, "log"); slab(9, 4.4, .8, 3.6, .7, .08, "hull2")
+slab(7.0, 2.0, 0, .2, .2, 2.4, "log2"); slab(7.0, 2.0, 1.7, .6, .6, .5, "lantern"); spark(7.0, 2.0, 2.2, (1, .6, .2), 450)
+for i in range(7):
+    a = i * math.tau / 7; lump(-6.5 + math.cos(a) * .9, -4.5 + math.sin(a) * .9, .2, .3, "stone", .8)
+pole((-6.5, -4.5, .1), (-6.5, -4.5, 1.0), .12, "log2", 4); lump(-6.5, -4.5, .5, .45, "ember", .6); lump(-6.5, -4.5, 1.1, .28, "flame", 1.4)
+spark(-6.5, -4.5, 1.2, (1, .5, .1), 500)
+for i in range(5): lump(random.uniform(3, 6), random.uniform(3, 6), .25, random.uniform(.4, .7), "stone", .8)
+for i in range(4): lump(random.uniform(-9, -7), random.uniform(5, 6), .2, random.uniform(.4, .6), "thatch2", .6)
+for c, w, p in (((1, .62, .3), 5, (-24, -16, 8)), ((.4, .55, 1), 2.2, (22, 22, 12))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 1)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("dusk"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .02, .04, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80; cm.clip_end = 500
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+tg = Vector((0, 0, 1)); co.location = tg + Vector((14, -52, 30))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 3.5,
+ "error": null,
+ "error_line": null,
+ "printed": "Bathhouse: <Vector (0.0000, 5.0000, 5.0000)>\nBridge: <Vector (0.0000, 80.0000, 1.0000)>\nCamera: <Vector (0.0000, 130.0000, 20.0000)>\n",
+ "state_saved": true,
+ "n_objects": 512,
+ "n_lights": 47,
+ "n_materials": 215,
+ "own_camera": true,
+ "render_error": null
+}

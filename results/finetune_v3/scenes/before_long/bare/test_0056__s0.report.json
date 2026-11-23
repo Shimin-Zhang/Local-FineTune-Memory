@@ -1,0 +1,100 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": "AttributeError: 'ParticleSystem' object has no attribute 'particle_count'",
+ "error_line": "psys.particle_count = 200",
+ "n_renderable_objects": 5,
+ "object_types": {
+  "MESH": 5
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "Ash",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 4,
+   "principled_base_color": [
+    0.6,
+    0.6,
+    0.62
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "BlackStone",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 5,
+   "principled_base_color": [
+    0.05,
+    0.05,
+    0.05
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "MAPPING",
+    "OUTPUT_MATERIAL",
+    "TEX_COORD",
+    "TEX_NOISE"
+   ],
+   "colour_set_only_for_viewport": false
+  },
+  {
+   "name": "Lava",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 2,
+   "principled_base_color": [
+    1.0,
+    0.2,
+    0.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "OUTPUT_MATERIAL"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 1,
+ "materials_viewport_only": 0,
+ "lights": [],
+ "script_set_camera": false,
+ "depth_of_field": false,
+ "camera": null,
+ "bbox_size": [
+  100.0,
+  120.457,
+  22.737
+ ],
+ "scene_center": [
+  0.0,
+  -10.2286,
+  11.1317
+ ],
+ "scene_radius": 79.0994,
+ "render_engine": "CYCLES",
+ "rendered": 3,
+ "process": "exit 0",
+ "seconds": 2.8,
+ "image": true
+}

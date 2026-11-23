@@ -1,0 +1,90 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(523)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def shade(c, e=0):
+    m = bpy.data.materials.new("s"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (*c, 1); n.inputs["Roughness"].default_value = .8
+    if e: n.inputs["Emission Color"].default_value = (*c, 1); n.inputs["Emission Strength"].default_value = e
+    return m
+soil, grass, dark, light, rind, pink, seed, tendril = shade((.14, .09, .06)), shade((.1, .22, .08)), shade((.04, .17, .07)), shade((.18, .42, .12)), shade((.55, .62, .3)), shade((.8, .12, .25)), shade((.02, .02, .02)), shade((.12, .3, .1))
+def add(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("a"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("a", me); o.location = at; o.rotation_euler = rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def ball(r, k, m, at, jit=.04, sub=2):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co += Vector((random.uniform(-jit, jit), random.uniform(-jit, jit), random.uniform(-jit, jit))) * r; v.co.z *= k
+    return add(bm, m, at)
+def stem(r1, r2, h, n, m, at, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r1, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return add(bm, m, at, rot)
+def glow(at, c, w):
+    L = bpy.data.lights.new("g", "POINT"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+# floating patch of grass and soil
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=5, radius2=9.5, depth=3.4)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.4, .2)))
+    else: v.co.z += random.uniform(-.12, .12)
+    v.co.z -= 1.7
+add(bm, grass)
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=9, radius1=3.6, radius2=3.6, depth=.12)
+for v in bm.verts: v.co += Vector((random.uniform(-.3, .3), random.uniform(-.3, .3), 0))
+add(bm, soil, (0, 0, .02))
+# the watermelon: striped icosphere, stripes chosen by vertex longitude
+bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=3, radius=3.0)
+for v in bm.verts:
+    v.co.z *= .82; v.co += Vector((random.uniform(-.06, .06), random.uniform(-.06, .06), random.uniform(-.06, .06)))
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+for f in bm.faces:
+    c = f.calc_center_median(); a = math.atan2(c.y, c.x)
+    f.material_index = 1 if abs(((a + math.pi) / (2 * math.pi)) * 10 - round(((a + math.pi) / (2 * math.pi)) * 10)) < .22 else 0
+me = bpy.data.meshes.new("melon"); bm.to_mesh(me); bm.free()
+melon = bpy.data.objects.new("melon", me); melon.location = (0, 0, 2.2)
+sc.collection.objects.link(melon); me.materials.append(dark); me.materials.append(light)
+# curled stem and a tendril at the top
+stem(.18, .1, 1.1, 5, tendril, (0, 0, 4.35), (.2, .1, 0)); stem(.1, .02, .8, 5, tendril, (.2, .1, 5.3), (.2, .1, 0))
+# slice cut open on the ground: pink flesh, pale rind, dark outer skin, seeds
+sx, sy = 5.2, -2.6
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=2.2, radius2=2.2, depth=.9)
+for v in bm.verts: v.co.z += .45
+add(bm, rind, (sx, sy, 0), (0, 0, .5))
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=2.0, radius2=2.0, depth=.92)
+for v in bm.verts: v.co.z += .46
+add(bm, pink, (sx, sy, 0), (0, 0, .5))
+for i in range(7):
+    a = i * .9 + .3; r = 1.0 + (i % 3) * .4
+    stem(.14, .02, .2, 4, seed, (sx + math.cos(a) * r, sy + math.sin(a) * r, .88), (0, 0, a))
+# a half slice leaning against the melon, cut face toward the camera
+bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.6)
+bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=(0, 0, 0), plane_no=(0, 1, 0), clear_inner=True)
+for v in bm.verts: v.co.z *= .9
+add(bm, pink, (-4.4, 1.2, 1.2), (.2, -.3, .6)).data.materials.append(rind)
+# vines and leaves
+for i in range(8):
+    a = i * .8; x, y = math.cos(a) * 4.6, math.sin(a) * 4.2
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=.5)
+    for v in bm.verts: v.co.z *= .25
+    add(bm, tendril, (x, y, .1), (0, 0, a))
+# fireflies
+for i in range(7):
+    x, y, z = random.uniform(-7, 7), random.uniform(-6, 6), random.uniform(1.5, 5.5)
+    ball(.16, 1, shade((.7, 1, .3), 14), (x, y, z), 0, 1)
+    if i % 2 == 0: glow((x, y, z), (.6, 1, .3), 60)
+glow((-3, -4, 2.5), (1, .3, .4), 250)
+for c, w, p in (((.5, .65, 1), 4.5, (-16, -10, 8)), ((.9, .35, .6), 2.2, (14, 16, 10))):
+    L = bpy.data.lights.new("s", "SUN"); L.color = c; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = p; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+next(n for n in wd.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.01, .02, .04, 1)
+cm = bpy.data.cameras.new("c"); cm.lens = 80
+co = bpy.data.objects.new("c", cm); sc.collection.objects.link(co)
+tg = Vector((0, 0, 2.5)); co.location = tg + Vector((14, -38, 22))
+co.rotation_euler = (tg - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

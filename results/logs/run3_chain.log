@@ -1,0 +1,15 @@
+-rw-rw-r-- 1 shimin shimin 159418976 Nov 14 03:42 results/finetune_v3/run3/adapter-epoch1-f16.gguf
+-rw-rw-r-- 1 shimin shimin 159418976 Nov 14 03:42 results/finetune_v3/run3/adapter-epoch2-f16.gguf
+scenes_before: generating 03:42
+scenes_before: 100 scripts written 04:13
+scenes_epoch2: generating 04:13
+scenes_epoch2: 100 scripts written 04:47
+scenes_epoch1: generating 04:47
+scenes_epoch1: 100 scripts written 05:20
+eval50_epoch2: generating 05:20
+eval50_epoch2: 150 scripts written 06:03
+GPU work done 06:03; waiting for the sandbox runs
+dataset checker, before: 0 of 100 pass
+dataset checker, epoch1: 66 of 100 pass
+dataset checker, epoch2: 80 of 100 pass
+ALL DONE 06:06

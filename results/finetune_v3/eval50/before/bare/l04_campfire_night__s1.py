@@ -1,0 +1,198 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Set up the scene
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 256
+scene.cycles.use_denoising = True
+
+# Set world to very dark (night)
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+bg_node.inputs[0].default_value = (0.01, 0.01, 0.02, 1.0)  # Very dark blue
+bg_node.inputs[1].default_value = 1.0
+
+# Camera
+camera_data = bpy.data.cameras.new("Camera")
+camera_data.lens = 50
+camera_obj = bpy.data.objects.new("Camera", camera_data)
+scene.collection.objects.link(camera_obj)
+camera_obj.location = (0, -6, 2)
+camera_obj.rotation_euler = (math.radians(85), 0, 0)
+scene.camera = camera_obj
+
+# Ground plane
+bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+ground = bpy.context.active_object
+ground.name = "Ground"
+ground_mat = bpy.data.materials.new("GroundMat")
+ground_mat.use_nodes = True
+bsdf = ground_mat.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.05, 0.03, 0.02, 1.0)  # Dark earth
+bsdf.inputs["Roughness"].default_value = 0.9
+ground.data.materials.append(ground_mat)
+
+# Fire pit - circle of rocks
+rock_positions = []
+num_rocks = 12
+for i in range(num_rocks):
+    angle = (i / num_rocks) * 2 * math.pi
+    radius = 0.8 + random.uniform(-0.05, 0.05)
+    x = radius * math.cos(angle)
+    y = radius * math.sin(angle)
+    rock_positions.append((x, y))
+    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=random.uniform(0.1, 0.18), location=(x, y, 0.05))
+    rock = bpy.context.active_object
+    rock.name = f"Rock_{i}"
+    rock.scale = (random.uniform(0.8, 1.2), random.uniform(0.8, 1.2), random.uniform(0.5, 0.8))
+    rock.rotation_euler = (random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi))
+    rock_mat = bpy.data.materials.new(f"RockMat_{i}")
+    rock_mat.use_nodes = True
+    rock_bsdf = rock_mat.node_tree.nodes.get("Principled BSDF")
+    rock_bsdf.inputs["Base Color"].default_value = (0.15, 0.12, 0.1, 1.0)
+    rock_bsdf.inputs["Roughness"].default_value = 0.95
+    rock.data.materials.append(rock_mat)
+
+# Logs (cylinders arranged in a teepee/cross pattern)
+log_mat = bpy.data.materials.new("LogMat")
+log_mat.use_nodes = True
+log_bsdf = log_mat.node_tree.nodes.get("Principled BSDF")
+log_bsdf.inputs["Base Color"].default_value = (0.1, 0.05, 0.02, 1.0)
+log_bsdf.inputs["Roughness"].default_value = 0.8
+
+for i in range(5):
+    angle = (i / 5) * 2 * math.pi + random.uniform(-0.2, 0.2)
+    length = random.uniform(0.6, 0.9)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=length, location=(0, 0, 0.2))
+    log = bpy.context.active_object
+    log.name = f"Log_{i}"
+    # Tilt logs to form a teepee
+    tilt_angle = math.radians(30 + random.uniform(-5, 5))
+    log.rotation_euler = (tilt_angle, 0, angle)
+    log.location = (0.15 * math.cos(angle), 0.15 * math.sin(angle), 0.25)
+    log.data.materials.append(log_mat)
+
+# Fire - emissive mesh (flame shape)
+# Create a simple flame using a cone or custom mesh
+bpy.ops.mesh.primitive_cone_add(vertices=16, radius1=0.25, radius2=0.0, depth=0.6, location=(0, 0, 0.35))
+flame = bpy.context.active_object
+flame.name = "Flame"
+flame.scale = (1, 1, 1)
+
+# Fire material with emission
+fire_mat = bpy.data.materials.new("FireMat")
+fire_mat.use_nodes = True
+fire_nodes = fire_mat.node_tree.nodes
+fire_links = fire_mat.node_tree.links
+
+# Remove default BSDF
+for node in fire_nodes:
+    if node.type == 'BSDF_PRINCIPLED':
+        fire_nodes.remove(node)
+
+# Create emission node
+emission = fire_nodes.new('ShaderNodeEmission')
+emission.inputs[0].default_value = (1.0, 0.3, 0.05, 1.0)  # Orange fire glow
+emission.inputs[1].default_value = 50.0  # Strong emission
+
+# Output
+output = fire_nodes.get("Material Output")
+fire_links.new(emission.outputs[0], output.inputs[0])
+
+flame.data.materials.append(fire_mat)
+
+# Add a second smaller inner flame for brighter core
+bpy.ops.mesh.primitive_cone_add(vertices=12, radius1=0.12, radius2=0.0, depth=0.35, location=(0, 0, 0.3))
+inner_flame = bpy.context.active_object
+inner_flame.name = "InnerFlame"
+
+inner_fire_mat = bpy.data.materials.new("InnerFireMat")
+inner_fire_mat.use_nodes = True
+inner_nodes = inner_fire_mat.node_tree.nodes
+inner_links = inner_fire_mat.node_tree.links
+
+for node in inner_nodes:
+    if node.type == 'BSDF_PRINCIPLED':
+        inner_nodes.remove(node)
+
+inner_emission = inner_nodes.new('ShaderNodeEmission')
+inner_emission.inputs[0].default_value = (1.0, 0.5, 0.1, 1.0)  # Brighter orange-yellow
+inner_emission.inputs[1].default_value = 100.0
+
+inner_output = inner_nodes.get("Material Output")
+inner_links.new(inner_emission.outputs[0], inner_output.inputs[0])
+
+inner_flame.data.materials.append(inner_fire_mat)
+
+# Point light to simulate fire glow (for better lighting in Cycles)
+light_data = bpy.data.lights.new("FireLight", type='POINT')
+light_data.energy = 150
+light_data.color = (1.0, 0.4, 0.1)
+light_data.shadow_soft_size = 0.3
+light_obj = bpy.data.objects.new("FireLight", light_data)
+scene.collection.objects.link(light_obj)
+light_obj.location = (0, 0, 0.4)
+
+# Add some scattered stones/pebbles on the ground
+for i in range(15):
+    x = random.uniform(-3, 3)
+    y = random.uniform(-3, 3)
+    if math.sqrt(x**2 + y**2) > 1.2:  # Keep away from fire
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=random.uniform(0.03, 0.08), location=(x, y, 0.02))
+        pebble = bpy.context.active_object
+        pebble.name = f"Pebble_{i}"
+        pebble.scale = (random.uniform(0.8, 1.5), random.uniform(0.8, 1.5), random.uniform(0.4, 0.7))
+        pebble_mat = bpy.data.materials.new(f"PebbleMat_{i}")
+        pebble_mat.use_nodes = True
+        peb_bsdf = pebble_mat.node_tree.nodes.get("Principled BSDF")
+        peb_bsdf.inputs["Base Color"].default_value = (0.12, 0.1, 0.08, 1.0)
+        peb_bsdf.inputs["Roughness"].default_value = 0.9
+        pebble.data.materials.append(pebble_mat)
+
+# A few trees in the background (simple cones)
+tree_mat = bpy.data.materials.new("TreeMat")
+tree_mat.use_nodes = True
+tree_bsdf = tree_mat.node_tree.nodes.get("Principled BSDF")
+tree_bsdf.inputs["Base Color"].default_value = (0.02, 0.05, 0.02, 1.0)  # Dark green
+tree_bsdf.inputs["Roughness"].default_value = 0.9
+
+trunk_mat = bpy.data.materials.new("TrunkMat")
+trunk_mat.use_nodes = True
+trunk_bsdf = trunk_mat.node_tree.nodes.get("Principled BSDF")
+trunk_bsdf.inputs["Base Color"].default_value = (0.05, 0.03, 0.01, 1.0)
+trunk_bsdf.inputs["Roughness"].default_value = 0.9
+
+tree_positions = [
+    (-4, -3, 0), (4, -2, 0), (-3, 3, 0), (3, 4, 0),
+    (-5, 1, 0), (5, -4, 0), (-2, -5, 0), (2, 5, 0)
+]
+
+for i, (tx, ty, tz) in enumerate(tree_positions):
+    height = random.uniform(3, 6)
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=height * 0.4, location=(tx, ty, height * 0.2))
+    trunk = bpy.context.active_object
+    trunk.name = f"Trunk_{i}"
+    trunk.data.materials.append(trunk_mat)
+    # Foliage (cone)
+    bpy.ops.mesh.primitive_cone_add(vertices=8, radius1=1.0, radius2=0.0, depth=height * 0.7, location=(tx, ty, height * 0.55))
+    foliage = bpy.context.active_object
+    foliage.name = f"Foliage_{i}"
+    foliage.data.materials.append(tree_mat)
+
+# Set film exposure for night feel
+scene.view_settings.exposure = -0.5
+scene.view_settings.look = 'Medium High Contrast'
+
+print("Campfire scene created!")

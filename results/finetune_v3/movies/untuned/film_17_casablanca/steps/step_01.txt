@@ -1,0 +1,576 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Clean the scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+bpy.ops.object.select_all(action='DESELECT')
+
+# Set up scene properties
+scene = bpy.context.scene
+scene.render.film_transparent = False
+
+# Set world background to dark night with fog color
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+    scene.world = world
+world.use_nodes = True
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+nodes.clear()
+
+bg_node = nodes.new('ShaderNodeBackground')
+bg_node.inputs[0].default_value = (0.02, 0.03, 0.05, 1.0)  # Dark blue night
+bg_node.inputs[1].default_value = 1.0
+out_node = nodes.new('ShaderNodeOutputWorld')
+links.new(bg_node.outputs[0], out_node.inputs[0])
+
+# Set up camera
+cam_data = bpy.data.cameras.new("Camera")
+cam_data.lens = 35
+cam = bpy.data.objects.new("Camera", cam_data)
+scene.collection.objects.link(cam)
+cam.location = (8, -15, 3)
+cam.rotation_euler = (math.radians(85), 0, math.radians(15))
+scene.camera = cam
+
+# Set up fog
+scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.03, 0.04, 0.06, 1.0)
+scene.world.node_tree.nodes["Background"].inputs[1].default_value = 1.0
+
+# Add volume fog to world
+vol_node = nodes.new('ShaderNodeVolumePrincipled')
+vol_node.inputs['Color'].default_value = (0.05, 0.06, 0.08, 1.0)
+vol_node.inputs['Density'].default_value = 0.08
+vol_node.inputs['Anisotropy'].default_value = 0.3
+links.new(vol_node.outputs[0], out_node.inputs['Volume'])
+
+# Helper functions
+def create_cylinder(radius, depth, location, rotation=(0,0,0), name="cyl", material=None):
+    bpy.ops.mesh.primitive_cylinder_add(radius=radius, depth=depth, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+def create_box(size, location, rotation=(0,0,0), name="box", material=None):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=location, rotation=rotation)
+    obj = bpy.context.active_object
+    obj.scale = (size[0], size[1], size[2])
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+def create_sphere(radius, location, name="sphere", material=None):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=location)
+    obj = bpy.context.active_object
+    obj.name = name
+    if material:
+        obj.data.materials.append(material)
+    return obj
+
+# Create materials
+def make_material(name, color, roughness=0.5, metallic=0.0, emission=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+    bsdf.inputs['Roughness'].default_value = roughness
+    bsdf.inputs['Metallic'].default_value = metallic
+    if emission > 0:
+        bsdf.inputs['Emission Color'].default_value = (*color, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = emission
+    out = nodes.new('ShaderNodeOutputMaterial')
+    links.new(bsdf.outputs[0], out.inputs[0])
+    return mat
+
+# Materials
+mat_asphalt = make_material("Asphalt", (0.05, 0.05, 0.05), roughness=0.9)
+mat_concrete = make_material("Concrete", (0.15, 0.15, 0.14), roughness=0.8)
+mat_metal = make_material("Metal", (0.3, 0.3, 0.32), roughness=0.4, metallic=0.8)
+mat_dark_metal = make_material("DarkMetal", (0.1, 0.1, 0.12), roughness=0.5, metallic=0.7)
+mat_glass = make_material("Glass", (0.6, 0.7, 0.8), roughness=0.1, metallic=0.0)
+mat_wood = make_material("Wood", (0.3, 0.2, 0.1), roughness=0.7)
+mat_coat_dark = make_material("CoatDark", (0.08, 0.08, 0.1), roughness=0.6)
+mat_coat_light = make_material("CoatLight", (0.2, 0.18, 0.15), roughness=0.6)
+mat_hat = make_material("Hat", (0.1, 0.08, 0.06), roughness=0.5)
+mat_skin = make_material("Skin", (0.5, 0.35, 0.25), roughness=0.4)
+mat_car_body = make_material("CarBody", (0.02, 0.02, 0.03), roughness=0.3, metallic=0.6)
+mat_car_glass = make_material("CarGlass", (0.2, 0.25, 0.3), roughness=0.1)
+mat_hangar_wall = make_material("HangarWall", (0.12, 0.12, 0.14), roughness=0.6, metallic=0.3)
+mat_hangar_door = make_material("HangarDoor", (0.15, 0.15, 0.17), roughness=0.5, metallic=0.4)
+mat_light_warm = make_material("LightWarm", (1.0, 0.8, 0.4), roughness=0.5, emission=5.0)
+mat_light_cold = make_material("LightCold", (0.6, 0.7, 1.0), roughness=0.5, emission=3.0)
+mat_paper = make_material("Paper", (0.8, 0.75, 0.6), roughness=0.9)
+mat_tire = make_material("Tire", (0.02, 0.02, 0.02), roughness=0.9)
+mat_prop = make_material("Propeller", (0.1, 0.1, 0.1), roughness=0.4, metallic=0.5)
+mat_fuselage = make_material("Fuselage", (0.25, 0.25, 0.28), roughness=0.3, metallic=0.5)
+mat_wing = make_material("Wing", (0.2, 0.2, 0.22), roughness=0.3, metallic=0.5)
+mat_engine = make_material("Engine", (0.15, 0.15, 0.15), roughness=0.4, metallic=0.7)
+
+# Build the ground/tarmac
+ground = create_box((100, 100, 0.1), (0, 0, -0.05), name="Ground", material=mat_asphalt)
+
+# Add some tarmac markings (subtle)
+for i in range(5):
+    x = -20 + i * 10
+    mark = create_box((0.3, 15, 0.02), (x, 0, 0.01), name=f"Marking{i}", material=mat_concrete)
+
+# Hangar in the background
+hangar_x = 15
+hangar_y = 20
+# Main hangar body
+hangar_body = create_box((20, 12, 8), (hangar_x, hangar_y, 4), name="HangarBody", material=mat_hangar_wall)
+# Hangar roof (slightly sloped - use a wedge)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(hangar_x, hangar_y, 8.5))
+roof = bpy.context.active_object
+roof.scale = (20, 12, 1)
+roof.name = "HangarRoof"
+roof.data.materials.append(mat_hangar_wall)
+# Rotate roof slightly for slope
+roof.rotation_euler = (math.radians(5), 0, 0)
+
+# Hangar door (large opening)
+hangar_door = create_box((14, 0.5, 7), (hangar_x, hangar_y - 6.25, 3.5), name="HangarDoor", material=mat_hangar_door)
+# Door frame
+door_frame_top = create_box((15, 0.8, 0.5), (hangar_x, hangar_y - 6.25, 7.25), name="DoorFrameTop", material=mat_dark_metal)
+door_frame_left = create_box((0.5, 0.8, 7.5), (hangar_x - 7.25, hangar_y - 6.25, 3.5), name="DoorFrameLeft", material=mat_dark_metal)
+door_frame_right = create_box((0.5, 0.8, 7.5), (hangar_x + 7.25, hangar_y - 6.25, 3.5), name="DoorFrameRight", material=mat_dark_metal)
+
+# Add some windows on hangar
+for wx in range(3):
+    win_x = hangar_x - 6 + wx * 6
+    win = create_box((2, 0.3, 1.5), (win_x, hangar_y - 6.2, 5.5), name=f"HangarWin{wx}", material=mat_glass)
+
+# Propeller plane (DC-3 style)
+plane_x = 5
+plane_y = 5
+plane_z = 1.5
+
+# Fuselage (elongated cylinder)
+bpy.ops.mesh.primitive_cylinder_add(radius=1.2, depth=10, location=(plane_x, plane_y, plane_z), rotation=(0, math.radians(90), 0))
+fuselage = bpy.context.active_object
+fuselage.name = "Fuselage"
+fuselage.data.materials.append(mat_fuselage)
+# Scale to make it more oval
+fuselage.scale = (1, 1.2, 1)
+
+# Nose
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.2, location=(plane_x - 5, plane_y, plane_z))
+nose = bpy.context.active_object
+nose.name = "Nose"
+nose.scale = (1, 1.2, 1)
+nose.data.materials.append(mat_fuselage)
+
+# Tail
+bpy.ops.mesh.primitive_cone_add(radius1=1.2, radius2=0.3, depth=3, location=(plane_x + 6, plane_y, plane_z + 0.5), rotation=(0, math.radians(-90), 0))
+tail = bpy.context.active_object
+tail.name = "Tail"
+tail.scale = (1, 1.2, 1)
+tail.data.materials.append(mat_fuselage)
+
+# Vertical stabilizer
+bpy.ops.mesh.primitive_cube_add(size=1, location=(plane_x + 7, plane_y, plane_z + 2))
+vstab = bpy.context.active_object
+vstab.scale = (0.3, 2, 3)
+vstab.name = "VStab"
+vstab.data.materials.append(mat_fuselage)
+
+# Horizontal stabilizer
+bpy.ops.mesh.primitive_cube_add(size=1, location=(plane_x + 6.5, plane_y, plane_z + 1))
+hstab = bpy.context.active_object
+hstab.scale = (0.3, 4, 0.3)
+hstab.name = "HStab"
+hstab.data.materials.append(mat_fuselage)
+
+# Wings
+bpy.ops.mesh.primitive_cube_add(size=1, location=(plane_x, plane_y, plane_z - 0.3))
+wing = bpy.context.active_object
+wing.scale = (4, 14, 0.4)
+wing.name = "Wing"
+wing.data.materials.append(mat_wing)
+
+# Engine nacelles
+for side in [-1, 1]:
+    eng_x = plane_x - 3
+    eng_y = plane_y + side * 3
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=3, location=(eng_x, eng_y, plane_z), rotation=(0, math.radians(90), 0))
+    eng = bpy.context.active_object
+    eng.name = f"Engine{side}"
+    eng.scale = (1, 1, 1)
+    eng.data.materials.append(mat_engine)
+    
+    # Propeller
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.3, location=(eng_x - 1.5, eng_y, plane_z), rotation=(0, math.radians(90), 0))
+    prop_hub = bpy.context.active_object
+    prop_hub.name = f"PropHub{side}"
+    prop_hub.data.materials.append(mat_prop)
+    
+    # Propeller blades
+    for b in range(3):
+        angle = b * (2 * math.pi / 3)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(eng_x - 1.6, eng_y + math.sin(angle) * 1.5, plane_z + math.cos(angle) * 1.5))
+        blade = bpy.context.active_object
+        blade.scale = (0.1, 0.15, 1.5)
+        blade.rotation_euler = (0, angle, 0)
+        blade.name = f"Blade{side}_{b}"
+        blade.data.materials.append(mat_prop)
+
+# Landing gear
+for side in [-1, 1]:
+    gear_x = plane_x - 2
+    gear_y = plane_y + side * 2
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=1.5, location=(gear_x, gear_y, 0.75))
+    gear = bpy.context.active_object
+    gear.name = f"Gear{side}"
+    gear.data.materials.append(mat_dark_metal)
+    
+    # Wheel
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.6, depth=0.4, location=(gear_x, gear_y, 0.3), rotation=(0, math.radians(90), 0))
+    wheel = bpy.context.active_object
+    wheel.name = f"Wheel{side}"
+    wheel.data.materials.append(mat_tire)
+
+# Tail wheel
+bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.2, location=(plane_x + 6, plane_y, 0.3), rotation=(0, math.radians(90), 0))
+tail_wheel = bpy.context.active_object
+tail_wheel.name = "TailWheel"
+tail_wheel.data.materials.append(mat_tire)
+
+# Cockpit windows
+for i in range(4):
+    wx = plane_x - 4 + i * 0.8
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(wx, plane_y - 1.15, plane_z + 0.5))
+    win = bpy.context.active_object
+    win.scale = (0.6, 0.1, 0.5)
+    win.name = f"CockpitWin{i}"
+    win.data.materials.append(mat_glass)
+
+# Passenger windows
+for i in range(6):
+    wx = plane_x - 2 + i * 1.2
+    for side in [-1, 1]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(wx, plane_y + side * 1.15, plane_z + 0.3))
+        win = bpy.context.active_object
+        win.scale = (0.5, 0.1, 0.4)
+        win.name = f"PaxWin{i}_{side}"
+        win.data.materials.append(mat_glass)
+
+# Car (1940s style sedan)
+car_x = -5
+car_y = -2
+car_z = 0.5
+
+# Car body
+bpy.ops.mesh.primitive_cube_add(size=1, location=(car_x, car_y, car_z))
+car_body = bpy.context.active_object
+car_body.scale = (4, 1.8, 1)
+car_body.name = "CarBody"
+car_body.data.materials.append(mat_car_body)
+
+# Car roof
+bpy.ops.mesh.primitive_cube_add(size=1, location=(car_x - 0.5, car_y, car_z + 0.8))
+car_roof = bpy.context.active_object
+car_roof.scale = (2.5, 1.6, 0.6)
+car_roof.name = "CarRoof"
+car_roof.data.materials.append(mat_car_body)
+
+# Car hood (front)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(car_x - 2.2, car_y, car_z - 0.1))
+hood = bpy.context.active_object
+hood.scale = (1.5, 1.7, 0.5)
+hood.name = "Hood"
+hood.data.materials.append(mat_car_body)
+
+# Car trunk (back)
+bpy.ops.mesh.primitive_cube_add(size=1, location=(car_x + 2.2, car_y, car_z - 0.1))
+trunk = bpy.context.active_object
+trunk.scale = (1.5, 1.7, 0.5)
+trunk.name = "Trunk"
+trunk.data.materials.append(mat_car_body)
+
+# Car windows
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(car_x - 0.5, car_y + side * 0.9, car_z + 0.7))
+    win = bpy.context.active_object
+    win.scale = (2, 0.1, 0.5)
+    win.name = f"CarWin{side}"
+    win.data.materials.append(mat_car_glass)
+
+# Windshield
+bpy.ops.mesh.primitive_cube_add(size=1, location=(car_x - 1.8, car_y, car_z + 0.6))
+windshield = bpy.context.active_object
+windshield.scale = (0.3, 1.5, 0.6)
+windshield.rotation_euler = (0, math.radians(15), 0)
+windshield.name = "Windshield"
+windshield.data.materials.append(mat_car_glass)
+
+# Rear window
+bpy.ops.mesh.primitive_cube_add(size=1, location=(car_x + 1.8, car_y, car_z + 0.6))
+rear_win = bpy.context.active_object
+rear_win.scale = (0.3, 1.5, 0.5)
+rear_win.rotation_euler = (0, math.radians(-10), 0)
+rear_win.name = "RearWindow"
+rear_win.data.materials.append(mat_car_glass)
+
+# Car wheels
+for wx in [-1.5, 1.5]:
+    for wy in [-0.9, 0.9]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.3, location=(car_x + wx, car_y + wy, 0.2), rotation=(0, math.radians(90), 0))
+        wheel = bpy.context.active_object
+        wheel.name = f"CarWheel_{wx}_{wy}"
+        wheel.data.materials.append(mat_tire)
+        
+        # Hubcap
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.32, location=(car_x + wx, car_y + wy, 0.2), rotation=(0, math.radians(90), 0))
+        hub = bpy.context.active_object
+        hub.name = f"Hubcap_{wx}_{wy}"
+        hub.data.materials.append(mat_metal)
+
+# Headlights
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.2, location=(car_x - 2.8, car_y + side * 0.6, car_z))
+    hl = bpy.context.active_object
+    hl.name = f"Headlight{side}"
+    hl.data.materials.append(make_material(f"HL{side}", (1.0, 0.9, 0.5), emission=3.0))
+
+# Taillights
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(car_x + 2.8, car_y + side * 0.6, car_z))
+    tl = bpy.context.active_object
+    tl.name = f"Taillight{side}"
+    tl.data.materials.append(make_material(f"TL{side}", (1.0, 0.2, 0.1), emission=2.0))
+
+# Figure 1 (Rick - man in dark coat and fedora)
+rick_x = 0
+rick_y = -3
+rick_z = 0
+
+# Legs
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=1.2, location=(rick_x + side * 0.15, rick_y, 0.6))
+    leg = bpy.context.active_object
+    leg.name = f"RickLeg{side}"
+    leg.data.materials.append(mat_coat_dark)
+
+# Torso
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=1.0, location=(rick_x, rick_y, 1.7))
+rick_torso = bpy.context.active_object
+rick_torso.name = "RickTorso"
+rick_torso.data.materials.append(mat_coat_dark)
+
+# Coat (longer, wider)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=1.3, location=(rick_x, rick_y, 1.4))
+rick_coat = bpy.context.active_object
+rick_coat.name = "RickCoat"
+rick_coat.data.materials.append(mat_coat_dark)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.18, location=(rick_x, rick_y, 2.5))
+rick_head = bpy.context.active_object
+rick_head.name = "RickHead"
+rick_head.data.materials.append(mat_skin)
+
+# Fedora hat
+bpy.ops.mesh.primitive_cylinder_add(radius=0.22, depth=0.05, location=(rick_x, rick_y, 2.65))
+rick_hat_brim = bpy.context.active_object
+rick_hat_brim.name = "RickHatBrim"
+rick_hat_brim.data.materials.append(mat_hat)
+
+bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=0.15, location=(rick_x, rick_y, 2.72))
+rick_hat_top = bpy.context.active_object
+rick_hat_top.name = "RickHatTop"
+rick_hat_top.data.materials.append(mat_hat)
+
+# Arms
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=0.9, location=(rick_x + side * 0.35, rick_y, 1.7), rotation=(0, 0, math.radians(20 * side)))
+    arm = bpy.context.active_object
+    arm.name = f"RickArm{side}"
+    arm.data.materials.append(mat_coat_dark)
+
+# Figure 2 (Ilsa - woman in lighter coat and hat)
+ilsa_x = 1.5
+ilsa_y = -3
+ilsa_z = 0
+
+# Legs
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=1.1, location=(ilsa_x + side * 0.12, ilsa_y, 0.55))
+    leg = bpy.context.active_object
+    leg.name = f"IlsaLeg{side}"
+    leg.data.materials.append(mat_coat_light)
+
+# Torso
+bpy.ops.mesh.primitive_cylinder_add(radius=0.22, depth=0.9, location=(ilsa_x, ilsa_y, 1.6))
+ilsa_torso = bpy.context.active_object
+ilsa_torso.name = "IlsaTorso"
+ilsa_torso.data.materials.append(mat_coat_light)
+
+# Coat
+bpy.ops.mesh.primitive_cylinder_add(radius=0.32, depth=1.2, location=(ilsa_x, ilsa_y, 1.3))
+ilsa_coat = bpy.context.active_object
+ilsa_coat.name = "IlsaCoat"
+ilsa_coat.data.materials.append(mat_coat_light)
+
+# Head
+bpy.ops.mesh.primitive_uv_sphere_add(radius=0.16, location=(ilsa_x, ilsa_y, 2.35))
+ilsa_head = bpy.context.active_object
+ilsa_head.name = "IlsaHead"
+ilsa_head.data.materials.append(mat_skin)
+
+# Hat (wider brim, more feminine)
+bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.04, location=(ilsa_x, ilsa_y, 2.5))
+ilsa_hat_brim = bpy.context.active_object
+ilsa_hat_brim.name = "IlsaHatBrim"
+ilsa_hat_brim.data.materials.append(mat_hat)
+
+bpy.ops.mesh.primitive_cylinder_add(radius=0.14, depth=0.12, location=(ilsa_x, ilsa_y, 2.56))
+ilsa_hat_top = bpy.context.active_object
+ilsa_hat_top.name = "IlsaHatTop"
+ilsa_hat_top.data.materials.append(mat_hat)
+
+# Arms
+for side in [-1, 1]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.8, location=(ilsa_x + side * 0.3, ilsa_y, 1.6), rotation=(0, 0, math.radians(15 * side)))
+    arm = bpy.context.active_object
+    arm.name = f"IlsaArm{side}"
+    arm.data.materials.append(mat_coat_light)
+
+# Airfield lights (tall poles with lights)
+for lx in [-15, 0, 15]:
+    for ly in [10, -10]:
+        # Pole
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.1, depth=6, location=(lx, ly, 3))
+        pole = bpy.context.active_object
+        pole.name = f"LightPole_{lx}_{ly}"
+        pole.data.materials.append(mat_dark_metal)
+        
+        # Light fixture
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, location=(lx, ly, 6))
+        light = bpy.context.active_object
+        light.name = f"LightFixture_{lx}_{ly}"
+        light.data.materials.append(mat_light_warm)
+
+# Add point lights for the airfield lamps
+for lx in [-15, 0, 15]:
+    for ly in [10, -10]:
+        light_data = bpy.data.lights.new(f"AirfieldLight_{lx}_{ly}", type='POINT')
+        light_data.energy = 500
+        light_data.color = (1.0, 0.8, 0.4)
+        light_data.shadow_soft_size = 0.5
+        light_obj = bpy.data.objects.new(f"AirfieldLightObj_{lx}_{ly}", light_data)
+        scene.collection.objects.link(light_obj)
+        light_obj.location = (lx, ly, 6)
+
+# Hangar interior light
+hangar_light_data = bpy.data.lights.new("HangarLight", type='POINT')
+hangar_light_data.energy = 300
+hangar_light_data.color = (0.8, 0.85, 1.0)
+hangar_light_obj = bpy.data.objects.new("HangarLightObj", hangar_light_data)
+scene.collection.objects.link(hangar_light_obj)
+hangar_light_obj.location = (hangar_x, hangar_y - 3, 5)
+
+# Car headlights glow
+for side in [-1, 1]:
+    hl_data = bpy.data.lights.new(f"CarHeadlight{side}", type='SPOT')
+    hl_data.energy = 200
+    hl_data.color = (1.0, 0.9, 0.5)
+    hl_data.spot_size = math.radians(30)
+    hl_obj = bpy.data.objects.new(f"CarHeadlightObj{side}", hl_data)
+    scene.collection.objects.link(hl_obj)
+    hl_obj.location = (car_x - 2.8, car_y + side * 0.6, car_z)
+    hl_obj.rotation_euler = (0, math.radians(-90), 0)
+
+# Moonlight (directional light from above)
+moon_data = bpy.data.lights.new("Moonlight", type='SUN')
+moon_data.energy = 0.5
+moon_data.color = (0.6, 0.7, 1.0)
+moon_obj = bpy.data.objects.new("MoonlightObj", moon_data)
+scene.collection.objects.link(moon_obj)
+moon_obj.rotation_euler = (math.radians(45), math.radians(10), 0)
+
+# Add some fog patches (volume cubes)
+for i in range(8):
+    fx = random.uniform(-20, 20)
+    fy = random.uniform(-15, 15)
+    fz = random.uniform(0.5, 3)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(fx, fy, fz))
+    fog_patch = bpy.context.active_object
+    fog_patch.scale = (random.uniform(3, 8), random.uniform(3, 8), random.uniform(1, 2))
+    fog_patch.name = f"FogPatch{i}"
+    fog_mat = bpy.data.materials.new(f"FogMat{i}")
+    fog_mat.use_nodes = True
+    fnodes = fog_mat.node_tree.nodes
+    flinks = fog_mat.node_tree.links
+    fnodes.clear()
+    fvol = fnodes.new('ShaderNodeVolumePrincipled')
+    fvol.inputs['Color'].default_value = (0.05, 0.06, 0.08, 1.0)
+    fvol.inputs['Density'].default_value = random.uniform(0.02, 0.08)
+    fout = fnodes.new('ShaderNodeOutputMaterial')
+    flinks.new(fvol.outputs[0], fout.inputs['Volume'])
+    fog_patch.data.materials.append(fog_mat)
+
+# Add some scattered objects for detail
+# Crates near hangar
+for i in range(3):
+    cx = hangar_x - 10 + i * 2
+    cy = hangar_y - 8
+    crate = create_box((1, 1, 1), (cx, cy, 0.5), name=f"Crate{i}", material=mat_wood)
+
+# Oil drums
+for i in range(4):
+    dx = hangar_x - 8 + i * 1.5
+    dy = hangar_y - 7
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=1, location=(dx, dy, 0.5))
+    drum = bpy.context.active_object
+    drum.name = f"Drum{i}"
+    drum.data.materials.append(mat_dark_metal)
+
+# Runway edge lights
+for i in range(10):
+    ex = -30 + i * 6
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.08, depth=0.5, location=(ex, -8, 0.25))
+    edge_light = bpy.context.active_object
+    edge_light.name = f"EdgeLight{i}"
+    edge_light.data.materials.append(mat_light_cold)
+
+# Add a small sign
+sign_pole = create_cylinder(0.05, 2, (-10, -5, 1), name="SignPole", material=mat_dark_metal)
+sign_board = create_box((1.5, 0.1, 0.8), (-10, -5, 2), name="SignBoard", material=mat_concrete)
+
+# Add some distant trees/hills
+for i in range(5):
+    tx = -40 + i * 20
+    ty = 30
+    bpy.ops.mesh.primitive_cone_add(radius1=3, radius2=0, depth=8, location=(tx, ty, 4))
+    tree = bpy.context.active_object
+    tree.name = f"Tree{i}"
+    tree_mat = make_material(f"TreeMat{i}", (0.02, 0.05, 0.02), roughness=0.9)
+    tree.data.materials.append(tree_mat)
+
+# Set render settings
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.film_transparent = False
+scene.cycles.samples = 128
+scene.cycles.use_denoising = True
+scene.cycles.volume_bounces = 2
+scene.cycles.volume_step_rate = 1.0
+
+# Set camera to a good angle
+cam.location = (10, -18, 4)
+cam.rotation_euler = (math.radians(82), 0, math.radians(20))
+cam_data.lens = 40
+
+print("Casablanca airfield scene built successfully!")
+```

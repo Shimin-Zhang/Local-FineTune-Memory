@@ -1,0 +1,306 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# Fix issues and add more detail:
+# 1. The police car is too close and blocking the view - move it
+# 2. Add more variety to the crowd - some people looking up
+# 3. Add more building detail - brick texture feel, more windows
+# 4. Add a few more cars in different positions
+# 5. Add some debris that looks like it's been kicked up
+# 6. Add a few more street details
+# 7. Improve the Stay Puft model - add more segments
+# 8. Add some atmospheric dust particles
+# 9. Add a few more people on the sidewalks
+# 10. Add some more varied building colors
+
+# Move the police car further away
+police_car = bpy.data.objects.get("PoliceCar")
+if police_car:
+    police_car.location = (4, 25, 0.5)
+
+# Move police car components
+police_car_stripe = bpy.data.objects.get("PoliceCar_Stripe")
+if police_car_stripe:
+    police_car_stripe.location = (4, 25.5, 0.7)
+
+police_car_cabin = bpy.data.objects.get("PoliceCar_Cabin")
+if police_car_cabin:
+    police_car_cabin.location = (4, 25.5, 1.3)
+
+police_car_lightbar = bpy.data.objects.get("PoliceCar_LightBar")
+if police_car_lightbar:
+    police_car_lightbar.location = (4, 25.5, 2.0)
+
+police_car_red = bpy.data.objects.get("PoliceCar_RedLight")
+if police_car_red:
+    police_car_red.location = (3.7, 25.5, 2.1)
+
+police_car_blue = bpy.data.objects.get("PoliceCar_BlueLight")
+if police_car_blue:
+    police_car_blue.location = (4.3, 25.5, 2.1)
+
+# Move police car wheels
+for wx in [-1.2, 1.2]:
+    for wy in [-1.5, 1.5]:
+        wheel = bpy.data.objects.get(f"PoliceCar_Wheel_{wx}_{wy}")
+        if wheel:
+            wheel.location = (4 + wx, 25 + wy, 0.4)
+
+# Move police car lights
+red_light_obj = bpy.data.objects.get("PoliceCar_RedPL")
+if red_light_obj:
+    red_light_obj.location = (3.7, 25.5, 2.2)
+
+blue_light_obj = bpy.data.objects.get("PoliceCar_BluePL")
+if blue_light_obj:
+    blue_light_obj.location = (4.3, 25.5, 2.2)
+
+# Add more people on the sidewalks looking up
+for i in range(15):
+    side = random.choice([-1, 1])
+    x = side * 7.5
+    y = random.uniform(-30, 30)
+    z = 0.8
+    
+    # Body
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.25, location=(x, y, z))
+    person = bpy.context.active_object
+    person.name = f"LookUp_{i}"
+    person.scale = (0.7, 0.7, 1.1)
+    person.rotation_euler = (math.radians(-30), 0, 0)  # Looking up
+    cloth_colors = [
+        (0.5, 0.2, 0.2, 1.0), (0.2, 0.3, 0.5, 1.0), (0.3, 0.5, 0.3, 1.0),
+        (0.6, 0.5, 0.2, 1.0), (0.4, 0.2, 0.5, 1.0), (0.2, 0.4, 0.4, 1.0),
+    ]
+    color = random.choice(cloth_colors)
+    mat_person = bpy.data.materials.new(f"LookUp_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    # Head (tilted up)
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0), (0.5, 0.3, 0.2, 1.0)]
+    skin = random.choice(skin_colors)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.18, location=(x, y, 1.2))
+    phead = bpy.context.active_object
+    phead.name = f"LookUp_{i}_Head"
+    phead.rotation_euler = (math.radians(-45), 0, 0)
+    mat_phead = bpy.data.materials.new(f"LookUp_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = skin
+    phead.data.materials.append(mat_phead)
+
+# Add more varied building colors
+building_colors_extra = [
+    (0.25, 0.2, 0.15, 1.0),
+    (0.15, 0.2, 0.25, 1.0),
+    (0.2, 0.15, 0.2, 1.0),
+    (0.18, 0.18, 0.12, 1.0),
+    (0.12, 0.18, 0.12, 1.0),
+]
+
+# Add more windows to existing buildings
+for i in range(30):
+    side = random.choice([-1, 1])
+    x = side * (12 + random.uniform(0, 3))
+    y = random.uniform(-55, 55)
+    z = random.uniform(2, 25)
+    bpy.ops.mesh.primitive_cube_add(size=0.3, location=(x - side * 0.3, y, z))
+    win = bpy.context.active_object
+    win.name = f"MoreWin_{i}"
+    # Some windows lit, some dark
+    if random.random() > 0.4:
+        mat_win = bpy.data.materials.new(f"MoreWin_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (1.0, 0.9, 0.5, 1.0)
+        bsdf.inputs['Emission Color'].default_value = (1.0, 0.8, 0.4, 1.0)
+        bsdf.inputs['Emission Strength'].default_value = 1.0
+    else:
+        mat_win = bpy.data.materials.new(f"MoreWin_{i}_mat")
+        mat_win.use_nodes = True
+        bsdf = mat_win.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (0.05, 0.05, 0.1, 1.0)
+    win.data.materials.append(mat_win)
+
+# Add more debris kicked up by Stay Puft
+for i in range(20):
+    x = random.uniform(-4, 4)
+    y = random.uniform(-5, 10)
+    size = random.uniform(0.05, 0.2)
+    bpy.ops.mesh.primitive_cube_add(size=size, location=(x, y, size/2))
+    debris = bpy.context.active_object
+    debris.name = f"Debris2_{i}"
+    debris.rotation_euler = (random.uniform(0, math.pi), random.uniform(0, math.pi), random.uniform(0, math.pi))
+    mat_debris = bpy.data.materials.new(f"Debris2_{i}_mat")
+    mat_debris.use_nodes = True
+    bsdf = mat_debris.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.25, 0.2, 0.15, 1.0)
+    debris.data.materials.append(mat_debris)
+
+# Add a few more people in the middle distance
+for i in range(10):
+    x = random.uniform(-6, 6)
+    y = random.uniform(10, 30)
+    if abs(x) < 2:
+        continue
+    z = 0.8
+    
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.22, location=(x, y, z))
+    person = bpy.context.active_object
+    person.name = f"MidPerson_{i}"
+    person.scale = (0.6, 0.6, 1.0)
+    cloth_colors = [
+        (0.5, 0.2, 0.2, 1.0), (0.2, 0.3, 0.5, 1.0), (0.3, 0.5, 0.3, 1.0),
+        (0.6, 0.5, 0.2, 1.0), (0.4, 0.2, 0.5, 1.0),
+    ]
+    color = random.choice(cloth_colors)
+    mat_person = bpy.data.materials.new(f"MidPerson_{i}_mat")
+    mat_person.use_nodes = True
+    bsdf = mat_person.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    person.data.materials.append(mat_person)
+    
+    skin_colors = [(0.8, 0.6, 0.5, 1.0), (0.9, 0.7, 0.6, 1.0), (0.6, 0.4, 0.3, 1.0)]
+    skin = random.choice(skin_colors)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=(x, y, 1.15))
+    phead = bpy.context.active_object
+    phead.name = f"MidPerson_{i}_Head"
+    mat_phead = bpy.data.materials.new(f"MidPerson_{i}_Head_mat")
+    mat_phead.use_nodes = True
+    bsdf = mat_phead.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = skin
+    phead.data.materials.append(mat_phead)
+
+# Add a few more cars in the background
+for i in range(3):
+    x = random.choice([-3, -2, 2, 3])
+    y = 40 + i * 8
+    z = 0.5
+    car_colors = [
+        (0.5, 0.0, 0.0, 1.0), (0.0, 0.0, 0.5, 1.0),
+        (0.8, 0.8, 0.0, 1.0), (0.2, 0.2, 0.2, 1.0),
+    ]
+    color = random.choice(car_colors)
+    
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+    car = bpy.context.active_object
+    car.name = f"BgCar_{i}"
+    car.scale = (1.8, 4, 1.2)
+    mat_car = bpy.data.materials.new(f"BgCar_{i}_mat")
+    mat_car.use_nodes = True
+    bsdf = mat_car.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = color
+    bsdf.inputs['Roughness'].default_value = 0.3
+    car.data.materials.append(mat_car)
+    
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y + 0.5, z + 0.8))
+    cabin = bpy.context.active_object
+    cabin.name = f"BgCar_{i}_Cabin"
+    cabin.scale = (1.5, 2.5, 0.8)
+    mat_cabin = bpy.data.materials.new(f"BgCar_{i}_Cabin_mat")
+    mat_cabin.use_nodes = True
+    bsdf = mat_cabin.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+    cabin.data.materials.append(mat_cabin)
+
+# Add atmospheric dust particles (small spheres)
+for i in range(30):
+    x = random.uniform(-5, 5)
+    y = random.uniform(-10, 10)
+    z = random.uniform(0.5, 3)
+    size = random.uniform(0.02, 0.05)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    dust = bpy.context.active_object
+    dust.name = f"Dust_{i}"
+    mat_dust = bpy.data.materials.new(f"Dust_{i}_mat")
+    mat_dust.use_nodes = True
+    bsdf = mat_dust.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.5, 0.5, 0.5, 1.0)
+    bsdf.inputs['Roughness'].default_value = 1.0
+    dust.data.materials.append(mat_dust)
+
+# Add a few more fire hydrants
+for i in range(3):
+    x = random.choice([-7.5, 7.5])
+    y = -10 + i * 20
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.8, location=(x, y, 0.4))
+    hydrant = bpy.context.active_object
+    hydrant.name = f"Hydrant2_{i}"
+    mat_hyd = bpy.data.materials.new(f"Hydrant2_{i}_mat")
+    mat_hyd.use_nodes = True
+    bsdf = mat_hyd.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.8, 0.1, 0.1, 1.0)
+    hydrant.data.materials.append(mat_hyd)
+
+# Add a few more trash cans
+for i in range(3):
+    x = random.choice([-7.5, 7.5])
+    y = -5 + i * 25
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.7, location=(x, y, 0.35))
+    trash = bpy.context.active_object
+    trash.name = f"Trash2_{i}"
+    mat_trash = bpy.data.materials.new(f"Trash2_{i}_mat")
+    mat_trash.use_nodes = True
+    bsdf = mat_trash.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.15, 0.15, 0.15, 1.0)
+    trash.data.materials.append(mat_trash)
+
+# Add a few more manhole covers
+for i in range(3):
+    x = random.uniform(-4, 4)
+    y = random.uniform(-30, 30)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=0.03, location=(x, y, 0.01))
+    mh = bpy.context.active_object
+    mh.name = f"Manhole2_{i}"
+    mat_mh = bpy.data.materials.new(f"Manhole2_{i}_mat")
+    mat_mh.use_nodes = True
+    bsdf = mat_mh.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.12, 0.12, 0.12, 1.0)
+    mh.data.materials.append(mat_mh)
+
+# Add a few more building rooftop details
+for i in range(5):
+    side = random.choice([-1, 1])
+    x = side * (14 + random.uniform(0, 3))
+    y = random.uniform(-50, 50)
+    # AC unit
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 20))
+    ac = bpy.context.active_object
+    ac.name = f"ACUnit2_{i}"
+    ac.scale = (0.8, 0.8, 0.8)
+    mat_ac = bpy.data.materials.new(f"ACUnit2_{i}_mat")
+    mat_ac.use_nodes = True
+    bsdf = mat_ac.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.5, 0.5, 0.5, 1.0)
+    ac.data.materials.append(mat_ac)
+
+# Add a few more stars
+for i in range(30):
+    x = random.uniform(-60, 60)
+    y = random.uniform(-60, -10)
+    z = random.uniform(35, 60)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.06, location=(x, y, z))
+    star = bpy.context.active_object
+    star.name = f"Star3_{i}"
+    mat_star = bpy.data.materials.new(f"Star3_{i}_mat")
+    mat_star.use_nodes = True
+    bsdf = mat_star.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs['Emission Strength'].default_value = 3.0
+    star.data.materials.append(mat_star)
+
+# Adjust camera for a slightly wider view
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, -20, 3)
+    camera.rotation_euler = (math.radians(90), 0, 0)
+    # Set focal length for a wider angle
+    camera.data.lens = 35
+
+print("Scene further refined!")

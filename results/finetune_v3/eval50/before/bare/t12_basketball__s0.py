@@ -1,0 +1,244 @@
+import bpy
+import math
+import random
+from mathutils import Vector, noise
+
+# Clear scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete(use_global=False)
+
+# Create UV Sphere for basketball
+bpy.ops.mesh.primitive_uv_sphere_add(radius=1.0, segments=64, ring_count=32, location=(0, 0, 0))
+basketball = bpy.context.active_object
+basketball.name = "Basketball"
+
+# Add subsurf for smoother base
+subsurf = basketball.modifiers.new(name="Subsurf", type='SUBSURF')
+subsurf.levels = 2
+subsurf.render_levels = 2
+
+# Apply modifiers
+bpy.ops.object.select_all(action='DESELECT')
+basketball.select_set(True)
+bpy.context.view_layer.objects.active = basketball
+bpy.ops.object.shade_smooth()
+
+# Create basketball material
+mat = bpy.data.materials.new(name="BasketballMaterial")
+mat.use_nodes = True
+nodes = mat.node_tree.nodes
+links = mat.node_tree.links
+
+# Clear default nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create nodes
+tex_coord = nodes.new('ShaderNodeTexCoord')
+mapping = nodes.new('ShaderNodeMapping')
+
+# Noise texture for pebbled surface
+noise = nodes.new('ShaderNodeTexNoise')
+noise.inputs['Scale'].default_value = 150.0
+noise.inputs['Detail'].default_value = 8.0
+noise.inputs['Roughness'].default_value = 0.7
+noise.inputs['Lacunarity'].default_value = 2.0
+
+# Bump node for pebbled effect
+bump = nodes.new('ShaderNodeBump')
+bump.inputs['Strength'].default_value = 0.3
+bump.inputs['Distance'].default_value = 0.01
+bump.inputs['Hardness'].default_value = 0.5
+
+# Color ramp for orange color variation
+color_ramp = nodes.new('ShaderNodeValToRGB')
+color_ramp.color_ramp.elements[0].position = 0.3
+color_ramp.color_ramp.elements[0].color = (0.85, 0.35, 0.05, 1.0)  # Darker orange
+color_ramp.color_ramp.elements[1].position = 0.7
+color_ramp.color_ramp.elements[1].color = (0.95, 0.45, 0.10, 1.0)  # Lighter orange
+
+# Principled BSDF
+bsdf = nodes.new('ShaderNodeBsdfPrincipled')
+bsdf.inputs['Roughness'].default_value = 0.6
+bsdf.inputs['Specular IOR Level'].default_value = 0.3
+
+# Output
+output = nodes.new('ShaderNodeOutputMaterial')
+
+# Link nodes
+links.new(tex_coord.outputs['Object'], mapping.inputs['Vector'])
+links.new(mapping.outputs['Vector'], noise.inputs['Vector'])
+links.new(noise.outputs['Fac'], color_ramp.inputs['Fac'])
+links.new(color_ramp.outputs['Color'], bsdf.inputs['Base Color'])
+links.new(noise.outputs['Fac'], bump.inputs['Height'])
+links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
+links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+# Assign material
+basketball.data.materials.append(mat)
+
+# Create black line material
+line_mat = bpy.data.materials.new(name="BasketballLines")
+line_mat.use_nodes = True
+line_nodes = line_mat.node_tree.nodes
+line_links = line_mat.node_tree.links
+
+for node in line_nodes:
+    line_nodes.remove(node)
+
+line_bsdf = line_nodes.new('ShaderNodeBsdfPrincipled')
+line_bsdf.inputs['Base Color'].default_value = (0.02, 0.02, 0.02, 1.0)
+line_bsdf.inputs['Roughness'].default_value = 0.8
+line_bsdf.inputs['Specular IOR Level'].default_value = 0.1
+
+line_output = line_nodes.new('ShaderNodeOutputMaterial')
+line_links.new(line_bsdf.outputs['BSDF'], line_output.inputs['Surface'])
+
+# Create line geometry using torus-like curves
+# Basketball lines: one vertical great circle and one horizontal great circle, plus two curved lines
+
+def create_line_curve(name, points, radius=0.015):
+    curve_data = bpy.data.curves.new(name=name, type='CURVE')
+    curve_data.dimensions = '3D'
+    curve_data.fill_mode = 'FULL'
+    curve_data.bevel_depth = radius
+    curve_data.bevel_resolution = 4
+    curve_data.resolution_u = 32
+    
+    spline = curve_data.splines.new('NURBS')
+    spline.points.add(len(points) - 1)
+    for i, pt in enumerate(points):
+        spline.points[i].co = (pt[0], pt[1], pt[2], 1.0)
+    spline.use_endpoint_u = True
+    
+    obj = bpy.data.objects.new(name, curve_data)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(line_mat)
+    return obj
+
+# Generate points for lines on sphere (radius 1.0)
+r = 1.0
+
+# Vertical line (meridian)
+vertical_points = []
+for i in range(72):
+    angle = i * 2 * math.pi / 72
+    x = r * math.cos(angle)
+    y = 0
+    z = r * math.sin(angle)
+    vertical_points.append((x, y, z))
+
+# Horizontal line (equator)
+horizontal_points = []
+for i in range(72):
+    angle = i * 2 * math.pi / 72
+    x = r * math.cos(angle)
+    y = r * math.sin(angle)
+    z = 0
+    horizontal_points.append((x, y, z))
+
+# Curved line 1 (like a C shape on one side)
+curved1_points = []
+for i in range(72):
+    t = i / 71
+    # Parametric curve on sphere
+    phi = math.pi * t  # 0 to pi
+    theta = math.pi / 2  # fixed
+    # Modify to create the basketball curve
+    x = r * math.sin(phi) * math.cos(theta)
+    y = r * math.sin(phi) * math.sin(theta)
+    z = r * math.cos(phi)
+    # Shift and scale to create the characteristic curve
+    curved1_points.append((x, y, z))
+
+# Actually, let me create proper basketball lines
+# Basketball has: 1 vertical seam, 1 horizontal seam, and 2 curved seams that go from top to bottom on either side
+
+# Let's redo with proper basketball line pattern
+# Remove previous curves
+for obj in list(bpy.context.collection.objects):
+    if obj.name.startswith("Line"):
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Vertical seam (along Y axis plane)
+v_points = []
+for i in range(72):
+    angle = i * 2 * math.pi / 72
+    x = r * math.cos(angle)
+    y = 0.0
+    z = r * math.sin(angle)
+    v_points.append((x, y, z))
+
+# Horizontal seam (equator)
+h_points = []
+for i in range(72):
+    angle = i * 2 * math.pi / 72
+    x = r * math.cos(angle)
+    y = r * math.sin(angle)
+    z = 0.0
+    h_points.append((x, y, z))
+
+# Left curved seam
+left_points = []
+for i in range(72):
+    t = i / 71
+    # This creates a curve that goes from top to bottom, bulging to the left
+    phi = math.pi * t
+    # The curve follows a path on the sphere
+    # Using a parametric equation for the basketball curve
+    x = r * math.sin(phi) * math.cos(math.pi * t * 0.5)
+    y = -r * math.sin(phi) * math.sin(math.pi * t * 0.5) * 0.5
+    z = r * math.cos(phi)
+    left_points.append((x, y, z))
+
+# Right curved seam
+right_points = []
+for i in range(72):
+    t = i / 71
+    phi = math.pi * t
+    x = r * math.sin(phi) * math.cos(math.pi * t * 0.5)
+    y = r * math.sin(phi) * math.sin(math.pi * t * 0.5) * 0.5
+    z = r * math.cos(phi)
+    right_points.append((x, y, z))
+
+# Create line objects
+line1 = create_line_curve("Line_Vertical", v_points)
+line2 = create_line_curve("Line_Horizontal", h_points)
+line3 = create_line_curve("Line_Left", left_points)
+line4 = create_line_curve("Line_Right", right_points)
+
+# Convert curves to mesh
+bpy.ops.object.select_all(action='DESELECT')
+for line_obj in [line1, line2, line3, line4]:
+    line_obj.select_set(True)
+    bpy.context.view_layer.objects.active = line_obj
+bpy.ops.object.convert(target='MESH')
+
+# Add lighting
+# Sun light
+bpy.ops.object.light_add(type='SUN', location=(5, 5, 10))
+sun = bpy.context.active_object
+sun.data.energy = 3.0
+sun.rotation_euler = (math.radians(45), math.radians(30), 0)
+
+# World background
+world = bpy.data.worlds.get("World")
+if not world:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg_node = world.node_tree.nodes.get("Background")
+if bg_node:
+    bg_node.inputs['Color'].default_value = (0.1, 0.1, 0.15, 1.0)
+    bg_node.inputs['Strength'].default_value = 1.0
+
+# Camera setup
+bpy.ops.object.camera_add(location=(0, -3.5, 1.5))
+camera = bpy.context.active_object
+camera.rotation_euler = (math.radians(70), 0, 0)
+bpy.context.scene.camera = camera
+
+# Render settings
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False

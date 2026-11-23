@@ -1,0 +1,251 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector, Euler
+
+# Clean scene
+bpy.ops.object.select_all(action='SELECT')
+bpy.ops.object.delete()
+
+# Clear collections
+for coll in bpy.data.collections:
+    if coll.name != "Scene Collection":
+        bpy.data.collections.remove(coll)
+
+# Set up world
+world = bpy.context.scene.world
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+bg = world.node_tree.nodes.get("Background")
+if bg:
+    bg.inputs[0].default_value = (0.9, 0.6, 0.3, 1.0)  # warm evening sky
+    bg.inputs[1].default_value = 1.0
+
+# Camera
+camera_data = bpy.data.cameras.new("Camera")
+camera_data.lens = 50
+cam = bpy.data.objects.new("Camera", camera_data)
+bpy.context.scene.collection.objects.link(cam)
+bpy.context.scene.camera = cam
+cam.location = (12, -15, 4)
+cam.rotation_euler = Euler((math.radians(75), 0, math.radians(20)))
+
+# Lighting - long evening sun
+sun_data = bpy.data.lights.new("Sun", type='SUN')
+sun_data.energy = 3.0
+sun_data.color = (1.0, 0.7, 0.4)
+sun_data.angle = math.radians(5)
+sun = bpy.data.objects.new("Sun", sun_data)
+bpy.context.scene.collection.objects.link(sun)
+sun.rotation_euler = Euler((math.radians(15), math.radians(10), math.radians(45)))
+
+# Ground
+ground_data = bpy.data.meshes.new("Ground")
+ground_obj = bpy.data.objects.new("Ground", ground_data)
+bpy.context.scene.collection.objects.link(ground_obj)
+bpy.context.view_layer.objects.active = ground_obj
+ground_obj.select_set(True)
+bpy.ops.mesh.primitive_plane_add(size=100, location=(0, 0, 0))
+ground_obj = bpy.context.active_object
+ground_obj.name = "Ground"
+# Green grass color
+mat_ground = bpy.data.materials.new("Grass")
+mat_ground.use_nodes = True
+bsdf = mat_ground.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs[0].default_value = (0.2, 0.4, 0.1, 1.0)
+ground_obj.data.materials.append(mat_ground)
+
+# Trestle table
+def make_trestle_table(x, y, z, length=2.0, width=0.8, height=0.9):
+    # Table top
+    top_data = bpy.data.meshes.new("TableTop")
+    top = bpy.data.objects.new("TableTop", top_data)
+    bpy.context.scene.collection.objects.link(top)
+    bpy.context.view_layer.objects.active = top
+    top.select_set(True)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z + height))
+    top = bpy.context.active_object
+    top.name = "TableTop"
+    top.scale = (length/2, width/2, 0.03)
+    mat_wood = bpy.data.materials.new("Wood")
+    mat_wood.use_nodes = True
+    b = mat_wood.node_tree.nodes.get("Principled BSDF")
+    b.inputs[0].default_value = (0.5, 0.3, 0.15, 1.0)
+    top.data.materials.append(mat_wood)
+    
+    # Legs (trestle style - A-frame)
+    for lx in [-length/3, length/3]:
+        for ly in [-width/3, width/3]:
+            leg_data = bpy.data.meshes.new("Leg")
+            leg = bpy.data.objects.new("Leg", leg_data)
+            bpy.context.scene.collection.objects.link(leg)
+            bpy.context.view_layer.objects.active = leg
+            leg.select_set(True)
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=height, location=(x+lx, y+ly, z + height/2))
+            leg = bpy.context.active_object
+            leg.name = "Leg"
+            leg.data.materials.append(mat_wood)
+
+make_trestle_table(0, 0, 0)
+
+# Pit area (dirt patch near table)
+pit_data = bpy.data.meshes.new("Pit")
+pit = bpy.data.objects.new("Pit", pit_data)
+bpy.context.scene.collection.objects.link(pit)
+bpy.context.view_layer.objects.active = pit
+pit.select_set(True)
+bpy.ops.mesh.primitive_plane_add(size=3, location=(3, 0, 0.01))
+pit = bpy.context.active_object
+pit.name = "Pit"
+pit.scale = (1.5, 1.0, 1)
+mat_dirt = bpy.data.materials.new("Dirt")
+mat_dirt.use_nodes = True
+b = mat_dirt.node_tree.nodes.get("Principled BSDF")
+b.inputs[0].default_value = (0.4, 0.25, 0.15, 1.0)
+pit.data.materials.append(mat_dirt)
+
+# Bench
+def make_bench(x, y, z, length=1.5, width=0.4, height=0.45):
+    # Seat
+    seat_data = bpy.data.meshes.new("BenchSeat")
+    seat = bpy.data.objects.new("BenchSeat", seat_data)
+    bpy.context.scene.collection.objects.link(seat)
+    bpy.context.view_layer.objects.active = seat
+    seat.select_set(True)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z + height))
+    seat = bpy.context.active_object
+    seat.name = "BenchSeat"
+    seat.scale = (length/2, width/2, 0.03)
+    mat_bench = bpy.data.materials.new("BenchWood")
+    mat_bench.use_nodes = True
+    b = mat_bench.node_tree.nodes.get("Principled BSDF")
+    b.inputs[0].default_value = (0.45, 0.3, 0.15, 1.0)
+    seat.data.materials.append(mat_bench)
+    
+    # Legs
+    for lx in [-length/3, length/3]:
+        for ly in [-width/3, width/3]:
+            leg_data = bpy.data.meshes.new("BenchLeg")
+            leg = bpy.data.objects.new("BenchLeg", leg_data)
+            bpy.context.scene.collection.objects.link(leg)
+            bpy.context.view_layer.objects.active = leg
+            leg.select_set(True)
+            bpy.ops.mesh.primitive_cylinder_add(radius=0.025, depth=height, location=(x+lx, y+ly, z + height/2))
+            leg = bpy.context.active_object
+            leg.name = "BenchLeg"
+            leg.data.materials.append(mat_bench)
+
+make_bench(-2, 1.5, 0)
+
+# Pilots on bench (simple humanoid figures)
+def make_pilot(x, y, z, color=(0.2, 0.2, 0.5)):
+    # Body
+    body_data = bpy.data.meshes.new("PilotBody")
+    body = bpy.data.objects.new("PilotBody", body_data)
+    bpy.context.scene.collection.objects.link(body)
+    bpy.context.view_layer.objects.active = body
+    body.select_set(True)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.12, depth=0.4, location=(x, y, z + 0.65))
+    body = bpy.context.active_object
+    body.name = "PilotBody"
+    mat_pilot = bpy.data.materials.new("PilotCloth")
+    mat_pilot.use_nodes = True
+    b = mat_pilot.node_tree.nodes.get("Principled BSDF")
+    b.inputs[0].default_value = (*color, 1.0)
+    body.data.materials.append(mat_pilot)
+    
+    # Head
+    head_data = bpy.data.meshes.new("PilotHead")
+    head = bpy.data.objects.new("PilotHead", head_data)
+    bpy.context.scene.collection.objects.link(head)
+    bpy.context.view_layer.objects.active = head
+    head.select_set(True)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.08, location=(x, y, z + 0.95))
+    head = bpy.context.active_object
+    head.name = "PilotHead"
+    mat_skin = bpy.data.materials.new("Skin")
+    mat_skin.use_nodes = True
+    b = mat_skin.node_tree.nodes.get("Principled BSDF")
+    b.inputs[0].default_value = (0.8, 0.6, 0.5, 1.0)
+    head.data.materials.append(mat_skin)
+    
+    # Legs
+    for lx in [-0.06, 0.06]:
+        leg_data = bpy.data.meshes.new("PilotLeg")
+        leg = bpy.data.objects.new("PilotLeg", leg_data)
+        bpy.context.scene.collection.objects.link(leg)
+        bpy.context.view_layer.objects.active = leg
+        leg.select_set(True)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.3, location=(x+lx, y, z + 0.15))
+        leg = bpy.context.active_object
+        leg.name = "PilotLeg"
+        leg.data.materials.append(mat_pilot)
+
+# Two pilots on bench
+make_pilot(-2.3, 1.5, 0.45, (0.2, 0.2, 0.5))
+make_pilot(-1.7, 1.5, 0.45, (0.5, 0.2, 0.2))
+
+# Tiny planes in the air
+def make_tiny_plane(x, y, z, scale=0.5, color=(0.8, 0.8, 0.9)):
+    # Fuselage
+    fus_data = bpy.data.meshes.new("PlaneFus")
+    fus = bpy.data.objects.new("PlaneFus", fus_data)
+    bpy.context.scene.collection.objects.link(fus)
+    bpy.context.view_layer.objects.active = fus
+    fus.select_set(True)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05*scale, depth=0.3*scale, location=(x, y, z))
+    fus = bpy.context.active_object
+    fus.name = "PlaneFus"
+    fus.rotation_euler = Euler((0, math.radians(90), 0))
+    mat_plane = bpy.data.materials.new("PlaneBody")
+    mat_plane.use_nodes = True
+    b = mat_plane.node_tree.nodes.get("Principled BSDF")
+    b.inputs[0].default_value = (*color, 1.0)
+    fus.data.materials.append(mat_plane)
+    
+    # Wings
+    wing_data = bpy.data.meshes.new("PlaneWing")
+    wing = bpy.data.objects.new("PlaneWing", wing_data)
+    bpy.context.scene.collection.objects.link(wing)
+    bpy.context.view_layer.objects.active = wing
+    wing.select_set(True)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+    wing = bpy.context.active_object
+    wing.name = "PlaneWing"
+    wing.scale = (0.15*scale, 0.02*scale, 0.04*scale)
+    wing.data.materials.append(mat_plane)
+    
+    # Tail
+    tail_data = bpy.data.meshes.new("PlaneTail")
+    tail = bpy.data.objects.new("PlaneTail", tail_data)
+    bpy.context.scene.collection.objects.link(tail)
+    bpy.context.view_layer.objects.active = tail
+    tail.select_set(True)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x - 0.15*scale, y, z))
+    tail = bpy.context.active_object
+    tail.name = "PlaneTail"
+    tail.scale = (0.03*scale, 0.06*scale, 0.02*scale)
+    tail.data.materials.append(mat_plane)
+
+# Several tiny planes at various positions
+make_tiny_plane(5, 3, 3, 0.6, (0.9, 0.2, 0.2))
+make_tiny_plane(8, -2, 4, 0.5, (0.2, 0.5, 0.9))
+make_tiny_plane(10, 5, 5, 0.7, (0.9, 0.8, 0.2))
+make_tiny_plane(3, -5, 2.5, 0.4, (0.9, 0.9, 0.9))
+make_tiny_plane(12, 1, 6, 0.8, (0.2, 0.8, 0.4))
+make_tiny_plane(-3, 8, 4, 0.5, (0.9, 0.4, 0.1))
+
+# Some extra detail: a few model planes on the ground near pit
+make_tiny_plane(3.5, 0.5, 0.05, 0.4, (0.9, 0.2, 0.2))
+make_tiny_plane(2.5, -0.3, 0.05, 0.35, (0.2, 0.5, 0.9))
+
+# Set render settings for evening atmosphere
+bpy.context.scene.render.resolution_x = 1920
+bpy.context.scene.render.resolution_y = 1080
+bpy.context.scene.render.film_transparent = False
+bpy.context.scene.view_settings.view_transform = 'Filmic'
+bpy.context.scene.view_settings.look = 'Medium High Contrast'
+```

@@ -1,0 +1,82 @@
+```python
+import bpy, bmesh, random, math
+from mathutils import Vector
+random.seed(1377)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def paint(r, g, b, glow=0):
+    m = bpy.data.materials.new("p"); m.use_nodes = True
+    n = next(x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED")
+    n.inputs["Base Color"].default_value = (r, g, b, 1); n.inputs["Roughness"].default_value = .85
+    if glow: n.inputs["Emission Color"].default_value = (r, g, b, 1); n.inputs["Emission Strength"].default_value = glow
+    return m
+black, deck, trim, steel, cloth = paint(.02, .02, .03), paint(.7, .7, .75), paint(.12, .12, .15), paint(.1, .1, .12), paint(.04, .04, .1)
+red, green, blue, black2 = paint(1, .05, .05, 14), paint(.05, 1, .1, 14), paint(.05, .3, 1, 14), paint(.01, .01, .012)
+def make(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("k"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("k", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def box(at, s, m, rz=0, top=1):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts:
+        k = top if v.co.z > 0 else 1
+        v.co = Vector((v.co.x * s[0] * k, v.co.y * s[1] * k, (v.co.z + .5) * s[2]))
+    return make(bm, m, at, (0, 0, rz))
+def tube(at, r, h, n, m, r2=None):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r if r2 is None else r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return make(bm, m, at)
+def bar(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return make(bm, m)
+def spot(at, col, w, kind="POINT"):
+    L = bpy.data.lights.new("s", kind); L.color = col; L.energy = w
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o); return o
+# floating stage slab
+bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+for v in bm.verts:
+    if v.co.z < 0: v.co.x *= .6; v.co.y *= .6; v.co.z -= random.uniform(0, .8)
+    v.co = Vector((v.co.x * 22, v.co.y * 19, v.co.z * 3 - 1.5))
+make(bm, black)
+box((0, 0, 0), (20, 17, .3), deck, top=.98)
+for i in range(8): box((-9 + i * 2.57, 0, .3), (.1, 16.5, .02), trim)
+# back wall with a dark screen, curtains, and a speaker stack on each side
+box((0, 8.4, .3), (19, .6, 7.5), black2)
+box((0, 8.0, 1.0), (12, .15, 5.0), cloth)
+for sx in (-1, 1):
+    box((sx * 9.0, 8.0, .3), (1.8, 1.2, 5.0), cloth, top=.9)
+    for k in range(3): tube((sx * 7.8, 7.2, .3 + k * 1.5), .75, .9, 6, black2, .7)
+    tube((sx * 7.8, 7.2, 4.8), .6, .9, 6, black2, .55)
+# lighting truss: two long beams, a cross beam, diagonal braces
+for y in (-1, 1):
+    bar((-9, y * 3.5, 9.0), (9, y * 3.5, 9.0), .22, steel)
+for x in range(-9, 10, 3): bar((x, -3.5, 9.0), (x, 3.5, 9.0), .12, steel)
+for sx in (-1, 1):
+    for sy in (-1, 1): bar((sx * 9.5, sy * 4.0, .3), (sx * 9.5, sy * 4.0, 9.0), .25, steel)
+# three spotlight cans on the cross beam, each with a glowing lens, yoke and cable
+for i, (x, m, c) in enumerate(((-5.5, red, (1, .1, .1)), (0, green, (.1, 1, .15)), (5.5, blue, (.1, .35, 1)))):
+    bar((x, 0, 9.0), (x, 0, 8.2), .1, steel)
+    tube((x, 0, 6.9), .75, 1.5, 8, steel, .6)
+    tube((x, 0, 6.8), .6, .12, 8, m)
+    for k in range(4): bar((x + .6 * math.cos(k * 1.57), .6 * math.sin(k * 1.57), 8.3), (x + .6 * math.cos(k * 1.57), .6 * math.sin(k * 1.57), 8.9), .08, steel)
+    spot((x, 0, 6.5), c, 2200)
+# the pools of light overlap on the floor: three coloured discs with a white core where they meet
+for x, m in ((-3.5, red), (3.5, green), (0, blue)): tube((x, 0, .32), 3.6, .03, 12, m)
+tube((0, 0, .34), 1.8, .03, 12, paint(.9, .9, 1, 5))
+# a drum kit and a mic stand on the lit floor
+for i, (dx, dz, r) in enumerate(((0, .8, .55), (-1.4, .6, .45), (1.4, .6, .45), (0, 1.7, .6))):
+    tube((-1 + dx, -2.5 + dz * .3, .3 + dz), r, .5, 8, (red, green, blue, steel)[i], r * .9)
+tube((-5.5, -3.5, .3), .08, 2.4, 5, steel); tube((-5.5, -3.5, 2.7), .22, .3, 6, black2, .15)
+for i in range(5): box((-8 + i * 1.2, 5.0, .3), (.9, .9, .5), steel, rz=.2 * i)
+# cold dim key from the left, violet rim from behind
+for col, w, p in (((.5, .6, 1), 3.5, (-30, -14, 14)), ((.7, .3, 1), 2.2, (22, 24, 12))):
+    o = spot(p, col, w, "SUN"); o.rotation_euler = (Vector((0, 0, 2)) - o.location).to_track_quat('-Z', 'Y').to_euler()
+w = bpy.data.worlds.new("w"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.008, .008, .02, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 3.5)); co.location = t + Vector((6, -62, 36))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co
+```

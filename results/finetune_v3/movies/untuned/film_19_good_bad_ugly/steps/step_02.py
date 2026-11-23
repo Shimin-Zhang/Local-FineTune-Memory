@@ -1,0 +1,292 @@
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene already has 245 objects from the previous run.
+# The error was at the grass tufts section (primitive_cone_add uses 'radius1' not 'radius').
+# Let's continue from where it left off and add more detail.
+
+# First, let's check what we have and clean up if needed
+# The scene has the stone circle, headstones, rocks, horse, and some grass attempts failed.
+
+# Let's add the grass tufts correctly now
+grass_mat = bpy.data.materials.get("Grass")
+if grass_mat is None:
+    grass_mat = bpy.data.materials.new(name="Grass")
+    grass_mat.use_nodes = True
+    bsdf = grass_mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (0.3, 0.4, 0.2, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.9
+
+# Add dry grass tufts using cones (correct parameter: radius1)
+for i in range(150):
+    x = random.uniform(-30, 30)
+    y = random.uniform(-30, 30)
+    if math.sqrt(x*x + y*y) < 9:
+        continue
+    
+    bpy.ops.mesh.primitive_cone_add(radius1=0.05, radius2=0.01, depth=0.2, 
+        location=(x, y, 0.1))
+    grass = bpy.context.active_object
+    grass.scale = (1, 1, random.uniform(0.5, 1.5))
+    grass.data.materials.append(grass_mat)
+
+# Now let's add more detail to the scene
+
+# Add a proper sky with gradient
+world = bpy.data.worlds.get("World")
+if world is None:
+    world = bpy.data.worlds.new("World")
+    bpy.context.scene.world = world
+world.use_nodes = True
+nodes = world.node_tree.nodes
+links = world.node_tree.links
+
+# Clear existing nodes
+for node in nodes:
+    nodes.remove(node)
+
+# Create sky texture
+sky_node = nodes.new(type='ShaderNodeTexSky')
+sky_node.sky_type = 'NISHITA'
+sky_node.sun_elevation = math.radians(45)
+sky_node.sun_rotation = math.radians(180)
+sky_node.sun_intensity = 1.0
+sky_node.altitude = 1000
+sky_node.air_density = 2.0
+sky_node.dust_density = 4.0  # Dusty atmosphere
+
+bg_node = nodes.new(type='ShaderNodeBackground')
+bg_node.inputs[1].default_value = 0.5  # Strength
+
+output_node = nodes.new(type='ShaderNodeOutputWorld')
+
+links.new(sky_node.outputs[0], bg_node.inputs[0])
+links.new(bg_node.outputs[0], output_node.inputs[0])
+
+# Add a sun light for harsh midday
+if not any(obj.type == 'LIGHT' for obj in bpy.data.objects):
+    bpy.ops.object.light_add(type='SUN', location=(0, 0, 50))
+    sun = bpy.context.active_object
+    sun.data.energy = 5
+    sun.data.angle = math.radians(2)
+    sun.rotation_euler = (math.radians(30), math.radians(20), 0)
+
+# Add a camera
+if not any(obj.type == 'CAMERA' for obj in bpy.data.objects):
+    bpy.ops.object.camera_add(location=(0, -15, 3))
+    camera = bpy.context.active_object
+    camera.data.lens = 50
+    direction = Vector((0, 0, 1)) - camera.location
+    rot_quat = direction.to_track_quat('Z', 'Y')
+    camera.rotation_euler = rot_quat.to_euler()
+    bpy.context.scene.camera = camera
+
+# Add more headstones in the distance
+cemetery_stone_mat = bpy.data.materials.get("CemeteryStone")
+cross_mat = bpy.data.materials.get("Cross")
+if cross_mat is None:
+    cross_mat = bpy.data.materials.new(name="Cross")
+    cross_mat.use_nodes = True
+    bsdf = cross_mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (0.5, 0.48, 0.45, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.85
+
+for i in range(50):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(15, 50)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    if dist < 12:
+        continue
+    
+    height = random.uniform(0.5, 1.2)
+    width = random.uniform(0.3, 0.6)
+    
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, height/2))
+    headstone = bpy.context.active_object
+    headstone.scale = (width/2, 0.1, height/2)
+    headstone.rotation_euler = (0, 0, random.uniform(0, 2*math.pi))
+    headstone.data.materials.append(cemetery_stone_mat)
+    
+    # Add cross to some
+    if random.random() < 0.4:
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height + 0.2))
+        vbar = bpy.context.active_object
+        vbar.scale = (0.03, 0.03, 0.2)
+        vbar.data.materials.append(cross_mat)
+        
+        bpy.ops.mesh.primitive_cube_add(location=(x, y, height + 0.25))
+        hbar = bpy.context.active_object
+        hbar.scale = (0.1, 0.03, 0.03)
+        hbar.data.materials.append(cross_mat)
+
+# Add some broken/tilted headstones
+for i in range(20):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(12, 35)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    if dist < 10:
+        continue
+    
+    height = random.uniform(0.4, 0.8)
+    width = random.uniform(0.25, 0.4)
+    
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, height/2))
+    headstone = bpy.context.active_object
+    headstone.scale = (width/2, 0.08, height/2)
+    # Tilt it
+    headstone.rotation_euler = (random.uniform(-0.3, 0.3), random.uniform(-0.3, 0.3), random.uniform(0, 2*math.pi))
+    headstone.data.materials.append(cemetery_stone_mat)
+
+# Add a dirt path leading to the stone circle
+dirt_mat = bpy.data.materials.get("Dirt")
+if dirt_mat is None:
+    dirt_mat = bpy.data.materials.new(name="Dirt")
+    dirt_mat.use_nodes = True
+    bsdf = dirt_mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (0.35, 0.3, 0.2, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.95
+
+# Path from south
+for i in range(20):
+    y = -10 - i * 1.5
+    x = random.uniform(-0.5, 0.5)
+    bpy.ops.mesh.primitive_plane_add(size=2, location=(x, y, 0.01))
+    path_piece = bpy.context.active_object
+    path_piece.scale = (1, 1.5, 1)
+    path_piece.data.materials.append(dirt_mat)
+
+# Add more rocks and debris
+stone_mat = bpy.data.materials.get("Stone")
+if stone_mat is None:
+    stone_mat = bpy.data.materials.new(name="Stone")
+    stone_mat.use_nodes = True
+    bsdf = stone_mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (0.5, 0.48, 0.45, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.9
+
+for i in range(40):
+    x = random.uniform(-25, 25)
+    y = random.uniform(-25, 25)
+    if math.sqrt(x*x + y*y) < 9:
+        continue
+    
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=random.uniform(0.1, 0.4), 
+        location=(x, y, 0.1))
+    rock = bpy.context.active_object
+    rock.scale = (random.uniform(0.8, 1.5), random.uniform(0.8, 1.5), random.uniform(0.5, 1.0))
+    rock.data.materials.append(stone_mat)
+
+# Add a second horse (maybe the Good's horse)
+horse_mat = bpy.data.materials.get("Horse")
+if horse_mat is None:
+    horse_mat = bpy.data.materials.new(name="Horse")
+    horse_mat.use_nodes = True
+    bsdf = horse_mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (0.4, 0.3, 0.2, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.7
+
+# Second horse at a different location
+horse2_x, horse2_y = -12, 18
+bpy.ops.mesh.primitive_cylinder_add(radius=0.4, depth=1.2, location=(horse2_x, horse2_y, 0.8))
+horse_body2 = bpy.context.active_object
+horse_body2.rotation_euler = (0, math.radians(90), 0)
+horse_body2.data.materials.append(horse_mat)
+
+bpy.ops.mesh.primitive_cube_add(location=(horse2_x + 0.7, horse2_y, 1.1))
+horse_head2 = bpy.context.active_object
+horse_head2.scale = (0.2, 0.15, 0.2)
+horse_head2.data.materials.append(horse_mat)
+
+for lx, ly in [(horse2_x - 0.3, horse2_y - 0.2), (horse2_x - 0.3, horse2_y + 0.2),
+               (horse2_x + 0.3, horse2_y - 0.2), (horse2_x + 0.3, horse2_y + 0.2)]:
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.6, location=(lx, ly, 0.3))
+    hleg = bpy.context.active_object
+    hleg.data.materials.append(horse_mat)
+
+# Add a wagon in the distance (the coffin wagon)
+wood_mat = bpy.data.materials.get("Wood")
+if wood_mat is None:
+    wood_mat = bpy.data.materials.new(name="Wood")
+    wood_mat.use_nodes = True
+    bsdf = wood_mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (0.3, 0.2, 0.1, 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.8
+
+wagon_x, wagon_y = 25, -20
+# Wagon bed
+bpy.ops.mesh.primitive_cube_add(location=(wagon_x, wagon_y, 0.8))
+wagon_bed = bpy.context.active_object
+wagon_bed.scale = (1.5, 1.0, 0.3)
+wagon_bed.data.materials.append(wood_mat)
+
+# Wagon wheels
+for wx, wy in [(wagon_x - 1.2, wagon_y - 0.8), (wagon_x - 1.2, wagon_y + 0.8),
+               (wagon_x + 1.2, wagon_y - 0.8), (wagon_x + 1.2, wagon_y + 0.8)]:
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.4, minor_radius=0.05, 
+        location=(wx, wy, 0.4))
+    wheel = bpy.context.active_object
+    wheel.rotation_euler = (math.radians(90), 0, 0)
+    wheel.data.materials.append(wood_mat)
+
+# Coffin on the wagon
+bpy.ops.mesh.primitive_cube_add(location=(wagon_x, wagon_y, 1.2))
+coffin = bpy.context.active_object
+coffin.scale = (0.8, 0.3, 0.15)
+coffin.data.materials.append(wood_mat)
+
+# Add some distant trees (dead trees for the cemetery)
+for i in range(15):
+    angle = random.uniform(0, 2 * math.pi)
+    dist = random.uniform(40, 60)
+    x = dist * math.cos(angle)
+    y = dist * math.sin(angle)
+    
+    # Trunk
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.15, depth=3, location=(x, y, 1.5))
+    trunk = bpy.context.active_object
+    trunk.data.materials.append(wood_mat)
+    
+    # Branches
+    for j in range(3):
+        branch_angle = random.uniform(0, 2 * math.pi)
+        branch_dist = random.uniform(0.5, 1.5)
+        bx = x + branch_dist * math.cos(branch_angle)
+        by = y + branch_dist * math.sin(branch_angle)
+        bz = 2 + random.uniform(0, 1)
+        
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=1, location=(bx, by, bz))
+        branch = bpy.context.active_object
+        branch.rotation_euler = (random.uniform(-0.5, 0.5), random.uniform(-0.5, 0.5), 0)
+        branch.data.materials.append(wood_mat)
+
+# Set up render settings
+scene = bpy.context.scene
+scene.render.engine = 'CYCLES'
+scene.cycles.samples = 256
+scene.cycles.use_denoising = True
+scene.render.resolution_x = 1920
+scene.render.resolution_y = 1080
+scene.render.resolution_percentage = 100
+scene.view_settings.look = 'Medium High Contrast'
+scene.view_settings.exposure = 0.5
+
+# Make sure camera is set
+if not scene.camera:
+    cams = [obj for obj in bpy.data.objects if obj.type == 'CAMERA']
+    if cams:
+        scene.camera = cams[0]
+
+print("Scene refined with additional details")
+print("Total objects:", len(bpy.data.objects))

@@ -1,0 +1,13 @@
+{
+ "process": "exit 0",
+ "seconds": 6.6,
+ "error": "NameError: name 'cm' is not defined",
+ "error_line": "cor.data.materials.append(bpy.data.materials.get(\"StoneDark\") or cm(\"StoneDark\",(0.15,0.14,0.12,1),0,0.9))",
+ "printed": null,
+ "state_saved": true,
+ "n_objects": 388,
+ "n_lights": 18,
+ "n_materials": 27,
+ "own_camera": true,
+ "render_error": null
+}

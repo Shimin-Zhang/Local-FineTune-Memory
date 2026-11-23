@@ -1,0 +1,72 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(1516)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+mats = {}
+def colour(name, rgb, glow=0, rough=.8):
+    m = bpy.data.materials.new(name); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = rough
+    if glow:
+        p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = glow
+    mats[name] = m
+def build(bm, name, at=(0, 0, 0), turn=(0, 0, 0)):
+    me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new(name, me); o.location = at; o.rotation_euler = turn
+    sc.collection.objects.link(o); o.data.materials.append(mats[name]); return o
+def orb(name, at, r, flat=1, spin=(0, 0, 0), sub=2):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
+    for v in bm.verts: v.co.z *= flat
+    return build(bm, name, at, spin)
+def ring(name, at, r, w, h):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=r - w / 2, radius2=r + w / 2, depth=h)
+    return build(bm, name, at)
+def glimmer(at, rgb, watts):
+    L = bpy.data.lights.new("g", "POINT"); L.color = rgb; L.energy = watts
+    o = bpy.data.objects.new("g", L); o.location = at; sc.collection.objects.link(o)
+def sunbeam(at, rgb, watts, aim=(0, 0, 0)):
+    L = bpy.data.lights.new("s", "SUN"); L.color = rgb; L.energy = watts
+    o = bpy.data.objects.new("s", L); o.location = at; sc.collection.objects.link(o)
+    o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+colour("dust", (.03, .025, .045)); colour("sun", (1, .6, .1), glow=6); colour("mercury", (.5, .45, .42))
+colour("venus", (.9, .65, .25)); colour("earth", (.2, .45, .9)); colour("mars", (.9, .3, .1)); colour("orbit", (.25, .3, .5), glow=.4)
+colour("rock", (.2, .18, .22)); colour("aster", (.35, .3, .3)); colour("ring", (.55, .45, .3)); colour("crystal", (.3, .9, 1), glow=4)
+# round floating base of dark dust, rough underneath
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=6, radius2=16, depth=3)
+for v in bm.verts:
+    if v.co.z < 0: v.co += Vector((random.uniform(-1.5, 1.5), random.uniform(-1.5, 1.5), random.uniform(-1.2, .3)))
+    else: v.co.z += random.uniform(-.05, .05)
+    v.co.z -= 1.5
+build(bm, "dust")
+# the sun at the centre, a hot glowing ball with a halo light
+orb("sun", (0, 0, 0), 2.6, 1, sub=3); glimmer((0, 0, 2), (1, .6, .15), 2500)
+# four orbit rings, thin and faintly glowing
+for r in (5.2, 7.6, 10.0, 12.4): ring("orbit", (0, 0, 0), r, .08, .05)
+# four planets on their orbits, each a different colour, with a ring on the outer one
+planets = (("mercury", 5.2, 1.0, .6, .45), ("venus", 7.6, 2.1, .8, .5), ("earth", 10.0, 3.4, .9, .5), ("mars", 12.4, 5.0, .7, .45))
+for name, r, ang, size, flat in planets:
+    x, y = r * math.cos(ang), r * math.sin(ang)
+    orb(name, (x, y, 0), size, flat, spin=(.3, 0, 0), sub=2)
+    if name == "mars":
+        ring("ring", (x, y, 0), size * 1.9, .5, .08).rotation_euler = (.35, 0, 0)
+    glimmer((x * .9, y * .9, size + .6), (.9, .85, .7), 60)
+# asteroids drifting between the orbits, and a few crystals
+for i in range(14):
+    a = random.uniform(0, 6.28); r = random.uniform(8.6, 9.4)
+    orb("aster", (r * math.cos(a), r * math.sin(a), random.uniform(-.2, .2)), random.uniform(.2, .4), .8, spin=(random.random(), 0, 0), sub=1)
+for i in range(6):
+    a = i * 1.05 + .3; r = 14.2
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=5, radius1=.5, radius2=.05, depth=1.6)
+    build(bm, "crystal", (r * math.cos(a), r * math.sin(a), .8), (random.uniform(-.3, .3), random.uniform(-.3, .3), 0))
+for i in range(5):
+    a = i * 1.4 + 2; r = 13.5 + (i % 2)
+    orb("rock", (r * math.cos(a), r * math.sin(a), .3), random.uniform(.6, 1.1), .7, spin=(0, 0, a), sub=1)
+# deep space: cold blue key from the left, faint violet rim from behind
+sunbeam((-30, -14, 10), (.5, .65, 1), 3.2); sunbeam((22, 26, 9), (.7, .35, 1), 1.5)
+w = bpy.data.worlds.new("space"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.004, .003, .01, 1)
+cam = bpy.data.cameras.new("cam"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("cam", cam); sc.collection.objects.link(co)
+t = Vector((0, 0, 0)); co.location = t + Vector((0, -64, 38))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

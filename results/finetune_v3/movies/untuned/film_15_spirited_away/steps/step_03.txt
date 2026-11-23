@@ -1,0 +1,151 @@
+```python
+import bpy
+import math
+import random
+from mathutils import Vector
+
+# The scene is too dark and the camera may not be framing the bathhouse.
+# Let's fix the camera and boost lighting significantly.
+
+# Reposition camera closer and angled properly
+camera = bpy.data.objects.get("MainCamera")
+if camera:
+    camera.location = (0, 90, 12)
+    camera.rotation_euler = (math.radians(85), 0, 0)
+    camera.data.lens = 35
+
+# Boost all emission strengths
+for obj in bpy.data.objects:
+    if obj.type == 'MESH':
+        for mat in obj.data.materials:
+            if mat and mat.use_nodes:
+                bsdf = mat.node_tree.nodes.get("Principled BSDF")
+                if bsdf:
+                    # Boost emission
+                    if bsdf.inputs["Emission Strength"].default_value > 0:
+                        bsdf.inputs["Emission Strength"].default_value *= 2.0
+
+# Boost lights
+sun = bpy.data.objects.get("Moonlight")
+if sun:
+    sun.data.energy = 2.0
+
+warm_light = bpy.data.objects.get("BathhouseWarmLight")
+if warm_light:
+    warm_light.data.energy = 2000
+    warm_light.location = (0, 25, 15)
+
+ambient = bpy.data.objects.get("AmbientLight")
+if ambient:
+    ambient.data.energy = 500
+
+# Add a strong key light to illuminate the bathhouse
+bpy.ops.object.light_add(type='POINT', location=(0, 30, 20))
+key_light = bpy.context.active_object
+key_light.name = "KeyLight"
+key_light.data.energy = 3000
+key_light.data.color = (1.0, 0.7, 0.4)
+key_light.data.shadow_soft_size = 10
+
+# Add another fill light
+bpy.ops.object.light_add(type='POINT', location=(30, 40, 10))
+fill_light = bpy.context.active_object
+fill_light.name = "FillLight"
+fill_light.data.energy = 1000
+fill_light.data.color = (0.8, 0.6, 0.4)
+fill_light.data.shadow_soft_size = 8
+
+# Add rim light from behind
+bpy.ops.object.light_add(type='POINT', location=(-30, -10, 15))
+rim_light = bpy.context.active_object
+rim_light.name = "RimLight"
+rim_light.data.energy = 800
+rim_light.data.color = (0.5, 0.6, 1.0)
+rim_light.data.shadow_soft_size = 5
+
+# Make sure the bathhouse is visible - check positions
+bathhouse = bpy.data.objects.get("BathhouseMain")
+if bathhouse:
+    print(f"Bathhouse at: {bathhouse.location}")
+
+bridge = bpy.data.objects.get("BridgeDeck")
+if bridge:
+    print(f"Bridge at: {bridge.location}")
+
+# Add more steam that's more visible
+for i in range(10):
+    x = random.uniform(-10, 10)
+    y = random.uniform(15, 25)
+    z = random.uniform(20, 40)
+    size = random.uniform(3, 5)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=size, location=(x, y, z))
+    steam = bpy.context.active_object
+    steam.name = f"SteamVisible_{i}"
+    mat_steam = bpy.data.materials.new(f"SteamVisibleMat_{i}")
+    mat_steam.use_nodes = True
+    mat_steam.blend_method = 'BLEND'
+    bsdf = mat_steam.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 0.95, 1.0)
+    bsdf.inputs["Alpha"].default_value = 0.2
+    bsdf.inputs["Roughness"].default_value = 1.0
+    steam.data.materials.append(mat_steam)
+
+# Add a glow effect around lanterns using area lights
+lantern_positions = []
+for obj in bpy.data.objects:
+    if "Lantern" in obj.name and obj.type == 'MESH':
+        lantern_positions.append(obj.location.copy())
+
+for i, pos in enumerate(lantern_positions[:10]):
+    bpy.ops.object.light_add(type='POINT', location=pos)
+    glow = bpy.context.active_object
+    glow.name = f"LanternGlow_{i}"
+    glow.data.energy = 50
+    glow.data.color = (1.0, 0.5, 0.1)
+    glow.data.shadow_soft_size = 2
+    glow.data.distance = 15
+
+# Add water ripples using displaced plane
+bpy.ops.mesh.primitive_plane_add(size=300, location=(0, 40, -1.8), segments=50)
+water_ripples = bpy.context.active_object
+water_ripples.name = "WaterRipples"
+# Add displacement
+mod = water_ripples.modifiers.new("Displace", 'DISPLACE')
+tex = bpy.data.textures.new("RippleTex", 'CLOUDS')
+tex.noise_scale = 0.5
+mod.texture = tex
+mod.strength = 0.3
+mat_wr = bpy.data.materials.new("WaterRippleMat")
+mat_wr.use_nodes = True
+mat_wr.blend_method = 'BLEND'
+bsdf = mat_wr.node_tree.nodes.get("Principled BSDF")
+bsdf.inputs["Base Color"].default_value = (0.03, 0.08, 0.18, 1.0)
+bsdf.inputs["Alpha"].default_value = 0.8
+bsdf.inputs["Roughness"].default_value = 0.05
+bsdf.inputs["Metallic"].default_value = 0.6
+water_ripples.data.materials.append(mat_wr)
+
+# Add stars in the sky
+for i in range(50):
+    x = random.uniform(-200, 200)
+    y = random.uniform(-300, -100)
+    z = random.uniform(50, 200)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.5, location=(x, y, z))
+    star = bpy.context.active_object
+    star.name = f"Star_{i}"
+    mat_star = bpy.data.materials.new(f"StarMat_{i}")
+    mat_star.use_nodes = True
+    bsdf = mat_star.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs["Base Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs["Emission Color"].default_value = (1.0, 1.0, 1.0, 1.0)
+    bsdf.inputs["Emission Strength"].default_value = 10.0
+    star.data.materials.append(mat_star)
+
+# Add a large moon glow
+bpy.ops.object.light_add(type='SUN', location=(100, -200, 100))
+moon_glow = bpy.context.active_object
+moon_glow.name = "MoonGlow"
+moon_glow.data.energy = 1.0
+moon_glow.data.color = (0.8, 0.85, 1.0)
+moon_glow.rotation_euler = (math.radians(30), math.radians(10), 0)
+```

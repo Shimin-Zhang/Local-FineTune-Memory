@@ -1,0 +1,89 @@
+import bpy, bmesh, math, random
+from mathutils import Vector
+random.seed(960)
+for obj in list(bpy.data.objects): bpy.data.objects.remove(obj, do_unlink=True)
+sc = bpy.context.scene
+def col(rgb, em=0):
+    m = bpy.data.materials.new("c"); m.use_nodes = True
+    p = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    p.inputs["Base Color"].default_value = (*rgb, 1); p.inputs["Roughness"].default_value = .9
+    if em: p.inputs["Emission Color"].default_value = (*rgb, 1); p.inputs["Emission Strength"].default_value = em
+    return m
+moss, gravel, stone, stone2 = col((.1, .16, .08)), col((.4, .35, .28)), col((.42, .42, .4)), col((.3, .3, .3))
+oak, bark, pine, leaf = col((.28, .17, .09)), col((.14, .09, .06)), col((.05, .16, .1)), col((.2, .3, .1))
+gold, red, fern = col((1, .6, .2), 3), col((.5, .08, .06)), col((.1, .3, .12))
+def solid(bm, m, at=(0, 0, 0), rot=(0, 0, 0)):
+    me = bpy.data.meshes.new("s"); bm.to_mesh(me); bm.free()
+    o = bpy.data.objects.new("s", me); o.location, o.rotation_euler = at, rot
+    sc.collection.objects.link(o); o.data.materials.append(m); return o
+def block(at, s, m, rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = Vector((v.co.x * s[0], v.co.y * s[1], (v.co.z + .5) * s[2]))
+    return solid(bm, m, at, rot)
+def cone(at, r, h, n, m, r2=0):
+    bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=n, radius1=r, radius2=r2, depth=h)
+    for v in bm.verts: v.co.z += h / 2
+    return solid(bm, m, at)
+def egg(at, r, m, sq=(1, 1, 1), rot=(0, 0, 0)):
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=1, radius=r)
+    for v in bm.verts: v.co = Vector((v.co.x * sq[0], v.co.y * sq[1], v.co.z * sq[2]))
+    return solid(bm, m, at, rot)
+def limb(a, b, t, m):
+    a, b = Vector(a), Vector(b); d = b - a; q = d.to_track_quat('Z', 'Y')
+    bm = bmesh.new(); bmesh.ops.create_cube(bm, size=1)
+    for v in bm.verts: v.co = q @ Vector((v.co.x * t, v.co.y * t, (v.co.z + .5) * d.length)) + a
+    return solid(bm, m)
+def lamp(kind, c, w, at, aim=None):
+    L = bpy.data.lights.new("l", kind); L.color, L.energy = c, w
+    o = bpy.data.objects.new("l", L); o.location = at; sc.collection.objects.link(o)
+    if aim: o.rotation_euler = (Vector(aim) - o.location).to_track_quat('-Z', 'Y').to_euler()
+bm = bmesh.new(); bmesh.ops.create_cone(bm, cap_ends=True, segments=10, radius1=7, radius2=13, depth=3)
+for v in bm.verts:
+    v.co.z -= 1.5
+    if v.co.z < -1: v.co += Vector((random.uniform(-1, 1), random.uniform(-1, 1), random.uniform(-1.5, 0)))
+solid(bm, moss)
+# gravel path winding from the front to the plinth
+for i in range(11):
+    t = i / 10; x = -6 + 6 * math.sin(t * 3.2) * (1 - t * .3); y = -10 + t * 8.5
+    block((x, y, 0), (2.2 - t * .5, 1.5, .12), gravel, (0, 0, math.sin(t * 3.2) * .5))
+# the high pillar: stepped plinth, tapered shaft, carved collar
+for k, (r, h) in enumerate(((3.4, .5), (2.9, .5), (2.4, .5))): block((0, 1, k * .5), (r * 2, r * 2, .5), stone if k % 2 else stone2)
+cone((0, 1, 1.5), 1.5, 5.2, 8, stone2, 1.15)
+block((0, 1, 6.7), (3.0, 3.0, .4), stone); block((0, 1, 7.1), (2.4, 2.4, .3), stone2)
+# the wolf, larger than life, lying with head raised
+W = Vector((0, 1, 7.4))
+def w_(x, y, z): return W + Vector((x, y, z))
+egg(w_(0, .4, .6), 1.0, stone, (1.5, .85, .75)); egg(w_(-1.2, .4, .55), .75, stone, (1, .9, .8))
+egg(w_(-2.0, .4, .9), .55, stone, (1, .9, .9)); egg(w_(-2.35, .4, .75), .38, stone, (1.3, .8, .7))
+for s in (-1, 1): egg(w_(-1.8, .4 + s * .35, 1.4), .16, stone, (1, 1, 1.4)); egg(w_(-2.2, .4 + s * .12, .95), .1, stone2)
+for s in (-1, 1):
+    for dx in (-.5, .5): limb(w_(dx, .4 + s * .5, .3), w_(dx, .4 + s * .5, -.15), .2, stone2)
+    limb(w_(-1.5, .4 + s * .6, .2), w_(-1.8, .4 + s * .6, -.15), .18, stone2)
+# two cubs suckling at the wolf's chest, one each side
+for s, a in ((-1, .5), (1, 3.6)):
+    egg(w_(-.9, .4 + math.cos(a) * .55, .35), .38, stone, (1.2, .8, .8), (0, 0, a)); egg(w_(-1.25, .4 + math.cos(a) * .55, .45), .22, stone)
+    limb(w_(-.7, .4 + math.cos(a) * .5, .1), w_(-.5, .4 + math.cos(a) * .5, -.1), .08, stone2)
+# bench, wooden sign, lantern at the path head
+block((-7.5, -3, .6), (2.6, .8, .15), oak); block((-7.5, -3.3, 1.2), (2.6, .12, .8), oak)
+for s in (-1, 1): block((-7.5 + s * 1.1, -3, 0), (.2, .7, .6), bark)
+for s in (-1, 1): block((5 + s * .9, -5, 0), (.25, .25, 3.2), bark)
+block((5, -5, 2.4), (2.6, .15, 1.5), oak); block((5, -5.1, 2.9), (1.8, .1, .25), red); block((5, -5.1, 2.5), (1.4, .1, .2), red)
+block((5, -5.1, 2.1), (1.0, .1, .15), red)
+block((-2.5, -6.2, 0), (.2, .2, 1.6), bark); block((-2.5, -6.2, 1.6), (.5, .5, .6), gold); lamp("POINT", (1, .6, .2), 500, (-2.5, -6.2, 2.0))
+# forest edge behind and to the right: pines, oaks, ferns
+for x, y, h in ((-10, 6, 8), (-6, 9.5, 9), (-1, 10.5, 7.5), (4, 10, 9), (9, 8, 8), (11, 3, 7), (-11, 1, 7), (10, -2, 6)):
+    cone((x, y, 0), .35, 1.5, 5, bark, .3)
+    for k in range(3): cone((x, y, 1.2 + k * h * .22), 2.2 - k * .6, h * .38, 7, pine)
+for x, y in ((-9, 4), (7, 4), (-8, -1)):
+    cone((x, y, 0), .4, 1.6, 5, bark, .3); egg((x, y, 3), 2.0, leaf, (1, 1, .8))
+for i in range(18):
+    a = random.uniform(0, 6.28); r = random.uniform(4, 11.5); x, y = math.cos(a) * r * 1.1, math.sin(a) * r * .8 + 1
+    if abs(x) < 3.5 and abs(y - 1) < 3.5 or y < -6 and abs(x) < 4: continue
+    cone((x, y, 0), .35, .6, 4, fern, .05)
+lamp("SUN", (1, .75, .4), 5, (-24, -14, 8), (0, 1, 4)); lamp("SUN", (.4, .6, 1), 2, (20, 18, 10), (0, 1, 4))
+w = bpy.data.worlds.new("morning"); sc.world = w; w.use_nodes = True
+next(n for n in w.node_tree.nodes if n.type == "BACKGROUND").inputs["Color"].default_value = (.02, .03, .045, 1)
+cam = bpy.data.cameras.new("c"); cam.lens = 80; cam.clip_end = 500
+co = bpy.data.objects.new("c", cam); sc.collection.objects.link(co)
+t = Vector((0, 1, 5)); co.location = t + Vector((10, -56, 34))
+co.rotation_euler = (t - co.location).to_track_quat('-Z', 'Y').to_euler(); sc.camera = co

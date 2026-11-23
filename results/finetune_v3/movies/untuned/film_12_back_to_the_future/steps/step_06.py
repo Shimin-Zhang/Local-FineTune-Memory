@@ -1,0 +1,172 @@
+import bpy, math, random
+from mathutils import Vector
+
+# Reposition camera to a wide cinematic shot
+cam = bpy.data.objects.get("Camera")
+if cam:
+    cam.location = (50, 50, 25)
+    cam.rotation_euler = (math.radians(55), 0, math.radians(-135))
+    cam.data.lens = 28
+
+# Boost all lights for visibility
+for lname in ["LightningLight", "LightningLight2"]:
+    l = bpy.data.objects.get(lname)
+    if l:
+        l.data.energy = 5000
+        l.data.color = (0.5, 0.6, 1.0)
+
+fl = bpy.data.objects.get("FireLight")
+if fl:
+    fl.data.energy = 800
+    fl.data.color = (1.0, 0.35, 0.05)
+
+hl = bpy.data.objects.get("Headlight")
+if hl:
+    hl.data.energy = 200
+    hl.data.color = (1.0, 1.0, 0.7)
+
+sun = bpy.data.objects.get("Sun")
+if sun:
+    sun.data.energy = 1.0
+
+# Add a big ambient fill light so the scene isn't pitch black
+bpy.ops.object.light_add(type='AREA', location=(0, 0, 60))
+amb = bpy.context.object; amb.name = "AmbientFill"
+amb.data.energy = 2000
+amb.data.size = 80
+amb.data.color = (0.3, 0.35, 0.5)
+amb.rotation_euler = (0, 0, 0)
+
+# Add a second fill from the opposite side
+bpy.ops.object.light_add(type='AREA', location=(-30, -30, 40))
+amb2 = bpy.context.object; amb2.name = "AmbientFill2"
+amb2.data.energy = 1000
+amb2.data.size = 50
+amb2.data.color = (0.2, 0.25, 0.4)
+
+# Add a warm rim light from behind the DeLorean
+bpy.ops.object.light_add(type='SPOT', location=(30, 30, 10))
+rim = bpy.context.object; rim.name = "RimLight"
+rim.data.energy = 3000
+rim.data.color = (1.0, 0.6, 0.3)
+rim.data.spot_size = math.radians(60)
+# Point it at the DeLorean
+dl = Vector((15, 15, 0.5))
+direction = dl - rim.location
+rot_quat = direction.to_track_quat('Z', 'Y')
+rim.rotation_euler = rot_quat.to_euler()
+
+# Add floodlights on the tower base (like the movie)
+m_flood = bpy.data.materials.get("Floodlight")
+if not m_flood:
+    m_flood = bpy.data.materials.new("Floodlight")
+    m_flood.use_nodes = True
+    fb = m_flood.node_tree.nodes['Principled BSDF']
+    fb.inputs['Base Color'].default_value = (1.0, 0.9, 0.7, 1)
+    fb.inputs['Emission Strength'].default_value = 8.0
+    fb.inputs['Emission Color'].default_value = (1.0, 0.9, 0.7, 1)
+
+for angle in [0, math.pi/2, math.pi, 3*math.pi/2]:
+    x = 9 * math.cos(angle)
+    y = 9 * math.sin(angle)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, 2))
+    fl_box = bpy.context.object; fl_box.name = f"FloodBox{angle:.1f}"
+    fl_box.scale = (0.5, 0.5, 0.5)
+    fl_box.data.materials.append(m_flood)
+    # Add a point light for each floodlight
+    bpy.ops.object.light_add(type='POINT', location=(x*1.2, y*1.2, 2))
+    pl = bpy.context.object; pl.name = f"FloodLight{angle:.1f}"
+    pl.data.energy = 500
+    pl.data.color = (1.0, 0.9, 0.7)
+    pl.data.shadow_soft_size = 1.0
+
+# Add more dramatic clouds closer to the tower
+m_cloud = bpy.data.materials.get("Cloud")
+for i in range(15):
+    x = random.uniform(-30, 30)
+    y = random.uniform(-30, 30)
+    z = random.uniform(45, 60)
+    sz = random.uniform(4, 10)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=sz, location=(x, y, z))
+    cl = bpy.context.object; cl.name = f"CloudX{i}"
+    cl.scale = (1.5, 1.0, 0.4)
+    if m_cloud: cl.data.materials.append(m_cloud)
+
+# Add a large cloud directly above the tower
+bpy.ops.mesh.primitive_uv_sphere_add(radius=12, location=(0, 0, 55))
+bigcloud = bpy.context.object; bigcloud.name = "BigCloud"
+bigcloud.scale = (2.0, 1.5, 0.5)
+if m_cloud: bigcloud.data.materials.append(m_cloud)
+
+# Add more lightning branches from the big cloud
+import bmesh
+m_bolt = bpy.data.materials.get("Bolt")
+def bolt3(s, e, segs=10, spread=2.5, name="Bolt3"):
+    mesh = bpy.data.meshes.new(name)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    bm = bmesh.new()
+    pts = []
+    for i in range(segs + 1):
+        t = i / segs
+        p = s.lerp(e, t)
+        if 0 < i < segs:
+            p += Vector((random.uniform(-spread, spread) * (1 - t * 0.5),
+                         random.uniform(-spread, spread) * (1 - t * 0.5),
+                         random.uniform(-spread * 0.3, spread * 0.3)))
+        pts.append(p)
+    for i in range(len(pts) - 1):
+        p1, p2 = pts[i], pts[i + 1]
+        d = (p2 - p1).normalized()
+        up = Vector((0, 0, 1))
+        if abs(d.dot(up)) > 0.9: up = Vector((1, 0, 0))
+        side = d.cross(up).normalized()
+        up2 = d.cross(side).normalized()
+        r1, r2 = 0.2, 0.1
+        v1 = bm.verts.new(p1 + side * r1); v2 = bm.verts.new(p1 - side * r1)
+        v3 = bm.verts.new(p1 + up2 * r1); v4 = bm.verts.new(p1 - up2 * r1)
+        v5 = bm.verts.new(p2 + side * r2); v6 = bm.verts.new(p2 - side * r2)
+        v7 = bm.verts.new(p2 + up2 * r2); v8 = bm.verts.new(p2 - up2 * r2)
+        bm.faces.new([v1, v2, v6, v5]); bm.faces.new([v2, v4, v8, v6])
+        bm.faces.new([v4, v3, v7, v8]); bm.faces.new([v3, v1, v5, v7])
+    bm.to_mesh(mesh); bm.free()
+    if m_bolt: obj.data.materials.append(m_bolt)
+    return obj
+
+bolt3(Vector((0, 0, 55)), Vector((0, 0, 40)), 12, 3, "BoltMain2")
+bolt3(Vector((5, 5, 50)), Vector((3, 2, 38)), 8, 2, "BoltBr1")
+bolt3(Vector((-5, -3, 52)), Vector((-2, -1, 39)), 8, 2, "BoltBr2")
+
+# Add a glow sphere at the cloud base
+m_glow = bpy.data.materials.get("Glow")
+bpy.ops.mesh.primitive_uv_sphere_add(radius=3, location=(0, 0, 50), segments=16, ring_count=8)
+cloud_glow = bpy.context.object; cloud_glow.name = "CloudGlow"
+if m_glow: cloud_glow.data.materials.append(m_glow)
+
+# Add a point light at the cloud
+bpy.ops.object.light_add(type='POINT', location=(0, 0, 50))
+cl_light = bpy.context.object; cl_light.name = "CloudLight"
+cl_light.data.energy = 3000
+cl_light.data.color = (0.5, 0.6, 1.0)
+
+# Add tire marks on the road
+m_black = bpy.data.materials.get("Black")
+for i in range(20):
+    x = dl.x - 3 - i * 1.2
+    for side in [-1.8, 1.8]:
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, dl.y + side, 0.02))
+        mark = bpy.context.object; mark.name = f"TireMark{i}{side}"
+        mark.scale = (0.8, 0.3, 0.01)
+        mark.rotation_euler = (0, 0, math.radians(random.uniform(-5, 5)))
+        if m_black: mark.data.materials.append(m_black)
+
+# Add a speed blur effect with elongated fire streaks
+m_fire = bpy.data.materials.get("Fire")
+for i in range(10):
+    x = dl.x - 2 - i * 2
+    y = dl.y + random.uniform(-1, 1)
+    z = dl.z - 0.1
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(x, y, z))
+    streak = bpy.context.object; streak.name = f"FireStreak{i}"
+    streak.scale = (1.5, 0.3, 0.15)
+    if m_fire: streak.data.materials.append(m_fire)

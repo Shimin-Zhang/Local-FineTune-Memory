@@ -1,0 +1,105 @@
+{
+ "blender": "5.2.3 LTS",
+ "error": null,
+ "error_line": null,
+ "n_renderable_objects": 1,
+ "object_types": {
+  "CAMERA": 1,
+  "LIGHT": 1,
+  "MESH": 1
+ },
+ "default_cube_still_there": false,
+ "starting_objects_left": [],
+ "materials": [
+  {
+   "name": "SoapBubbleMaterial",
+   "diffuse_color": [
+    0.8,
+    0.8,
+    0.8
+   ],
+   "n_nodes": 14,
+   "principled_base_color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "base_color_linked": false,
+   "node_types": [
+    "BSDF_PRINCIPLED",
+    "BUMP",
+    "EMISSION",
+    "LAYER_WEIGHT",
+    "LAYER_WEIGHT",
+    "MAPPING",
+    "MATH",
+    "MATH",
+    "MIX_SHADER",
+    "OUTPUT_MATERIAL",
+    "SEPXYZ",
+    "TEX_COORD",
+    "TEX_NOISE",
+    "VALTORGB"
+   ],
+   "colour_set_only_for_viewport": false
+  }
+ ],
+ "objects_without_material": 0,
+ "materials_viewport_only": 0,
+ "lights": [
+  {
+   "type": "SUN",
+   "energy": 5.0,
+   "color": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "location": [
+    5.0,
+    5.0,
+    10.0
+   ],
+   "direction": [
+    -0.3536,
+    0.7071,
+    -0.6124
+   ],
+   "spot_size": null
+  }
+ ],
+ "script_set_camera": true,
+ "depth_of_field": false,
+ "camera": {
+  "location": [
+   0.0,
+   -4.0,
+   1.0
+  ],
+  "direction": [
+   0.0,
+   -0.9701,
+   0.2425
+  ],
+  "up": [
+   0.0,
+   0.2425,
+   0.9701
+  ],
+  "angle": 0.6911
+ },
+ "bbox_size": [
+  2.0,
+  2.0,
+  2.0
+ ],
+ "scene_center": [
+  0.0,
+  -0.0,
+  0.0
+ ],
+ "scene_radius": 1.732,
+ "process": "exit 0",
+ "seconds": 0.7,
+ "image": false
+}
