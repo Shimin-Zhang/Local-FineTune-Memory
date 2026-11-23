@@ -3,8 +3,6 @@
 Measurements behind a blog post: how big a model can you fine-tune on a local machine, starting from
 the model you can already run at 4-bit. Everything here was measured on one RTX 4090 (24 GB).
 
-See `outline.md` for the post outline.
-
 ## Layout
 
 | Path | What it is |
@@ -31,7 +29,7 @@ Data files store raw bytes. Divide by 2**30 for GiB, the unit in which the card 
 Three memory columns in `results/probes_tidy.csv` answer different questions:
 
 - `process_peak_bytes`: the most the process held (PyTorch's peak reserved memory plus what the process
-  holds outside PyTorch). This is the number to compare with the card, and the one the outline quotes.
+  holds outside PyTorch). This is the number to compare with the card.
 - `peak_allocated_overall_bytes`: the most PyTorch had in use. The gap to the first column is allocator
   slack: median about 0.4 GiB, above 2 GiB in some full fine-tuning runs.
 - `process_bytes_at_end`: what the process held when the probe finished. Equal to the peak in all but
@@ -69,7 +67,7 @@ earlier, looser threshold missed were repeated by hand; their records carry a `n
 ## The fine-tune
 
 Run 3 trains Qwen3.8-27B (real weights, in `.models/`, not stored here) on the scene dataset alone (written by a
-larger model, see below), two passes; results are in `outline.md` under "Run 3":
+larger model, see below), two passes:
 
 ```bash
 uv run python synth/build_train.py          # results/finetune_v3/train.jsonl (2,000 scenes), val.jsonl (100 held out)

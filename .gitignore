@@ -13,6 +13,8 @@ synth/requests/*.jsonl
 synth/requests/overlap_report.json
 blender_task/prompts_scenes100.json
 results/hf_dataset/
+# the blog post outline is a local reference, not part of the repository
+outline.md
 results/finetune_v3/train.jsonl
 results/finetune_v3/val.jsonl
 results/finetune_v3/**/*.safetensors
