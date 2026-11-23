@@ -12,6 +12,7 @@ results/synth_style/
 synth/requests/*.jsonl
 synth/requests/overlap_report.json
 blender_task/prompts_scenes100.json
+results/hf_dataset/
 results/finetune_v3/train.jsonl
 results/finetune_v3/val.jsonl
 results/finetune_v3/**/*.safetensors

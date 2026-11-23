@@ -22,7 +22,7 @@ See `outline.md` for the post outline.
 | `results/finetune_v3/` | Run 3: the scenes as the trainer's files (`train.jsonl`, `val.jsonl`), the training log (`run3/log.jsonl`), and what the untuned and tuned model wrote for the 100 held-out scene requests (`scenes/`) and for 50 everyday requests (`eval50/`; the untuned model's scripts are in `eval50/before/`), with numbers and sheets in `report*/` |
 | `results/finetune_v3/movies/` | 20 famous film scenes, each built over many runs by the untuned and by the tuned model: per scene the transcript, every step's script and result, and `session.json`; sheets in `report/` |
 | `synth/` | Tooling for the scene dataset written by a larger model: the writers' guide (`guide.md`), the checker (`check.py`), the review-sheet builder (`sheet.py`), and the request writers' brief, categories and overlap checks (`requests/`) |
-| `results/synth_v1/` (not in git) | The scenes, to be published as a Hugging Face dataset: `pilot_a`, `pilot_b` (40), then batches of 20: wave 1 is `train_b01` to `train_b20` and `test_b01` to `test_b05`, wave 2 is `train_b21` to `train_b100`. Each batch has `requests.json`, one `<id>.py` per request, its report, the writer's `manifest.jsonl`, and the first versions in `first/` (the version first run; a few were tidied before that run) |
+| `results/synth_v1/` (not in git) | The scenes, published as the Hugging Face dataset [ShiminZ/blender-lowpoly-dioramas](https://huggingface.co/datasets/ShiminZ/blender-lowpoly-dioramas): `pilot_a`, `pilot_b` (40), then batches of 20: wave 1 is `train_b01` to `train_b20` and `test_b01` to `test_b05`, wave 2 is `train_b21` to `train_b100`. Each batch has `requests.json`, one `<id>.py` per request, its report, the writer's `manifest.jsonl`, and the first versions in `first/` (the version first run; a few were tidied before that run) |
 
 ## Units
 
@@ -106,7 +106,8 @@ bash results/finetune_v3/run_movies.sh      # untuned, then the two-pass adapter
   What the different rounding costs was not measured.
 
 The scene dataset (`synth/`) is written by agents, each given `synth/guide.md` and a folder holding a `requests.json`.
-The dataset itself is not in git; it is to be published as a Hugging Face dataset. The scripts here expect it at these
+The dataset itself is not in git; it is published on Hugging Face as
+[ShiminZ/blender-lowpoly-dioramas](https://huggingface.co/datasets/ShiminZ/blender-lowpoly-dioramas). The scripts here expect it at these
 paths: the scenes in `results/synth_v1/`, the pilot and style rounds in `results/synth_pilot/` and `results/synth_style/`,
 the request lists in `synth/requests/*.jsonl`, and the 100 test requests in `blender_task/prompts_scenes100.json`.
 What is run by hand around them:
@@ -116,6 +117,7 @@ uv run python synth/requests/assemble.py                   # overlap checks; wri
 uv run python synth/check.py results/synth_v1/train_b01    # PASS or FAIL per script, with the reason
 uv run python synth/tighten_camera.py plan <backup dir>    # one-off, wave 1: see the file's header
 uv run python synth/build_train.py                          # the trainer's files from the scenes: results/finetune_v3/train.jsonl, val.jsonl
+uv run python -I synth/build_hf_dataset.py                  # the Hugging Face dataset (Parquet + card from synth/hf_card.md) in results/hf_dataset/
 # cleaner pictures for a person to review: a copy of the scripts, own view only, then one sheet
 uv run python blender_task/run_sandboxed.py results/synth_v1/show/train_b01 --own-view --only-own-view --size 640 --samples 128 --denoise --workers 4
 uv run python synth/sheet.py results/synth_v1/show/train_b01 results/synth_v1/sheets/train_b01.png --cols 5 --all-views
