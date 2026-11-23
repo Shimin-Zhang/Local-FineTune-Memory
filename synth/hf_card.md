@@ -31,9 +31,8 @@ render of it. Every scene is in one look: a low-poly diorama on a floating base,
 lights. Every script runs without error in Blender 5.2.3 and passes the checks listed below.
 
 The scripts were written by Claude Sonnet 5.5 (Anthropic), running as agents in Claude Code: each agent wrote a script,
-ran it in a sandboxed Blender, looked at the render, and fixed what it saw. The set was made to fine-tune a 27B model
-on one 24 GB GPU. The code, the training run, and its before/after tests are in
-[Local-FineTune-Memory](https://github.com/Shimin-Zhang/Local-FineTune-Memory).
+ran it in a sandboxed Blender, looked at the render, and fixed what it saw. (It was first used for a fine-tuning
+experiment, in [Local-FineTune-Memory](https://github.com/Shimin-Zhang/Local-FineTune-Memory).)
 
 ```python
 from datasets import load_dataset
@@ -55,7 +54,7 @@ train = load_dataset("{repo_id}", split="train")
 | `category`, `subject`, `setting` | The kind of place ({n_categories} categories), the main subject, and the setting the request was written around |
 | `instruction` | The request, e.g. "Model a drained aquarium with green-stained tanks, cracked glass, scattered tools, a fish-shaped sign and a thin beam of light." |
 | `script` | The final `bpy` script. It clears the scene, builds everything, and sets its own camera, lights, world and render settings |
-| `messages` | System prompt, request, and the script in a Python code block: the chat format the 27B was trained on |
+| `messages` | System prompt, request, and the script in a Python code block, ready for chat-format fine-tuning |
 | `image` | The render through the script's own camera (Cycles, 640 x 640, 128 samples, denoised; JPEG) |
 | `script_tokens`, `script_lines` | Length of the script (tokens counted with the Qwen3.8 tokenizer, for the script in its code block) |
 | `n_objects`, `n_materials`, `n_lights` | What the script built, read from Blender after it ran |
@@ -99,16 +98,10 @@ filter on `writer_rating` to drop them.
 | 4 | {rating_4} |
 | 5 | {rating_5} |
 
-## What fine-tuning on it did
-
-QLoRA on Qwen3.8-27B, two passes over the train split. On the 100 test requests, scripts that run went from 42 to 85,
-and pictures that show the scene from 1 to 84. The cost: the tuned model turns every request into a diorama. On 50
-everyday requests ("a yellow rubber duck", "a rusty metal barrel") it built 92 objects on average against 21 before,
-and stopped using procedural textures (0 of 150 scripts, against 14). Mix in other data if plain objects should stay plain.
-
 ## Limitations
 
-- One look, flat colours: no script uses an image texture or a procedural texture node.
+- One look, flat colours: no script uses an image texture or a procedural texture node. A model fine-tuned on this set
+  alone tends to give every request that look, plain objects included; mix in other data if they should stay plain.
 - Shapes are assembled from primitives and simple meshes; nothing is sculpted.
 - The scripts target Blender 5.2. Older versions differ in places (render engine names, shader inputs).
 - The writer fields (`first_run`, `revisions`, `fixes`, `writer_rating`) are the agents' own records and approximate:
