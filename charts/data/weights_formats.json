@@ -1,0 +1,1608 @@
+{
+ "what": "Qwen3.8-27B text-model weights (26,895,998,464 parameters) in every GGUF format in unsloth/Qwen3.8-27B-GGUF as of 2026-11-23, read from each file's tensor table (charts/gguf_formats.py); the optional draft-prediction layer is left out so every format holds the same tensors",
+ "formats": [
+  {
+   "format": "BF16",
+   "text_params": 26895998464,
+   "bytes": 53797287936,
+   "gib": 50.103,
+   "bits_per_weight": 16.002,
+   "token_table_bytes": 2542796800,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "BF16",
+     "params": 26893352960,
+     "bytes": 53786705920,
+     "bits": 16.0
+    }
+   ]
+  },
+  {
+   "format": "UD-Q8_K_XL",
+   "text_params": 26895998464,
+   "bytes": 30877710336,
+   "gib": 28.757,
+   "bits_per_weight": 9.184,
+   "token_table_bytes": 1350860800,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "BF16",
+     "params": 2445803520,
+     "bytes": 4891607040,
+     "bits": 16.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 24447549440,
+     "bytes": 25975521280,
+     "bits": 8.5
+    }
+   ]
+  },
+  {
+   "format": "Q8_0",
+   "text_params": 26895998464,
+   "bytes": 28584769536,
+   "gib": 26.622,
+   "bits_per_weight": 8.502,
+   "token_table_bytes": 1350860800,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 26893352960,
+     "bytes": 28574187520,
+     "bits": 8.5
+    }
+   ]
+  },
+  {
+   "format": "UD-Q8_K_L",
+   "text_params": 26895998464,
+   "bytes": 27683690496,
+   "gib": 25.782,
+   "bits_per_weight": 8.234,
+   "token_table_bytes": 1350860800,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23448780800,
+     "bytes": 24914329600,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 2941255680,
+     "bytes": 2412748800,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 503316480,
+     "bytes": 346030080,
+     "bits": 5.5
+    }
+   ]
+  },
+  {
+   "format": "UD-Q6_K_XL",
+   "text_params": 26895998464,
+   "bytes": 24937056256,
+   "gib": 23.224,
+   "bits_per_weight": 7.417,
+   "token_table_bytes": 1042944000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 12719226880,
+     "bytes": 13514178560,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 12585533440,
+     "bytes": 10324070400,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 1557135360,
+     "bytes": 1070530560,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 31457280,
+     "bytes": 17694720,
+     "bits": 4.5
+    }
+   ]
+  },
+  {
+   "format": "UD-Q6_K_L",
+   "text_params": 26895998464,
+   "bytes": 23819544576,
+   "gib": 22.184,
+   "bits_per_weight": 7.085,
+   "token_table_bytes": 1042944000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 8545894400,
+     "bytes": 9080012800,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 15925248000,
+     "bytes": 13063680000,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 2422210560,
+     "bytes": 1665269760,
+     "bits": 5.5
+    }
+   ]
+  },
+  {
+   "format": "UD-Q6_K_M",
+   "text_params": 26895998464,
+   "bytes": 22725175296,
+   "gib": 21.164,
+   "bits_per_weight": 6.759,
+   "token_table_bytes": 1042944000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 5415895040,
+     "bytes": 5754388480,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 16522936320,
+     "bytes": 13553971200,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 4954521600,
+     "bytes": 3406233600,
+     "bits": 5.5
+    }
+   ]
+  },
+  {
+   "format": "UD-Q6_K",
+   "text_params": 26895998464,
+   "bytes": 21618436096,
+   "gib": 20.134,
+   "bits_per_weight": 6.43,
+   "token_table_bytes": 1042944000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 2516582400,
+     "bytes": 2673868800,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 16376135680,
+     "bytes": 13433548800,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 8000634880,
+     "bytes": 5500436480,
+     "bits": 5.5
+    }
+   ]
+  },
+  {
+   "format": "UD-Q5_K_XL",
+   "text_params": 26895998464,
+   "bytes": 20614957056,
+   "gib": 19.199,
+   "bits_per_weight": 6.132,
+   "token_table_bytes": 1042944000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 2516582400,
+     "bytes": 2673868800,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 10446438400,
+     "bytes": 8569344000,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 12478054400,
+     "bytes": 8578662400,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 262144000,
+     "bytes": 147456000,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 89128960,
+     "bytes": 50135040,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 1101004800,
+     "bytes": 584908800,
+     "bits": 4.25
+    }
+   ]
+  },
+  {
+   "format": "UD-Q5_K_M",
+   "text_params": 26895998464,
+   "bytes": 19508873216,
+   "gib": 18.169,
+   "bits_per_weight": 5.803,
+   "token_table_bytes": 715161600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 998768640,
+     "bytes": 1061191680,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 8517058560,
+     "bytes": 6986649600,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 13762560000,
+     "bytes": 9461760000,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 1916272640,
+     "bytes": 1077903360,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 267386880,
+     "bytes": 150405120,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 1431306240,
+     "bytes": 760381440,
+     "bits": 4.25
+    }
+   ]
+  },
+  {
+   "format": "UD-Q5_K_S",
+   "text_params": 26895998464,
+   "bytes": 18402789376,
+   "gib": 17.139,
+   "bits_per_weight": 5.474,
+   "token_table_bytes": 715161600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 521666560,
+     "bytes": 554270720,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 4742184960,
+     "bytes": 3890073600,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 15141437440,
+     "bytes": 10409738240,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 2299002880,
+     "bytes": 1293189120,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 623902720,
+     "bytes": 350945280,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 3565158400,
+     "bytes": 1893990400,
+     "bits": 4.25
+    }
+   ]
+  },
+  {
+   "format": "UD-Q4_K_XL",
+   "text_params": 26895998464,
+   "bytes": 17297401856,
+   "gib": 16.109,
+   "bits_per_weight": 5.145,
+   "token_table_bytes": 715161600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 186122240,
+     "bytes": 197754880,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 3012034560,
+     "bytes": 2470809600,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 12242124800,
+     "bytes": 8416460800,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 3279421440,
+     "bytes": 1844674560,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 765460480,
+     "bytes": 430571520,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 7319060480,
+     "bytes": 3888250880,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 89128960,
+     "bytes": 38297600,
+     "bits": 3.438
+    }
+   ]
+  },
+  {
+   "format": "Q4_1",
+   "text_params": 26895998464,
+   "bytes": 17241245696,
+   "gib": 16.057,
+   "bits_per_weight": 5.128,
+   "token_table_bytes": 794624000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 26238464,
+     "bytes": 104953856,
+     "bits": 32.0
+    },
+    {
+     "type": "Q6_K",
+     "params": 1271398400,
+     "bytes": 1042944000,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 1509949440,
+     "bytes": 1038090240,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_1",
+     "params": 24088412160,
+     "bytes": 15055257600,
+     "bits": 5.0
+    }
+   ]
+  },
+  {
+   "format": "UD-Q4_K_M",
+   "text_params": 26895998464,
+   "bytes": 16202254336,
+   "gib": 15.09,
+   "bits_per_weight": 4.819,
+   "token_table_bytes": 715161600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 70778880,
+     "bytes": 75202560,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 1785200640,
+     "bytes": 1464422400,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 7607418880,
+     "bytes": 5230100480,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 5586288640,
+     "bytes": 3142287360,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 765460480,
+     "bytes": 430571520,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 10721689600,
+     "bytes": 5695897600,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 178257920,
+     "bytes": 76595200,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 178257920,
+     "bytes": 76595200,
+     "bits": 3.438
+    }
+   ]
+  },
+  {
+   "format": "Q4_0",
+   "text_params": 26895998464,
+   "bytes": 15780284416,
+   "gib": 14.697,
+   "bits_per_weight": 4.694,
+   "token_table_bytes": 715161600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 26238464,
+     "bytes": 104953856,
+     "bits": 32.0
+    },
+    {
+     "type": "Q6_K",
+     "params": 1271398400,
+     "bytes": 1042944000,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 1509949440,
+     "bytes": 1038090240,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_1",
+     "params": 713031680,
+     "bytes": 445644800,
+     "bits": 5.0
+    },
+    {
+     "type": "Q4_0",
+     "params": 23375380480,
+     "bytes": 13148651520,
+     "bits": 4.5
+    }
+   ]
+  },
+  {
+   "format": "UD-Q4_K_S",
+   "text_params": 26895998464,
+   "bytes": 14996207616,
+   "gib": 13.966,
+   "bits_per_weight": 4.461,
+   "token_table_bytes": 546304000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 28835840,
+     "bytes": 30638080,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 1439170560,
+     "bytes": 1180569600,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 3659530240,
+     "bytes": 2515927040,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 5206179840,
+     "bytes": 2928476160,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 408944640,
+     "bytes": 230031360,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 11848908800,
+     "bytes": 6294732800,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 2340945920,
+     "bytes": 1005875200,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 1336934400,
+     "bytes": 574464000,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 445644800,
+     "bytes": 170598400,
+     "bits": 3.062
+    },
+    {
+     "type": "IQ2_S",
+     "params": 89128960,
+     "bytes": 28549120,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 89128960,
+     "bytes": 25763840,
+     "bits": 2.312
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ4_XS",
+   "text_params": 26895998464,
+   "bytes": 13990905856,
+   "gib": 13.03,
+   "bits_per_weight": 4.161,
+   "token_table_bytes": 546304000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 15728640,
+     "bytes": 12902400,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 3017277440,
+     "bytes": 2074378240,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 1730150400,
+     "bytes": 973209600,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 94371840,
+     "bytes": 53084160,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 15162408960,
+     "bytes": 8055029760,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 1538785280,
+     "bytes": 661196800,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 2993684480,
+     "bytes": 1286348800,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 1630535680,
+     "bytes": 624189440,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 62914560,
+     "bytes": 20643840,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 445644800,
+     "bytes": 142745600,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 178257920,
+     "bytes": 51527680,
+     "bits": 2.312
+    }
+   ]
+  },
+  {
+   "format": "UD-Q3_K_XL",
+   "text_params": 26895998464,
+   "bytes": 12784388096,
+   "gib": 11.906,
+   "bits_per_weight": 3.803,
+   "token_table_bytes": 546304000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 5242880,
+     "bytes": 4300800,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 1706557440,
+     "bytes": 1173258240,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 1142947840,
+     "bytes": 642908160,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 68157440,
+     "bytes": 38338560,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 9358540800,
+     "bytes": 4971724800,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 2021130240,
+     "bytes": 868454400,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 8210350080,
+     "bytes": 3527884800,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 2354053120,
+     "bytes": 901160960,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 188743680,
+     "bytes": 61931520,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 1279262720,
+     "bytes": 409763840,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 356515840,
+     "bytes": 103055360,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 178257920,
+     "bytes": 45957120,
+     "bits": 2.062
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ3_S",
+   "text_params": 26895998464,
+   "bytes": 11678877696,
+   "gib": 10.877,
+   "bits_per_weight": 3.474,
+   "token_table_bytes": 546304000,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q6_K",
+     "params": 5242880,
+     "bytes": 4300800,
+     "bits": 6.562
+    },
+    {
+     "type": "Q5_K",
+     "params": 1433927680,
+     "bytes": 985825280,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 414187520,
+     "bytes": 232980480,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_NL",
+     "params": 5242880,
+     "bytes": 2949120,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 4886364160,
+     "bytes": 2595880960,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 2204631040,
+     "bytes": 947302400,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 8650752000,
+     "bytes": 3717120000,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 4865392640,
+     "bytes": 1862533120,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 356515840,
+     "bytes": 116981760,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 1814036480,
+     "bytes": 581058560,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 1011875840,
+     "bytes": 292495360,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 1043333120,
+     "bytes": 268984320,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_S",
+     "params": 178257920,
+     "bytes": 34816000,
+     "bits": 1.562
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ3_XXS",
+   "text_params": 26895998464,
+   "bytes": 10572855296,
+   "gib": 9.847,
+   "bits_per_weight": 3.145,
+   "token_table_bytes": 417177600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q5_K",
+     "params": 36700160,
+     "bytes": 25231360,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 1675100160,
+     "bytes": 942243840,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 2710568960,
+     "bytes": 1439989760,
+     "bits": 4.25
+    },
+    {
+     "type": "IQ3_S",
+     "params": 6050283520,
+     "bytes": 2599731200,
+     "bits": 3.438
+    },
+    {
+     "type": "Q3_K",
+     "params": 361758720,
+     "bytes": 155443200,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 7806648320,
+     "bytes": 2988482560,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 1779957760,
+     "bytes": 584048640,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 2605711360,
+     "bytes": 834641920,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 1011875840,
+     "bytes": 292495360,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 1850736640,
+     "bytes": 477143040,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_M",
+     "params": 267386880,
+     "bytes": 58490880,
+     "bits": 1.75
+    },
+    {
+     "type": "IQ1_S",
+     "params": 713031680,
+     "bytes": 139264000,
+     "bits": 1.562
+    }
+   ]
+  },
+  {
+   "format": "UD-Q2_K_XL",
+   "text_params": 26895998464,
+   "bytes": 9586661376,
+   "gib": 8.928,
+   "bits_per_weight": 2.851,
+   "token_table_bytes": 417177600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q5_K",
+     "params": 5242880,
+     "bytes": 3604480,
+     "bits": 5.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 1433927680,
+     "bytes": 806584320,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 1840250880,
+     "bytes": 977633280,
+     "bits": 4.25
+    },
+    {
+     "type": "IQ3_S",
+     "params": 2160066560,
+     "bytes": 928153600,
+     "bits": 3.438
+    },
+    {
+     "type": "Q3_K",
+     "params": 120586240,
+     "bytes": 51814400,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 7392460800,
+     "bytes": 2829926400,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 2146959360,
+     "bytes": 704471040,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 3764387840,
+     "bytes": 1205780480,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 2359296000,
+     "bytes": 681984000,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 4131389440,
+     "bytes": 1065123840,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_S",
+     "params": 1515192320,
+     "bytes": 295936000,
+     "bits": 1.562
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ2_S",
+   "text_params": 26895998464,
+   "bytes": 8411723776,
+   "gib": 7.834,
+   "bits_per_weight": 2.502,
+   "token_table_bytes": 417177600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 1350041600,
+     "bytes": 759398400,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 450887680,
+     "bytes": 239534080,
+     "bits": 4.25
+    },
+    {
+     "type": "IQ3_S",
+     "params": 1357905920,
+     "bytes": 583475200,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 4026531840,
+     "bytes": 1541406720,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 1612185600,
+     "bytes": 528998400,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 3418357760,
+     "bytes": 1094942720,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 2815426560,
+     "bytes": 813834240,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 7916748800,
+     "bytes": 2041036800,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_M",
+     "params": 319815680,
+     "bytes": 69959680,
+     "bits": 1.75
+    },
+    {
+     "type": "IQ1_S",
+     "params": 3601858560,
+     "bytes": 703488000,
+     "bits": 1.562
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ2_XS",
+   "text_params": 26895998464,
+   "bytes": 7614887936,
+   "gib": 7.092,
+   "bits_per_weight": 2.265,
+   "token_table_bytes": 327782400,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 68157440,
+     "bytes": 38338560,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 178257920,
+     "bytes": 94699520,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 1360527360,
+     "bytes": 584601600,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 985661440,
+     "bytes": 423526400,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 2228224000,
+     "bytes": 852992000,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 68157440,
+     "bytes": 22364160,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 2589982720,
+     "bytes": 829603840,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 2852126720,
+     "bytes": 824442880,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 10855383040,
+     "bytes": 2798653440,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_S",
+     "params": 5683281920,
+     "bytes": 1110016000,
+     "bits": 1.562
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ2_XXS",
+   "text_params": 26895998464,
+   "bytes": 7195047936,
+   "gib": 6.701,
+   "bits_per_weight": 2.14,
+   "token_table_bytes": 327782400,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 20971520,
+     "bytes": 11796480,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 125829120,
+     "bytes": 66846720,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 1360527360,
+     "bytes": 584601600,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 340787200,
+     "bytes": 146432000,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 1730150400,
+     "bytes": 662323200,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 73400320,
+     "bytes": 24084480,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 2107637760,
+     "bytes": 675102720,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 1745879040,
+     "bytes": 504668160,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 11222384640,
+     "bytes": 2893271040,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_S",
+     "params": 8142192640,
+     "bytes": 1590272000,
+     "bits": 1.562
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ1_M",
+   "text_params": 26895998464,
+   "bytes": 6718171136,
+   "gib": 6.257,
+   "bits_per_weight": 1.998,
+   "token_table_bytes": 417177600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "Q4_K",
+     "params": 10485760,
+     "bytes": 5898240,
+     "bits": 4.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 15728640,
+     "bytes": 8355840,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 1271398400,
+     "bytes": 546304000,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 131072000,
+     "bytes": 56320000,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 744488960,
+     "bytes": 284999680,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 1391984640,
+     "bytes": 456744960,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 1651507200,
+     "bytes": 528998400,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 1163919360,
+     "bytes": 336445440,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 6537871360,
+     "bytes": 1685544960,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_M",
+     "params": 2049966080,
+     "bytes": 448430080,
+     "bits": 1.75
+    },
+    {
+     "type": "IQ1_S",
+     "params": 11901337600,
+     "bytes": 2324480000,
+     "bits": 1.562
+    }
+   ]
+  },
+  {
+   "format": "UD-IQ1_S",
+   "text_params": 26895998464,
+   "bytes": 6181226496,
+   "gib": 5.757,
+   "bits_per_weight": 1.839,
+   "token_table_bytes": 417177600,
+   "types": [
+    {
+     "type": "F32",
+     "params": 2645504,
+     "bytes": 10582016,
+     "bits": 32.0
+    },
+    {
+     "type": "Q8_0",
+     "params": 23592960,
+     "bytes": 25067520,
+     "bits": 8.5
+    },
+    {
+     "type": "IQ4_XS",
+     "params": 10485760,
+     "bytes": 5570560,
+     "bits": 4.25
+    },
+    {
+     "type": "Q3_K",
+     "params": 1271398400,
+     "bytes": 546304000,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_S",
+     "params": 5242880,
+     "bytes": 2252800,
+     "bits": 3.438
+    },
+    {
+     "type": "IQ3_XXS",
+     "params": 173015040,
+     "bytes": 66232320,
+     "bits": 3.062
+    },
+    {
+     "type": "Q2_K",
+     "params": 1475870720,
+     "bytes": 484270080,
+     "bits": 2.625
+    },
+    {
+     "type": "IQ2_S",
+     "params": 602931200,
+     "bytes": 193126400,
+     "bits": 2.562
+    },
+    {
+     "type": "IQ2_XS",
+     "params": 907018240,
+     "bytes": 262184960,
+     "bits": 2.312
+    },
+    {
+     "type": "IQ2_XXS",
+     "params": 2841640960,
+     "bytes": 732610560,
+     "bits": 2.062
+    },
+    {
+     "type": "IQ1_M",
+     "params": 1211105280,
+     "bytes": 264929280,
+     "bits": 1.75
+    },
+    {
+     "type": "IQ1_S",
+     "params": 18371051520,
+     "bytes": 3588096000,
+     "bits": 1.562
+    }
+   ]
+  }
+ ],
+ "ours": {
+  "format": "UD-Q4_K_XL (Aug build, the one we ran)",
+  "text_params": 26895998464,
+  "bytes": 17626597376,
+  "gib": 16.416,
+  "bits_per_weight": 5.243,
+  "token_table_bytes": 715161600,
+  "types": [
+   {
+    "type": "F32",
+    "params": 2645504,
+    "bytes": 10582016,
+    "bits": 32.0
+   },
+   {
+    "type": "Q6_K",
+    "params": 1355284480,
+    "bytes": 1111756800,
+    "bits": 6.562
+   },
+   {
+    "type": "Q5_K",
+    "params": 18538823680,
+    "bytes": 12745441280,
+    "bits": 5.5
+   },
+   {
+    "type": "Q4_K",
+    "params": 1294991360,
+    "bytes": 728432640,
+    "bits": 4.5
+   },
+   {
+    "type": "IQ4_XS",
+    "params": 5704253440,
+    "bytes": 3030384640,
+    "bits": 4.25
+   }
+  ],
+  "note": "downloaded 2026-08-15; Unsloth re-quantized every format 2026-11-10..12 (UD3.1). 15.75 GiB of it is on the card in chart 1; the token table stays in system RAM"
+ }
+}

@@ -1,0 +1,62 @@
+{
+ "chart": "QLoRA on Qwen3.8-27B with run 3's adapter, otherwise the same naive settings as the BF16 bill: one 3,000-token example per step, no gradient checkpointing, stock loss, default install",
+ "units": "GiB (2**30 bytes)",
+ "card_total_gib": 23.988,
+ "status": "calculated; the frozen 4-bit weights are measured",
+ "adapter": {
+  "rank": 16,
+  "alpha": 32,
+  "targets": "gate/up/down_proj in all 64 layers; q/k/v/o_proj in the 16 full-attention layers",
+  "trainable_params": 79691776,
+  "source": "results/finetune_v3/run3/epoch2/adapter_config.json and results/logs/train_run3.log"
+ },
+ "lines_bottom_to_top": [
+  {
+   "key": "weights",
+   "label": "Qwen3.8-27B weights, frozen in 4-bit (NF4)",
+   "gib": 16.5,
+   "source": "measured on the 4090 (results/probes_tidy.csv, 27B nf4 probes): 11.3 GiB of rounded weights at 0.517 bytes each + 4.7 GiB of the two vocabulary matrices, which bitsandbytes leaves at 16 bits + small unrounded tensors"
+  },
+  {
+   "key": "adapter",
+   "label": "adapter (79.7M weights): weights, gradients, AdamW",
+   "gib": 1.19,
+   "parts": {
+    "weights_fp32": 0.297,
+    "gradients_fp32": 0.297,
+    "adamw_fp32": 0.594
+   },
+   "source": "79,691,776 trainable weights x 16 bytes (FP32 weight, gradient, two AdamW moments); 16 bytes per trainable weight is the measured LoRA rate (analysis/predict.py)"
+  },
+  {
+   "key": "gradients",
+   "label": "gradients for the frozen weights",
+   "gib": 0.0,
+   "removed": true,
+   "was_gib": 50.1
+  },
+  {
+   "key": "optimizer",
+   "label": "optimizer state for the frozen weights",
+   "gib": 0.0,
+   "removed": true,
+   "was_gib": 100.2
+  },
+  {
+   "key": "activations",
+   "label": "activations, 3,000 tokens",
+   "gib": 121.8,
+   "approximate": true,
+   "source": "counted on the 27B's own shapes: the tensors autograd keeps for the backward pass in one linear-attention layer (2,193.2 MiB) and one full-attention layer (1,214.9 MiB) at 3,000 tokens, default install, run 3's adapter (measure/saved_activations.py, results/saved_activations.json), x 48 and x 16 layers. Validated on the 0.8B: the same count gives 4.59 MiB/token against 4.82 measured on the GPU. Replaces the earlier extrapolation from 0.8-9B (111.2 GiB)"
+  },
+  {
+   "key": "loss",
+   "label": "loss, 3,000 tokens",
+   "gib": 9.4,
+   "source": "as the BF16 bill"
+  }
+ ],
+ "total_gib": 148.9,
+ "times_the_card": 6.21,
+ "note": "activations are now 80% of the bill"
+}

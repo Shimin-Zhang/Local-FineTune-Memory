@@ -1,0 +1,57 @@
+{
+ "chart": "One card: Qwen3.8-27B QLoRA with run 3's adapter, one 3,000-token example per step. Left: QLoRA + gradient checkpointing, stock loss, default install (as fig 5's right side). Right: + chunked loss + the fast linear-attention kernels",
+ "units": "GiB (2**30 bytes)",
+ "card_total_gib": 23.988,
+ "rows": [
+  {
+   "key": "ckpt",
+   "label": "QLoRA + gradient checkpointing",
+   "lines": [
+    {"key": "weights", "label": "frozen 4-bit weights", "gib": 16.5},
+    {"key": "adapter", "label": "adapter", "gib": 1.19},
+    {"key": "activations", "label": "activations, 3,000 tokens", "gib": 4.54, "source": "1.55 MiB/token with checkpointing, default install (charts/data/checkpointing_3000.json)"},
+    {"key": "loss", "label": "loss, 3,000 tokens", "gib": 9.4}
+   ],
+   "total_gib": 31.6,
+   "cards": 1.32
+  },
+  {
+   "key": "one_card",
+   "label": "+ chunked loss + fast kernels",
+   "lines": [
+    {"key": "weights", "label": "frozen 4-bit weights", "gib": 16.5},
+    {"key": "adapter", "label": "adapter", "gib": 1.19},
+    {"key": "activations", "label": "activations, 3,000 tokens, fast kernels", "gib": 3.49, "was_gib": 4.54,
+     "source": "1.19 MiB/token with checkpointing and the fast kernels (flash-linear-attention + causal-conv1d), against 1.55 on the default install: outline stop 8, probes in results/probes_tidy.csv; 3,000 x 1.19 MiB"},
+    {"key": "loss", "label": "loss, chunked (128-token slices)", "gib": 0.45, "was_gib": 9.4,
+     "source": "charts/data/chunked_loss_3000.json; measured 0.44 GiB extra on the 4090 (results/loss_time_27b_3000.json)"}
+   ],
+   "total_gib": 21.6,
+   "spare_gib": 2.4,
+   "cards": 0.9
+  }
+ ],
+ "measured": {
+  "label": "run 3, measured",
+  "peak_gib": 21.54,
+  "what": "peak reserved by PyTorch over 4,000 steps of real scenes (3,193 to 3,392 tokens a step), fast kernels, run 3's adapter, chunked loss, checkpointing; no out-of-memory recoveries",
+  "source": "results/logs/train_run3.log ('done' event: peak_reserved_gib 21.54); results/finetune_v3/run3/run.json"
+ },
+ "signs": {"left": "≈ 32 GiB", "right": "≈ 22 GiB", "note": "rounded as in fig 5 (Shimin: 'update to around 32')"},
+ "whole_card_right": {
+  "note": "the one card filled the way fig 1 fills it for inference: everything on the 4090 while run 3's 3,000-token step trains. Bottom to top as fig 1: driver, the training lines, runtime overhead, free",
+  "lines_bottom_to_top": [
+   {"key": "driver", "label": "kept by the driver", "gib": 0.468, "mib": 479.4,
+    "source": "card total 24,564 MiB (nvidia-smi) minus the 24,084.6 MiB CUDA reports as usable (gpu_total_bytes in results/probes_tidy.csv); fig 1 used 503 MiB because it also put 23 MiB of llama.cpp's unattributed overhead here"},
+   {"key": "training", "label": "the training lines above (weights, adapter, activations, loss)", "gib": 21.63},
+   {"key": "runtime", "label": "runtime overhead", "gib": 0.461, "mib": 472.0,
+    "source": "CUDA runtime of the PyTorch process outside its allocator: non_torch_bytes = 472 MiB in every completed 27B QLoRA probe (results/probes_tidy.csv), default install and fast kernels alike (one first-run compile held 2,088)"},
+   {"key": "free", "label": "free", "gib": 1.43,
+    "source": "card 23.988 minus 0.468 + 21.63 + 0.461; with run 3's measured 21.54 in place of the computed 21.63 it is 1.52"}
+  ],
+  "desktop": "left out, as in fig 1 (Shimin: the figure shows what the model costs; the desktop held 0.9 to 1.8 GiB in the probes)",
+  "allocator_note": "run 3's 21.54 GiB is PyTorch's reserved peak, which includes the caching allocator's slack (0.6 to 1.1 GiB above allocated in the 2,048-token probes), so the computed lines are a slight overestimate of what run 3 allocated (smaller adapter than the probes, loss on reply tokens only)"
+ },
+ "not_drawn": "whatever the desktop holds on the same card (0.9 to 1.8 GiB in the probes); the outline's arrival: 0.5 to 1.5 GiB to spare depending on the desktop",
+ "cost": {"chunked_loss": "loss alone 1.41x slower; the whole step about 3% slower on the 27B", "fast_kernels": "1.5x to 2.4x faster at 4,096 tokens"}
+}

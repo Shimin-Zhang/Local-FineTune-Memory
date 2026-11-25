@@ -1,0 +1,26 @@
+{
+  "chart": "One MLP layer of Qwen3.8-27B (gate, up and down projections) in training memory: fully trained in BF16 vs QLoRA (frozen 4-bit + rank-16 adapter), plus the low-rank shape of the adapter",
+  "units": "MiB (2**20 bytes)",
+  "layer": {
+    "matrices": [{"name": "gate_proj", "out": 17408, "in": 5120}, {"name": "up_proj", "out": 17408, "in": 5120}, {"name": "down_proj", "out": 5120, "in": 17408}],
+    "weights": 267386880,
+    "adapter_rank": 16, "adapter_weights": 1081344, "adapter_share_pct": 0.40,
+    "note": "0.40% of an MLP layer; 0.30% over the whole model (79.7M of 26.9B), because the vocabulary matrices and the linear-attention projections carry no adapter"
+  },
+  "rows": [
+    {"key": "full", "label": "fully trained (BF16)", "total_mib": 2040.0,
+     "parts": [{"line": "weights", "mib": 510.0, "bytes_per_weight": 2},
+               {"line": "gradients", "mib": 510.0, "bytes_per_weight": 2},
+               {"line": "optimizer", "mib": 1020.0, "bytes_per_weight": 4}]},
+    {"key": "qlora", "label": "QLoRA", "total_mib": 148.3,
+     "parts": [{"line": "weights", "mib": 131.8, "frozen": true, "bytes_per_weight": 0.517, "label": "frozen 4-bit weights"},
+               {"line": "adapter_weights", "mib": 4.12, "bytes_per_weight": 4},
+               {"line": "adapter_gradients", "mib": 4.12, "bytes_per_weight": 4},
+               {"line": "adapter_optimizer", "mib": 8.25, "bytes_per_weight": 8}],
+     "adapter_total_mib": 16.5}
+  ],
+  "ratio": 13.8,
+  "low_rank": {"example": "up_proj", "W": [17408, 5120], "A": [16, 5120], "B": [17408, 16],
+               "idea": "W stays frozen; the update is B times A, which squeezes 5,120 inputs down to 16 numbers and expands them back to 17,408 outputs"},
+  "sources": "shapes from the 27B config; 0.517 bytes per NF4 weight measured on the 27B; 16 bytes per trainable LoRA weight (FP32 weight, gradient, two AdamW moments) measured; rank 16 from run 3's adapter_config.json"
+}

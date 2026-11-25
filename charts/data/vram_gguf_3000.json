@@ -1,0 +1,43 @@
+{
+  "chart": "Running Qwen3.8-27B (GGUF, UD-Q4_K_XL) in llama.cpp on the RTX 4090, 3,000 tokens of context",
+  "units": "MiB (2**20 bytes); show GiB (2**30) on the picture",
+  "card_total_mib": 24564,
+  "layers_bottom_to_top": [
+    {"key": "driver",  "label": "kept by the driver", "mib": 503.0,
+     "source": "card total 24,564 (nvidia-smi) minus everything else; CUDA reports 24,084 usable, the other 23 MiB is runtime overhead llama.cpp does not attribute"},
+    {"key": "weights", "label": "Qwen3.8-27B model weights", "mib": 16128.01,
+     "source": "llama.cpp CUDA0 model buffer, measured. The 682 MiB token lookup table stays in system RAM and is not on the card"},
+    {"key": "context", "label": "context, 3,000 tokens", "mib": 337.12,
+     "parts": {"kv_cache": 187.5, "linear_attention_state": 149.62},
+     "source": "KV cache 64 KiB per token (16 full-attention layers x K,V x 4 heads x 256 x 2 bytes; measured 256 MiB at 4,096) x 3,000; the linear-attention layers keep a fixed 149.62 MiB state whatever the length (measured)"},
+    {"key": "working", "label": "runtime overhead", "mib": 579.02,
+     "parts": {"compute_buffer": 126.02, "cuda_runtime": 453.0},
+     "source": "llama.cpp compute buffer (measured, 126 at 4,096 and 130 at 8,192) + CUDA runtime (process memory 17,112 minus llama.cpp's own 16,659, measured)"},
+    {"key": "free", "label": "free", "mib": 7016.85,
+     "source": "card total minus the layers above. The desktop's share (2,221 MiB in the measured run) is left out at the user's request: the figure shows what the model costs, so the desktop's memory counts as free"}
+  ],
+  "check_sum_mib": 24564.0,
+  "measured_run": "results/inference_llamacpp.json, run_tag 4096 (2026-11-11); 3,000 tokens is arithmetic on that run, not a separate run",
+  "weights_on_card": {
+    "note": "every tensor in the file except token_embd (kept in system RAM) and blk.64 (the draft-prediction layer, not loaded); sums to 16,128.00 MiB, matching the measured CUDA0 model buffer",
+    "params_b": 25.625, "avg_bits_per_weight": 5.280,
+    "by_type_share_of_weights": {"Q5_K": {"pct": 72.3, "bits": 5.50}, "IQ4_XS": {"pct": 22.3, "bits": 4.25},
+                                 "Q6_K": {"pct": 5.3, "bits": 6.56}, "Q4_K": {"pct": 0.1, "bits": 4.50}},
+    "label_lines": ["UD-Q4_K_XL: 72% Q5_K, 22% IQ4_XS, 5% Q6_K", "5.3 bits per weight on average, not 4"]
+  },
+  "weights_file": {
+    "name": "Qwen3.8-27B-UD-Q4_K_XL.gguf", "bytes": 17923394624, "gib": 16.68,
+    "params_b": 27.321, "avg_bits_per_weight": 5.245,
+    "by_type": {
+      "Q5_K":   {"params_b": 18.817, "gib": 12.05, "bits": 5.50},
+      "IQ4_XS": {"params_b": 5.793,  "gib": 2.87,  "bits": 4.25},
+      "Q6_K":   {"params_b": 1.413,  "gib": 1.08,  "bits": 6.56},
+      "Q4_K":   {"params_b": 1.295,  "gib": 0.68,  "bits": 4.50},
+      "F32":    {"params_b": 0.003,  "gib": 0.01,  "bits": 32.0}
+    }
+  },
+  "next_chart_same_kit": {
+    "bf16_weights_mib": 51299.6,
+    "note": "native dtype is bfloat16 (config.json). 26,895,998,464 text parameters (catalog/param_breakdown.json) x 2 bytes = 50.10 GiB of weights alone, about 2.1x the card: the next picture shows that block not fitting in the same box. The GGUF's 27.32B includes the 0.42B draft-prediction head"
+  }
+}

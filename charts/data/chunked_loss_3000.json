@@ -1,0 +1,21 @@
+{
+  "chart": "The stock loss vs the chunked loss on Qwen3.8-27B, one 3,000-token step",
+  "shapes": {"N_tokens": 3000, "d_model": 5120, "V_vocab": 248320, "chunk_c": 128, "slices": 24, "widening": 48.5},
+  "memory": {
+    "stock_peak_gib": 9.4, "stock_bytes_per_entry": 13.3,
+    "stock_note": "several [N, V] tables alive at once: BF16 logits, an FP32 copy, the FP32 log-softmax saved for backward, and in backward the gradient of the table; 13.3 bytes per entry measured on the GPU (median over the Qwen3.5 models)",
+    "chunked_slice_gib": 0.39, "chunked_slice_note": "one [128, V] slice in the same copies: 128 x 248,320 x 13.3 bytes",
+    "hidden_states_mib": 29.3, "gradient_buffer_mib": 29.3,
+    "saved_after_forward_stock_gib": 2.78, "saved_after_forward_note": "the one FP32 [N, V] log-softmax table the stock loss keeps for its backward pass (results/saved_activations.json), plus 1.39 GiB of BF16 logits the model returns"
+  },
+  "procedure_chunked": [
+    "keep the final hidden states H [N, d] and an empty gradient buffer dL/dH [N, d]",
+    "for each slice of 128 positions: logits [128, V] = H_slice x W^T; loss and gradient dL/dZ [128, V] = softmax - one-hot; dL/dH_slice [128, d] = dL/dZ x W, written into the buffer rows; free the slice",
+    "after the last slice, backpropagate the filled buffer through the model once"
+  ],
+  "exactness": "each token's loss depends only on its own row, so the result is the same: identical loss, gradient norms within 0.04% (measured)",
+  "speed": {"27B": "about 3% slower", "9B": "7% slower", "2B": "13% slower", "note": "whole training step; slice size not tuned",
+            "loss_only": {"stock_ms": 136.7, "chunked_ms": 192.3, "ratio": 1.41, "stock_peak_extra_gib": 9.71, "chunked_peak_extra_gib": 0.44,
+                          "note": "the loss alone (logits, FP32 cross-entropy, backward to H) on the 27B's shapes (3,000 x 5,120 -> 248,320, BF16, W frozen), RTX 4090, median of 2 x 20 reps; the chunked loop is train_qlora.py's (128-position slices, per-slice backward and float())",
+                          "source": "measure/loss_time.py -> results/loss_time_27b_3000.json"}}
+}

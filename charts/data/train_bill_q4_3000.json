@@ -1,0 +1,43 @@
+{
+ "chart": "Pretend: the same naive full fine-tune of Qwen3.8-27B, but every number training stores takes the GGUF's 5.24 bits (the average of the UD-Q4_K_XL file we run), except the loss. A thought experiment: real training cannot update 4-bit weights without a high-precision master copy",
+ "units": "GiB (2**30 bytes)",
+ "card_total_gib": 23.988,
+ "status": "calculated, and hypothetical",
+ "bits_per_number": 5.243,
+ "lines_bottom_to_top": [
+  {
+   "key": "weights",
+   "label": "Qwen3.8-27B weights (Q4 GGUF)",
+   "gib": 16.42,
+   "source": "every text-model tensor of the file we run (token table included, draft-prediction layer excluded): charts/data/weights_formats.json 'ours'"
+  },
+  {
+   "key": "gradients",
+   "label": "gradients",
+   "gib": 16.42,
+   "source": "pretend: one number per weight at 5.24 bits, the same size as the weights"
+  },
+  {
+   "key": "optimizer",
+   "label": "optimizer state (AdamW: two numbers per weight)",
+   "gib": 32.84,
+   "source": "pretend: AdamW's two moments per weight at 5.24 bits"
+  },
+  {
+   "key": "activations",
+   "label": "activations, 3,000 tokens",
+   "gib": 39.9,
+   "approximate": true,
+   "source": "pretend: the BF16 bill's activations (121.8 GiB, counted on the 27B's shapes) at 5.24 instead of 16 bits per number"
+  },
+  {
+   "key": "loss",
+   "label": "loss, 3,000 tokens",
+   "gib": 9.4,
+   "source": "kept as in the BF16 bill: a softmax over 248,320 entries is computed in full precision"
+  }
+ ],
+ "total_gib": 115.0,
+ "times_the_card": 4.79,
+ "previous_version": "until 2026-11-23 this file held the weights-only variant (weights 16.42, everything else as BF16: 287.3 GiB, 12 cards)"
+}

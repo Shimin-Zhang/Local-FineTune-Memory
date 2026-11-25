@@ -1,0 +1,19 @@
+{
+  "chart": "What one weight costs in training, in bytes: a fully trained BF16 weight, a frozen 4-bit weight, and an adapter weight",
+  "columns": [
+    {"key": "full", "label": "fully trained", "sub": "BF16, every weight", "count": "26.9B weights",
+     "parts": [{"line": "weights", "bytes": 2}, {"line": "gradients", "bytes": 2}, {"line": "optimizer", "bytes": 4}], "total_bytes": 8,
+     "source": "BF16 weight 2 + BF16 gradient 2 + two BF16 AdamW moments 4 (measured as one, one and two weight-sized copies on the 0.8B in 16-bit)"},
+    {"key": "frozen", "label": "frozen, 4-bit", "sub": "NF4, no gradient, no optimizer state", "count": "24.4B weights",
+     "parts": [{"line": "weights", "bytes": 0.5}, {"line": "scales", "bytes": 0.017}], "total_bytes": 0.517,
+     "source": "measured: 0.517 bytes per rounded weight = 4 bits + 0.13 bits of block scales (NF4 with double quantization). The two vocabulary matrices (2.5B weights) are not rounded and stay at 2 bytes, frozen"},
+    {"key": "adapter", "label": "adapter", "sub": "FP32", "count": "79.7M weights, 0.3%",
+     "parts": [{"line": "weights", "bytes": 4}, {"line": "gradients", "bytes": 4}, {"line": "optimizer", "bytes": 8}], "total_bytes": 16,
+     "source": "FP32 weight 4 + FP32 gradient 4 + two FP32 AdamW moments 8: the measured 16 bytes per trainable LoRA weight (analysis/predict.py); run 3's adapter has 79,691,776 trainable weights (rank 16)"}
+  ],
+  "inset_matrix": {
+    "name": "one MLP up-projection of the 27B (layer 0 of 64)", "rows": 17408, "cols": 5120, "frozen_weights": 89128960,
+    "adapter": {"rank": 16, "A": [16, 5120], "B": [17408, 16], "weights": 360448, "share_pct": 0.40},
+    "memory_mb": {"frozen_nf4": 46.1, "adapter_16_bytes": 5.8, "if_fully_trained_bf16_8_bytes": 713.0}
+  }
+}

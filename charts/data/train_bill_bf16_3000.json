@@ -1,0 +1,42 @@
+{
+ "chart": "Naive full fine-tune of Qwen3.8-27B in BF16 with stock AdamW, one 3,000-token example per step, no gradient checkpointing, stock loss, default install (no fast linear-attention kernels): the memory bill against the RTX 4090",
+ "units": "GiB (2**30 bytes)",
+ "card_total_gib": 23.988,
+ "status": "calculated, not measured: the 27B does not fit on the card to measure",
+ "lines_bottom_to_top": [
+  {
+   "key": "weights",
+   "label": "Qwen3.8-27B weights (BF16)",
+   "gib": 50.1,
+   "source": "26,895,998,464 text parameters (catalog/param_breakdown.json) x 2 bytes; exact"
+  },
+  {
+   "key": "gradients",
+   "label": "gradients",
+   "gib": 50.1,
+   "source": "one BF16 gradient per weight being trained; exact (measured as one weight-sized copy on the 0.8B in 16-bit)"
+  },
+  {
+   "key": "optimizer",
+   "label": "optimizer state (AdamW: two numbers per weight)",
+   "gib": 100.2,
+   "source": "AdamW's two moments per weight in BF16; exact (measured as two weight-sized copies on the 0.8B in 16-bit). Stock AdamW also holds a fifth weight-sized temporary copy during the step itself, not drawn"
+  },
+  {
+   "key": "activations",
+   "label": "activations, 3,000 tokens",
+   "gib": 121.8,
+   "approximate": true,
+   "source": "counted on the 27B's own shapes: the tensors autograd keeps for the backward pass in one linear-attention layer (2,193.2 MiB) and one full-attention layer (1,214.9 MiB) at 3,000 tokens, default install, run 3's adapter (measure/saved_activations.py, results/saved_activations.json), x 48 and x 16 layers. Validated on the 0.8B: the same count gives 4.59 MiB/token against 4.82 measured on the GPU. Replaces the earlier extrapolation from 0.8-9B (111.2 GiB)"
+  },
+  {
+   "key": "loss",
+   "label": "loss, 3,000 tokens",
+   "gib": 9.4,
+   "source": "the stock loss adds 3.13 to 3.37 MiB per token at the backward peak on every measured Qwen3.5 model (median 3.21; 13.3 bytes x 248,320 vocabulary entries), independent of model size; x 3,000 tokens"
+  }
+ ],
+ "total_gib": 331.6,
+ "times_the_card": 13.82,
+ "note": "the five lines added up; in a real run gradients fill as activations are freed, so the true peak is somewhat lower than the sum"
+}

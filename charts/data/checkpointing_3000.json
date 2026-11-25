@@ -1,0 +1,81 @@
+{
+ "chart": "Gradient checkpointing on top of QLoRA: Qwen3.8-27B, one 3,000-token example per step, stock loss, default install",
+ "units": "GiB unless marked MiB",
+ "card_total_gib": 23.988,
+ "rows": [
+  {
+   "key": "qlora",
+   "label": "QLoRA, all activations kept",
+   "lines": [
+    {
+     "key": "weights",
+     "label": "frozen 4-bit weights",
+     "gib": 16.5
+    },
+    {
+     "key": "adapter",
+     "label": "adapter",
+     "gib": 1.19
+    },
+    {
+     "key": "activations",
+     "label": "activations, 3,000 tokens",
+     "gib": 121.8
+    },
+    {
+     "key": "loss",
+     "label": "loss, 3,000 tokens",
+     "gib": 9.4
+    }
+   ],
+   "total_gib": 148.9,
+   "cards": 6.21
+  },
+  {
+   "key": "ckpt",
+   "label": "QLoRA + gradient checkpointing",
+   "lines": [
+    {
+     "key": "weights",
+     "label": "frozen 4-bit weights",
+     "gib": 16.5
+    },
+    {
+     "key": "adapter",
+     "label": "adapter",
+     "gib": 1.19
+    },
+    {
+     "key": "activations",
+     "label": "activations, 3,000 tokens",
+     "gib": 4.54,
+     "source": "measured on the 27B itself: 1.55 MiB per token with checkpointing, default install (outline stop 8); = 64 kept layer inputs (0.63 MiB/token) + one layer recomputed at a time (0.73) + small buffers"
+    },
+    {
+     "key": "loss",
+     "label": "loss, 3,000 tokens",
+     "gib": 9.4
+    }
+   ],
+   "total_gib": 31.6,
+   "cards": 1.32
+  }
+ ],
+ "middle_layer": {
+  "name": "layer 33 of 64 (linear attention, like 48 of the 64)",
+  "tokens": 3000,
+  "kept_without_checkpointing_mib": {
+   "linear-attention internals": 1460.4,
+   "adapter's copies": 316.7,
+   "MLP internals": 298.8,
+   "the two norms": 117.2
+  },
+  "kept_without_checkpointing_total_mib": 2193.2,
+  "kept_with_checkpointing_mib": {
+   "the layer's input": 29.3
+  },
+  "note": "with checkpointing the layer's insides are recomputed during the backward pass, one layer at a time; full-attention layers keep 1,214.9 MiB",
+  "source": "results/saved_activations.json (measure/saved_activations.py)"
+ },
+ "cost": "19 to 26% slower per step (measured on the 2B and 9B), because each layer's forward pass runs twice"
+}
