@@ -28,7 +28,10 @@ configs:
 
 {n_all} requests for a 3D scene, each paired with a Blender Python (`bpy`) script that builds the whole scene, and a
 render of it. Every scene is in one look: a low-poly diorama on a floating base, with dramatic lighting and glowing
-lights. Every script runs without error in Blender 5.2.3 and passes the checks listed below.
+lights. That look comes from the guide the writers were given
+([writers_guide.md](https://huggingface.co/datasets/{repo_id}/blob/main/writers_guide.md)), not from the requests or
+the system prompt: no `instruction` mentions a diorama or a low-poly style, so a model trained on this set learns the
+look without being asked for it. Every script runs without error in Blender 5.2.3 and passes the checks listed below.
 
 The scripts were written by Claude Sonnet 5.5 (Anthropic), running as agents in Claude Code: each agent wrote a script,
 ran it in a sandboxed Blender, looked at the render, and fixed what it saw. (It was first used for a fine-tuning
@@ -70,9 +73,11 @@ train = load_dataset("{repo_id}", split="train")
 
 1. **Requests.** Written by Claude agents across {n_categories} categories of place, then filtered: a main subject at
    most twice in the set, and no two requests sharing nearly half of their content words.
-2. **Scripts.** Each agent got a written guide (the look, rules for Blender 5.2, the checks) and 20 requests. For each
-   request it wrote a script, ran it in a headless Blender 5.2.3 with a read-only filesystem and no network, looked at
-   the render, and revised.
+2. **Scripts.** Each agent got a written guide (the look, rules for Blender 5.2, the checks) and 20 requests. The guide
+   is in this dataset as [writers_guide.md](https://huggingface.co/datasets/{repo_id}/blob/main/writers_guide.md). For
+   each request the agent wrote a script, ran it in a headless Blender 5.2.3 with a read-only filesystem and no
+   network, looked at the render, and revised. The sandbox runner and the checker that the guide names are in the
+   [GitHub repository](https://github.com/Shimin-Zhang/Local-FineTune-Memory).
 3. **Checks** that every scene passes: the script runs without error; the starting cube is removed; every object has a
    material; colours are set on shader nodes (a colour set only on `material.diffuse_color` does not reach a render
    in Blender 5.2); the script's own camera shows the scene and the scene is not cut off by the frame; no outside files

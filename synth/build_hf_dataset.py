@@ -1,4 +1,4 @@
-"""Build the Hugging Face dataset of the scene scripts locally: two Parquet files and the dataset card. Nothing is uploaded.
+"""Build the Hugging Face dataset of the scene scripts locally: two Parquet files, the dataset card and the writers' guide. Nothing is uploaded.
 
 Usage: python -I synth/build_hf_dataset.py [--out results/hf_dataset] [--quality 90]
 
@@ -9,7 +9,7 @@ manifests, the first versions in first/, and the clean 640-pixel renders in resu
 The `messages` column is built exactly as synth/build_train.py builds the training examples. The card is
 synth/hf_card.md with its {placeholders} filled from the data.
 """
-import argparse, io, json, os, statistics, sys
+import argparse, io, json, os, re, statistics, sys
 
 from PIL import Image as PILImage
 from datasets import Dataset, Features, Image, List, Value
@@ -105,3 +105,12 @@ card = open("synth/hf_card.md").read().format(**fill)
 open(os.path.join(a.out, "README.md"), "w").write(card)
 json.dump(fill, open(os.path.join(a.out, "card_numbers.json"), "w"), indent=1)
 print("card written:", os.path.join(a.out, "README.md"))
+
+# The writers' guide goes into the dataset too, as given to each agent, with its one local path replaced.
+guide, n_paths = re.subn(r"`/home/[^`\s]+`", "the repository root", open("synth/guide.md").read())
+assert n_paths == 1, f"expected one local path in synth/guide.md, found {n_paths}"
+note = ("> This is the guide each writing agent was given. It is unchanged except that one local path now reads\n"
+        "> \"the repository root\". The commands it names (`blender_task/run_sandboxed.py`, `synth/check.py`) are in\n"
+        "> https://github.com/Shimin-Zhang/Local-FineTune-Memory, not in this dataset.\n\n")
+open(os.path.join(a.out, "writers_guide.md"), "w").write(note + guide)
+print("guide written:", os.path.join(a.out, "writers_guide.md"))
